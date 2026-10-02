@@ -1,129 +1,69 @@
-# prompts/ — Prompt Library & System Messages
+# prompts/ — Thư viện prompt
 
-Tập trung các prompt, few-shot examples, tool definitions cho AI model.
-Mỗi prompt phải có `figure_policy` rõ ràng (placeholder_only / source_only / free / none).
+Nguồn chuẩn: Brief P6 (cấu trúc, phiên bản), P11, P11.1 (ResponseGuard) · Phụ lục v2.1 §4–6, v2.3 §25.
 
-## Cấu trúc
+Prompt chỉ được đọc từ `prompts/` + bảng `prompt_versions`. Không viết prompt trực tiếp trong code.
+
+## Cấu trúc và đặt tên
+
+Theo template và tác vụ, phiên bản semver (Brief P6):
 
 ```
-prompts/
-├── system/                          — System prompts (không thay đổi thường xuyên)
-│   ├── bot-conversation.md          — Chatbot trò chuyện với khách
-│   ├── bot-classification.md        — Phân loại ý định khách
-│   ├── bot-transfer-decision.md     — Quyết định đưa sang agent
-│   └── support-agent.md             — Hướng dẫn agent xử lý
-│
-├── tools/                           — Tool definitions (OpenAI format)
-│   ├── fetch-price.json             — Lấy bảng giá
-│   ├── search-kb.json               — Tìm kiếm knowledge base
-│   ├── check-inventory.json         — Kiểm tra tồn kho
-│   └── create-quote.json            — Tạo báo giá
-│
-├── few-shots/                       — Few-shot examples per use case
-│   ├── classification-examples.md   — Ví dụ phân loại
-│   ├── transfer-decision.md         — Ví dụ quyết định chuyển
-│   └── pricing-response.md          — Ví dụ trả lời giá
-│
-├── kb-instructions/                 — Hướng dẫn sử dụng knowledge base
-│   └── search-strategy.md           — Cách tìm kiếm hiệu quả
-│
-└── README.md                        — Hướng dẫn version control prompt
+prompts/<template>/<task>@<semver>.md
+# ví dụ: prompts/b2b/answer@1.2.0.md   ← cùng chuỗi dùng làm AiTaskRequest.promptRef
 ```
 
-## Quy tắc
+`<template>` ∈ `b2b`, `b2c`, `service`, `common`. Cấu trúc thư mục con theo tác vụ do P11 quyết định; **không tạo trước** các tệp chưa có tác vụ thật.
 
-### 1. Mỗi prompt phải có metadata
+## Metadata (front-matter bắt buộc)
 
 ```yaml
 ---
-id: bot-conversation-v2
-name: Bot Conversation (Responsive)
-figure_policy: placeholder_only
-version: 2
-deprecated_at: null
+id: b2b/answer
+version: 1.2.0
+figure_policy: placeholder_only   # placeholder_only | source_only | free | none
+requires_tools: [get_price]       # danh sách đóng
 changelog:
-  - v2: "Thêm instruction về hỗ trợ chéo sản phẩm"
-  - v1: "Initial"
+  - 1.2.0: "…"
 ---
-
-<nội dung prompt>
 ```
 
-### 2. Placeholder cho số liệu
+`figure_policy` (P11.1):
+- `placeholder_only` — trả lời khách; số nghiệp vụ chỉ qua ô giữ chỗ.
+- `source_only` — thẻ tóm tắt; số lấy từ `conversation_ai_state`, không lấy từ chữ model.
+- `free` — phân loại, trích xuất.
+- `none` — tác vụ không sinh chữ cho người đọc.
 
-- Bảng giá: `{{price_<tool_id>}}`
-- MOQ: `{{moq_<tool_id>}}`
-- ETA: `{{agent_eta}}`
-- Giờ làm việc: `{{business_hours}}`
-- FAQ match: `{{faq_match.score}}`
+`requires_tools` là **danh sách đóng**: prompt gọi tool ngoài danh sách → `validate:prompts` báo lỗi.
 
-### 3. Tool definitions
+**Tham số model (temperature, max tokens, schema đầu ra) KHÔNG nằm trong prompt** — nằm trong config `model_routes` theo từng model (v2.3 §25).
 
-Mỗi tool định nghĩa `figure_policy`:
+## Ô giữ chỗ số liệu
 
-```json
-{
-  "name": "fetch_price",
-  "figure_policy": "placeholder_only",
-  "description": "Lấy bảng giá, trả về dạng {{price_N}}, KHÔNG phải số thực",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "product_id": {"type": "string"},
-      "quantity_tier": {"type": "integer"}
-    }
-  }
-}
-```
+- Model chỉ viết `{{price_1}}`, `{{moq_1}}`, `{{delivery_slot_1}}`, `{{agent_eta}}`, `{{business_hours}}`. Hệ thống điền số thật từ `ToolResult.figures`.
+- Tên ô giữ chỗ phải được định nghĩa; ô lạ (typo) → `validate:prompts` báo lỗi.
+- **Cấm tự hứa thời gian** ("em kiểm tra trong 2 phút"); mọi cam kết thời gian qua `{{agent_eta}}` / `{{business_hours}}`.
 
-### 4. Few-shot examples
+## Tool definitions
 
-Mỗi example có:
-- **Input**: customer message
-- **Reasoning**: Claude thinking (nội bộ)
-- **Output**: expected response (với placeholder hoặc action)
+- Định nghĩa tool độc lập nhà cung cấp (JSON Schema); AI Gateway (LiteLLM-compatible) chuyển đổi sang định dạng của từng provider.
+- Mỗi tool khai báo `figure_policy`. Tool trả giá/tổng tiền trả về `ToolResult` có `figures`, không trả số trong chữ.
+- Danh sách tool cụ thể do module 05 quyết định theo đợt (đợt 2: `get_price`, `generate_quote`; đợt 3: `calculate_order`, `create_order`). Prompt không được gọi tool không tồn tại.
 
-### 5. Version control
+## Phiên bản & thay đổi
 
-- Prompt thay đổi → cập nhật version + changelog
-- Prompt deprecated → đánh dấu `deprecated_at`, update migration plan
-- Prompt active → không được xóa, chỉ deprecate
-- Kiểm tra: `pnpm run validate:prompts` (lint metadata + placeholder)
+- Đổi prompt → tăng semver + changelog; prompt đang chạy không xóa, chỉ thay phiên bản.
+- **Cải tiến prompt bằng đánh giá offline trên bộ test + chạy ẩn trên dữ liệu thật. Không A/B test** (v2.3 §25).
+- Mỗi lần đổi prompt/model/KB/bảng giá phải chạy lại bộ test (Brief P20: 200 câu/workspace, 3 lần/câu, 3 lớp chấm, 20% câu ẩn với vendor; thêm 30 câu số tự nhiên cho ResponseGuard). Ngưỡng đạt do Test Specification quyết định (Brief P21 S12: ≥ 95% và 0 số sai trên staging), không tự đặt ngưỡng ở file này.
+- Kiểm tra định dạng: `pnpm validate:prompts` (front-matter + ô giữ chỗ).
 
-### 6. Kiểm chứng
+## Prompt caching
 
-Trước deploy prompt mới:
-- `pnpm test:ai:prompts` — Chạy 30 câu test trên prompt mới
-- `pnpm test:ai:regression` — 200 câu regression vs prompt cũ (≥ 90% parity)
-- `judge` chấm: so sánh kết quả (blind test tối thiểu 50 câu)
+- Đặt phần tĩnh ở đầu: system prompt + định nghĩa tool + khối `conversation_state` + 6–8 lượt gần nhất (Phụ lục §16) để tận dụng prompt caching của provider.
+- Không tự dựng cache prompt riêng. Cache FAQ (nếu có) theo `ai-core/cache`: khóa `org:{orgId}:ws:{wsId}:faq:<hash>:kb<v>`; **không cache câu có kết quả tool**.
 
 ## Cấm
-
-- Không hardcode số liệu (giá, MOQ, thời gian)
-- Không tự hứa cam kết thời gian ("em sẽ kiểm tra trong 2 phút")
-- Không yêu cầu tool không tồn tại trong `tools/*.json`
-- Không để placeholder không được định nghĩa (typo `{{price_typo}}` → báo lỗi)
-
-## Migration prompts cũ
-
-Nếu deprecated prompt cũ:
-1. Tạo phiên bản mới, set `version++`
-2. Chạy regression 200 câu
-3. Deploy mới trước → rollback nếu fail
-4. Chỉ khi ≥ 90% parity mới tắt prompt cũ
-5. Giữ prompt cũ ≥ 2 tuần cho monitoring
-6. Sau đó: xóa hoặc archive
-
-## Prompt caching (Anthropic)
-
-- System prompt tĩnh: cache với key `org:{orgId}:ws:{wsId}:system:v<N>`
-- Few-shots tĩnh: cache riêng, update khi công ty thay đổi knowledge
-- Tool definitions: cache (cộng chung với system cache)
-- TTL: 5 phút (mặc định Anthropic)
-
-## Contacts
-
-Khi có vấn đề về prompt:
-- Không hiểu ý khách? → sửa few-shots, không sửa system prompt
-- Model vi phạm figure_policy? → tăng urgency trong system prompt + thêm ví dụ
-- Lặp lại 2 lần? → ghi vào `#` trong file này
+- Hardcode số liệu (giá, MOQ, thời gian) trong prompt.
+- Nêu tên model/nhà cung cấp trong nội dung prompt (model nằm trong config).
+- Dùng hội thoại thật để huấn luyện/fine-tune (Phụ lục §28).
+- Sửa prompt mà không chạy bộ test.

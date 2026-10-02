@@ -22,6 +22,5 @@ build/
 .env.*.local
 coverage/
 .nyc_output/
-pnpm-lock.yaml
 yarn.lock
 package-lock.json

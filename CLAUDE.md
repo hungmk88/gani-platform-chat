@@ -56,8 +56,14 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - `apps/admin/CLAUDE.md` — UI admin, 5 nhóm menu, design token.
 - `apps/widget/CLAUDE.md` — loader nhẹ, Shadow DOM, brand per workspace.
 - `prompts/CLAUDE.md` — system prompt, tool definitions, few-shots, figure_policy.
-- `evals/CLAUDE.md` — tenant-isolation.spec, claim-race.spec, ResponseGuard, regression.
-- `infra/CLAUDE.md` — Terraform, Docker, K8s, deployment strategy, IAM.
+- `evals/CLAUDE.md` — bộ chạy Test Specification AI (ResponseGuard, 200 câu, PII); dataset không nằm trong repo.
+- `infra/CLAUDE.md` — Terraform (module không gắn cloud, chưa apply), Docker, PITR, role DB.
+
+## COMMIT MESSAGE
+
+- Conventional Commits.
+- Dòng cuối: `Co-Authored-By: Claude <noreply@anthropic.com>` cho mọi commit có AI hỗ trợ.
+- Bắt buộc có `< >` để GitHub nhận diện.
 
 ## KHI BỊ SỬA CÙNG MỘT LỖI LẦN 2
 

@@ -340,7 +340,7 @@ Ký hiệu RLS: **O** = theo `org_id` · **O+W** = theo `org_id` + `workspace_id
 | Nhóm migration (đợt) | Bảng | RLS | `version` | Soft delete | Index bắt buộc (ngoài PK) | Partition |
 | --- | --- | --- | --- | --- | --- | --- |
 | M01 Tenancy & identity (1) | `organizations` | theo `id` |  | ✓ | `(slug)` unique |  |
-|  | `users` | — (truy cập qua membership) |  | ✓ | `(email)` unique |  |
+|  | `users` (`status`: pending_password · active) | — (truy cập qua membership) |  | ✓ | `(email)` unique |  |
 |  | `org_members`, `workspaces`, `workspace_members`, `teams`, `team_members` | O |  | ✓ | `(org_id, user_id)`; `(org_id, slug)` |  |
 |  | `api_keys` (chỉ lưu hash) | O |  | ✓ | `(key_prefix)` unique |  |
 |  | `audit_logs`, `platform_access_logs` | O |  |  | `(org_id, created_at)` | Tháng |
@@ -349,7 +349,7 @@ Ký hiệu RLS: **O** = theo `org_id` · **O+W** = theo `org_id` + `workspace_id
 |  | `channel_policies` | — (platform quản trị) |  |  | `(channel_type, effective_from)` |  |
 |  | `inbound_events` | O |  |  | `(channel_account_id, platform_message_id)` unique; `(status, received_at)` | Tháng |
 |  | `outbox_events` | O |  |  | `(status, created_at)` | Tháng |
-| M03 CRM (1) | `customers` (cờ `human_only`) | O |  | ✓ | `(org_id, phone_e164)`; `(org_id, email)` |  |
+| M03 CRM (1) | `customers` (cờ `human_only`; `type`: individual · business) | O |  | ✓ | `(org_id, phone_e164)`; `(org_id, email)` |  |
 |  | `customer_identities` (`verification`: verified · unverified · sales\_confirmed) | O |  |  | `(org_id, identity_type, external_id)` unique |  |
 |  | `customer_field_defs`, `customer_field_values`, `consents`, `tags`, `customer_tags` | O |  | ✓ (defs, tags) | `(org_id, customer_id)` |  |
 | M04 Conversations (1) | `conversations` (`state`, `window_state`, `after_hours_hold`) | **O+W** | ✓ |  | `(org_id, workspace_id, state, last_message_at DESC)`; `(org_id, assigned_user_id, state)` |  |
@@ -383,7 +383,7 @@ Ký hiệu RLS: **O** = theo `org_id` · **O+W** = theo `org_id` + `workspace_id
 
 - **UUIDv7:** sinh ở app (`packages/domain/id`); migration có hàm dự phòng cho default. Không dùng UUIDv4 cho bảng mới.
 - **File:** đường dẫn `/{org_id}/{workspace_id}/{yyyy}/{mm}/{file_id}`. Không phát link bucket trực tiếp: client gọi `GET /v1/files/{id}/download` → `FileAccessService` kiểm quyền user + org/workspace → redirect tới presigned URL 60 giây. Link chia sẻ nội bộ hết hạn 15 phút (v2.3 §23). File upload qua quét virus (`scan_status`) trước khi dùng.
-- **PII:** token kênh và trường `custom_fields` đánh dấu `sensitive` mã hóa ở mức cột (envelope). Trước khi gửi provider AI, che: SĐT, email, địa chỉ chi tiết, mã số thuế, số tài khoản, số giấy tờ → placeholder `[PHONE_1]`, `[TAX_ID_1]`; ánh xạ ngược chỉ trong phiên.
+- **PII:** token kênh và trường `custom_fields` đánh dấu `sensitive` mã hóa ở mức cột (envelope). Trước khi gửi provider AI, che: **họ tên cá nhân, ngày sinh**, SĐT, email, địa chỉ chi tiết, mã số thuế, số tài khoản, số giấy tờ → placeholder `[NAME_1]`, `[PHONE_1]`, `[TAX_ID_1]`; ánh xạ ngược chỉ trong phiên. **Không che** tên doanh nghiệp/quán và tên thương hiệu (cần cho báo giá B2B). Phân biệt cá nhân/doanh nghiệp qua `customers.type` (`individual` · `business`); ai đặt `type` khi tạo khách: xem `QUESTIONS.md`.
 - **Xóa tenant:** soft delete `organizations.deleted_at` → `TenantPurgeJob` xóa theo lô, có báo cáo.
 - **Seed dev:** 2 org giả ("Demo Foods" có workspace B2B + B2C; "Demo Accounting" mẫu Service), sản phẩm/khách giả sinh bởi factory. **Không dùng dữ liệu thật** ở dev/staging.
 
@@ -437,6 +437,9 @@ Ký hiệu RLS: **O** = theo `org_id` · **O+W** = theo `org_id` + `workspace_id
 | Agent | `POST /v1/conversations/{id}/summary` · `POST /v1/conversations/{id}/suggestions` | Session | 60/phút/user | ✓ |  | 1 (summary) · 2 |
 | Admin | `PATCH /v1/workspaces/{id}/autonomy` | Session · Owner | 10/phút | ✓ | ✓ | 1 |
 | Platform | `GET /v1/platform/tenants/health` · `POST /v1/platform/access-sessions` (bắt buộc `reason`) | Session · platform\_operator | 30/phút | ✓ | ✓ | 1 |
+| Agent | `POST /v1/members/{id}/resend-invite` | Session · Admin/Manager | 5/phút/member; 20/giờ/org | ✓ | ✓ | 1 |
+| Public (lời mời) | `POST /v1/invitations/lookup` | Không (chỉ cần token mời) | 10/phút/token hash; 60/phút/IP | ✓ | khi thành công | 1 |
+| Public (lời mời) | `POST /v1/invitations/accept` | Token mời; người đã có tài khoản kèm phiên đăng nhập. Trả JWT 15 phút (chỉ để đặt mật khẩu) | 10/phút/token hash; 60/phút/IP | ✓ | ✓ | 1 |
 | Files | `POST /v1/files` (khởi tạo upload) · `GET /v1/files/{id}/download` | Session hoặc widget token | 60/phút | ✓ |  | 1 |
 | Admin | `POST /v1/knowledge-bases/{id}/documents` · `POST /v1/documents/{id}/reindex` · `DELETE /v1/documents/{id}` | Session · Admin | 30/phút | ✓ | ✓ | 2 |
 | Admin | `GET/POST /v1/price-tiers` · `POST /v1/price-tiers/{id}/approve` (người duyệt ≠ người tạo) · `POST /v1/quotes/{id}/approve-send` | Session | 60/phút | ✓ | ✓ | 2 |
@@ -444,6 +447,10 @@ Ký hiệu RLS: **O** = theo `org_id` · **O+W** = theo `org_id` + `workspace_id
 | Widget | `POST /v1/widget/sessions` · `POST /v1/widget/messages` · `GET /v1/widget/messages` | Widget key + visitor JWT ngắn hạn; domain allowlist | 30 tin/phút mỗi phiên khách; 300 tin/phút mỗi IP (chỉ chống spam, vì nhà mạng dùng chung IP — CGNAT) | ✓ |  | 2 hoặc 3 |
 | Webhook vào | `POST /v1/hooks/zalo/{channelAccountId}` · `GET/POST /v1/hooks/facebook/{channelAccountId}` · `POST /v1/hooks/payments/{provider}` | Chữ ký nền tảng | Theo nền tảng | Theo `(channel_account_id, platform_message_id)` |  | 1 · 2 · 3 |
 | Public API | `POST /v1/public/leads` · `GET /v1/public/orders/{id}` | API key (hash, scope) | 120/phút/key | ✓ | ✓ | 3 |
+
+**Ràng buộc hai endpoint lời mời:** không cần đăng nhập trước; kiểm `Origin`/`Referer` khớp domain; response **không phân biệt** loại lỗi (cùng status, cùng message); `accept` trả JWT 15 phút chỉ dùng để đặt mật khẩu (kho Idempotency-Key chỉ lưu `user_id`, `org_member_id`, `accepted_at`, **không lưu JWT**; gửi lại cùng khóa trả "Đã chấp nhận, kiểm tra email để đặt mật khẩu"); khóa đếm rate limit là hash của token, không phải token.
+
+**Ràng buộc `resend-invite`:** chỉ gửi lại khi `org_members.status = 'pending'` (kể cả lời mời đã hết hạn do cleanup); sinh token mới và **ghi đè** `invite_token_hash` (token cũ vô hiệu ngay), đặt lại `invite_expires_at` = +7 ngày; rate limit chống spam email (5/phút/member, 20/giờ/org); ghi `audit_logs`.
 
 ### Webhook
 
@@ -563,7 +570,7 @@ module nghiệp vụ ─► AiRouter ─► ContextBuilder ─► PiiMasker ─�
 - **Prompt caching (cache theo từng workspace):** thứ tự cố định — phần chung toàn nền tảng (quy tắc, định dạng) → phần tĩnh của workspace (vai trò, `{{tenant_name}}`, chính sách) → định nghĩa tool → `conversation_state` JSON → 6–8 lượt gần nhất → đoạn RAG. Tỉ lệ trúng cache thực tế phải đo, không giả định.
 - **ResponseGuard — số liệu qua ô giữ chỗ (BẮT BUỘC):** câu trả lời có số nghiệp vụ thì model chỉ viết ô giữ chỗ trỏ tới `ToolResult` (`{{price_1}}`, `{{moq_1}}`, `{{delivery_slot_1}}`); hệ thống tự điền số thật. Mọi con số nghiệp vụ viết tự do (không qua ô) → chặn, chuyển người, log `ai.number_mismatch`. Chi tiết ở bảng dưới.
 - **Cache & stream:** cache chỉ cho FAQ tĩnh, key = `org:ws:faq:<hash>:kb<v>:price<v>`; câu có tool result không cache. Stream chỉ ở widget và chỉ khi `containsFigures = false`.
-- **PII masking:** `PiiMasker` thay họ tên người, ngày sinh, SĐT, email, địa chỉ chi tiết, mã số thuế, số tài khoản, số CCCD/giấy tờ bằng placeholder (`[NAME_1]`, `[PHONE_1]`…) trước khi gửi; giải mã ngược sau guard để bot vẫn xưng hô đúng. **Không** che tên quán/doanh nghiệp (cần cho báo giá B2B). Bật từ đợt 1.
+- **PII masking:** `PiiMasker` thay họ tên người, ngày sinh, SĐT, email, địa chỉ chi tiết, mã số thuế, số tài khoản, số CCCD/giấy tờ bằng placeholder (`[NAME_1]`, `[PHONE_1]`…) trước khi gửi; giải mã ngược sau guard để bot vẫn xưng hô đúng. **Không** che tên quán/doanh nghiệp/thương hiệu (cần cho báo giá B2B); phân biệt qua `customers.type` (P8). Bật từ đợt 1.
 - **Prompt injection:** tin khách và đoạn RAG luôn bọc trong khối dữ liệu có nhãn; tool kiểm quyền và tham số ở server (vd. `create_order` tự tính lại giá, bỏ qua giá model truyền vào); model không có tool giảm giá/hoàn tiền.
 - **Ngưỡng chậm (v2.3 §25):** classify > 2s, answer FAQ > 6s, summarize nền > 20s → `fallback_model` khác hãng.
 - **Ngân sách:** `ai_usage_logs` ghi token + USD theo org/workspace/task; `BudgetGuard` cảnh báo 80%, chặn ở 100% (về flow kịch bản, trả `ai_budget_exceeded`). Tham chiếu \~6 triệu/tháng toàn nền tảng ở 12.000 hội thoại.
@@ -735,7 +742,7 @@ figure_policy: placeholder_only
 | Test CI | `tenant-isolation.spec` + `workspace-isolation.spec` sinh tự động cho mọi endpoint từ OpenAPI; chạy mỗi PR, đỏ → chặn merge |
 | File | `FileAccessService` kiểm org/workspace/user rồi mới ký URL (P8) |
 | Vector | Mọi truy vấn `document_chunks` có điều kiện `org_id` + `workspace_id` trong SQL, không chỉ dựa vào RLS |
-| Cache | Key luôn bắt đầu `org:{orgId}:ws:{wsId}:` |
+| Cache | Key luôn bắt đầu `org:{orgId}:ws:{wsId}:`. **Ngoại lệ:** khóa giới hạn tần suất trước khi biết tenant (đăng nhập, lời mời) dùng tiền tố `auth:`; bắt buộc TTL ≤ 5 phút, không chứa PII, phần định danh là hash |
 | Queue | Hàng đợi hội thoại theo workspace (`q.conversations.process.ws.{id}`), worker có trọng số; không dùng một FIFO chung |
 | AI | Hạn mức, Knowledge Base, prompt override theo workspace |
 | Platform operator | Xem dữ liệu tenant chỉ qua `access-session` có `reason`, thời hạn 60 phút, ghi `platform_access_logs` |
@@ -786,6 +793,7 @@ CREATE POLICY tenant_ws_isolation ON conversations
 
 * [ ] **CSRF:** mọi request thay đổi dữ liệu từ admin dùng session cookie phải có CSRF token; cookie `HttpOnly`, `Secure`, `SameSite=Lax`
 * [ ] **Tạo lại session** sau đăng nhập, sau đổi vai trò, sau bật/tắt 2FA
+* [ ] **Hàm `SECURITY DEFINER`:** `SET search_path = pg_catalog, public, pg_temp` (`pg_temp` đặt cuối); ghi tên schema đầy đủ trong thân hàm; `REVOKE ... FROM PUBLIC` rồi chỉ `GRANT EXECUTE` cho role cần; lint migration chặn hàm thiếu `SET search_path`
 
 ## P18 — Frontend
 

@@ -27,8 +27,10 @@ Chỉ gọi `AiRouter`. `AiRouter` gọi AI Gateway tự host.
 
 ## PII masking (bật từ đợt 1)
 
-- Che: họ tên người, ngày sinh, SĐT, email, địa chỉ chi tiết, MST, số TK, CCCD.
-- **Không che** tên quán/doanh nghiệp (cần cho báo giá B2B).
+- Che: **họ tên cá nhân**, ngày sinh, SĐT, email, địa chỉ chi tiết, MST, số TK, số giấy tờ (CCCD…) → `[NAME_1]`, `[PHONE_1]`, `[TAX_ID_1]`…
+- **Không che** tên doanh nghiệp/quán và tên thương hiệu (cần cho báo giá B2B).
+- Khách `business`: che tên người liên hệ, giữ tên doanh nghiệp. Văn bản tự do: phần chứa tên doanh nghiệp đã biết thì giữ; phần còn lại nghi là tên người thì che. Chấp nhận sót ±5%. Nếu độ tin cậy có PII > 90% → che cả câu (sẽ ghi vào spec M03).
+- Phân biệt cá nhân/doanh nghiệp qua `customers.type` (`individual` · `business`). Ai đặt `type` khi tạo khách: câu hỏi mở (`QUESTIONS.md`).
 - Giải mã ngược sau guard để bot vẫn xưng hô đúng.
 
 ## Kiểm chứng
