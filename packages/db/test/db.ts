@@ -27,14 +27,18 @@ export async function withClient<T>(role: Role, fn: (client: pg.Client) => Promi
   }
 }
 
-/** SQLSTATE of the error a query raises, or `undefined` when it succeeds. */
+/**
+ * SQLSTATE of the error a query raises, or `undefined` when it succeeds.
+ * Follows `cause`: Drizzle wraps the driver error, the SQLSTATE sits on the inner one.
+ */
 export async function sqlState(query: Promise<unknown>): Promise<string | undefined> {
   try {
     await query;
     return undefined;
   } catch (error) {
-    if (error instanceof Error && 'code' in error && typeof error.code === 'string')
-      return error.code;
+    for (let e: unknown = error; e instanceof Error; e = e.cause) {
+      if ('code' in e && typeof e.code === 'string') return e.code;
+    }
     throw error;
   }
 }
