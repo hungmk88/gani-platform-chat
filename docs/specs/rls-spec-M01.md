@@ -291,6 +291,8 @@ Chỉ lưu **hash SHA-256** của token mời, không lưu plaintext (chi tiết
 | FK kép | `(org_id, workspace_id) → workspaces(org_id, id)` |
 | RLS | O, mẫu chuẩn |
 
+> **Ghi chú (03/10/2026, chốt cùng N14):** một team có thể xuyên workspace, nên `teams.workspace_id` có thể `NULL` (team cấp công ty). Nếu cho `NULL`: khóa ngoại kép `(org_id, workspace_id)` chỉ kiểm khi khác `NULL`; `UNIQUE (org_id, workspace_id, slug)` coi các `NULL` là khác nhau (trùng slug cấp công ty không bị chặn), nên cần `NULLS NOT DISTINCT` (PostgreSQL ≥ 15) hoặc index riêng; và RLS O+W chưa áp cho team cấp công ty. **Kiểm tra và chốt ở PR 3d**, chưa đổi bảng ở đây.
+
 ### 4.7 `team_members` — O
 
 | | |
