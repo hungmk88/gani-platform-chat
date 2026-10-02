@@ -9,10 +9,16 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env (cp .env.example .env)}
       POSTGRES_DB: gani_platform
+      # Mật khẩu 3 role DB, đọc bởi infra/db/bootstrap-roles.sql lần khởi động đầu (volume rỗng).
+      APP_ROLE_PASSWORD: ${APP_ROLE_PASSWORD:?Đặt APP_ROLE_PASSWORD trong .env}
+      AUTH_ROLE_PASSWORD: ${AUTH_ROLE_PASSWORD:?Đặt AUTH_ROLE_PASSWORD trong .env}
+      MIGRATION_ROLE_PASSWORD: ${MIGRATION_ROLE_PASSWORD:?Đặt MIGRATION_ROLE_PASSWORD trong .env}
     ports:
       - '127.0.0.1:5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ../db/bootstrap-roles.sql:/bootstrap/bootstrap-roles.sql:ro
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d gani_platform']
       interval: 5s
