@@ -9,6 +9,7 @@
   bảng cha phải có `UNIQUE(org_id, id)`.
 - Bật **ENABLE + FORCE ROW LEVEL SECURITY** + `CREATE POLICY` cho mọi bảng.
 - Migration theo mẫu expand → migrate → contract (≥ 2 release).
+- Migration SQL không được viết `BEGIN`/`COMMIT` bên trong (cũng không `ROLLBACK`, `START TRANSACTION`, `END`, `ABORT`): runner đã bọc mỗi file trong một transaction; lint `MIG-TXN` chặn.
 - Index nặng chạy `CREATE INDEX CONCURRENTLY`, không khóa `messages`.
 
 ## 4 role DB (không được dùng lẫn)

@@ -137,6 +137,48 @@ describe('MIG-ROLLBACK', () => {
   });
 });
 
+describe('MIG-TXN', () => {
+  const found = (sql) => lint({ [OK_NAME]: ROLLBACK + sql });
+
+  it('reports BEGIN and COMMIT, in any case, with the line', () => {
+    const r = found('begin;\nSELECT 1;\nCOMMIT;');
+    assert.deepEqual(rules(r), ['MIG-TXN', 'MIG-TXN']);
+    assert.deepEqual(
+      r.errors.map((e) => e.line),
+      [2, 4],
+    );
+  });
+
+  it('reports the aliases that also end or restart the transaction', () => {
+    for (const stmt of [
+      'START TRANSACTION',
+      'END',
+      'ROLLBACK',
+      'ABORT',
+      'BEGIN ISOLATION LEVEL SERIALIZABLE',
+    ]) {
+      assert.deepEqual(rules(found(`${stmt};`)), ['MIG-TXN'], stmt);
+    }
+  });
+
+  it('ignores BEGIN and COMMIT inside comments and string literals', () => {
+    const sql = "-- BEGIN;\n/* COMMIT; */\nSELECT 'BEGIN; COMMIT;';";
+    assert.deepEqual(rules(found(sql)), []);
+  });
+
+  it('ignores BEGIN ... END inside a plpgsql body', () => {
+    const sql = 'CREATE FUNCTION f() RETURNS int LANGUAGE plpgsql AS $$ BEGIN RETURN 1; END $$;';
+    assert.deepEqual(rules(found(sql)), []);
+  });
+
+  it('ignores a BEGIN ATOMIC function body (PostgreSQL 14+) with several statements', () => {
+    const sql =
+      'CREATE FUNCTION f() RETURNS int LANGUAGE sql BEGIN ATOMIC SELECT 1; SELECT 2; END;\nSELECT 3;';
+    assert.deepEqual(rules(found(sql)), []);
+    assert.deepEqual(rules(found(sql + '\nCOMMIT;')), ['MIG-TXN']);
+  });
+});
+
 describe('MIG-NAME', () => {
   const sql = ROLLBACK + 'SELECT 1;';
   it('reports a name that does not match the pattern', () => {

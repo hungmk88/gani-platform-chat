@@ -42,6 +42,7 @@ ALTER ROLE auth_role SET log_parameter_max_length_on_error = 0;
 
 -- migration_role owns the public schema so it can create objects; nobody else can.
 ALTER SCHEMA public OWNER TO migration_role;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 SELECT format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database()) \gexec
 SELECT format('GRANT CONNECT ON DATABASE %I TO app_role, auth_role, support_role', current_database()) \gexec
 SELECT format('GRANT CONNECT, CREATE ON DATABASE %I TO migration_role', current_database()) \gexec
