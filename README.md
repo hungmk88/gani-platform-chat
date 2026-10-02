@@ -1,86 +1,71 @@
-# Gani Platform Chat — Nền tảng Chat & AI Chatbot Đa Tenant
+# Gani Platform Chat
 
-Nền tảng trò chuyện AI tích hợp cho 5 công ty, hỗ trợ multi-workspace, real-time collaboration, và quản lý hội thoại toàn diện.
+Nền tảng Chat & AI Chatbot đa tenant cho 5 công ty (Brief v0.4).
+**Trạng thái:** Sprint 1 (nền móng) đang làm. Mới có khung monorepo, gói `domain` (UUIDv7) và API khung
+với `/healthz`; chưa có chức năng nghiệp vụ.
 
-## Cấu trúc dự án
+## Yêu cầu
 
-```
-gani-platform-chat/
-├── packages/
-│   ├── db/              — Schema, migration, RLS policies
-│   └── ai-core/         — AI Router, ResponseGuard, PII masking
-├── apps/
-│   ├── api/             — REST API, FSM, domain modules
-│   ├── worker/          — Queue, outbox, scheduler
-│   ├── admin/           — Admin UI (5 menu groups)
-│   └── widget/          — Embeddable chat widget
-├── docs/                — Brief v0.4, Acceptance Criteria
-├── .claude/
-│   └── settings.json    — Production safety locks
-└── CLAUDE.md            — Quy tắc cốt lõi (đọc trước)
-```
+- **Node.js** `^22.13.0` hoặc `^24` (CI dùng `22.23.3`, xem `.nvmrc`).
+- **pnpm 9.15.0** qua corepack:
 
-## Bắt đầu
+  ```bash
+  corepack enable          # Windows: mở PowerShell bằng quyền Administrator nếu Node nằm ở C:\Program Files
+  corepack prepare pnpm@9.15.0 --activate
+  pnpm --version           # phải ra 9.15.0
+  ```
 
-### 1. Đọc trước
+- **Docker Desktop** cho PostgreSQL, Valkey, Mailpit. API khung chạy được không cần Docker.
 
-- `CLAUDE.md` — Quy tắc cốt lõi (50 dòng)
-- `docs/implementation-brief.md` — Brief v0.4 (đầy đủ yêu cầu)
-
-### 2. Workflow với Claude Code
-
-**Mọi yêu cầu code:**
-
-```
-Shift+Tab × 2  →  vào Plan Mode
-Đọc code + Brief, trình phương án
-(Chờ duyệt)
-Shift+Tab  →  thoát Plan Mode
-Code
-```
-
-### 3. Kiểm chứng
+## Chạy môi trường dev
 
 ```bash
 pnpm install
-pnpm test
-pnpm lint
-pnpm typecheck
-pnpm test:db            # tenant-isolation.spec, workspace-isolation.spec
-pnpm test:ai            # 30 câu ResponseGuard
-pnpm test:claim-race    # 50 agent claim cùng lúc
+cp .env.example .env     # PowerShell: Copy-Item .env.example .env
+# Sửa POSTGRES_PASSWORD trong .env (file này đã nằm trong .gitignore, không commit)
+pnpm dev                 # bật docker compose (hạ tầng) rồi chạy API
 ```
 
-### 4. PR
+Kiểm tra API đã chạy:
 
-- ≤ 400 dòng
-- Conventional Commits
-- OpenAPI cập nhật nếu đổi endpoint
-- Tất cả test pass
+```bash
+curl http://localhost:3000/healthz   # {"status":"ok"}
+```
 
-## 5 Quy tắc Không Thể Thỏa Hiệp
+- Chỉ chạy API (không Docker): `pnpm dev:api`.
+- Chỉ bật hạ tầng: `pnpm dev:infra`. Tắt: `docker compose --env-file .env -f infra/docker/docker-compose.yml down`.
+- Cổng (đều chỉ mở trên `127.0.0.1`): PostgreSQL `5432`, Valkey `6379`, Mailpit SMTP `1025` và giao diện `http://localhost:8025`.
+- API đọc `PORT` (mặc định `3000`) và `HOST` (mặc định `127.0.0.1`) từ `.env`.
 
-1. `org_id` chỉ từ session/API key/job payload
-2. PK: UUIDv7 (không UUIDv4)
-3. Số nghiệp vụ: placeholder `{{price_1}}`, không tự sinh
-4. FSM: chỉ qua `ConversationStateMachine`
-5. Log: không PII (chỉ messageId, traceId, orgId, workspaceId)
+## Kiểm tra trước khi tạo PR
 
-## Khi cần giúp
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm format:check
+```
 
-- `QUESTIONS.md` — ghi những chỗ chưa chốt
-- `# ` vào file `CLAUDE.md` con — nếu lặp lại cùng lỗi 2 lần
+CI chưa có (dự kiến PR2). Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
+tự sinh ở thư mục gốc.
 
-## Tài liệu
+## Cấu trúc
 
-- `docs/implementation-brief.md` — Spec đầy đủ (Brief v0.4 + Phụ lục)
-- `packages/db/CLAUDE.md` — Schema & RLS
-- `packages/ai-core/CLAUDE.md` — AI Guard & PII
-- `apps/api/CLAUDE.md` — API & FSM
-- `apps/worker/CLAUDE.md` — Queue & Outbox
-- `apps/admin/CLAUDE.md` — UI Admin
-- `apps/widget/CLAUDE.md` — Embedded widget
+```
+apps/
+  api/        NestJS (ESM): HTTP API, hiện có /healthz
+  worker/ admin/ widget/        mới là khung rỗng
+packages/
+  config/     tsconfig, ESLint, Prettier, cấu hình Vitest dùng chung
+  domain/     UUIDv7 (RFC 9562)
+  db/ ai-core/ channels/ ui/ testing/    mới là khung rỗng
+infra/docker/ docker-compose cho dev (PostgreSQL 16 + pgvector, Valkey, Mailpit)
+docs/         Brief v0.4, phụ lục kỹ thuật, ADR, đặc tả RLS
+prompts/ evals/                         quy ước (chưa có nội dung)
+```
 
-## Liên hệ
+## Đọc trước khi làm việc
 
-Yêu cầu code → vào Plan Mode trước. Không chắc gì → ghi vào `QUESTIONS.md`.
+- `CLAUDE.md`: quy tắc cốt lõi (và `CLAUDE.md` trong từng thư mục con).
+- `docs/implementation-brief.md`: Brief v0.4; hồ sơ gốc và phụ lục thắng khi mâu thuẫn.
+- `QUESTIONS.md`: chỗ chưa chốt. Gặp chỗ chưa rõ thì ghi vào đây, không tự đoán.

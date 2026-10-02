@@ -6,7 +6,11 @@
   "exports": {
     "./eslint": "./eslint.config.mjs",
     "./prettier": "./prettier.config.mjs",
-    "./tsconfig.base.json": "./tsconfig.base.json"
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./vitest": {
+      "types": "./vitest.base.d.mts",
+      "default": "./vitest.base.mjs"
+    }
   },
   "dependencies": {
     "@eslint/js": "10.0.1",

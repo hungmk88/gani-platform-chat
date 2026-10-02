@@ -38,3 +38,11 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 
 - Không `any` trong `apps/api/src/modules/*`.
 - Không log nội dung tin nhắn, chỉ log `messageId`.
+
+## TypeScript, ESM và decorator (PR1b)
+
+- Gói `"type": "module"`; NestJS 12 là ESM, dùng Express 5. **Mọi import tương đối phải có đuôi `.js`** (kể cả khi file là `.ts`).
+- NestJS đọc `design:paramtypes` để tiêm phụ thuộc → mã phải biên dịch bằng `tsc` hoặc SWC. **Không dùng `tsx`/esbuild** để chạy hay test API (không sinh metadata; DI sẽ lỗi âm thầm).
+- `tsconfig.json` của `apps/api` tách riêng: `experimentalDecorators` + `emitDecoratorMetadata` bật, `verbatimModuleSyntax` tắt. Import một class dùng làm kiểu tham số constructor phải là import giá trị, không dùng `import type`.
+- Dev: `pnpm --filter @gani/api dev` (`tsc --watch` + `node --watch`). Test: Vitest + `unplugin-swc` (cùng cách biên dịch decorator với bản chạy thật).
+- `/healthz` chỉ báo còn sống (liveness). `/readyz` (kiểm DB + Redis) thêm ở PR3.
