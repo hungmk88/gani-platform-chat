@@ -1,0 +1,14 @@
+import { coverage } from '@gani/config/vitest';
+import { defineConfig } from 'vitest/config';
+
+// Unit tests: no database. Files that only make sense against PostgreSQL (tenant-tx, pool, schema) are covered by
+// the integration suite (vitest.integration.config.ts) and left out of the unit coverage gate.
+export default defineConfig({
+  test: {
+    include: ['src/**/*.test.ts'],
+    coverage: {
+      ...coverage,
+      exclude: [...coverage.exclude, 'src/tenant-tx.ts', 'src/pool.ts', 'src/schema/**'],
+    },
+  },
+});
