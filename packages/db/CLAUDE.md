@@ -11,20 +11,21 @@
 - Migration theo mẫu expand → migrate → contract (≥ 2 release).
 - Index nặng chạy `CREATE INDEX CONCURRENTLY`, không khóa `messages`.
 
-## 3 role DB (không được dùng lẫn)
+## 4 role DB (không được dùng lẫn)
 
 | Role | RLS | Thiếu tenant | Dùng cho |
 |---|---|---|---|
 | `app_role` | Bị lọc, không owner, không BYPASSRLS | **Báo lỗi** | API, worker, traffic thật |
 | `migration_role` | BYPASSRLS | — | Chỉ pipeline migration |
 | `support_role` | Bị lọc như app_role | Báo lỗi | Debug, cần `access-session` có lý do |
+| `auth_role` | Bị lọc, không có policy nào trên bảng nghiệp vụ nên bị từ chối toàn bộ | — | Pool riêng của Better Auth; chỉ GRANT theo cột trên bảng auth (spec §3.2) |
 
 ## Kiểm chứng bắt buộc
 
 - `tenant-isolation.spec`: dùng `app_role` không set tenant → phải báo lỗi.
 - `workspace-isolation.spec`: Sales workspace A không đọc được hội thoại workspace B.
 - Lint migration: mọi `CREATE TABLE` mới phải có `ENABLE ROW LEVEL SECURITY` + `FORCE`.
-  CI chặn merge nếu thiếu.
+  CI báo đỏ nếu thiếu; GitHub Free không enforce branch protection nên không chặn được merge (N38), anh kiểm tay.
 
 ## Cấm
 

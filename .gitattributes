@@ -1,0 +1,2 @@
+# Line endings: repository stores LF; working tree is LF on every OS (hooks and shell scripts break with CRLF).
+* text=auto eol=lf
