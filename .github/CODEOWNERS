@@ -1,0 +1,10 @@
+# CODEOWNERS — CHƯA KÍCH HOẠT.
+# Giai đoạn 1 người: Required approvals = 0 (QUESTIONS.md N36).
+# Khi có cố vấn + dev thứ 2: bỏ dấu '#' và thay @owner bằng tài khoản GitHub thật.
+# Theo Brief P6: PR chạm packages/db, packages/ai-core, policy RLS, auth cần Tech Lead duyệt thêm.
+#
+# /packages/db/                      @owner
+# /packages/ai-core/                 @owner
+# /packages/db/policies/             @owner
+# /apps/api/src/modules/identity/    @owner
+# /apps/api/src/modules/tenancy/     @owner

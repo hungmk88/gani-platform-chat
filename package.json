@@ -1,0 +1,30 @@
+{
+  "name": "gani-platform-chat",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"{apps,packages}/**/*.{ts,mjs,json}\" \"*.{json,mjs}\"",
+    "format:check": "prettier --check \"{apps,packages}/**/*.{ts,mjs,json}\" \"*.{json,mjs}\""
+  },
+  "devDependencies": {
+    "@gani/config": "workspace:*",
+    "eslint": "10.11.0",
+    "prettier": "3.9.9",
+    "turbo": "2.11.7",
+    "typescript": "6.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

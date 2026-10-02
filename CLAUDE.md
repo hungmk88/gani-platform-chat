@@ -59,6 +59,12 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - `evals/CLAUDE.md` — bộ chạy Test Specification AI (ResponseGuard, 200 câu, PII); dataset không nằm trong repo.
 - `infra/CLAUDE.md` — Terraform (module không gắn cloud, chưa apply), Docker, PITR, role DB.
 
+## CẤM
+
+- Không commit file do công cụ tự sinh ở root (`AGENTS.md`, `.cursorrules`, v.v.).
+- Turbo: `turbo.json` phải có `"agentGuidance": false` (tắt tự sinh `AGENTS.md`).
+- Turbo telemetry: tắt bằng `turbo telemetry disable` (toàn cục, mỗi máy một lần); CI đặt `TURBO_TELEMETRY_DISABLED=1`. **Không thêm khóa `telemetry` vào `turbo.json`** (`turbo` báo `unknown key` và từ chối chạy).
+
 ## COMMIT MESSAGE
 
 - Conventional Commits.
