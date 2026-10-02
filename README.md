@@ -46,7 +46,8 @@ pnpm test
 pnpm format:check
 ```
 
-CI chưa có (dự kiến PR2). Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
+CI (`.github/workflows/ci.yml`) chạy đúng các lệnh trên, thêm `pnpm audit --audit-level=high` và quét secret
+bằng `gitleaks` trên toàn bộ lịch sử. Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
 tự sinh ở thư mục gốc.
 
 ## Cấu trúc
