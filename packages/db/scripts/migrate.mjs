@@ -37,8 +37,10 @@ export async function migrate({
     .sort();
   const client = new pg.Client({ connectionString });
   await client.connect();
+  let locked = false;
   try {
     await client.query('SELECT pg_advisory_lock($1)', [LOCK_KEY]);
+    locked = true;
     const roles = await client.query('SELECT rolname FROM pg_roles WHERE rolname = ANY($1)', [
       ROLES,
     ]);
@@ -82,6 +84,11 @@ export async function migrate({
     }
     return applied;
   } finally {
+    try {
+      if (locked) await client.query('SELECT pg_advisory_unlock($1)', [LOCK_KEY]);
+    } catch {
+      // Closing the connection releases the session lock anyway; never hide the original error.
+    }
     await client.end();
   }
 }

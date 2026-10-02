@@ -25,6 +25,9 @@ export const ALLOWED_VERBS = new Set([
 // Tables that use soft delete (Brief P8): a FK to them must never cascade.
 const NO_CASCADE_TARGETS = new Set(['organizations', 'workspaces']);
 
+// The runner wraps every file in one transaction; a statement that ends or restarts it can apply a file half way.
+const TXN_CONTROL = /^(?:BEGIN|START\s+TRANSACTION|COMMIT|END|ROLLBACK|ABORT)\b/i;
+
 const NAME_RE = /^(\d{12})_([a-z]+)_([a-z0-9]+(?:_[a-z0-9]+)*)\.sql$/;
 const IDENT = String.raw`(?:"?[\w]+"?\.)?"?[\w]+"?`;
 
@@ -81,10 +84,12 @@ function statements(masked) {
     }
   };
   for (let i = 0; i < masked.length; i++) {
-    if (masked[i] === ';') {
-      push(i);
-      start = i + 1;
-    }
+    if (masked[i] !== ';') continue;
+    // `BEGIN ATOMIC ...; ...; END` (SQL-standard function body) is one statement: read on to its own `END`.
+    const text = masked.slice(start, i);
+    if (/\bBEGIN\s+ATOMIC\b/i.test(text) && !/;\s*END\s*$/i.test(text)) continue;
+    push(i);
+    start = i + 1;
   }
   push(masked.length);
   return result;
@@ -203,6 +208,14 @@ function checkStatements(stmts, masked) {
   const safePath =
     /\bSET\s+search_path\s*(?:=|\bTO\b)\s*pg_catalog\s*,\s*public\s*,\s*pg_temp\b(?!\s*,)/i;
   for (const s of stmts) {
+    if (TXN_CONTROL.test(s.text)) {
+      found.push({
+        rule: 'MIG-TXN',
+        line: s.line,
+        message:
+          'transaction control is forbidden; the runner already wraps each file in a transaction',
+      });
+    }
     for (const m of s.text.matchAll(fk)) {
       if (NO_CASCADE_TARGETS.has(tableKey(m[1])) && /\bON\s+DELETE\s+CASCADE\b/i.test(m[2])) {
         found.push({

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { migrate } from '../scripts/migrate.mjs';
 import { sqlState, url, withClient } from './db.js';
@@ -68,6 +68,17 @@ describe('roles (spec RLS M01 §3)', () => {
       await c.query('ROLLBACK');
       expect(rows[0]?.n).toBe(0);
     });
+  });
+
+  it('PUBLIC has no CREATE on schema public', async () => {
+    const { rows } = await withClient('migration', (c) =>
+      c.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM pg_namespace s
+         CROSS JOIN LATERAL aclexplode(coalesce(s.nspacl, acldefault('n', s.nspowner))) a
+         WHERE s.nspname = 'public' AND a.grantee = 0 AND a.privilege_type = 'CREATE'`,
+      ),
+    );
+    expect(rows[0]?.n).toBe(0);
   });
 });
 
@@ -133,6 +144,7 @@ describe('migration runner', () => {
   };
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await withClient('migration', (c) => c.query(`DROP TABLE IF EXISTS ${TABLE}, public.zz_probe`));
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
   });
@@ -174,6 +186,29 @@ describe('migration runner', () => {
     await withClient('migration', async (c) => {
       const { rows } = await c.query<{ t: string | null }>(`SELECT to_regclass('${TABLE}') AS t`);
       expect(rows[0]?.t).toBeNull();
+    });
+  });
+
+  describe('advisory lock', () => {
+    // The session lock is also released when the connection closes, so watch the statements sent instead.
+    const sentSql = (spy: { mock: { calls: unknown[][] } }) =>
+      spy.mock.calls.map(([first]) => (typeof first === 'string' ? first : ''));
+
+    it('is released explicitly after a successful run', async () => {
+      const spy = vi.spyOn(pg.Client.prototype, 'query');
+      await run(tempDir({ [GOOD]: goodSql }));
+      const sent = sentSql(spy);
+      expect(sent.indexOf('SELECT pg_advisory_unlock($1)')).toBeGreaterThan(
+        sent.indexOf('SELECT pg_advisory_lock($1)'),
+      );
+      expect(sent).toContain('COMMIT');
+    });
+
+    it('is released explicitly when a migration fails, and the original error is kept', async () => {
+      const spy = vi.spyOn(pg.Client.prototype, 'query');
+      const dir = tempDir({ [GOOD]: goodSql + 'SELECT 1/0;\n' });
+      await expect(run(dir)).rejects.toThrow(/division by zero/);
+      expect(sentSql(spy)).toContain('SELECT pg_advisory_unlock($1)');
     });
   });
 
