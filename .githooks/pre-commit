@@ -1,0 +1,14 @@
+#!/bin/sh
+# Pre-commit: scan staged changes for secrets with gitleaks, if it is installed.
+# Without gitleaks this hook only warns; CI (job "security") is the check that cannot be skipped.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: WARNING gitleaks not found, secret scan SKIPPED. Install: https://github.com/gitleaks/gitleaks" >&2
+  exit 0
+fi
+
+# --redact: never print secret values.
+if ! gitleaks git --staged --redact --no-banner; then
+  echo "pre-commit: gitleaks reported possible secrets (values redacted above). Commit blocked." >&2
+  exit 1
+fi

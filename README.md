@@ -47,8 +47,18 @@ pnpm format:check
 ```
 
 CI (`.github/workflows/ci.yml`) chạy đúng các lệnh trên, thêm `pnpm audit --audit-level=high` và quét secret
-bằng `gitleaks` trên toàn bộ lịch sử. Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
+bằng `gitleaks` trên toàn bộ lịch sử, và kiểm migration (`pnpm --filter @gani/db lint:migrations`: RLS, UUIDv4,
+CASCADE, `SECURITY DEFINER`, khối `-- rollback:`, tên file). Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
 tự sinh ở thư mục gốc.
+
+## Hook pre-commit
+
+`pnpm install` tự chạy `scripts/setup-hooks.mjs` để đặt `core.hooksPath` thành `.githooks`. Hook
+`.githooks/pre-commit` quét secret ở các file staged bằng `gitleaks` nếu máy có cài; không có thì chỉ in cảnh báo
+và vẫn cho commit (CI mới là chốt chặn thật).
+
+Hook `.githooks/pre-commit` yêu cầu Git for Windows (`sh.exe` trong PATH). Nếu commit từ PowerShell mà hook không
+chạy, kiểm tra: `where.exe sh`. Nếu không có thì dùng Git Bash để commit.
 
 ## Cấu trúc
 

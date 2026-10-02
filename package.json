@@ -8,6 +8,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
+    "prepare": "node scripts/setup-hooks.mjs",
     "dev": "pnpm dev:infra && pnpm dev:api",
     "dev:infra": "docker compose --env-file .env -f infra/docker/docker-compose.yml up -d",
     "dev:api": "pnpm --filter @gani/api dev",

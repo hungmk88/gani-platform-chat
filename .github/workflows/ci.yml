@@ -39,6 +39,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm format:check
+      - run: pnpm --filter @gani/db lint:migrations
 
   security:
     name: dependency audit, secret scan
@@ -54,7 +55,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       # Chặn CVE HIGH/CRITICAL (quy tắc dự án).
       - run: pnpm audit --audit-level=high
       # Dùng file nhị phân gitleaks (MIT) thay vì gitleaks-action (cần license key với repo thuộc organization).
