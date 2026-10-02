@@ -55,3 +55,8 @@ Thêm đối tượng thứ sáu phải qua cố vấn duyệt.
 - Test bắt buộc: `app_role` không set tenant → mọi bảng RLS phải ném `TN001`.
 - Lint migration: `CREATE TABLE` có `org_id` mà thiếu ENABLE/FORCE/POLICY → CI đỏ.
 - Mọi code đường nóng phải đi qua `TenantTx`; không có "chế độ bỏ qua" cho `app_role`.
+- **Giới hạn của fail-loud (phát hiện ở PR 3b, QUESTIONS N59):** `TN001` chỉ nổ khi policy **được đánh giá**, mà RLS đánh giá theo từng dòng. Bảng rỗng, hoặc kế hoạch truy vấn không quét dòng nào, có thể trả 0 dòng **không lỗi** dù thiếu context (tùy planner). Vì vậy fail-loud là lưới an toàn, không phải chốt chặn duy nhất.
+- Chốt chặn thật: mọi truy vấn đi qua `TenantTx` (`withTenant`) và lint cấm import `pg`/`drizzle-orm` ngoài `packages/db`.
+- Test fail-loud phải có sẵn dòng mẫu trong bảng; test không có dòng mẫu có thể xanh giả.
+- `set_config(..., true)` để lại chuỗi rỗng `''` (không phải NULL) trên kết nối đã dùng; `app.current_org()` coi cả hai là "thiếu context", và test chứng minh context không rò sang người dùng kế tiếp của kết nối trong pool.
+- Drizzle bọc lỗi của driver: mã SQLSTATE (`TN001`, `42501`) nằm ở `error.cause`, cần đi theo `cause` khi ánh xạ lỗi sang HTTP (N58).
