@@ -12,6 +12,37 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 3. Chia PR ≤ 400 dòng. Trunk-based. Conventional Commits.
 4. Gặp chỗ chưa chốt trong Brief → ghi vào `QUESTIONS.md`, KHÔNG tự đoán.
 
+## GIT WORKFLOW
+
+### Từ PR3 trở đi
+
+- Mỗi PR làm trên branch riêng:
+  - `feat/<mô-tả>`, `fix/<mô-tả>`, `chore/<mô-tả>`, `docs/<mô-tả>`, `test/<mô-tả>`
+- KHÔNG commit trực tiếp lên `main`.
+- KHÔNG `push --force` lên `main`.
+- KHÔNG amend commit đã push.
+- Sau khi push branch, báo URL cho anh.
+- Anh tạo PR + merge sau khi CI xanh.
+
+### Quy trình mỗi PR
+
+1. `git checkout main && git pull`
+2. `git checkout -b feat/pr3-tenancy-tables`
+3. [viết code, chạy lint/typecheck/test]
+4. `git add . && git commit -m "feat(db): ..." -m "Co-Authored-By: Claude <noreply@anthropic.com>"`
+5. `git push -u origin feat/pr3-tenancy-tables`
+6. Báo anh: URL branch + tóm tắt thay đổi
+7. Anh tạo PR → CI chạy → anh review → merge
+8. `git checkout main && git pull`
+
+Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ để lại file thuộc PR này
+(không `.env`, không file do công cụ tự sinh ở root).
+
+### Trước PR3 (PR1b, PR2)
+
+- Anh commit thủ công.
+- Em KHÔNG tự commit, không tự push.
+
 ## 5 QUY TẮC KHÔNG THỂ THỎA HIỆP
 
 1. `org_id` không bao giờ lấy từ client. Chỉ từ session/API key/job payload.

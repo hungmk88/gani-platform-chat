@@ -28,7 +28,22 @@
       "Write(.env.development)",
       "Write(.env.test)",
       "Write(.env.staging)",
-      "Write(.env.production)"
+      "Write(.env.production)",
+      "Bash(git push -f*)",
+      "Bash(git push --force-with-lease*)",
+      "Bash(git push origin main*)",
+      "Bash(git push origin HEAD:main*)",
+      "Bash(git push -u origin main*)",
+      "Bash(git branch -D main*)",
+      "Bash(git branch -D master*)",
+      "Bash(git checkout main && git merge*)",
+      "Bash(git merge --no-ff*)",
+      "Bash(git push)",
+      "Bash(git push origin +*)",
+      "Bash(git push origin *:main*)",
+      "Bash(git push origin *:refs/heads/main*)",
+      "Bash(git push --delete*)",
+      "Bash(git push -d *)"
     ],
     "ask": [
       "Bash(git push*)",
@@ -36,7 +51,13 @@
       "Bash(pnpm deploy*)",
       "Bash(terraform plan*)",
       "Bash(npm publish*)",
-      "Bash(pnpm publish*)"
+      "Bash(pnpm publish*)",
+      "Bash(git push -u origin *)",
+      "Bash(git push origin feat/*)",
+      "Bash(git push origin fix/*)",
+      "Bash(git push origin chore/*)",
+      "Bash(git push origin docs/*)",
+      "Bash(git push origin test/*)"
     ]
   },
   "env": {
