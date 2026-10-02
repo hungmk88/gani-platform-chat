@@ -51,6 +51,21 @@ bằng `gitleaks` trên toàn bộ lịch sử, và kiểm migration (`pnpm --fi
 CASCADE, `SECURITY DEFINER`, khối `-- rollback:`, tên file). Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
 tự sinh ở thư mục gốc.
 
+## Cơ sở dữ liệu (dev)
+
+Cần Docker. Trong `.env` đặt `APP_ROLE_PASSWORD`, `AUTH_ROLE_PASSWORD`, `MIGRATION_ROLE_PASSWORD`, và ba URL
+`DATABASE_URL_APP|AUTH|MIGRATION` dạng `postgres://<role>:<mật khẩu>@127.0.0.1:5432/gani_platform`.
+
+```bash
+pnpm dev:infra                          # lần đầu (volume rỗng) tự tạo 4 role: infra/db/bootstrap-roles.sql
+pnpm --filter @gani/db migrate          # áp migration bằng migration_role
+pnpm --filter @gani/db test:integration # test cần DB thật; thiếu DB thì báo lỗi, không bỏ qua
+```
+
+Script tạo role chỉ chạy khi thư mục dữ liệu còn trống. Đổi mật khẩu hoặc làm lại từ đầu:
+`docker compose --env-file .env -f infra/docker/docker-compose.yml down -v` (xóa dữ liệu dev).
+Máy không có Docker thì test DB chỉ chạy trên CI (job `db`).
+
 ## Hook pre-commit
 
 `pnpm install` tự chạy `scripts/setup-hooks.mjs` để đặt `core.hooksPath` thành `.githooks`. Hook

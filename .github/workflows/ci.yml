@@ -68,3 +68,53 @@ jobs:
       # --redact: không in giá trị secret ra log CI.
       - name: Scan git history for secrets
         run: ./gitleaks git --redact --verbose --no-banner .
+
+  db:
+    name: database (roles, migrations, RLS tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PG_IMAGE: pgvector/pgvector:0.8.7-pg16
+      PG_DB: gani_platform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      # Throwaway passwords, new on every run, masked in the log and never stored.
+      - name: Generate passwords
+        run: |
+          for name in POSTGRES APP_ROLE AUTH_ROLE MIGRATION_ROLE; do
+            password="$(openssl rand -hex 24)"
+            echo "::add-mask::${password}"
+            echo "${name}_PASSWORD=${password}" >> "$GITHUB_ENV"
+          done
+      # `docker run` instead of `services:` so the superuser password can be generated above.
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD -e POSTGRES_DB="$PG_DB" -p 127.0.0.1:5432:5432 "$PG_IMAGE"
+          # -h 127.0.0.1: the temporary server of the image's first start listens on the socket only.
+          for _ in $(seq 1 30); do
+            docker exec pg pg_isready -h 127.0.0.1 -U postgres -d "$PG_DB" && exit 0
+            sleep 2
+          done
+          echo "PostgreSQL did not become ready" >&2
+          exit 1
+      - name: Bootstrap roles
+        run: |
+          docker exec -i -e APP_ROLE_PASSWORD -e AUTH_ROLE_PASSWORD -e MIGRATION_ROLE_PASSWORD pg             psql -v ON_ERROR_STOP=1 -U postgres -d "$PG_DB" < infra/db/bootstrap-roles.sql
+      - name: Migrate and run database tests
+        run: |
+          base="127.0.0.1:5432/${PG_DB}"
+          export DATABASE_URL_APP="postgres://app_role:${APP_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_AUTH="postgres://auth_role:${AUTH_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
+          pnpm --filter @gani/db migrate
+          pnpm --filter @gani/db test:integration
+      - name: PostgreSQL log
+        if: failure()
+        run: docker logs pg 2>&1 | tail -n 60

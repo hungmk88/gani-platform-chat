@@ -30,5 +30,9 @@
 ## Cấm
 
 - Không dùng UUIDv4. Chỉ UUIDv7.
-- Không `ON DELETE CASCADE` từ `organizations` — dùng soft delete + `TenantPurgeJob`.
+- Không `ON DELETE CASCADE` từ `organizations`, cũng không từ `workspaces` — dùng soft delete + `TenantPurgeJob`.
 - Không thêm bảng mới mà không cập nhật `tenant-isolation.spec`.
+- Không bao giờ đưa input từ client vào `sql.identifier()`, `.as()`, hoặc bất kỳ chỗ nào chèn tên
+  định danh (tên bảng/cột/alias) vào câu SQL. Tên bảng/cột phải là hằng số trong code hoặc lấy từ whitelist.
+- CVE lịch sử GHSA-gpj5-g38j-94v9 (Drizzle 0.45.1 trở về trước, sửa ở 0.45.2) là bài học:
+  escape tên định danh rất dễ sai.
