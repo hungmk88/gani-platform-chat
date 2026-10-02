@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~/*)",
+      "Bash(kubectl delete *)",
+      "Bash(terraform destroy *)",
+      "Bash(terraform apply *production*)",
+      "Bash(docker system prune*)",
+      "Bash(DROP DATABASE*)",
+      "Bash(TRUNCATE*)",
+      "Bash(DELETE FROM*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard origin/main*)",
+      "Bash(psql *production*)",
+      "Bash(pg_dump *production*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Write(.env)",
+      "Write(.env.*)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(gh pr create*)",
+      "Bash(pnpm deploy*)",
+      "Bash(terraform plan*)",
+      "Bash(npm publish*)",
+      "Bash(pnpm publish*)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "SAFE_MODE": "true"
+  }
+}
