@@ -11,7 +11,7 @@
     "prepare": "node scripts/setup-hooks.mjs",
     "dev": "pnpm dev:infra && pnpm dev:api",
     "dev:infra": "docker compose --env-file .env -f infra/docker/docker-compose.yml up -d",
-    "dev:api": "pnpm --filter @gani/api dev",
+    "dev:api": "pnpm --filter @gani/db build && pnpm --filter @gani/api dev",
     "build": "turbo run build",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",

@@ -1,4 +1,5 @@
-export { createDbPool } from './pool.js';
+export { createDbPool, type DbPoolOptions } from './pool.js';
+export { pingDb } from './ping.js';
 export { organizations } from './schema/organizations.js';
 export {
   TenantContextMissingError,

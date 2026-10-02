@@ -3,7 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "migrate": "node scripts/migrate.mjs",
     "lint:migrations": "node lint/lint-migrations.mjs",

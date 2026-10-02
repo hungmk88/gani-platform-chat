@@ -45,4 +45,5 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - NestJS đọc `design:paramtypes` để tiêm phụ thuộc → mã phải biên dịch bằng `tsc` hoặc SWC. **Không dùng `tsx`/esbuild** để chạy hay test API (không sinh metadata; DI sẽ lỗi âm thầm).
 - `tsconfig.json` của `apps/api` tách riêng: `experimentalDecorators` + `emitDecoratorMetadata` bật, `verbatimModuleSyntax` tắt. Import một class dùng làm kiểu tham số constructor phải là import giá trị, không dùng `import type`.
 - Dev: `pnpm --filter @gani/api dev` (`tsc --watch` + `node --watch`). Test: Vitest + `unplugin-swc` (cùng cách biên dịch decorator với bản chạy thật).
-- `/healthz` chỉ báo còn sống (liveness). `/readyz` (kiểm DB + Redis) thêm ở PR3.
+- `/healthz` chỉ báo còn sống (liveness), không đụng phụ thuộc. `/readyz` kiểm kết nối DB (`SELECT 1` bằng `app_role`, timeout 2s): 200 `{"status":"ok"}` hoặc 503 `{"status":"unavailable"}`, không kèm lý do. Valkey thêm khi có BullMQ. Thiếu `DATABASE_URL_APP` thì `/readyz` 503 và `/healthz` vẫn 200.
+- `@gani/db` được build ra `dist/` (`exports` trỏ `dist`): chạy `pnpm build` trước `pnpm lint` và `pnpm --filter @gani/api typecheck`. `pnpm typecheck`/`pnpm test` (turbo) tự build trước.

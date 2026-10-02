@@ -28,6 +28,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@gani/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@nestjs/common':
         specifier: 12.1.2
         version: 12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)
