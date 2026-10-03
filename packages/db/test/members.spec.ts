@@ -161,7 +161,7 @@ describe('org_members: RLS by org_id (case 1, 2, 4)', () => {
     expect(updated).toEqual([]);
   });
 
-  it('has no DELETE for app_role, ENABLE + FORCE RLS and exactly one policy', async () => {
+  it('has no DELETE for app_role, ENABLE + FORCE RLS and exactly two policies (app, support)', async () => {
     await withClient('app', async (c) => {
       expect(await sqlState(c.query('DELETE FROM org_members WHERE false'))).toBe('42501');
     });
@@ -170,10 +170,11 @@ describe('org_members: RLS by org_id (case 1, 2, 4)', () => {
     );
     expect(cls.rows).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
     const policies = await admin.query<{ policyname: string; cmd: string; roles: string[] }>(
-      "SELECT policyname, cmd, roles::text[] AS roles FROM pg_policies WHERE schemaname = 'public' AND tablename = 'org_members'",
+      "SELECT policyname, cmd, roles::text[] AS roles FROM pg_policies WHERE schemaname = 'public' AND tablename = 'org_members' ORDER BY policyname",
     );
     expect(policies.rows).toEqual([
       { policyname: 'org_members_app', cmd: 'ALL', roles: ['app_role'] },
+      { policyname: 'org_members_support', cmd: 'SELECT', roles: ['support_role'] },
     ]);
   });
 
