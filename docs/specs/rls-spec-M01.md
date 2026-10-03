@@ -207,7 +207,7 @@ CREATE POLICY <t>_support ON <t> FOR SELECT TO support_role
   USING (org_id = (SELECT app.current_org()) AND (SELECT app.support_access_ok()));
 ```
 
-Với bảng **O+W**, thêm `AND workspace_id = ANY ((SELECT app.current_workspaces()))` vào `USING` **và** `WITH CHECK`. Role không có policy khớp (kể cả `auth_role`) bị từ chối toàn bộ vì đã `FORCE`.
+Với bảng **O+W**, thêm `AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[])` vào `USING` **và** `WITH CHECK`. `::uuid[]` là bắt buộc: thiếu thì PostgreSQL hiểu là dạng truy vấn con của `ANY` và so `uuid` với từng phần tử `uuid[]`, lỗi `operator does not exist: uuid = uuid[]`. Không "đơn giản hoá" bỏ phép ép kiểu. Role không có policy khớp (kể cả `auth_role`) bị từ chối toàn bộ vì đã `FORCE`.
 
 Dưới đây liệt kê phần **khác nhau** của từng bảng; mọi bảng O dùng đúng mẫu trên (thay `<t>`), trừ khi ghi rõ.
 
@@ -370,20 +370,23 @@ Policy dùng mẫu O. Với `platform_access_logs`, `app_role` **không** có qu
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations FORCE  ROW LEVEL SECURITY;
 
+-- `::uuid[]` bắt buộc: nếu thiếu, PostgreSQL hiểu là subquery của ANY
+-- và so sánh uuid với từng phần tử uuid[] → lỗi "operator does not exist".
+-- Không "đơn giản hoá" bỏ ép kiểu.
 CREATE POLICY conversations_app ON conversations FOR ALL TO app_role
   USING (
         org_id = (SELECT app.current_org())
-    AND workspace_id = ANY ((SELECT app.current_workspaces()))
+    AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[])
   )
   WITH CHECK (
         org_id = (SELECT app.current_org())
-    AND workspace_id = ANY ((SELECT app.current_workspaces()))
+    AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[])
   );
 
 CREATE POLICY conversations_support ON conversations FOR SELECT TO support_role
   USING (
         org_id = (SELECT app.current_org())
-    AND workspace_id = ANY ((SELECT app.current_workspaces()))
+    AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[])
     AND (SELECT app.support_access_ok())
   );
 ```
