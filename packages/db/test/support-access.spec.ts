@@ -2,23 +2,23 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { sqlState, url } from './db.js';
+import { sqlState, url, withClient } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // Spec RLS M01 §3.4 and §7 case 6. Connects as support_test_login (a CI-only login in support_role): the gate reads
 // session_user, which SET ROLE cannot fake. One organization per situation, so the tests do not depend on each other.
 const LOGIN = 'support_test_login';
-const TABLES = [
-  'organizations',
-  'org_members',
-  'workspaces',
-  'workspace_members',
-  'teams',
-  'team_members',
-  'api_keys',
-  'audit_logs',
-  'platform_access_logs',
-];
+// Generated from the catalog (every table with an org_id, plus organizations), so a later PR is covered automatically.
+const TABLES = await withClient('migration', async (c) => {
+  const { rows } = await c.query<{ name: string }>(
+    `SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+       AND (c.relname = 'organizations' OR EXISTS (SELECT 1 FROM pg_attribute a
+            WHERE a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped))
+     ORDER BY c.relname`,
+  );
+  return rows.map((r) => r.name);
+});
 const keyOf = (table: string) => (table === 'organizations' ? 'id' : 'org_id');
 const [NONE, VALID, EXPIRED, OTHER] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const users = new Map<string, string>();

@@ -7,8 +7,13 @@ import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // Spec RLS M01 §7 case 1 (every RLS table) and case 11 (no DELETE anywhere), generated from the catalog:
 // a table added by a later PR is covered automatically, or fails here until it has its fixture row in fixtures.ts.
-// No tenant key on purpose: users (Brief P8, spec §3.3) and the migration runner's ledger.
-const GLOBAL_TABLES = ['users', 'schema_migrations'];
+// No tenant key on purpose. Each global table lists the privileges it grants (N74): app_role and support_role must hold
+// exactly these, nothing more. users (Brief P8, spec §3.3) and the migration runner's ledger grant nothing.
+const GLOBAL_TABLES: Record<string, { app: string[]; support: string[] }> = {
+  users: { app: [], support: [] },
+  schema_migrations: { app: [], support: [] },
+  feature_flags_global: { app: ['SELECT'], support: ['SELECT'] },
+};
 // app_role has no privilege here on purpose (N69): case 1 is 42501, not TN001.
 const NO_APP_ACCESS = ['platform_access_logs'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -47,19 +52,26 @@ afterAll(async () => {
 
 describe('every public table is either RLS-protected or explicitly global', () => {
   it('has no table without a tenant key outside the allowlist', () => {
-    const untracked = tables.filter((t) => !t.tenant && !GLOBAL_TABLES.includes(t.name));
+    const untracked = tables.filter((t) => !t.tenant && !(t.name in GLOBAL_TABLES));
     expect(untracked.map((t) => t.name)).toEqual([]);
   });
 });
 
-it('app_role has no privilege on a global table', async () => {
-  const { rows } = await admin.query<{ t: string; p: string }>(
-    `SELECT t, p FROM unnest($1::text[]) AS t, unnest($2::text[]) AS p
-     WHERE has_table_privilege('app_role', 'public.' || t, p)`,
-    [GLOBAL_TABLES, PRIVILEGES],
-  );
-  expect(rows).toEqual([]);
-});
+it.each(Object.entries(GLOBAL_TABLES))(
+  'global table %s grants exactly its listed privileges to app_role and support_role',
+  async (table, allowed) => {
+    const { rows } = await admin.query<{ role: string; p: string }>(
+      `SELECT r AS role, p FROM unnest(ARRAY['app_role', 'support_role']) AS r, unnest($2::text[]) AS p
+       WHERE has_table_privilege(r, 'public.' || $1, p) ORDER BY r, p`,
+      [table, PRIVILEGES],
+    );
+    const expected = [
+      ...allowed.app.map((p) => ({ role: 'app_role', p })),
+      ...allowed.support.map((p) => ({ role: 'support_role', p })),
+    ].sort((x, y) => x.role.localeCompare(y.role) || x.p.localeCompare(y.p));
+    expect(rows).toEqual(expected);
+  },
+);
 
 describe.each(rlsTables)('%s', (table) => {
   it('has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy behind support_access_ok()', async () => {

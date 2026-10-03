@@ -17,6 +17,9 @@ const tables: PgTable[] = [
   db.apiKeys,
   db.auditLogs,
   db.platformAccessLogs,
+  db.featureFlagsGlobal,
+  db.featureFlagsOverrides,
+  db.agentSettings,
 ];
 
 describe('Drizzle schema matches the database', () => {
