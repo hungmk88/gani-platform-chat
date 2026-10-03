@@ -1,6 +1,8 @@
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { pingDb } from './ping.js';
+export { orgMembers } from './schema/org-members.js';
 export { organizations } from './schema/organizations.js';
+export { users } from './schema/users.js';
 export {
   TenantContextMissingError,
   currentTenantContext,
