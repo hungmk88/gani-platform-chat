@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -40,7 +42,8 @@ async function seed(): Promise<void> {
     INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ('${workspace}', '${org}', 'ws', 'W', 'service');
     INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${seedUser}');
     INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ('${team}', '${org}', '${workspace}', 'T', 'tm');
-    INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${seedUser}')`);
+    INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${seedUser}');
+    INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}')`);
 }
 
 beforeAll(async () => {
@@ -52,7 +55,14 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await app.end();
-  const children = ['team_members', 'teams', 'workspace_members', 'workspaces', 'org_members'];
+  const children = [
+    'api_keys',
+    'team_members',
+    'teams',
+    'workspace_members',
+    'workspaces',
+    'org_members',
+  ];
   for (const table of children) await admin.query(`DELETE FROM ${table} WHERE org_id = $1`, [org]);
   await admin.query('DELETE FROM users WHERE id = $1', [seedUser]);
   await admin.query('DELETE FROM organizations WHERE id = $1', [org]);

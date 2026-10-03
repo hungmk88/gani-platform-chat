@@ -14,6 +14,7 @@ const tables: PgTable[] = [
   db.workspaceMembers,
   db.teams,
   db.teamMembers,
+  db.apiKeys,
 ];
 
 describe('Drizzle schema matches the database', () => {
@@ -25,7 +26,7 @@ describe('Drizzle schema matches the database', () => {
         .sort((x, y) => x.name.localeCompare(y.name));
       const fromDb = await withClient('migration', (c) =>
         c.query<{ name: string; type: string; nullable: boolean }>(
-          `SELECT column_name AS name, data_type AS type, is_nullable = 'YES' AS nullable
+          `SELECT column_name AS name, CASE WHEN data_type = 'ARRAY' THEN substr(udt_name, 2) || '[]' ELSE data_type END AS type, is_nullable = 'YES' AS nullable
          FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1
          ORDER BY column_name`,
           [name],

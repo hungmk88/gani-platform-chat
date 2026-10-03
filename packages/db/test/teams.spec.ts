@@ -153,12 +153,12 @@ describe('company-wide team (workspace_id NULL)', () => {
 });
 
 describe('teams: constraints', () => {
-  it.each<[string, TeamOver]>([['upper case slug', { slug: 'Ab' }]])(
-    'rejects %s',
-    async (_name, over) => {
-      expect(await sqlState(addTeam(A, over))).toBe('23514');
-    },
-  );
+  it.each<[string, TeamOver]>([
+    ['upper case slug', { slug: 'Ab' }],
+    ['blank name', { name: ' ' }],
+  ])('rejects %s', async (_name, over) => {
+    expect(await sqlState(addTeam(A, over))).toBe('23514');
+  });
 
   it('workspace and created_by must belong to the same org (23503 otherwise)', async () => {
     await addTeam(A, { by: uA });
