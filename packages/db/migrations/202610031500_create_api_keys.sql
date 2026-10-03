@@ -10,6 +10,10 @@ CREATE FUNCTION public.api_key_scopes_valid(scopes text[]) RETURNS boolean
   LANGUAGE sql IMMUTABLE STRICT
   AS $$ SELECT coalesce(bool_and(char_length(s) BETWEEN 8 AND 32), false) FROM unnest(scopes) AS s $$;
 
+-- Default privileges of migration_role revoke EXECUTE from PUBLIC (migration 202610031000), and PostgreSQL checks the
+-- right when a CHECK calls the function during INSERT/UPDATE, so app_role needs it. support_role only reads: no grant.
+GRANT EXECUTE ON FUNCTION public.api_key_scopes_valid(text[]) TO app_role;
+
 CREATE TABLE public.api_keys (
   id uuid PRIMARY KEY,
   org_id uuid NOT NULL,
