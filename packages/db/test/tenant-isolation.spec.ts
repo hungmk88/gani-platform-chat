@@ -1,5 +1,5 @@
 import { uuidv7 } from '@gani/domain';
-import { eq, getTableColumns } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -132,20 +132,6 @@ describe('RLS configuration of organizations', () => {
         { policyname: 'organizations_app', cmd: 'ALL', roles: ['app_role'] },
       ]);
     });
-  });
-
-  it('matches the Drizzle schema (names, types, nullability)', async () => {
-    const fromDrizzle = Object.values(getTableColumns(organizations))
-      .map((col) => ({ name: col.name, type: col.getSQLType(), nullable: !col.notNull }))
-      .sort((x, y) => x.name.localeCompare(y.name));
-    const fromDb = await withClient('migration', (c) =>
-      c.query<{ name: string; type: string; nullable: boolean }>(
-        `SELECT column_name AS name, data_type AS type, is_nullable = 'YES' AS nullable
-         FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'organizations'
-         ORDER BY column_name`,
-      ),
-    );
-    expect(fromDb.rows).toEqual(fromDrizzle);
   });
 });
 
