@@ -1,6 +1,6 @@
-import { customType, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
+import { bytea } from './bytea.js';
 
 // Mirrors migration 202610031210_create_org_members.sql. `inviteTokenHash` = SHA-256 of the token (32 bytes).
 export const orgMembers = pgTable('org_members', {

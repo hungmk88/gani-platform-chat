@@ -1,5 +1,6 @@
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { pingDb } from './ping.js';
+export { apiKeys } from './schema/api-keys.js';
 export { orgMembers } from './schema/org-members.js';
 export { organizations } from './schema/organizations.js';
 export { teamMembers } from './schema/team-members.js';
