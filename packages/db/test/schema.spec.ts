@@ -15,6 +15,8 @@ const tables: PgTable[] = [
   db.teams,
   db.teamMembers,
   db.apiKeys,
+  db.auditLogs,
+  db.platformAccessLogs,
 ];
 
 describe('Drizzle schema matches the database', () => {

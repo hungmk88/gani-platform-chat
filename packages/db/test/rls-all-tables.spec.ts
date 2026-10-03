@@ -10,6 +10,8 @@ import { sqlState, url, withClient } from './db.js';
 // a table added by a later PR is covered automatically, or fails here until it has its fixture row below.
 // No tenant key on purpose: users (Brief P8, spec §3.3) and the migration runner's ledger.
 const GLOBAL_TABLES = ['users', 'schema_migrations'];
+// app_role has no privilege here on purpose (N69): case 1 is 42501, not TN001.
+const NO_APP_ACCESS = ['platform_access_logs'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 
 const tables = await withClient('migration', async (c) => {
@@ -43,7 +45,9 @@ async function seed(): Promise<void> {
     INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${seedUser}');
     INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ('${team}', '${org}', '${workspace}', 'T', 'tm');
     INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${seedUser}');
-    INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}')`);
+    INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}');
+    INSERT INTO audit_logs (id, org_id, action) VALUES ('${uuidv7()}', '${org}', 'seed');
+    INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${seedUser}', 'seed_login', 'seed', now() + interval '30 minutes')`);
 }
 
 beforeAll(async () => {
@@ -56,6 +60,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await app.end();
   const children = [
+    'audit_logs',
+    'platform_access_logs',
     'api_keys',
     'team_members',
     'teams',
@@ -110,15 +116,15 @@ describe.each(rlsTables)('%s', (table) => {
     expect(pol.rows[0]?.check).toContain('current_org');
   });
 
-  it('case 1: SELECT without a TenantTx raises TN001 (the table has a row to evaluate)', async () => {
+  it('case 1: SELECT without a TenantTx raises TN001, or 42501 where app_role has no access', async () => {
     const own = await admin.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM ${admin.escapeIdentifier(table)} WHERE ${table === 'organizations' ? 'id' : 'org_id'} = $1`,
       [org],
     );
     expect(own.rows[0]?.n, 'add a fixture row for this table in seed()').toBeGreaterThan(0);
-    expect(await sqlState(app.query(`SELECT 1 FROM ${app.escapeIdentifier(table)} LIMIT 1`))).toBe(
-      'TN001',
-    );
+    const expected = NO_APP_ACCESS.includes(table) ? '42501' : 'TN001';
+    const select = app.query(`SELECT 1 FROM ${app.escapeIdentifier(table)} LIMIT 1`);
+    expect(await sqlState(select)).toBe(expected);
   });
 
   it('case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all', async () => {
