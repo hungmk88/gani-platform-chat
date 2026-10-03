@@ -2,11 +2,11 @@ import { getTableColumns, getTableName } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 
-import { orgMembers, organizations, users } from '../src/index.js';
+import { orgMembers, organizations, users, workspaceMembers, workspaces } from '../src/index.js';
 import { withClient } from './db.js';
 
 // ADR-002: the Drizzle schema must match the real tables, so they cannot drift. Add every new table here.
-const tables: PgTable[] = [organizations, users, orgMembers];
+const tables: PgTable[] = [organizations, users, orgMembers, workspaces, workspaceMembers];
 
 describe('Drizzle schema matches the database', () => {
   it.each(tables.map((table) => [getTableName(table), table] as const))(
