@@ -1,13 +1,12 @@
-import { randomBytes } from 'node:crypto';
-
 import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { sqlState, url, withClient } from './db.js';
+import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // Spec RLS M01 §7 case 1 (every RLS table) and case 11 (no DELETE anywhere), generated from the catalog:
-// a table added by a later PR is covered automatically, or fails here until it has its fixture row below.
+// a table added by a later PR is covered automatically, or fails here until it has its fixture row in fixtures.ts.
 // No tenant key on purpose: users (Brief P8, spec §3.3) and the migration runner's ledger.
 const GLOBAL_TABLES = ['users', 'schema_migrations'];
 // app_role has no privilege here on purpose (N69): case 1 is 42501, not TN001.
@@ -29,49 +28,20 @@ const tables = await withClient('migration', async (c) => {
 const rlsTables = tables.filter((t) => t.tenant).map((t) => t.name);
 
 const org = uuidv7();
-const seedUser = uuidv7();
+let seedUser = '';
 let admin: pg.Client;
 let app: pg.Client;
-
-// One row per RLS table, so that SELECT has a row to evaluate the policy on (N59: an empty table raises nothing).
-async function seed(): Promise<void> {
-  const [member, workspace, team] = [uuidv7(), uuidv7(), uuidv7()];
-  // Every value is a UUID generated here, never client input.
-  await admin.query(`
-    INSERT INTO organizations (id, slug, name) VALUES ('${org}', 't-${org}', 'T');
-    INSERT INTO users (id, email, status) VALUES ('${seedUser}', '${seedUser}@example.test', 'active');
-    INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ('${member}', '${org}', '${seedUser}', 'owner', 'active');
-    INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ('${workspace}', '${org}', 'ws', 'W', 'service');
-    INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${seedUser}');
-    INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ('${team}', '${org}', '${workspace}', 'T', 'tm');
-    INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${seedUser}');
-    INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}');
-    INSERT INTO audit_logs (id, org_id, action) VALUES ('${uuidv7()}', '${org}', 'seed');
-    INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${seedUser}', 'seed_login', 'seed', now() + interval '30 minutes')`);
-}
 
 beforeAll(async () => {
   admin = new pg.Client({ connectionString: url('migration') });
   app = new pg.Client({ connectionString: url('app') });
   await Promise.all([admin.connect(), app.connect()]);
-  await seed();
+  seedUser = await seedTenant(admin, org);
 });
 
 afterAll(async () => {
   await app.end();
-  const children = [
-    'audit_logs',
-    'platform_access_logs',
-    'api_keys',
-    'team_members',
-    'teams',
-    'workspace_members',
-    'workspaces',
-    'org_members',
-  ];
-  for (const table of children) await admin.query(`DELETE FROM ${table} WHERE org_id = $1`, [org]);
-  await admin.query('DELETE FROM users WHERE id = $1', [seedUser]);
-  await admin.query('DELETE FROM organizations WHERE id = $1', [org]);
+  await cleanupTenant(admin, org, seedUser);
   await admin.end();
 });
 
@@ -92,28 +62,39 @@ it('app_role has no privilege on a global table', async () => {
 });
 
 describe.each(rlsTables)('%s', (table) => {
-  it('has ENABLE + FORCE RLS and one policy on app_role using app.current_org() for USING and WITH CHECK', async () => {
+  it('has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy behind support_access_ok()', async () => {
     const cls = await admin.query(
       'SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = $1::regclass',
       [`public.${table}`],
     );
     expect(cls.rows).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
-    const pol = await admin.query<{
+    const { rows } = await admin.query<{
       policyname: string;
       cmd: string;
       roles: string[];
       qual: string;
-      check: string;
+      check: string | null;
     }>(
       `SELECT policyname, cmd, roles::text[] AS roles, qual, with_check AS check
-       FROM pg_policies WHERE schemaname = 'public' AND tablename = $1`,
+       FROM pg_policies WHERE schemaname = 'public' AND tablename = $1 ORDER BY policyname`,
       [table],
     );
-    expect(pol.rows.map(({ policyname, cmd, roles }) => ({ policyname, cmd, roles }))).toEqual([
-      { policyname: `${table}_app`, cmd: 'ALL', roles: ['app_role'] },
+    expect(rows.map(({ policyname, cmd, roles }) => [policyname, cmd, roles])).toEqual([
+      [`${table}_app`, 'ALL', ['app_role']],
+      [`${table}_support`, 'SELECT', ['support_role']],
     ]);
-    expect(pol.rows[0]?.qual).toContain('current_org');
-    expect(pol.rows[0]?.check).toContain('current_org');
+    const [appPolicy, supportPolicy] = rows;
+    expect([appPolicy?.qual, appPolicy?.check].every((e) => e?.includes('current_org'))).toBe(true);
+    expect(supportPolicy?.qual).toContain('current_org');
+    expect(supportPolicy?.qual).toContain('support_access_ok');
+  });
+
+  it('gives support_role no privilege other than SELECT', async () => {
+    const { rows } = await admin.query(
+      `SELECT p FROM unnest($1::text[]) AS p WHERE p <> 'SELECT' AND has_table_privilege('support_role', $2, p)`,
+      [PRIVILEGES, `public.${table}`],
+    );
+    expect(rows).toEqual([]);
   });
 
   it('case 1: SELECT without a TenantTx raises TN001, or 42501 where app_role has no access', async () => {
@@ -121,7 +102,7 @@ describe.each(rlsTables)('%s', (table) => {
       `SELECT count(*)::int AS n FROM ${admin.escapeIdentifier(table)} WHERE ${table === 'organizations' ? 'id' : 'org_id'} = $1`,
       [org],
     );
-    expect(own.rows[0]?.n, 'add a fixture row for this table in seed()').toBeGreaterThan(0);
+    expect(own.rows[0]?.n, 'add a fixture row for this table in fixtures.ts').toBeGreaterThan(0);
     const expected = NO_APP_ACCESS.includes(table) ? '42501' : 'TN001';
     const select = app.query(`SELECT 1 FROM ${app.escapeIdentifier(table)} LIMIT 1`);
     expect(await sqlState(select)).toBe(expected);

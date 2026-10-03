@@ -4,6 +4,7 @@ const ENV = {
   app: 'DATABASE_URL_APP',
   auth: 'DATABASE_URL_AUTH',
   migration: 'DATABASE_URL_MIGRATION',
+  support: 'DATABASE_URL_SUPPORT',
 } as const;
 
 export type Role = keyof typeof ENV;

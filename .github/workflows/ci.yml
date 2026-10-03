@@ -90,7 +90,7 @@ jobs:
       # Throwaway passwords, new on every run, masked in the log and never stored.
       - name: Generate passwords
         run: |
-          for name in POSTGRES APP_ROLE AUTH_ROLE MIGRATION_ROLE; do
+          for name in POSTGRES APP_ROLE AUTH_ROLE MIGRATION_ROLE SUPPORT_TEST_LOGIN; do
             password="$(openssl rand -hex 24)"
             echo "::add-mask::${password}"
             echo "${name}_PASSWORD=${password}" >> "$GITHUB_ENV"
@@ -109,12 +109,17 @@ jobs:
       - name: Bootstrap roles
         run: |
           docker exec -i -e APP_ROLE_PASSWORD -e AUTH_ROLE_PASSWORD -e MIGRATION_ROLE_PASSWORD pg             psql -v ON_ERROR_STOP=1 -U postgres -d "$PG_DB" < infra/db/bootstrap-roles.sql
+      # CI-only login for the support_role tests; the password is generated above and never printed.
+      - name: Create CI support login
+        run: |
+          docker exec -i -e SUPPORT_TEST_LOGIN_PASSWORD pg psql -v ON_ERROR_STOP=1 -U postgres -d "$PG_DB" < infra/db/ci-support-login.sql
       - name: Migrate and run database tests
         run: |
           base="127.0.0.1:5432/${PG_DB}"
           export DATABASE_URL_APP="postgres://app_role:${APP_ROLE_PASSWORD}@${base}"
           export DATABASE_URL_AUTH="postgres://auth_role:${AUTH_ROLE_PASSWORD}@${base}"
           export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_SUPPORT="postgres://support_test_login:${SUPPORT_TEST_LOGIN_PASSWORD}@${base}"
           pnpm --filter @gani/db migrate
           pnpm --filter @gani/db test:integration
       - name: PostgreSQL log
