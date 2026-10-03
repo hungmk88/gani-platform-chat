@@ -5,6 +5,8 @@ import type pg from 'pg';
 
 // Child tables first: cleanup deletes in this order, then the user and the organization.
 const TENANT_TABLES = [
+  'feature_flags_overrides',
+  'agent_settings',
   'audit_logs',
   'platform_access_logs',
   'api_keys',
@@ -14,6 +16,9 @@ const TENANT_TABLES = [
   'workspaces',
   'org_members',
 ];
+
+/** Key of the global flag that seedTenant creates for an organization (flag keys are global, so one per org). */
+export const flagKeyOf = (org: string) => `f_${org.replaceAll('-', '')}`;
 
 /** Inserts an organization and one row in every RLS table (as migration_role); returns the id of its user. */
 export async function seedTenant(admin: pg.Client, org: string): Promise<string> {
@@ -29,6 +34,9 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${user}');
     INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}');
     INSERT INTO audit_logs (id, org_id, action) VALUES ('${uuidv7()}', '${org}', 'seed');
+    INSERT INTO feature_flags_global (key, description, owner, remove_by) VALUES ('${flagKeyOf(org)}', 'seed', 'seed', current_date + 30);
+    INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
+    INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
     INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);
   return user;
 }
@@ -37,6 +45,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
 export async function cleanupTenant(admin: pg.Client, org: string, user: string): Promise<void> {
   const steps = [
     ...TENANT_TABLES.map((t) => `DELETE FROM ${t} WHERE org_id = '${org}'`),
+    `DELETE FROM feature_flags_global WHERE key = '${flagKeyOf(org)}'`,
     `DELETE FROM users WHERE id = '${user}'`,
     `DELETE FROM organizations WHERE id = '${org}'`,
   ];
