@@ -29,15 +29,17 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations FORCE ROW LEVEL SECURITY;
 
 -- USING and WITH CHECK both carry the workspace test: without it a person could move a row into a workspace they cannot see.
--- '{}' (no workspace) matches nothing: ANY over an empty array is false.
+-- '{}' (no workspace) matches nothing: ANY over an empty array is false. The ::uuid[] cast is required: ANY ((SELECT f())) is
+-- read as the subquery form of ANY and fails with 'operator does not exist: uuid = uuid[]'; the cast makes it an array expression
+-- and keeps the (SELECT ...) wrapper, so the function runs once per statement, not once per row.
 CREATE POLICY conversations_app ON public.conversations FOR ALL TO app_role
-  USING (org_id = (SELECT app.current_org())::uuid AND workspace_id = ANY ((SELECT app.current_workspaces())))
-  WITH CHECK (org_id = (SELECT app.current_org())::uuid AND workspace_id = ANY ((SELECT app.current_workspaces())));
+  USING (org_id = (SELECT app.current_org())::uuid AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[]))
+  WITH CHECK (org_id = (SELECT app.current_org())::uuid AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[]));
 
 CREATE POLICY conversations_support ON public.conversations FOR SELECT TO support_role
   USING (
     org_id = (SELECT app.current_org())::uuid
-    AND workspace_id = ANY ((SELECT app.current_workspaces()))
+    AND workspace_id = ANY ((SELECT app.current_workspaces())::uuid[])
     AND (SELECT app.support_access_ok())
   );
 
