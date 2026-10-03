@@ -6,7 +6,8 @@ import { sqlState, url, withClient } from './db.js';
 
 // Spec RLS M01 §7 case 1 (every RLS table) and case 11 (no DELETE anywhere), generated from the catalog:
 // a table added by a later PR is covered automatically, or fails here until it has its fixture row below.
-const GLOBAL_TABLES = ['users']; // no tenant key on purpose (Brief P8, spec §3.3)
+// No tenant key on purpose: users (Brief P8, spec §3.3) and the migration runner's ledger.
+const GLOBAL_TABLES = ['users', 'schema_migrations'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 
 const tables = await withClient('migration', async (c) => {
@@ -63,6 +64,15 @@ describe('every public table is either RLS-protected or explicitly global', () =
     const untracked = tables.filter((t) => !t.tenant && !GLOBAL_TABLES.includes(t.name));
     expect(untracked.map((t) => t.name)).toEqual([]);
   });
+});
+
+it('app_role has no privilege on a global table', async () => {
+  const { rows } = await admin.query<{ t: string; p: string }>(
+    `SELECT t, p FROM unnest($1::text[]) AS t, unnest($2::text[]) AS p
+     WHERE has_table_privilege('app_role', 'public.' || t, p)`,
+    [GLOBAL_TABLES, PRIVILEGES],
+  );
+  expect(rows).toEqual([]);
 });
 
 describe.each(rlsTables)('%s', (table) => {
