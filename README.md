@@ -40,6 +40,7 @@ curl http://localhost:3000/healthz   # {"status":"ok"}
 ## Kiểm tra trước khi tạo PR
 
 ```bash
+pnpm build      # trước pnpm lint: ESLint đọc kiểu của @gani/db từ dist/
 pnpm lint
 pnpm typecheck
 pnpm test
