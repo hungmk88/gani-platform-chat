@@ -207,3 +207,42 @@ describe('partition functions', () => {
     expect(rows).toEqual([]);
   });
 });
+
+describe('moved from PR 4a (N70)', () => {
+  it('audit_logs has the actor and target indexes on the parent and on a partition', async () => {
+    const count = async (table: string, names: string[]) =>
+      (
+        await admin.query<{ n: number }>(
+          'SELECT count(*)::int AS n FROM pg_indexes WHERE tablename = $1 AND indexname = ANY($2::text[])',
+          [table, names],
+        )
+      ).rows[0]?.n;
+    expect(await count('audit_logs', ['audit_logs_actor_idx', 'audit_logs_target_idx'])).toBe(2);
+    const [monthly] = (await children('audit_logs')).filter((c) => MONTHLY.test(c));
+    const all = await admin.query<{ n: number }>(
+      'SELECT count(*)::int AS n FROM pg_indexes WHERE tablename = $1',
+      [monthly],
+    );
+    expect(all.rows[0]?.n).toBe(4);
+  });
+
+  it('the partition function refuses a table that is not partitioned and months_ahead outside 0-12 (P0001)', async () => {
+    expect(await sqlState(admin.query("SELECT app.create_log_partitions('public.teams', 1)"))).toBe(
+      'P0001',
+    );
+    expect(
+      await sqlState(admin.query("SELECT app.create_log_partitions('public.audit_logs', 13)")),
+    ).toBe('P0001');
+    expect(
+      await sqlState(admin.query("SELECT app.create_log_partitions('public.audit_logs', -1)")),
+    ).toBe('P0001');
+  });
+
+  it('a tenant cannot insert an audit_logs row for another org (42501)', async () => {
+    const row = { id: uuidv7(), orgId: B, action: 'forged' };
+    const insert = withTenant(pool, { orgId: A, workspaceIds: [] }, (t) =>
+      t.insert(auditLogs).values(row),
+    );
+    expect(await sqlState(insert)).toBe('42501');
+  });
+});

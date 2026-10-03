@@ -1,0 +1,44 @@
+import { randomBytes } from 'node:crypto';
+
+import { uuidv7 } from '@gani/domain';
+import type pg from 'pg';
+
+// Child tables first: cleanup deletes in this order, then the user and the organization.
+const TENANT_TABLES = [
+  'audit_logs',
+  'platform_access_logs',
+  'api_keys',
+  'team_members',
+  'teams',
+  'workspace_members',
+  'workspaces',
+  'org_members',
+];
+
+/** Inserts an organization and one row in every RLS table (as migration_role); returns the id of its user. */
+export async function seedTenant(admin: pg.Client, org: string): Promise<string> {
+  const [user, workspace, team] = [uuidv7(), uuidv7(), uuidv7()];
+  // Every value is generated here (UUIDs, random hex), never client input.
+  await admin.query(`
+    INSERT INTO organizations (id, slug, name) VALUES ('${org}', 't-${org}', 'T');
+    INSERT INTO users (id, email, status) VALUES ('${user}', '${user}@example.test', 'active');
+    INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ('${uuidv7()}', '${org}', '${user}', 'owner', 'active');
+    INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ('${workspace}', '${org}', 'ws', 'W', 'service');
+    INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${user}');
+    INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ('${team}', '${org}', '${workspace}', 'T', 'tm');
+    INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${user}');
+    INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}');
+    INSERT INTO audit_logs (id, org_id, action) VALUES ('${uuidv7()}', '${org}', 'seed');
+    INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);
+  return user;
+}
+
+/** Removes what seedTenant made. A failing step never throws: the CI database is thrown away after the job. */
+export async function cleanupTenant(admin: pg.Client, org: string, user: string): Promise<void> {
+  const steps = [
+    ...TENANT_TABLES.map((t) => `DELETE FROM ${t} WHERE org_id = '${org}'`),
+    `DELETE FROM users WHERE id = '${user}'`,
+    `DELETE FROM organizations WHERE id = '${org}'`,
+  ];
+  for (const step of steps) await admin.query(step).catch(() => undefined);
+}

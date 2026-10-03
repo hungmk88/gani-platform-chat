@@ -119,17 +119,18 @@ describe('isolation between tenants', () => {
 });
 
 describe('RLS configuration of organizations', () => {
-  it('has ENABLE and FORCE ROW LEVEL SECURITY and exactly one policy', async () => {
+  it('has ENABLE and FORCE ROW LEVEL SECURITY and exactly two policies (app, support)', async () => {
     await withClient('migration', async (c) => {
       const cls = await c.query<{ relrowsecurity: boolean; relforcerowsecurity: boolean }>(
         "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = 'public.organizations'::regclass",
       );
       expect(cls.rows).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
       const pol = await c.query<{ policyname: string; cmd: string; roles: string[] }>(
-        "SELECT policyname, cmd, roles::text[] AS roles FROM pg_policies WHERE schemaname = 'public' AND tablename = 'organizations'",
+        "SELECT policyname, cmd, roles::text[] AS roles FROM pg_policies WHERE schemaname = 'public' AND tablename = 'organizations' ORDER BY policyname",
       );
       expect(pol.rows).toEqual([
         { policyname: 'organizations_app', cmd: 'ALL', roles: ['app_role'] },
+        { policyname: 'organizations_support', cmd: 'SELECT', roles: ['support_role'] },
       ]);
     });
   });
