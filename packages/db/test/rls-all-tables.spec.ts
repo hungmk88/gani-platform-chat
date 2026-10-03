@@ -14,6 +14,9 @@ const GLOBAL_TABLES: Record<string, { app: string[]; support: string[] }> = {
   schema_migrations: { app: [], support: [] },
   feature_flags_global: { app: ['SELECT'], support: ['SELECT'] },
 };
+// Tables with RLS by organisation AND workspace (O+W, N75). Explicit on purpose: teams and api_keys have a workspace_id
+// column too but are O only, so the column cannot tell.
+const OW_TABLES = ['conversations'];
 // app_role has no privilege here on purpose (N69): case 1 is 42501, not TN001.
 const NO_APP_ACCESS = ['platform_access_logs'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -72,6 +75,25 @@ it.each(Object.entries(GLOBAL_TABLES))(
     expect(rows).toEqual(expected);
   },
 );
+
+it('the tables whose policies test app.current_workspaces() are exactly the O+W tables', async () => {
+  const { rows } = await admin.query<{ t: string; scope: string }>(
+    `SELECT tablename AS t, right(policyname, -length(tablename) - 1) AS scope FROM pg_policies
+     WHERE schemaname = 'public' AND tablename = ANY($1::text[])
+       AND (qual LIKE '%current_workspaces%' OR with_check LIKE '%current_workspaces%')
+     ORDER BY tablename, policyname`,
+    [rlsTables],
+  );
+  expect(rows.filter((r) => r.scope === 'app').map((r) => r.t)).toEqual(OW_TABLES);
+  expect(rows.filter((r) => r.scope === 'support').map((r) => r.t)).toEqual(OW_TABLES);
+  // USING and WITH CHECK both carry it: otherwise a row could be moved into a workspace the person cannot see.
+  const both = await admin.query(
+    `SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = ANY($1::text[]) AND right(policyname, 4) = '_app'
+       AND qual LIKE '%current_workspaces%' AND with_check LIKE '%current_workspaces%'`,
+    [OW_TABLES],
+  );
+  expect(both.rowCount).toBe(OW_TABLES.length);
+});
 
 describe.each(rlsTables)('%s', (table) => {
   it('has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy behind support_access_ok()', async () => {

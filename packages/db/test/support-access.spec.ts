@@ -22,6 +22,7 @@ const TABLES = await withClient('migration', async (c) => {
 const keyOf = (table: string) => (table === 'organizations' ? 'id' : 'org_id');
 const [NONE, VALID, EXPIRED, OTHER] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const users = new Map<string, string>();
+const workspaces = new Map<string, string>();
 let admin: pg.Client;
 let support: pg.Client;
 let app: pg.Client;
@@ -35,25 +36,34 @@ const openSession = (org: string, login: string, agoMin: number) =>
     [uuidv7(), org, users.get(org), login, agoMin],
   );
 
-async function inOrg<T>(org: string, fn: () => Promise<T>): Promise<T> {
+// `workspaceIds` is the app.current_workspaces of the session: the seeded workspace of the org unless a test says otherwise.
+async function inOrg<T>(
+  org: string,
+  fn: () => Promise<T>,
+  workspaceIds: string[] = [workspaces.get(org) as string],
+): Promise<T> {
   await support.query('BEGIN');
   try {
     await support.query(
-      "SELECT set_config('app.current_org', $1, true), set_config('app.current_workspaces', '{}', true)",
-      [org],
+      "SELECT set_config('app.current_org', $1, true), set_config('app.current_workspaces', $2, true)",
+      [org, `{${workspaceIds.join(',')}}`],
     );
     return await fn();
   } finally {
     await support.query('ROLLBACK').catch(() => undefined);
   }
 }
-const seen = (table: string, org: string) =>
-  inOrg(org, async () => {
-    const { rows } = await support.query<{ k: string }>(
-      `SELECT ${keyOf(table)} AS k FROM ${support.escapeIdentifier(table)}`,
-    );
-    return rows.map((r) => r.k);
-  });
+const seen = (table: string, org: string, workspaceIds?: string[]) =>
+  inOrg(
+    org,
+    async () => {
+      const { rows } = await support.query<{ k: string }>(
+        `SELECT ${keyOf(table)} AS k FROM ${support.escapeIdentifier(table)}`,
+      );
+      return rows.map((r) => r.k);
+    },
+    workspaceIds,
+  );
 const query = (org: string, text: string) => sqlState(inOrg(org, () => support.query(text)));
 
 beforeAll(async () => {
@@ -61,7 +71,14 @@ beforeAll(async () => {
   support = new pg.Client({ connectionString: url('support') });
   app = new pg.Client({ connectionString: url('app') });
   await Promise.all([admin.connect(), support.connect(), app.connect()]);
-  for (const org of [NONE, VALID, EXPIRED, OTHER]) users.set(org, await seedTenant(admin, org));
+  for (const org of [NONE, VALID, EXPIRED, OTHER]) {
+    users.set(org, await seedTenant(admin, org));
+    const { rows } = await admin.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE org_id = $1',
+      [org],
+    );
+    workspaces.set(org, rows[0]?.id as string);
+  }
   await openSession(VALID, LOGIN, 0);
   await openSession(EXPIRED, LOGIN, 120);
   await openSession(OTHER, 'someone_else', 0);
@@ -98,6 +115,20 @@ describe('case 6: the gate', () => {
       expect(rows.length, table).toBeGreaterThan(0);
       expect(new Set(rows), table).toEqual(new Set([VALID]));
     }
+  });
+
+  it('O+W: a valid session sees conversations only for the workspaces of the session (none for {} or another workspace)', async () => {
+    expect(await seen('conversations', VALID, [workspaces.get(VALID) as string])).toEqual([VALID]);
+    expect(await seen('conversations', VALID, [])).toEqual([]);
+    expect(await seen('conversations', VALID, [uuidv7()])).toEqual([]);
+    // The O tables ignore the workspaces of the session.
+    expect(await seen('workspaces', VALID, [])).toEqual([VALID]);
+  });
+
+  it('cannot insert a conversation, even in a workspace of the session (42501)', async () => {
+    const insert = `INSERT INTO conversations (id, org_id, workspace_id, state)
+      VALUES ('${uuidv7()}', '${VALID}', '${workspaces.get(VALID)}', 'BOT_ACTIVE')`;
+    expect(await query(VALID, insert)).toBe('42501');
   });
 
   it('is read-only: INSERT, UPDATE, DELETE and TRUNCATE are denied (42501)', async () => {
