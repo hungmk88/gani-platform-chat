@@ -194,6 +194,17 @@ describe('column checks', () => {
   });
 });
 
+describe('api_key_scopes_valid', () => {
+  it('is owned by migration_role, not SECURITY DEFINER, and app_role can execute it', async () => {
+    const { rows } = await admin.query<{ owner: string; definer: boolean; app: boolean }>(
+      `SELECT pg_get_userbyid(proowner) AS owner, prosecdef AS definer,
+              has_function_privilege('app_role', oid, 'EXECUTE') AS app
+       FROM pg_proc WHERE oid = 'public.api_key_scopes_valid(text[])'::regprocedure`,
+    );
+    expect(rows).toEqual([{ owner: 'migration_role', definer: false, app: true }]);
+  });
+});
+
 describe('UPDATE by column', () => {
   const update = (set: Partial<typeof apiKeys.$inferInsert>) =>
     sqlState(

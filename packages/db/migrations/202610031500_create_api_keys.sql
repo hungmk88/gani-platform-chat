@@ -4,6 +4,8 @@
 -- needs a narrow SECURITY DEFINER function in a later PR (N8); app_role cannot do it under RLS.
 
 -- Every scope is 8-32 characters. A CHECK cannot hold a subquery, so the rule lives in a function.
+-- Never edit this function once applied: create a new function and a new migration (checksums, and the CHECK
+-- must stay reproducible). It is not SECURITY DEFINER; app_role runs it with its own rights.
 CREATE FUNCTION public.api_key_scopes_valid(scopes text[]) RETURNS boolean
   LANGUAGE sql IMMUTABLE STRICT
   AS $$ SELECT coalesce(bool_and(char_length(s) BETWEEN 8 AND 32), false) FROM unnest(scopes) AS s $$;
