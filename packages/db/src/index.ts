@@ -1,3 +1,4 @@
+export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { pingDb } from './ping.js';
@@ -5,6 +6,7 @@ export { accounts } from './schema/accounts.js';
 export { agentSettings } from './schema/agent-settings.js';
 export { apiKeys } from './schema/api-keys.js';
 export { auditLogs } from './schema/audit-logs.js';
+export { authSchema, authUsers } from './schema/auth.js';
 export { conversations } from './schema/conversations.js';
 export { featureFlagsGlobal } from './schema/feature-flags-global.js';
 export { featureFlagsOverrides } from './schema/feature-flags-overrides.js';
