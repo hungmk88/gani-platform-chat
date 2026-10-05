@@ -27,7 +27,7 @@ export async function readMemberContext(
     .where(
       and(
         eq(orgMembers.userId, userId),
-        eq(orgMembers.status, 'active'),
+        // MUTATION (DO NOT MERGE): the status = 'active' condition is removed on purpose.
         isNull(orgMembers.deletedAt),
       ),
     );
