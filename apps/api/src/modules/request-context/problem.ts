@@ -9,17 +9,20 @@ export interface Problem {
   readonly status: number;
   readonly code: string;
   readonly detail?: string;
+  /** Made by the server for this response and written to the log next to the cause, so a report can be matched to it. */
+  readonly traceId?: string;
 }
 
 /** `detail` is for a person reading the response: never put a secret, an id of another tenant or a driver message in it. */
-export function problem(status: number, code: string, detail?: string): Problem {
-  const base = {
+export function problem(status: number, code: string, detail?: string, traceId?: string): Problem {
+  return {
     type: 'about:blank',
     title: STATUS_CODES[status] ?? 'Error',
     status,
     code,
-  } as const;
-  return detail === undefined ? base : { ...base, detail };
+    ...(detail === undefined ? {} : { detail }),
+    ...(traceId === undefined ? {} : { traceId }),
+  };
 }
 
 /** For code that runs before Nest's own exception filters (middleware, the edge gate). */

@@ -13,7 +13,8 @@ describe('problem', () => {
       status: 403,
       code: 'ORG_NOT_SELECTED',
     });
-    expect(problem(401, 'UNAUTHENTICATED', 'Sign in first').detail).toBe('Sign in first');
+    const full = problem(401, 'UNAUTHENTICATED', 'Sign in first', 'trace-1');
+    expect(full).toMatchObject({ detail: 'Sign in first', traceId: 'trace-1' });
   });
 
   it('is sent as application/problem+json with the status of the problem and no caching', async () => {
