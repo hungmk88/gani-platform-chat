@@ -1,6 +1,7 @@
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
+export { readMemberContext, type MemberContext } from './member-context.js';
 export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';
 export { agentSettings } from './schema/agent-settings.js';
@@ -10,7 +11,7 @@ export { authSchema, authUsers } from './schema/auth.js';
 export { conversations } from './schema/conversations.js';
 export { featureFlagsGlobal } from './schema/feature-flags-global.js';
 export { featureFlagsOverrides } from './schema/feature-flags-overrides.js';
-export { orgMembers } from './schema/org-members.js';
+export { orgMembers, type OrgRole } from './schema/org-members.js';
 export { organizations } from './schema/organizations.js';
 export { platformAccessLogs } from './schema/platform-access-logs.js';
 export { sessions } from './schema/sessions.js';

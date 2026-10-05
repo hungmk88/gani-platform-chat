@@ -19,3 +19,6 @@ export const orgMembers = pgTable('org_members', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** The seven roles of a member of an organisation: the one definition, read by the API from `@gani/db`. */
+export type OrgRole = (typeof orgMembers.$inferSelect)['role'];
