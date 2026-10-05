@@ -7,7 +7,7 @@ import { auditLogs, createDbPool, withTenant } from '../src/index.js';
 import { sqlState, url } from './db.js';
 
 // Spec RLS M01 §6 and §7 cases 9a-9d for audit_logs and platform_access_logs, plus the table rules (N67, N69).
-const PARENTS = ['audit_logs', 'platform_access_logs', 'messages'];
+const PARENTS = ['audit_logs', 'platform_access_logs', 'messages', 'conversation_events'];
 const ROLES = ['app_role', 'auth_role', 'support_role'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 const MONTHLY = /_y\d{4}m\d{2}$/;
