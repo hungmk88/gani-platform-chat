@@ -8,7 +8,13 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     coverage: {
       ...coverage,
-      exclude: [...coverage.exclude, 'src/tenant-tx.ts', 'src/pool.ts', 'src/schema/**'],
+      exclude: [
+        ...coverage.exclude,
+        'src/tenant-tx.ts',
+        'src/auth-tx.ts',
+        'src/pool.ts',
+        'src/schema/**',
+      ],
     },
   },
 });

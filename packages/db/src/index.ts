@@ -1,3 +1,4 @@
+export { withAuthUser } from './auth-tx.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';
