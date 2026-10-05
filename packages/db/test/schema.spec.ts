@@ -20,6 +20,7 @@ const tables: PgTable[] = [
   db.featureFlagsGlobal,
   db.featureFlagsOverrides,
   db.agentSettings,
+  db.conversations,
 ];
 
 describe('Drizzle schema matches the database', () => {

@@ -5,6 +5,7 @@ import type pg from 'pg';
 
 // Child tables first: cleanup deletes in this order, then the user and the organization.
 const TENANT_TABLES = [
+  'conversations',
   'feature_flags_overrides',
   'agent_settings',
   'audit_logs',
@@ -37,6 +38,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO feature_flags_global (key, description, owner, remove_by) VALUES ('${flagKeyOf(org)}', 'seed', 'seed', current_date + 30);
     INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
+    INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);
   return user;
 }
