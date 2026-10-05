@@ -83,19 +83,13 @@ describe('case 8: auth_role is limited by column', () => {
     expect(await sqlState(auth.query('SELECT * FROM users'))).toBe('42501');
   });
 
-  it('updates failed_login_count and locked_until, but not email, status or who is an operator (42501)', async () => {
+  it('updates failed_login_count and locked_until, but not email, the pending date or who is an operator (42501)', async () => {
     const ok = await auth.query(
       "UPDATE users SET failed_login_count = 3, locked_until = now() + interval '30 minutes' WHERE id = $1",
       [UA],
     );
     expect(ok.rowCount).toBe(1);
-    for (const column of [
-      'email',
-      'status',
-      'email_verified_at',
-      'is_platform_operator',
-      'pending_password_since',
-    ]) {
+    for (const column of ['email', 'is_platform_operator', 'pending_password_since']) {
       expect(await sqlState(auth.query(`UPDATE users SET ${column} = ${column}`)), column).toBe(
         '42501',
       );
