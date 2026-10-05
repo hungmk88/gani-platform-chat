@@ -123,7 +123,7 @@ describe('tenant context functions (ADR-004)', () => {
     });
   });
 
-  it('are not callable by auth_role (no USAGE on schema app)', async () => {
+  it('are not callable by auth_role (it sees schema app since PR5, but holds no EXECUTE on them)', async () => {
     await withClient('auth', async (c) => {
       expect(await sqlState(c.query('SELECT app.current_org()'))).toBe('42501');
     });
