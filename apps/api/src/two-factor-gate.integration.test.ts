@@ -59,10 +59,16 @@ async function person(key: string, role: string | null) {
     );
   }
 }
+// Better Auth allows 10 sign-ins a minute per address (N79): every sign-in here comes from an address of its own.
+const freshIp = () => [...randomBytes(4)].join('.');
 async function login(key: string): Promise<string> {
   const res = await fetch(`${url}/api/auth/sign-in/email`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    headers: {
+      'content-type': 'application/json',
+      origin: 'http://localhost:3000',
+      'x-forwarded-for': freshIp(),
+    },
     body: JSON.stringify({ email: people[key]?.email, password: PW }),
   });
   expect(res.status).toBe(200);
