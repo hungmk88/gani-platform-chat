@@ -32,8 +32,12 @@ const identifier = () => {
 };
 const inMinutes = (n: number) => new Date(Date.now() + n * 60_000);
 const adapter = async () => (await auth.$context).internalAdapter;
-const create = async (id: string, expiresAt = inMinutes(10)) =>
-  (await adapter()).createVerificationValue({ identifier: id, value: 'payload', expiresAt });
+const create = async (id: string) =>
+  (await adapter()).createVerificationValue({
+    identifier: id,
+    value: 'payload',
+    expiresAt: inMinutes(10),
+  });
 const used = async (id: string) =>
   (
     await admin.query<{ used: boolean }>(
@@ -75,7 +79,12 @@ describe('a one-time token on the real adapter', () => {
 
   it('does not delete an expired row when another is read (the cleanup of the library is off)', async () => {
     const [stale, fresh, ia] = [identifier(), identifier(), await adapter()];
-    await create(stale, inMinutes(-5));
+    // Made by the admin: a row that already expired when it was written would break expires_at > created_at.
+    await admin.query(
+      `INSERT INTO verifications (id, identifier, value, created_at, expires_at)
+       VALUES ($1, $2, 'payload', now() - interval '2 hours', now() - interval '5 minutes')`,
+      [randomUUID(), stale],
+    );
     await create(fresh);
     expect((await ia.findVerificationValue(fresh))?.value).toBe('payload');
     expect(await used(stale)).toEqual([false]);
