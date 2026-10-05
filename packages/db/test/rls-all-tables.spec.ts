@@ -13,6 +13,11 @@ const GLOBAL_TABLES: Record<string, { app: string[]; support: string[] }> = {
   users: { app: [], support: [] },
   schema_migrations: { app: [], support: [] },
   feature_flags_global: { app: ['SELECT'], support: ['SELECT'] },
+  // The auth tables (PR6a, spec §3.1): only auth_role has a privilege, app_role and support_role have none.
+  sessions: { app: [], support: [] },
+  accounts: { app: [], support: [] },
+  verifications: { app: [], support: [] },
+  two_factors: { app: [], support: [] },
 };
 // Tables with RLS by organisation AND workspace (O+W, N75). Explicit on purpose: teams and api_keys have a workspace_id
 // column too but are O only, so the column cannot tell.
