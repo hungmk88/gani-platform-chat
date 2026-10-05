@@ -5,6 +5,7 @@ import type pg from 'pg';
 
 // Child tables first: cleanup deletes in this order, then the user and the organization.
 const TENANT_TABLES = [
+  'messages',
   'conversations',
   'feature_flags_overrides',
   'agent_settings',
@@ -23,7 +24,7 @@ export const flagKeyOf = (org: string) => `f_${org.replaceAll('-', '')}`;
 
 /** Inserts an organization and one row in every RLS table (as migration_role); returns the id of its user. */
 export async function seedTenant(admin: pg.Client, org: string): Promise<string> {
-  const [user, workspace, team] = [uuidv7(), uuidv7(), uuidv7()];
+  const [user, workspace, team, conversation] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
   // Every value is generated here (UUIDs, random hex), never client input.
   await admin.query(`
     INSERT INTO organizations (id, slug, name) VALUES ('${org}', 't-${org}', 'T');
@@ -38,7 +39,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO feature_flags_global (key, description, owner, remove_by) VALUES ('${flagKeyOf(org)}', 'seed', 'seed', current_date + 30);
     INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
-    INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'BOT_ACTIVE');
+    INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
+    INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
     INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);
   return user;
 }
