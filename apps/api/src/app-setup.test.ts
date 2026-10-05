@@ -18,6 +18,8 @@ import { AuthService } from './modules/auth/auth.service.js';
 import { hashPassword } from './modules/auth/password.js';
 import { revokingAdapter } from './modules/auth/revoking-adapter.js';
 import { DatabaseService } from './modules/database/database.service.js';
+import { PROBLEM_CONTENT_TYPE } from './modules/request-context/problem.js';
+import { currentRequestContext } from './modules/request-context/request-context.js';
 
 // The order the application is put together in (N90), on real Nest and real Better Auth with the in-memory adapter and stub databases.
 @Controller('v1')
@@ -26,6 +28,29 @@ class EchoController {
   echo(@Body() body: unknown) {
     return { body };
   }
+
+  // What the tenant middleware made for this request, read after Nest's router and body parser have run.
+  @Post('test/context')
+  context(@Body() body: unknown) {
+    return { body, ctx: currentRequestContext() };
+  }
+}
+
+const ORG = uuidv7();
+const WORKSPACE = uuidv7();
+
+/** Answers the two queries of readMemberContext (the role, then the workspaces) in order, whatever the builder chain. */
+function fakeTx(results: object[][]) {
+  let next = 0;
+  return {
+    select: () => {
+      const rows = results[next++] ?? [];
+      const query: Record<string, unknown> = {};
+      for (const step of ['from', 'innerJoin', 'where']) query[step] = () => query;
+      query['then'] = (resolve: (value: object[]) => unknown) => resolve(rows);
+      return query;
+    },
+  };
 }
 
 const EMAIL = 'person@example.test';
@@ -71,12 +96,20 @@ async function start(): Promise<string> {
     controllers: [EchoController],
   })
     .overrideProvider(DatabaseService)
-    .useValue({ ping: () => Promise.resolve(true) })
+    .useValue({
+      ping: () => Promise.resolve(true),
+      withTenant: (_ctx: unknown, fn: (tx: unknown) => Promise<unknown>) =>
+        fn(fakeTx([[{ role: 'sales' }], [{ id: WORKSPACE }]])),
+    })
     .overrideProvider(AuthService)
-    .useValue({ auth, ping: () => Promise.resolve(true) })
+    .useValue({
+      auth,
+      ping: () => Promise.resolve(true),
+      activeOrganisationIds: () => Promise.resolve([ORG]),
+    })
     .compile();
   const nest = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
-  setupApp(nest, auth);
+  setupApp(nest);
   await nest.listen(0, '127.0.0.1');
   app = nest;
   return nest.getUrl();
@@ -118,8 +151,36 @@ describe('setupApp', () => {
 
   it('still gives its own JSON body to the routes that are not Better Auth, and /healthz keeps answering', async () => {
     const url = await start();
-    const echoed = await json(url, '/v1/echo', { hello: 'world' });
+    const signedIn = await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW });
+    const cookie = signedIn.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    const echoed = await json(url, '/v1/echo', { hello: 'world' }, cookie);
     expect(await echoed.json()).toEqual({ body: { hello: 'world' } });
+    expect((await fetch(`${url}/healthz`)).status).toBe(200);
+  });
+
+  it('puts the tenant middleware on /v1 after the parser: no session is 401 RFC 9457, a session gets its context past the router with its body', async () => {
+    const url = await start();
+    const anonymous = await json(url, '/v1/test/context', { hello: 'world' });
+    expect(anonymous.status).toBe(401);
+    expect(anonymous.headers.get('content-type')).toBe(PROBLEM_CONTENT_TYPE);
+    const signedIn = await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW });
+    const cookie = signedIn.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    const res = await json(url, '/v1/test/context', { hello: 'world' }, cookie);
+    expect(res.status).toBe(201);
+    const answer = (await res.json()) as { body: unknown; ctx: Record<string, unknown> };
+    expect(answer.body).toEqual({ hello: 'world' });
+    expect(answer.ctx).toMatchObject({ orgId: ORG, role: 'sales', workspaceIds: [WORKSPACE] });
+  });
+
+  it('leaves /api/auth and /healthz outside the tenant middleware', async () => {
+    const url = await start();
+    expect((await fetch(`${url}/api/auth/ok`)).status).toBe(200);
     expect((await fetch(`${url}/healthz`)).status).toBe(200);
   });
 });

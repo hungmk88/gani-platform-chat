@@ -37,4 +37,35 @@ describe('AuthService', () => {
     await service.onApplicationShutdown();
     expect(end).toHaveBeenCalledTimes(1);
   });
+
+  describe('activeOrganisationIds', () => {
+    const serviceAnswering = (rows: { org_id: string }[]) => {
+      const query = vi.fn(() => Promise.resolve({ rows }));
+      const create = vi.fn(() => ({
+        query,
+        end: vi.fn(),
+        on: vi.fn(),
+      })) as unknown as typeof createDbPool;
+      const env = { secret: SECRET, baseURL: 'https://app.example.test', secureCookies: true };
+      return { service: new AuthService(env, good.DATABASE_URL_AUTH, create), query };
+    };
+
+    it('lists none, one or several organisations in the order the database gave', async () => {
+      expect(await serviceAnswering([]).service.activeOrganisationIds('u')).toEqual([]);
+      expect(await serviceAnswering([{ org_id: 'a' }]).service.activeOrganisationIds('u')).toEqual([
+        'a',
+      ]);
+      const several = serviceAnswering([{ org_id: 'a' }, { org_id: 'b' }]);
+      expect(await several.service.activeOrganisationIds('u')).toEqual(['a', 'b']);
+    });
+
+    it('asks for active memberships only, passing the user as a bound parameter', async () => {
+      const { service, query } = serviceAnswering([]);
+      await service.activeOrganisationIds('person-1');
+      const [text, params] = query.mock.calls[0] as unknown as [string, string[]];
+      expect(text).toContain('app.memberships_for_user($1)');
+      expect(text).toContain("status = 'active'");
+      expect(params).toEqual(['person-1']);
+    });
+  });
 });
