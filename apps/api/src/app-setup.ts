@@ -6,14 +6,16 @@ import { AuthService } from './modules/auth/auth.service.js';
 import { DatabaseService } from './modules/database/database.service.js';
 import { SessionResolver } from './modules/request-context/session-resolver.js';
 import { createTenantContextMiddleware } from './modules/request-context/tenant-context.middleware.js';
+import { createTwoFactorGate } from './modules/request-context/two-factor.gate.js';
 
 type Mountable = {
   all(path: string, handler: ReturnType<typeof toNodeHandler>): unknown;
+  use(handler: ReturnType<typeof createTwoFactorGate>): unknown;
   use(path: string, handler: ReturnType<typeof createTenantContextMiddleware>): unknown;
 };
 
 /**
- * Puts the layers of the application in order (N90, N92): Better Auth at /api/auth/* BEFORE Nest starts its router (mounted later it
+ * Puts the layers of the application in order (N90, N92, N93): the 2FA gate first of all, then Better Auth at /api/auth/* BEFORE Nest starts its router (mounted later it
  * gets Nest's 404, measured), then Nest's JSON parser for the rest, then the tenant middleware on /v1, after the parser so the
  * request context is not lost while the body is read. The application is made with `bodyParser: false` so this order is ours.
  * Everything comes from the application's own providers, so a test replaces a provider instead of passing something here.
@@ -23,6 +25,13 @@ export function setupApp(app: NestExpressApplication): void {
   const express = app.getHttpAdapter().getInstance() as Mountable;
   const authService = app.get(AuthService);
   const database = app.get(DatabaseService);
+  // First of all, for /api/auth and /v1 alike (N93): nothing of Better Auth or of ours runs for a person who has to set up a second factor.
+  express.use(
+    createTwoFactorGate({
+      sessions: app.get(SessionResolver),
+      mustSetUp: (userId) => authService.mustSetUpTwoFactor(userId),
+    }),
+  );
   express.all('/api/auth/{*any}', toNodeHandler(authService.auth));
   app.useBodyParser('json');
   express.use(

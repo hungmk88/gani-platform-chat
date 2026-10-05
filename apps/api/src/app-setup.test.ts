@@ -57,7 +57,7 @@ const EMAIL = 'person@example.test';
 const PW = randomBytes(18).toString('base64url');
 let app: INestApplication | undefined;
 
-async function start(): Promise<string> {
+async function start(mustSetUp = false): Promise<string> {
   const base = 'http://localhost:3000';
   const env = loadAuthEnv({
     BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
@@ -106,6 +106,9 @@ async function start(): Promise<string> {
       auth,
       ping: () => Promise.resolve(true),
       activeOrganisationIds: () => Promise.resolve([ORG]),
+      mustSetUpTwoFactor: () => Promise.resolve(mustSetUp),
+      twoFactorStatus: () =>
+        Promise.resolve({ twoFactorEnabled: false, required: mustSetUp, mustSetUp }),
     })
     .compile();
   const nest = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
@@ -182,5 +185,30 @@ describe('setupApp', () => {
     const url = await start();
     expect((await fetch(`${url}/api/auth/ok`)).status).toBe(200);
     expect((await fetch(`${url}/healthz`)).status).toBe(200);
+  });
+
+  it('puts the 2FA gate in front of Better Auth and of /v1, and serves /v1/me/security-status past it', async () => {
+    const url = await start(true);
+    const signedIn = await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW });
+    expect(signedIn.status).toBe(200);
+    const cookie = signedIn.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    const blocked = await fetch(`${url}/api/auth/get-session`, { headers: { cookie } });
+    expect(blocked.status).toBe(403);
+    expect(await blocked.json()).toMatchObject({ code: 'TWO_FACTOR_SETUP_REQUIRED' });
+    expect((await json(url, '/v1/test/context', {}, cookie)).status).toBe(403);
+    const status = await fetch(`${url}/v1/ME/security-status`, { headers: { cookie } });
+    expect(status.status).toBe(200);
+    expect(await status.json()).toEqual({
+      twoFactorEnabled: false,
+      required: true,
+      mustSetUp: true,
+    });
+    const anonymous = await fetch(`${url}/v1/me/security-status`);
+    expect(anonymous.status).toBe(401);
+    // Express adds the charset to the type the controller set.
+    expect(anonymous.headers.get('content-type')).toContain(PROBLEM_CONTENT_TYPE);
   });
 });
