@@ -38,6 +38,8 @@ const people: Record<string, { id: string; email: string }> = {};
 let app: NestExpressApplication;
 let url = '';
 let port = 0;
+// Signed in BEFORE two_factor_enabled is set: once it is, /sign-in/email asks for the second step and issues no session cookie.
+let ownerYesCookie = '';
 
 async function person(key: string, role: string | null) {
   const id = randomUUID();
@@ -117,6 +119,7 @@ beforeAll(async () => {
   await app.listen(0, '127.0.0.1');
   url = await app.getUrl();
   port = (app.getHttpServer().address() as AddressInfo).port;
+  ownerYesCookie = await login('ownerYes');
 });
 
 afterAll(async () => {
@@ -149,7 +152,7 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
   });
 
   it('lets an owner who has a second factor in; the rule is read at every request, not at sign-in', async () => {
-    const cookie = await login('ownerYes');
+    const cookie = ownerYesCookie;
     expect((await raw(cookie, '/v1/test/protected', 'POST')).status).toBe(403);
     await admin.query('UPDATE users SET two_factor_enabled = true WHERE id = $1', [
       people['ownerYes']?.id,
@@ -173,7 +176,13 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
       nobody: { twoFactorEnabled: false, required: false, mustSetUp: false },
     };
     for (const [key, status] of Object.entries(want)) {
-      const cookie = await login(key);
+      if (key === 'ownerYes') {
+        // Idempotent: this test does not depend on the one above having run.
+        await admin.query('UPDATE users SET two_factor_enabled = true WHERE id = $1', [
+          people[key]?.id,
+        ]);
+      }
+      const cookie = key === 'ownerYes' ? ownerYesCookie : await login(key);
       for (const path of [
         '/v1/me/security-status',
         '/V1/me/security-status',
