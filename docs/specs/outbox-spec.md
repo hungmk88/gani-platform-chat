@@ -93,7 +93,7 @@ Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
 
 Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4 → sự kiện được đẩy lần hai sau khi hết hạn thuê. Đó là *at-least-once*.
 
-**Đã duyệt 06/10 (O1):** hướng A, tên `app.outbox_pending_orgs(p_limit int)`, **không thêm role**, `EXECUTE` **không** cấp cho `app_role` (chỉ `migration_role`). **Còn mở, phải chốt trước PR outbox (không chặn PR1):** ai gọi hàm? `worker/CLAUDE.md` và spec RLS §3 cho worker dùng `app_role`, mà `app_role` thì không gọi được. Nếu worker giữ thêm một kết nối `migration_role` (`BYPASSRLS`) thì một tiến trình chạy liên tục nắm quyền đọc mọi tenant, trái "chỉ pipeline migration, mỗi lần chạy ghi log". Hai lối: (1) cấp `EXECUTE` cho `app_role` (hàm chỉ trả `org_id`, không payload; lint `MIG-DEFINER` đã bắt buộc `search_path` cố định); (2) giữ như đã duyệt và ghi ngoại lệ có thời hạn cho kết nối `migration_role` của worker. Em nghiêng về (1).
+**Đã chốt 06/10 (O1):** hướng A, tên `app.outbox_pending_orgs(p_limit int)`, **không thêm role**, `EXECUTE` cấp cho **`app_role`** (worker dùng `app_role`, như `worker/CLAUDE.md`). Hàm chỉ trả `org_id`, không payload, không lộ dữ liệu; `MIG-DEFINER` đã bắt buộc `search_path` cố định. Không cấp cho `auth_role`, `support_role`, `PUBLIC`: test kiểm đúng tập quyền.
 
 ## 5. Hàng đợi và người tiêu thụ
 
@@ -119,7 +119,7 @@ Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4
 
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
-| O1 | Cơ chế đọc nhiều tenant (§4) | **Đã chốt 06/10:** hướng A, `app.outbox_pending_orgs`, không thêm role; mở: role nào gọi hàm (§4) | Chốt trước PR outbox |
+| O1 | Cơ chế đọc nhiều tenant (§4) | **Đã chốt 06/10:** hướng A, `app.outbox_pending_orgs`, `EXECUTE` cho `app_role`, không thêm role | Xong |
 | O2 | Tên hàng đợi sự kiện ra | `q.events.ws.{id}` / `q.events.org.{id}` | Cố vấn |
 | O3 | Payload tham chiếu hay chứa nội dung | Tham chiếu | Cố vấn |
 | O4 | Độ trễ cho phép từ commit tới phát realtime, ngưỡng báo động | poll 500ms, trễ P95 < 1 giây | CEO/Cố vấn |
