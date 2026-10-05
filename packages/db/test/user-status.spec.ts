@@ -14,8 +14,8 @@ async function newUser(status: 'pending_password' | 'active'): Promise<string> {
   const id = uuidv7();
   created.push(id);
   await admin.query(
-    `INSERT INTO users (id, email, status, pending_password_since)
-     VALUES ($1, $2, $3, CASE WHEN $3 = 'pending_password' THEN now() END)`,
+    `INSERT INTO users (id, email, status, pending_password_since, email_verified_at)
+     VALUES ($1, $2, $3, CASE WHEN $3 = 'pending_password' THEN now() END, CASE WHEN $3 = 'active' THEN now() END)`,
     [id, `${id}@example.test`, status],
   );
   return id;
@@ -92,9 +92,13 @@ describe('everything else is refused (23514, with a message that says why)', () 
     await expect(set).rejects.toThrow(/only be set together with the change/);
     const clear = auth.query('UPDATE users SET email_verified_at = NULL WHERE id = $1', [active]);
     await expect(clear).rejects.toThrow(/only be set together with the change/);
-    const touch = auth.query('UPDATE users SET email_verified_at = now() WHERE id = $1', [active]);
+    const touch = auth.query("UPDATE users SET email_verified_at = '2000-01-01' WHERE id = $1", [
+      active,
+    ]);
     expect(await sqlState(touch)).toBe('23514');
     expect((await row(pending))?.verified).toBe(false);
+    // The refused statements changed nothing: the verified user is still verified.
+    expect((await row(active))?.verified).toBe(true);
   });
 
   it('applies to migration_role as well', async () => {
