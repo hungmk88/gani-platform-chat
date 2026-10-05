@@ -121,13 +121,23 @@ describe('app.org_users', () => {
     );
   });
 
-  it('is read-only for app_role, and closed to support_role and to users itself', async () => {
-    expect(
-      await sqlState(asApp(A, () => app.query('INSERT INTO app.org_users DEFAULT VALUES'))),
-    ).toBe('42501');
-    expect(await sqlState(asApp(A, () => app.query('UPDATE app.org_users SET role = role')))).toBe(
-      '42501',
+  it('gives app_role no INSERT and no UPDATE privilege on the view', async () => {
+    const { rows } = await admin.query<{ can_insert: boolean; can_update: boolean }>(
+      `SELECT has_table_privilege('app_role', 'app.org_users', 'INSERT') AS can_insert,
+              has_table_privilege('app_role', 'app.org_users', 'UPDATE') AS can_update`,
     );
+    expect(rows).toEqual([{ can_insert: false, can_update: false }]);
+  });
+
+  // The view joins two tables, so it is not auto-updatable: PostgreSQL refuses with 55000 before it looks at privileges.
+  it('rejects INSERT and UPDATE on the view (55000: not updatable)', async () => {
+    const insert = () => app.query('INSERT INTO app.org_users DEFAULT VALUES');
+    const update = () => app.query('UPDATE app.org_users SET role = role');
+    expect(await sqlState(asApp(A, insert))).toBe('55000');
+    expect(await sqlState(asApp(A, update))).toBe('55000');
+  });
+
+  it('is closed to support_role, and app_role still cannot read users directly', async () => {
     expect(await sqlState(app.query('SELECT 1 FROM public.users'))).toBe('42501');
     expect(await sqlState(support.query('SELECT 1 FROM app.org_users'))).toBe('42501');
   });
