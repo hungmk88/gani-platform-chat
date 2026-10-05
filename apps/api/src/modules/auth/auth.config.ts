@@ -102,6 +102,12 @@ export function buildAuthOptions(
       max: 100,
       customRules: { '/sign-in/email': { window: 60, max: 10 } },
     },
+    // A one-time token is marked used_at, never deleted, and the library's habit of deleting expired rows on every read is switched
+    // off: cleaning is a job of migration_role (N87). usedAt is our column; the revoking adapter needs the library to know it.
+    verification: {
+      disableCleanup: true,
+      additionalFields: { usedAt: { type: 'date', required: false, input: false } },
+    },
     telemetry: { enabled: false },
   } satisfies BetterAuthOptions;
 }
