@@ -1,10 +1,10 @@
-import { createDbPool, pingDb } from '@gani/db';
+import { createDbPool, pingDb, withTenant, type TenantContext, type TenantTx } from '@gani/db';
 import { Logger, type OnApplicationShutdown } from '@nestjs/common';
 
 type DbPool = ReturnType<typeof createDbPool>;
 
 /** Only the SQLSTATE or system code of a driver error: its message can name hosts, roles or parameters. */
-function errorCode(error: Error): string {
+export function errorCode(error: Error): string {
   return 'code' in error && typeof error.code === 'string' ? error.code : 'unknown';
 }
 
@@ -28,6 +28,16 @@ export class DatabaseService implements OnApplicationShutdown {
 
   async ping(): Promise<boolean> {
     return this.pool !== null && (await pingDb(this.pool));
+  }
+
+  /** One transaction that acts for `ctx` on the pool of `app_role`: the only way the application reads tenant data (ADR-004). */
+  withTenant<T>(ctx: TenantContext, fn: (tx: TenantTx) => Promise<T>): Promise<T> {
+    if (this.pool === null) {
+      return Promise.reject(
+        new Error('DATABASE_URL_APP is not set: no tenant transaction is possible'),
+      );
+    }
+    return withTenant(this.pool, ctx, fn);
   }
 
   async onApplicationShutdown(): Promise<void> {

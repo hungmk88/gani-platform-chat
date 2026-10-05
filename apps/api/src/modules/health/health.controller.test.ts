@@ -5,16 +5,22 @@ import { Test } from '@nestjs/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../../app.module.js';
+import { AuthService } from '../auth/auth.service.js';
 import { DatabaseService } from '../database/database.service.js';
 import { HealthController } from './health.controller.js';
 
 let app: INestApplication | undefined;
 
-/** The real AppModule, with the database replaced by a stub that answers `ping()` as given. */
-async function start(ping: () => Promise<boolean>): Promise<string> {
+/** The real AppModule, with both databases replaced by stubs that answer `ping()` as given (the sign-in one is up by default). */
+async function start(
+  ping: () => Promise<boolean>,
+  authPing: () => Promise<boolean> = () => Promise.resolve(true),
+): Promise<string> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(DatabaseService)
     .useValue({ ping })
+    .overrideProvider(AuthService)
+    .useValue({ ping: authPing })
     .compile();
   app = moduleRef.createNestApplication();
   await app.listen(0, '127.0.0.1');
@@ -56,6 +62,15 @@ describe('GET /readyz', () => {
     const response = await fetch(`${await start(() => Promise.resolve(false))}/readyz`);
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ status: 'unavailable' });
+  });
+
+  it('answers 503 when only the database of sign-in is down, and /healthz still answers', async () => {
+    const url = await start(
+      () => Promise.resolve(true),
+      () => Promise.resolve(false),
+    );
+    expect((await fetch(`${url}/readyz`)).status).toBe(503);
+    expect((await fetch(`${url}/healthz`)).status).toBe(200);
   });
 
   it('answers a generic 500 and leaks nothing if the check itself breaks (a bug, not "down")', async () => {
