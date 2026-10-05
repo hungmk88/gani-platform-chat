@@ -66,7 +66,7 @@ const state = async (id: string) =>
       status: string;
       verified: Date | null;
     }>(
-      `SELECT failed_login_count AS failed, locked_until IS NOT NULL AS locked, extract(epoch FROM locked_until - now()) / 60 AS mins,
+      `SELECT failed_login_count AS failed, locked_until IS NOT NULL AS locked, (extract(epoch FROM locked_until - now()) / 60)::float8 AS mins,
             status, email_verified_at AS verified FROM users WHERE id = $1`,
       [id],
     )
