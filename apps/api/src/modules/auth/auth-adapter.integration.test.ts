@@ -43,6 +43,16 @@ const options = {
     },
   },
   advanced: { database: { generateId: () => randomUUID() } },
+  // The hook 6c-2b will use: nothing about the caller is stored (sessions_ip_address_check allows only NULL or ''). Better Auth
+  // writes 127.0.0.1 when it has no address, and the user agent header when there is one.
+  databaseHooks: {
+    session: {
+      create: {
+        before: (session: Record<string, unknown>) =>
+          Promise.resolve({ data: { ...session, ipAddress: '', userAgent: '' } }),
+      },
+    },
+  },
   telemetry: { enabled: false },
 } as const;
 const adapter = drizzleAdapter(createAuthDb(authPool), {
