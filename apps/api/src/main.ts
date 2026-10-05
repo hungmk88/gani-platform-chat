@@ -2,8 +2,11 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module.js';
+import { setupApp } from './app-setup.js';
+import { AuthService } from './modules/auth/auth.service.js';
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '127.0.0.1';
@@ -18,7 +21,9 @@ function readPort(raw: string | undefined): number {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // bodyParser is off on purpose: setupApp mounts Better Auth first and then the JSON parser.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  setupApp(app, app.get(AuthService).auth);
   app.enableShutdownHooks();
   const port = readPort(process.env['PORT']);
   const host = process.env['HOST'] || DEFAULT_HOST;
