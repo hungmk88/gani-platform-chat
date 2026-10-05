@@ -1,26 +1,33 @@
 import type { BetterAuthOptions } from 'better-auth';
 import type { AdapterFactory, DBAdapter, DBTransactionAdapter, Where } from 'better-auth/adapters';
 
-// Better Auth ends a session by DELETE; auth_role has no DELETE and a session is revoked, not removed (ADR-003, N79).
-// A delete of a session becomes UPDATE revoked_at and reads leave revoked ones out (Better Auth does not know revoked_at and would
-// treat them as valid); other models pass through. It relies on better-auth's adapter interface: re-run the integration test on upgrade.
+// Better Auth ends a session and a one-time token by DELETE; auth_role has no DELETE (ADR-003, N79, N87). A delete becomes an UPDATE
+// that marks the row (sessions: revoked_at, verifications: used_at) and reads leave marked rows out, because Better Auth does not
+// know the marker and would treat them as still valid. Consuming a one-time token is a claim: UPDATE ... WHERE id AND marker IS NULL,
+// so of two requests for the same token PostgreSQL lets exactly one update the row. Other models pass through. It relies on the
+// adapter interface and the internals of better-auth: re-run the integration tests on every upgrade.
 
-const SESSION = 'session';
-const LIVE: Where = { field: 'revokedAt', value: null, operator: 'eq' };
+const MARKER = { session: 'revokedAt', verification: 'usedAt' } as const;
+const markerOf = (model: string): string | undefined =>
+  Object.hasOwn(MARKER, model) ? MARKER[model as keyof typeof MARKER] : undefined;
+const unmarked = (field: string): Where => ({ field, value: null, operator: 'eq' });
 
-const live = (model: string, where: Where[] | undefined): Where[] | undefined =>
-  model === SESSION ? [...(where ?? []), LIVE] : where;
+const live = (model: string, where: Where[] | undefined): Where[] | undefined => {
+  const field = markerOf(model);
+  return field === undefined ? where : [...(where ?? []), unmarked(field)];
+};
 
 function wrap<O extends BetterAuthOptions>(
   inner: DBTransactionAdapter<O>,
   now: () => Date,
 ): DBTransactionAdapter<O> {
-  const revoke = (model: string, where: Where[]): Promise<number> => {
+  // Marks the live rows that match; returns how many.
+  const end = (model: string, field: string, where: Where[]): Promise<number> => {
     const at = now();
     return inner.updateMany({
       model,
-      where: [...where, LIVE],
-      update: { revokedAt: at, updatedAt: at },
+      where: [...where, unmarked(field)],
+      update: { [field]: at, updatedAt: at },
     });
   };
   return {
@@ -30,16 +37,32 @@ function wrap<O extends BetterAuthOptions>(
     findMany: (data) => inner.findMany({ ...data, where: live(data.model, data.where) }),
     count: (data) => inner.count({ ...data, where: live(data.model, data.where) }),
     delete: async (data) => {
-      if (data.model !== SESSION) return inner.delete(data);
-      await revoke(data.model, data.where);
+      const field = markerOf(data.model);
+      if (field === undefined) return inner.delete(data);
+      await end(data.model, field, data.where);
     },
-    deleteMany: (data) =>
-      data.model === SESSION ? revoke(data.model, data.where) : inner.deleteMany(data),
-    // Only verifications are consumed today; fail loudly if that changes instead of deleting a session.
-    consumeOne: (data) => {
-      if (data.model === SESSION)
+    deleteMany: (data) => {
+      const field = markerOf(data.model);
+      return field === undefined ? inner.deleteMany(data) : end(data.model, field, data.where);
+    },
+    consumeOne: async <T>(data: { model: string; where: Where[] }): Promise<T | null> => {
+      if (data.model === 'session') {
         throw new Error('revoking adapter: consumeOne on a session is not supported');
-      return inner.consumeOne(data);
+      }
+      const field = markerOf(data.model);
+      if (field === undefined) return inner.consumeOne<T>(data);
+      const row = await inner.findOne<T & { id: string }>({
+        model: data.model,
+        where: [...data.where, unmarked(field)],
+      });
+      if (!row) return null;
+      const at = now();
+      const won = await inner.update({
+        model: data.model,
+        where: [{ field: 'id', value: row.id }, unmarked(field)],
+        update: { [field]: at, updatedAt: at },
+      });
+      return won ? row : null;
     },
   };
 }
