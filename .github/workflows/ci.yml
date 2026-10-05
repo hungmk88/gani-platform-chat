@@ -122,6 +122,9 @@ jobs:
           export DATABASE_URL_SUPPORT="postgres://support_test_login:${SUPPORT_TEST_LOGIN_PASSWORD}@${base}"
           pnpm --filter @gani/db migrate
           pnpm --filter @gani/db test:integration
+          # Better Auth on the real adapter as auth_role (N79); reuses this job's PostgreSQL. Split it into its own job if it adds > 30 s.
+          pnpm --filter @gani/db build
+          pnpm --filter @gani/api test:integration
       - name: PostgreSQL log
         if: failure()
         run: docker logs pg 2>&1 | tail -n 60

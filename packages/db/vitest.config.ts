@@ -12,6 +12,7 @@ export default defineConfig({
         ...coverage.exclude,
         'src/tenant-tx.ts',
         'src/auth-tx.ts',
+        'src/auth-db.ts',
         'src/pool.ts',
         'src/schema/**',
       ],
