@@ -15,6 +15,7 @@ import {
 } from './password.js';
 import { revokingAdapter } from './revoking-adapter.js';
 import { MAX_SESSION_MS, sessionCreateBefore } from './session-hooks.js';
+import { switchActiveOrg } from './switch-active-org.js';
 
 // The whole configuration of Better Auth in one place (ADR-003, N79, N81, N82, N83). It takes the checked environment, never process.env.
 // Routes that make or change a user are shut: users come from app.accept_invite and the trigger on users, and nothing here sends
@@ -115,6 +116,7 @@ export function createAuth(args: { pool: ReturnType<typeof createDbPool>; env: A
   return betterAuth(
     buildAuthOptions(args.env, revokingAdapter(adapter), {
       lockout: loginLockout(args.pool),
+      plugins: [switchActiveOrg(args.pool)],
     }),
   );
 }
