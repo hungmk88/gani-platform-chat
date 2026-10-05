@@ -1,8 +1,8 @@
 import type { createDbPool } from '@gani/db';
 
 // The rule that Owner, Admin and platform operators use a second factor (ADR-003, N86, N89). Better Auth cannot enforce a rule by role,
-// so it is enforced here and the gate is placed by the code that serves each route: /switch-org uses it now, the HTTP middleware of 6d
-// must use it for every route of the application (the checklist is in N89). Not placing the gate there means no rule.
+// so it is enforced here and the gate is placed by the code that serves each route: /switch-org uses it, and the gate at the edge of
+// the HTTP server (two-factor.gate.ts, N93) uses it for every route of the application (the checklist is in N89).
 type Pool = ReturnType<typeof createDbPool>;
 
 export const TWO_FACTOR_SETUP_REQUIRED = {
@@ -46,4 +46,25 @@ export async function mustSetUpTwoFactor(pool: Pool, userId: string): Promise<bo
     [userId],
   );
   return rows[0]?.must === true;
+}
+
+export interface TwoFactorStatus {
+  twoFactorEnabled: boolean;
+  required: boolean;
+  mustSetUp: boolean;
+}
+
+/** What `GET /v1/me/security-status` tells the client, from the same rule and one query, so `mustSetUp` cannot disagree with the gate. */
+export async function twoFactorStatus(pool: Pool, userId: string): Promise<TwoFactorStatus | null> {
+  const { rows } = await pool.query<{ enabled: boolean; required: boolean }>(
+    `SELECT u.two_factor_enabled AS enabled, ${REQUIRED} AS required FROM users u WHERE u.id = $1 AND u.deleted_at IS NULL`,
+    [userId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    twoFactorEnabled: row.enabled,
+    required: row.required,
+    mustSetUp: row.required && !row.enabled,
+  };
 }

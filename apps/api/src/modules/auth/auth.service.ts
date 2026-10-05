@@ -4,6 +4,7 @@ import { Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { errorCode } from '../database/database.service.js';
 import { createAuth } from './auth.config.js';
 import { loadAuthEnv, type AuthEnv } from './auth.env.js';
+import { mustSetUpTwoFactor, twoFactorStatus, type TwoFactorStatus } from './two-factor.js';
 
 type DbPool = ReturnType<typeof createDbPool>;
 export type AuthInstance = ReturnType<typeof createAuth>;
@@ -49,6 +50,15 @@ export class AuthService implements OnApplicationShutdown {
       [userId],
     );
     return rows.map((row) => row.org_id);
+  }
+
+  /** Must this person set up a second factor and has not (N89)? Asked by the gate at the edge on every request that has a session. */
+  mustSetUpTwoFactor(userId: string): Promise<boolean> {
+    return mustSetUpTwoFactor(this.pool, userId);
+  }
+
+  twoFactorStatus(userId: string): Promise<TwoFactorStatus | null> {
+    return twoFactorStatus(this.pool, userId);
   }
 
   async onApplicationShutdown(): Promise<void> {
