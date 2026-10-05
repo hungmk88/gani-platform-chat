@@ -1,10 +1,12 @@
 import { authSchema, createAuthDb, type createDbPool } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
-import { betterAuth, type BetterAuthOptions } from 'better-auth';
+import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'better-auth';
+import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
 import type { AdapterFactory } from 'better-auth/adapters';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 
 import type { AuthEnv } from './auth.env.js';
+import { loginLockout, WRONG_CREDENTIALS, type LoginLockout } from './login-lockout.js';
 import {
   hashPassword,
   MAX_PASSWORD_LENGTH,
@@ -25,11 +27,22 @@ const DISABLED_PATHS = [
   '/update-session',
   '/send-verification-email',
   '/two-factor/disable',
+  // Password reset by token is not used: users set their password through our own flow (PR7), and /reset-password makes an account
+  // when there is none. A parametrised path such as /reset-password/:token cannot be listed here (the library compares the real path),
+  // so that route is closed in the hook below.
+  '/reset-password',
+  '/request-password-reset',
 ];
+const SIGN_IN = '/sign-in/email';
 
 type Database = AdapterFactory<BetterAuthOptions>;
 
-export function buildAuthOptions(env: AuthEnv, database: Database) {
+/** `lockout` and `plugins` need the database (createAuth); without them buildAuthOptions is the pure part, which the unit tests use. */
+export function buildAuthOptions(
+  env: AuthEnv,
+  database: Database,
+  extras: { lockout?: LoginLockout; plugins?: BetterAuthPlugin[] } = {},
+) {
   return {
     baseURL: env.baseURL,
     secret: env.secret,
@@ -60,6 +73,25 @@ export function buildAuthOptions(env: AuthEnv, database: Database) {
       defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },
     },
     databaseHooks: { session: { create: { before: sessionCreateBefore() } } },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        // Only over HTTP: a call from our own server code has no request.
+        if (ctx.request && ctx.path === '/reset-password/:token') {
+          throw APIError.from('NOT_FOUND', { code: 'NOT_FOUND', message: 'Not Found' });
+        }
+        if (ctx.path === SIGN_IN && (await extras.lockout?.isLocked(ctx.body)) === true) {
+          throw APIError.from('UNAUTHORIZED', WRONG_CREDENTIALS);
+        }
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== SIGN_IN || !extras.lockout) return;
+        const returned = ctx.context.returned;
+        if (isAPIError(returned)) {
+          if (returned.body?.code === WRONG_CREDENTIALS.code) await extras.lockout.failed(ctx.body);
+        } else if (ctx.context.newSession) await extras.lockout.succeeded(ctx.body);
+      }),
+    },
+    plugins: extras.plugins ?? [],
     disabledPaths: DISABLED_PATHS,
     // Explicit: the library enables its limiter only in production. In memory, so exact for one instance only (N79).
     rateLimit: {
@@ -80,5 +112,9 @@ export function createAuth(args: { pool: ReturnType<typeof createDbPool>; env: A
     schema: authSchema,
     usePlural: true,
   });
-  return betterAuth(buildAuthOptions(args.env, revokingAdapter(adapter)));
+  return betterAuth(
+    buildAuthOptions(args.env, revokingAdapter(adapter), {
+      lockout: loginLockout(args.pool),
+    }),
+  );
 }

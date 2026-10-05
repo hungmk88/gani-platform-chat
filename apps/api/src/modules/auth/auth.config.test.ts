@@ -109,11 +109,14 @@ describe('closed doors', () => {
     ['POST', '/update-user'],
     ['POST', '/update-session'],
     ['POST', '/send-verification-email'],
+    ['POST', '/reset-password'],
+    ['POST', '/request-password-reset'],
+    ['GET', '/reset-password/sometoken'],
   ])(
     '%s %s is 404, and is not 404 once disabledPaths is emptied (so the 404 is ours)',
     async (method, path) => {
       const shut = await world();
-      const open = await world(HTTP, (o) => ({ ...o, disabledPaths: [] }));
+      const open = await world(HTTP, (o) => ({ ...o, disabledPaths: [], hooks: {} }));
       expect((await call(shut.auth, HTTP, path, method)).status).toBe(404);
       expect((await call(open.auth, HTTP, path, method)).status).not.toBe(404);
     },
