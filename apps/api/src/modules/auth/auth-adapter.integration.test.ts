@@ -1,15 +1,14 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { hash, verify } from '@node-rs/argon2';
-import { authSchema, createAuthDb, createDbPool } from '@gani/db';
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { createDbPool } from '@gani/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { revokingAdapter } from './revoking-adapter.js';
+import { createAuth } from './auth.config.js';
+import { loadAuthEnv } from './auth.env.js';
+import { hashPassword } from './password.js';
 
-// N79: Better Auth on the real Drizzle adapter, as auth_role, on PostgreSQL: sign-in, session read, sign-out and password change
-// must work under auth_role's grants (no DELETE). Re-run it on every upgrade of better-auth.
+// N79, N83: Better Auth as it is really configured (createAuth), on the real Drizzle adapter, as auth_role, on PostgreSQL: sign-in,
+// session read, sign-out and password change must work under auth_role's grants (no DELETE). Re-run it on every upgrade of better-auth.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -23,48 +22,26 @@ const user = randomUUID();
 const email = `${user}@example.test`;
 const authPool = createDbPool(need('DATABASE_URL_AUTH'), { max: 3 });
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
-
-const options = {
-  baseURL: 'http://localhost:3000',
-  secret: randomBytes(32).toString('hex'),
-  emailAndPassword: {
-    enabled: true,
-    password: {
-      hash: (p: string) => hash(p),
-      verify: ({ hash: h, password }: { hash: string; password: string }) => verify(h, password),
-    },
-  },
-  session: {
-    expiresIn: 12 * 3600,
-    disableSessionRefresh: true,
-    additionalFields: {
-      revokedAt: { type: 'date', required: false, input: false },
-      activeOrgId: { type: 'string', required: false, input: false },
-    },
-  },
-  advanced: { database: { generateId: () => randomUUID() } },
-  // The hook 6c-2b will use: nothing about the caller is stored (sessions_ip_address_check allows only NULL or ''). Better Auth
-  // writes 127.0.0.1 when it has no address, and the user agent header when there is one.
-  databaseHooks: {
-    session: {
-      create: {
-        before: (session: Record<string, unknown>) =>
-          Promise.resolve({ data: { ...session, ipAddress: '', userAgent: '' } }),
-      },
-    },
-  },
-  telemetry: { enabled: false },
-} as const;
-const adapter = drizzleAdapter(createAuthDb(authPool), {
-  provider: 'pg',
-  schema: authSchema,
-  usePlural: true,
+const env = loadAuthEnv({
+  BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
+  BETTER_AUTH_URL: 'http://localhost:3000',
+  APP_ENV: 'test',
+  AUTH_ALLOW_HTTP: 'true',
 });
-const auth = betterAuth({ ...options, database: revokingAdapter(adapter) });
+const auth = createAuth({ pool: authPool, env });
+// The sign-in limit counts per address: every sign-in comes from its own, so no test depends on how many ran before it.
+const freshIp = () => [...randomBytes(4)].join('.');
 
 const signIn = async (instance: typeof auth, password = PASSWORD) => {
-  const res = await instance.api.signInEmail({ body: { email, password }, asResponse: true });
-  const cookie = (res.headers.getSetCookie() ?? []).map((c) => c.split(';')[0]).join('; ');
+  const res = await instance.api.signInEmail({
+    body: { email, password },
+    headers: new Headers({ 'x-forwarded-for': freshIp() }),
+    asResponse: true,
+  });
+  const cookie = res.headers
+    .getSetCookie()
+    .map((c) => c.split(';')[0])
+    .join('; ');
   return { status: res.status, headers: new Headers({ cookie }) };
 };
 const rows = async () =>
@@ -84,7 +61,7 @@ beforeAll(async () => {
   await admin.query(
     // account_id is text and user_id is uuid: one parameter cannot serve both (42P08), so the id is passed twice.
     `INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $3, 'credential', $4)`,
-    [randomUUID(), user, user, await hash(PASSWORD)],
+    [randomUUID(), user, user, await hashPassword(PASSWORD)],
   );
 });
 
