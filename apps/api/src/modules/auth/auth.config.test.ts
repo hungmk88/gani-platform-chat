@@ -3,12 +3,14 @@ import { randomBytes } from 'node:crypto';
 import { uuidv7 } from '@gani/domain';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { memoryAdapter } from 'better-auth/adapters/memory';
+import { twoFactor } from 'better-auth/plugins';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildAuthOptions } from './auth.config.js';
 import { loadAuthEnv } from './auth.env.js';
 import { hashPassword } from './password.js';
 import { revokingAdapter } from './revoking-adapter.js';
+import { secretOf, totp } from './testing/totp.js';
 
 // The whole configuration on the real Better Auth with the in-memory adapter (no database). The rate limiter keeps its counters per
 // process, not per instance, so every test uses its own address (N83). The same configuration runs on PostgreSQL in
@@ -34,6 +36,7 @@ async function world(url = HTTP, tweak: (o: Options) => Options = (o) => o) {
     session: [] as Row[],
     account: [] as Row[],
     verification: [] as Row[],
+    twoFactor: [] as Row[],
   };
   const built: Options = buildAuthOptions(env, revokingAdapter(memoryAdapter(db)));
   const options = tweak(built);
@@ -77,11 +80,23 @@ const cookie = (res: Response) =>
       .map((c) => c.split(';')[0])
       .join('; '),
   });
-const call = (auth: Auth, url: string, path: string, method = 'POST', body: object = {}) =>
+const call = (
+  auth: Auth,
+  url: string,
+  path: string,
+  method = 'POST',
+  body: object = {},
+  as?: string,
+) =>
   auth.handler(
     new Request(`${url}/api/auth${path}`, {
       method,
-      headers: { 'content-type': 'application/json', origin: url, 'x-forwarded-for': freshIp() },
+      headers: {
+        'content-type': 'application/json',
+        origin: url,
+        'x-forwarded-for': freshIp(),
+        ...(as ? { cookie: as } : {}),
+      },
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     }),
   );
@@ -112,6 +127,9 @@ describe('closed doors', () => {
     ['POST', '/reset-password'],
     ['POST', '/request-password-reset'],
     ['GET', '/reset-password/sometoken'],
+    ['POST', '/two-factor/disable'],
+    ['POST', '/two-factor/send-otp'],
+    ['POST', '/two-factor/verify-otp'],
   ])(
     '%s %s is 404, and is not 404 once disabledPaths is emptied (so the 404 is ours)',
     async (method, path) => {
@@ -122,9 +140,8 @@ describe('closed doors', () => {
     },
   );
 
-  it('lists /two-factor/disable ahead of the plugin, and keeps telemetry off', async () => {
+  it('keeps telemetry off', async () => {
     const { options } = await world();
-    expect(options.disabledPaths).toContain('/two-factor/disable');
     expect(options.telemetry?.enabled).toBe(false);
   });
 });
@@ -266,5 +283,147 @@ describe('the sign-in limit', () => {
     for (let i = 0; i < 11; i++) codes.push((await attempt(ip)).status);
     expect(codes).toEqual([...Array<number>(10).fill(401), 429]);
     expect((await attempt(freshIp())).status).toBe(401);
+  });
+});
+
+describe('two-factor', () => {
+  const cookieOf = (res: Response) =>
+    res.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+  const json = async (res: Response) => (await res.json()) as Record<string, unknown>;
+  const hasSession = (res: Response) =>
+    res.headers.getSetCookie().some((c) => /session_token=[^;]+/.test(c));
+  const verify = (auth: Auth, from: Response, code: string, extra: object = {}) =>
+    call(auth, HTTP, '/two-factor/verify-totp', 'POST', { code, ...extra }, cookieOf(from));
+
+  const rekey = (o: Options, secrets: { version: number; value: string }[]) => {
+    const next: Options = { ...o, secrets };
+    return betterAuth(next);
+  };
+
+  async function enrolled(tweak?: (o: Options) => Options) {
+    const w = await world(HTTP, tweak);
+    const first = await signIn(w.auth);
+    const enable = await call(
+      w.auth,
+      HTTP,
+      '/two-factor/enable',
+      'POST',
+      { password: PW },
+      cookieOf(first),
+    );
+    const { totpURI, backupCodes } = (await json(enable)) as {
+      totpURI: string;
+      backupCodes: string[];
+    };
+    const secret = secretOf(totpURI);
+    return { ...w, secret, backupCodes, first, enable };
+  }
+
+  it('enabling makes no session; the first correct code confirms it, makes a new session and revokes the old one', async () => {
+    const { auth, db, secret, first } = await enrolled();
+    expect(db.session).toHaveLength(1);
+    expect(db.twoFactor[0]?.['verified']).toBe(false);
+    expect((await verify(auth, first, totp(secret))).status).toBe(200);
+    expect(db.session).toHaveLength(2);
+    expect(db.session[0]?.['revokedAt']).toBeInstanceOf(Date);
+    expect(db.user[0]?.['twoFactorEnabled']).toBe(true);
+    expect(db.twoFactor[0]?.['verified']).toBe(true);
+  });
+
+  it('keeps the secret and the backup codes encrypted under the versioned key', async () => {
+    const { db } = await enrolled();
+    expect(db.twoFactor[0]?.['secret']).toMatch(/^\$ba\$1\$/);
+    expect(db.twoFactor[0]?.['backupCodes']).toMatch(/^\$ba\$1\$/);
+  });
+
+  it('asks for the code after the password and gives the session only for the code', async () => {
+    const { auth, secret, first } = await enrolled();
+    await verify(auth, first, totp(secret));
+    const password = await signIn(auth);
+    expect((await json(password))['twoFactorRedirect']).toBe(true);
+    expect(hasSession(password)).toBe(false);
+    const step = await verify(auth, password, totp(secret));
+    expect(step.status).toBe(200);
+    expect(hasSession(step)).toBe(true);
+  });
+
+  it('accepts a backup code once', async () => {
+    const { auth, secret, first, backupCodes } = await enrolled();
+    await verify(auth, first, totp(secret));
+    const use = async () =>
+      call(
+        auth,
+        HTTP,
+        '/two-factor/verify-backup-code',
+        'POST',
+        { code: backupCodes[0] },
+        cookieOf(await signIn(auth)),
+      );
+    expect((await use()).status).toBe(200);
+    expect((await use()).status).toBe(401);
+  });
+
+  it('locks the enrolment after 5 wrong codes: the 6th, even the right one, is 429', async () => {
+    const { auth, db, secret, first } = await enrolled();
+    await verify(auth, first, totp(secret));
+    const statuses: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      statuses.push(
+        (await verify(auth, await signIn(auth), i < 5 ? '000000' : totp(secret))).status,
+      );
+    }
+    expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(db.twoFactor[0]?.['failedVerificationCount']).toBe(5);
+    expect(db.twoFactor[0]?.['lockedUntil']).toBeInstanceOf(Date);
+  });
+
+  // Control: with the plugin's own default the cookie of "trust this device" lets the next sign-in in without a code.
+  it.each([
+    ['as configured (trustDeviceMaxAge 0)', undefined, true],
+    [
+      'with the library default (30 days): the way round',
+      (o: Options) => ({ ...o, plugins: [twoFactor({ issuer: 'Gani' })] }),
+      false,
+    ],
+  ])('trust this device %s: the code is asked again = %s', async (_label, tweak, asksAgain) => {
+    const { auth, secret, first } = await enrolled(tweak);
+    await verify(auth, first, totp(secret));
+    const trusted = await verify(auth, await signIn(auth), totp(secret), { trustDevice: true });
+    const trust = trusted.headers
+      .getSetCookie()
+      .find((c) => c.startsWith('better-auth.trust_device='));
+    const again = await auth.api.signInEmail({
+      body: { email: EMAIL, password: PW },
+      headers: new Headers({ cookie: trust?.split(';')[0] ?? '', 'x-forwarded-for': freshIp() }),
+      asResponse: true,
+    });
+    expect((await json(again))['twoFactorRedirect'] === true).toBe(asksAgain);
+  });
+
+  it('survives a key change while the old key is kept, encrypts anew under the new one, and fails once the old key is gone', async () => {
+    const w = await enrolled();
+    await verify(w.auth, w.first, totp(w.secret));
+    const old = w.options.secrets?.[0]?.value ?? '';
+    const fresh = randomBytes(32).toString('hex');
+    const both = rekey(w.options, [
+      { version: 2, value: fresh },
+      { version: 1, value: old },
+    ]);
+    const step = await verify(both, await signIn(both), totp(w.secret));
+    expect(step.status).toBe(200);
+    await call(
+      both,
+      HTTP,
+      '/two-factor/generate-backup-codes',
+      'POST',
+      { password: PW },
+      cookieOf(step),
+    );
+    expect(w.db.twoFactor[0]?.['backupCodes']).toMatch(/^\$ba\$2\$/);
+    const only = rekey(w.options, [{ version: 2, value: fresh }]);
+    expect((await verify(only, await signIn(only), totp(w.secret))).status).not.toBe(200);
   });
 });

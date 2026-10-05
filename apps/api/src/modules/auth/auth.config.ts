@@ -4,6 +4,7 @@ import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'bette
 import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
 import type { AdapterFactory } from 'better-auth/adapters';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { twoFactor } from 'better-auth/plugins';
 
 import type { AuthEnv } from './auth.env.js';
 import { loginLockout, WRONG_CREDENTIALS, type LoginLockout } from './login-lockout.js';
@@ -28,6 +29,9 @@ const DISABLED_PATHS = [
   '/update-session',
   '/send-verification-email',
   '/two-factor/disable',
+  // No sender is configured for one-time codes by message: TOTP and backup codes are the only second factors.
+  '/two-factor/send-otp',
+  '/two-factor/verify-otp',
   // Password reset by token is not used: users set their password through our own flow (PR7), and /reset-password makes an account
   // when there is none. A parametrised path such as /reset-password/:token cannot be listed here (the library compares the real path),
   // so that route is closed in the hook below.
@@ -46,7 +50,10 @@ export function buildAuthOptions(
 ) {
   return {
     baseURL: env.baseURL,
-    secret: env.secret,
+    // With a version, what the 2FA plugin encrypts (secret, backup codes) carries it, so a key can be replaced without re-encrypting at
+    // once; replacing it signs everyone out (cookies are signed with the current key only) and the old one must stay until the
+    // enrolments are re-encrypted (N86, N88).
+    secrets: [{ version: 1, value: env.secret }],
     trustedOrigins: [env.baseURL],
     database,
     emailAndPassword: {
@@ -92,7 +99,17 @@ export function buildAuthOptions(
         } else if (ctx.context.newSession) await extras.lockout.succeeded(ctx.body);
       }),
     },
-    plugins: extras.plugins ?? [],
+    plugins: [
+      twoFactor({
+        issuer: 'Gani',
+        // 5 wrong codes in a row lock the enrolment for 30 minutes, kept in two_factors; the lock of the account (users) is separate.
+        accountLockout: { enabled: true, maxFailedAttempts: 5, durationSeconds: 1800 },
+        // 0 turns "trust this device" off. Left alone, a client that sends trustDevice: true gets a cookie that skips the second
+        // factor for 30 days (measured): a way round the rule that Owner, Admin and platform operators use 2FA.
+        trustDeviceMaxAge: 0,
+      }),
+      ...(extras.plugins ?? []),
+    ],
     disabledPaths: DISABLED_PATHS,
     // Explicit: the library enables its limiter only in production. In memory, so exact for one instance only (N79).
     rateLimit: {
