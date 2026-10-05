@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import { hash, verify } from '@node-rs/argon2';
 import { authSchema, createAuthDb, createDbPool } from '@gani/db';
@@ -16,8 +16,9 @@ const need = (name: string): string => {
     throw new Error(`${name} is not set: this test needs PostgreSQL (see the db job of CI)`);
   return value;
 };
-const PASSWORD = 'Passw0rd-long-enough';
-const NEW_PASSWORD = 'Another-long-pass-9';
+// Generated, never written down: nothing in this file looks like a credential.
+const PASSWORD = randomBytes(18).toString('base64url');
+const NEW_PASSWORD = randomBytes(18).toString('base64url');
 const user = randomUUID();
 const email = `${user}@example.test`;
 const authPool = createDbPool(need('DATABASE_URL_AUTH'), { max: 3 });
@@ -25,7 +26,7 @@ const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 
 const options = {
   baseURL: 'http://localhost:3000',
-  secret: 'integration-test-secret-0123456789abcdef',
+  secret: randomBytes(32).toString('hex'),
   emailAndPassword: {
     enabled: true,
     password: {
@@ -71,8 +72,9 @@ beforeAll(async () => {
     [user, email],
   );
   await admin.query(
-    `INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $2, 'credential', $3)`,
-    [randomUUID(), user, await hash(PASSWORD)],
+    // account_id is text and user_id is uuid: one parameter cannot serve both (42P08), so the id is passed twice.
+    `INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $3, 'credential', $4)`,
+    [randomUUID(), user, user, await hash(PASSWORD)],
   );
 });
 
