@@ -1,8 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import type { orgMembers } from '@gani/db';
-
-export type OrgRole = (typeof orgMembers.$inferSelect)['role'];
+import type { OrgRole } from '@gani/db';
 
 /**
  * Who a request acts for, decided by the server from the session and the database, never by the client (rule 1). Built once
