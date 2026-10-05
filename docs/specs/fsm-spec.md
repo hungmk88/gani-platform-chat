@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **NHÁP — chờ duyệt** (Brief rủi ro S2: "FSM hiểu sai → review FSM với cố vấn đầu sprint") |
+| Trạng thái | **ĐÃ DUYỆT 06/10/2026**; điều chỉnh đã ghi trong bản; câu hỏi chưa chốt xử lý khi code tới |
 | Nguồn | Brief P14 (bảng + bổ sung v0.4), P10 F1/F6, P3.2 mục 3 và 9, P8 M04; Phụ lục v2.1 §3, §9, v2.3 §20 |
 | Liên quan | `outbox-spec.md` (sự kiện đi cùng transaction), `realtime-spec.md` (`sequence_number`, `version`), N75 (bảng khung `conversations`), ADR-004 |
 | Ngày | 06/10/2026 |
@@ -22,7 +22,7 @@ Hai lớp, tách để test được không cần DB:
 | `decide(current, event) → Decision \| InvalidTransition` | `packages/domain` (thuần, không I/O) | Tra bảng §2. Trả `{ next: {state, hold, assignedUserId}, effects[] }` |
 | `ConversationStateMachine` | `apps/api/src/modules/conversations` | Mở `TenantTx`, đọc, gọi `decide`, ghi (§4). **Nơi duy nhất** được đổi cột FSM |
 
-Cột do FSM sở hữu: `state`, `version`, `assigned_user_id`, `after_hours_hold`, `closed_at`, `outcome`. Cột ngoài FSM (`last_message_at`, `last_sequence_number`, `updated_at`) do luồng tin nhắn ghi.
+Cột do FSM sở hữu: `state`, `version`, `assigned_user_id`, `after_hours_hold`, `closed_at`, `outcome`. Cột ngoài FSM (`last_message_at`, `updated_at`) do luồng tin nhắn ghi.
 
 ## 2. Bảng transition (nguồn: P14; số thứ tự là của đặc tả này)
 
@@ -116,7 +116,7 @@ PK `(id, occurred_at)`, partition tháng bằng `app.create_log_partitions` (nh�
 | F4 | Giá trị `outcome` ("Won/Lost/giải quyết") và bot đóng (T04) ghi gì | `won`, `lost`, `resolved`, `resolved_by_bot` | CEO |
 | F5 | Mốc 72h tính từ `closed_at`? | Có | Cố vấn |
 | F6 | `invalid_transition` không có trong bảng mã lỗi P9 | Thêm `409 invalid_transition`; Brief liệt kê đóng nên cần duyệt | Cố vấn |
-| F7 | `conversation_events` là **O** (P8) còn `conversations` là **O+W**: người không có workspace đó vẫn đọc được event (id, trạng thái, người) của hội thoại ở workspace khác trong cùng org | Thêm `workspace_id` và RLS O+W cho events, lệch P8 | Cố vấn |
+| F7 | `conversation_events` là **O** (P8) còn `conversations` là **O+W**: người không có workspace đó vẫn đọc được event của hội thoại ở workspace khác trong cùng org | **Đã chốt 06/10:** giữ **O** theo Brief (không thêm `workspace_id`) **và** thêm test bắt buộc "workspace A không thấy event của workspace B". Để test đạt, policy `conversation_events_app` thêm `EXISTS (SELECT 1 FROM conversations c WHERE c.org_id = conversation_events.org_id AND c.id = conversation_events.conversation_id)`: RLS của `conversations` lọc theo workspace nên event chỉ thấy khi hội thoại thấy (cả `USING` và `WITH CHECK`). Cách này là đề xuất của em, chờ xác nhận ở dàn ý PR1 | Xác nhận cách |
 | F8 | Bộ hẹn giờ cho T07, T17, T18, T19, T08 chưa có chủ (SLA S4, presence S4) | S2 chỉ cung cấp phương thức + test; người gọi làm ở S4 | Chốt phạm vi |
 
 ## 9. Nghiệm thu (đóng mốc S2 "Transition test pass")
@@ -126,5 +126,5 @@ PK `(id, occurred_at)`, partition tháng bằng `app.create_log_partitions` (nh�
 3. **Nguyên tử**: ép lỗi sau bước 4 → không đổi trạng thái, không event, không outbox.
 4. **Chặn đường tắt (§5)**: `app_role` đổi `state` trực tiếp → lỗi; quét mã không thấy vi phạm.
 5. **Bất biến (§3)**: mỗi `CHECK` có một ca ghi sai bị từ chối.
-6. **Cô lập**: workspace khác không thấy, không đổi được; trả `404`.
+6. **Cô lập**: workspace khác không thấy, không đổi được; trả `404`. **Cả `conversation_events`** (F7): người có workspace A không đọc, không ghi được event của hội thoại ở workspace B.
 7. **Mutation** (bắt buộc, ghi kết quả vào PR): bỏ `state=$from` khỏi `WHERE` → `claim-race` đỏ; bỏ `READ COMMITTED` → ca 40001 đỏ; bỏ một dòng khỏi bảng → test quét đỏ; gỡ trigger → ca 4 đỏ.

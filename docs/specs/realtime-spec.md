@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| Trạng thái | **NHÁP — chờ duyệt** |
+| Trạng thái | **ĐÃ DUYỆT 06/10/2026**; điều chỉnh đã ghi trong bản; câu hỏi chưa chốt xử lý khi code tới |
 | Nguồn | Brief P9 (mục Realtime), P14 (dòng "Realtime"), P5, P8 (`messages`), P10 F1; Phụ lục v2.1 (`sequence_number`), v2.2 §17; `apps/admin/CLAUDE.md` |
 | Liên quan | `fsm-spec.md`, `outbox-spec.md`, N90–N93 (request context, cổng 2FA), N40 (Valkey) |
 | Ngày | 06/10/2026 |
 
 **Phạm vi S2 ("Socket.IO khung"):** namespace `/agent`; xác thực lúc bắt tay; phòng; ba sự kiện `message.created`, `conversation.state_changed`, `conversation.assigned`; `conversation.subscribe`; `resume`; adapter Valkey. **Ngoài S2:** `/widget` (đợt 2/3, chưa có widget token), `typing`, `agent.presence` (cần cho T17–T20 ở S4), `lead.score_changed` (S4), `ai.suggestion_ready` (S5).
 
-> **Điểm em suy ra, Brief không viết — cần duyệt:** §2 (bắt tay phải tự lặp lại cổng 2FA và chọn org), §4 (ngữ nghĩa `sequence_number`, mâu thuẫn P10 bước 2), §3 (định tuyến phòng), §6 (kiểm lại phiên). Chỗ chưa chốt ở §8.
+> **Điểm em suy ra, Brief không viết — cần duyệt:** §2 (bắt tay phải tự lặp lại cổng 2FA và chọn org), §4 (ngữ nghĩa `sequence_number`, mâu thuẫn P10 bước 2), §3 (định tuyến phòng), §6 (kiểm lại phiên). Chỗ chưa chốt ở §8. **Đã duyệt 06/10:** §2 bắt tay tự kiểm 2FA (N1 bắt buộc), §4 (R2, R8), §6 (R5); còn lại chốt khi code tới.
 
 ## 1. Vận chuyển và triển khai
 
@@ -62,17 +62,19 @@ Khung gói chung: `{ eventId, type, version, occurredAt, traceId, aggregateVersi
 
 Vì sao worker phát, không phải API: có N instance API, nếu mỗi instance cùng tiêu thụ hàng đợi thì mỗi sự kiện bị phát N lần.
 
-## 4. `sequence_number` — nền của `resume`
+## 4. `sequence_number` — nền của `resume` (đã duyệt 06/10: R2, R8)
 
-- Thêm cột `conversations.last_sequence_number bigint NOT NULL DEFAULT 0` (không phải cột FSM, không đổi `version`: ghi tin không làm lệch `version` của người đang thao tác).
-- Cùng transaction với `INSERT messages`:
+- **Cấp số** trong cùng transaction với `INSERT messages`, bằng khóa tư vấn theo hội thoại:
   ```sql
-  UPDATE conversations SET last_sequence_number = last_sequence_number + 1, last_message_at = now()
-  WHERE id = $1 RETURNING last_sequence_number;   -- giá trị này là sequence_number của tin
+  SELECT pg_advisory_xact_lock(hashtext(:conversation_id::text));
+  SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM messages WHERE org_id = :org AND conversation_id = :c;  -- rồi INSERT
   ```
-- **Vì sao bộ đếm dòng chứ không phải `SEQUENCE`/`max()+1`:** khóa dòng làm các tin cùng hội thoại xếp hàng, nên **thứ tự commit = thứ tự số**. Người đọc không bao giờ thấy 6 trước khi 5 commit, nên `resume` với `last=6` không bỏ sót 5. `SEQUENCE` có lỗ hổng và đảo thứ tự commit; `max()+1` va nhau. Hội thoại khác nhau không tranh nhau. Rollback hoàn lại bộ đếm: không có lỗ trong dữ liệu đã commit.
-- **Ngữ nghĩa (mâu thuẫn P10 bước 2, xem R2):** `sequence_number` là **thứ tự đến DB**, chỉ thêm vào cuối, không bao giờ đánh số lại. P10 nói tin về trễ "sắp theo `platform_sent_at`": hiểu là **thứ tự hiển thị** (client sắp theo `platformSentAt`, rồi `sequenceNumber`), không phải số thứ tự. Nếu đánh số theo `platform_sent_at`, tin chèn giữa sẽ không bao giờ tới client đã qua mốc đó.
-- `UNIQUE (org_id, conversation_id, sequence_number)` **không dựng được** vì `messages` partition tháng (khóa duy nhất phải chứa cột partition). Giữ chỉ mục thường như P8; tính duy nhất do bộ đếm đảm bảo, **test chứng minh** (N4). Ghi rõ vì khác bình thường (R8).
+  Không cột đếm trên `conversations` (bỏ `last_sequence_number` của bản nháp đầu): ghi tin không cần chạm dòng `conversations` để cấp số, nên không tranh với FSM.
+- **Vì sao đúng:** khóa giữ tới COMMIT, nên các tin cùng hội thoại xếp hàng và **thứ tự commit = thứ tự số**; người đọc không thấy 6 trước khi 5 commit, nên `resume` với `last=6` không bỏ sót 5 (điều mà `SEQUENCE` và `max()+1` không khóa không đảm bảo). `READ COMMITTED` đọc lại `MAX` sau khi có khóa nên thấy số của người trước. Khóa mức transaction dùng được sau pooler chế độ transaction. Hội thoại khác nhau không chờ nhau; `hashtext` 32 bit va nhau thì chỉ chờ thừa, không sai.
+- **Thứ tự khóa (tránh deadlock với FSM):** luồng ghi tin luôn lấy **khóa tư vấn trước, dòng `conversations` sau** (khi cập nhật `last_message_at` và gọi FSM). Luồng không ghi tin (claim, transfer…) chỉ khóa dòng, không lấy khóa tư vấn, nên không có chu trình.
+- **Ngữ nghĩa (R2, đã duyệt):** `sequence_number` cấp lúc **ghi vào DB** (`MAX+1`) nên là thứ tự đến, không bao giờ đánh số lại. **Thứ tự hiển thị** theo P10 bước 2: client sắp theo `(platformSentAt, platformMessageId)`; `platformMessageId` phá thế hòa. Tin Zalo về trễ nhận số cao hơn và hiện đúng chỗ theo giờ gửi. Spec này **không** đánh số theo `platform_sent_at`: tin chèn giữa sẽ có số nhỏ hơn con trỏ của client và `resume` không bao giờ trả nó về. Nếu ý anh là đánh số theo `platform_sent_at` thì báo lại, vì `resume` phải đổi thiết kế.
+- `UNIQUE (org_id, conversation_id, sequence_number)` **không dựng được** vì `messages` partition tháng (khóa duy nhất phải chứa cột partition). Giữ chỉ mục thường như P8; tính duy nhất do khóa tư vấn đảm bảo, **test chứng minh** (N4). Đã duyệt (R8).
+- `MAX()` quét chỉ mục `(org_id, conversation_id, sequence_number)` ở từng partition; hội thoại dài nhiều tháng quét nhiều partition. Chấp nhận ở quy mô P5 (~75.000 tin/tháng); đo ở N4.
 
 ## 5. `resume`
 
@@ -80,27 +82,27 @@ Client → `resume { conversationId, lastSequenceNumber }` (ack). Zod: `conversa
 
 Thứ tự **bắt buộc** (đảo là mất tin):
 
-1. Kiểm lại phiên (§6), không dùng bộ đệm.
+1. Kiểm lại phiên (§6): bộ đệm có TTL 60 giây, hết hạn thì đọc mới.
 2. **Vào phòng `conv:{id}` trước** (cùng kiểm quyền như `subscribe`).
-3. Đọc `state, hold, version, assigned_user_id, last_sequence_number` của hội thoại.
+3. Đọc `state, hold, version, assigned_user_id` của hội thoại và `MAX(sequence_number)` của nó.
 4. Đọc `messages WHERE conversation_id=$1 AND sequence_number > $2 ORDER BY sequence_number LIMIT 200`.
 5. Ack `{ ok:true, conversation:{…}, messages:[…], hasMore, resync }`.
 
 Vào phòng trước khi đọc → tin đến giữa chừng vừa được phát trực tiếp vừa có thể nằm trong trang phát lại; client khử trùng theo `sequenceNumber` và **đệm** tin trực tiếp có số lớn hơn số kế tiếp cho tới khi phát lại xong. Đọc trước rồi mới vào phòng → có khoảng hở mất tin.
 
 - `hasMore` → client gọi lại với số cuối của trang. Giới hạn 200 để một client không kéo cả hội thoại.
-- `lastSequenceNumber` > `last_sequence_number` của server (client lạc hậu/đổi môi trường) → `resync: true`, `messages: []`; client tải lại bằng REST cursor.
+- `lastSequenceNumber` > `MAX(sequence_number)` của server (client lạc hậu/đổi môi trường) → `resync: true`, `messages: []`; client tải lại bằng REST cursor.
 - Trạng thái lỡ (`state_changed`) được sửa bằng ảnh chụp `conversation` kèm `version` trong ack.
 - Brief chỉ định `resume` theo từng hội thoại. Danh sách Inbox (phòng `ws:`) sau khi kết nối lại: client **tải lại danh sách bằng REST** (R10).
 - Giới hạn: 10 `resume`/10 giây/socket → `rate_limited`.
 
-## 6. Kiểm lại phiên (không để quyền cũ sống mãi)
+## 6. Kiểm lại phiên (không để quyền cũ sống mãi) — đã duyệt 06/10: R5
 
-Bắt tay chỉ kiểm một lần, nhưng kết nối sống hàng giờ: người bị đăng xuất, khóa, thôi việc, hay mất vai trò vẫn nhận tin. Đề xuất:
+Bắt tay chỉ kiểm một lần, nhưng kết nối sống hàng giờ: người bị đăng xuất, khóa, thôi việc, hay mất vai trò vẫn nhận tin. Chốt: **bộ đệm phiên có TTL 60 giây + kiểm lại định kỳ**, không kiểm ở mỗi tin.
 
-- Mỗi **60 giây** (`SOCKET_REVALIDATE_S`) và trước mỗi `subscribe`/`resume`: chạy lại bước 2–5 của §2. Thất bại → `socket.disconnect(true)` với mã; `workspaceIds` đổi → rời/vào phòng `ws:` theo phần chênh.
-- **Bẫy đã thấy trong mã:** `SessionResolver` đệm theo **đối tượng request** (WeakMap) để mỗi request chỉ tra một lần. Với socket, `socket.request` sống suốt kết nối, nên đệm đó **vĩnh viễn** và không bao giờ thấy phiên đã thu hồi. Lần kiểm lại phải đi đường không đệm (khóa đệm mới mỗi lần, hoặc cờ `fresh`), và có test (N9).
-- 500 kết nối / 60 giây ≈ 8 truy vấn/giây: chấp nhận được. Chặn tức thì khi đăng xuất/khóa (`io.in('user:{id}').disconnectSockets()`) cần móc vào Better Auth, để sau (R5).
+- Kết quả bước 2–5 của §2 được giữ trong `socket.data` kèm `checkedAt`. Hết 60 giây (`SOCKET_REVALIDATE_S`) thì chạy lại bước 2–5, bằng bộ đếm giờ mỗi socket và trước mỗi `subscribe`/`resume` nếu bản ghi đã quá hạn. Thất bại → `socket.disconnect(true)` với mã; `workspaceIds` đổi → rời/vào phòng `ws:` theo phần chênh. Quyền cũ sống tối đa ~60 giây sau khi bị thu hồi.
+- **Bẫy đã thấy trong mã:** `SessionResolver` đệm theo **đối tượng request** (WeakMap, không TTL) để mỗi request chỉ tra một lần. Với socket, `socket.request` sống suốt kết nối, nên đệm đó **vĩnh viễn** và không bao giờ thấy phiên đã thu hồi. Lần kiểm lại phải đi đường không dùng WeakMap đó (cờ `fresh` hoặc khóa đệm mới), có TTL riêng, và có test (N9).
+- 500 kết nối / 60 giây ≈ 8 truy vấn/giây: chấp nhận được. Chặn tức thì khi đăng xuất/khóa (`io.in('user:{id}').disconnectSockets()`) cần móc vào Better Auth, để sau.
 
 ## 7. Lỗi, giới hạn, quan sát
 
@@ -114,13 +116,13 @@ Bắt tay chỉ kiểm một lần, nhưng kết nối sống hàng giờ: ngư�
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
 | R1 | `/widget` có tạo ở S2 không | Không; chưa có widget token (đợt 2/3) | Chốt phạm vi |
-| R2 | `sequence_number`: thứ tự đến hay `platform_sent_at` (P10 bước 2) | Thứ tự đến; hiển thị theo `platform_sent_at` | **Cố vấn** |
+| R2 | `sequence_number` vs `platform_sent_at` (P10 bước 2) | **Đã chốt 06/10:** cấp số lúc ghi (`MAX+1`), hiển thị theo `(platform_sent_at, platform_message_id)`; xem §4 về cách hiểu | Xong |
 | R3 | Phòng `ws:` nhận tin đầy đủ hay rút gọn | Rút gọn, không nội dung | Cố vấn |
 | R4 | Sự kiện socket cho transfer/reassign | Dùng `conversation.assigned` có `previousUserId` | Cố vấn |
-| R5 | Chu kỳ kiểm lại phiên; móc đăng xuất/khóa | 60 giây; móc để sau | Cố vấn |
+| R5 | Chu kỳ kiểm lại phiên | **Đã chốt 06/10:** TTL 60 giây + kiểm lại định kỳ; móc đăng xuất/khóa để sau | Xong |
 | R6 | WebSocket-only hay sticky | WebSocket-only; kiểm với LB khi chốt Q2 | Q2 |
 | R7 | NestJS 12 với `@nestjs/platform-socket.io` chưa kiểm chứng | Thử ở PR đầu; không hợp thì gắn `socket.io` thẳng vào HTTP server | Quyết ở PR |
-| R8 | Không dựng được `UNIQUE` cho `sequence_number` do partition | Test chứng minh thay | Cố vấn |
+| R8 | Không dựng được `UNIQUE` cho `sequence_number` do partition | **Đã chốt 06/10:** khóa tư vấn theo hội thoại + `MAX+1`; test N4 chứng minh | Xong |
 | R9 | `typing`, `agent.presence` | Ngoài S2; presence làm ở S4 cùng routing | Chốt phạm vi |
 | R10 | Danh sách Inbox sau kết nối lại | Tải lại bằng REST | Cố vấn |
 | R11 | Phụ thuộc mới (§1) | Duyệt cùng PR | Anh |
@@ -134,11 +136,11 @@ Postgres + Valkey, chạy trên CI (N16).
 | N1 | Bắt tay | không cookie → `unauthorized`; **chủ org chưa thiết lập 2FA → `TWO_FACTOR_SETUP_REQUIRED`** (chứng minh cổng Express không phủ socket); không org → `NO_ORGANISATION`; `Origin` lạ → từ chối |
 | N2 | Cô lập phòng | hai client ở workspace A và B (và hai org): phát 20 sự kiện mỗi bên → **0** gói chéo |
 | N3 | `subscribe` | hội thoại workspace khác → `not_found`, không phân biệt được với id bịa |
-| N4 | `sequence_number` | 50 tin đồng thời cùng hội thoại → đúng `1..50`, không trùng, không lỗ; người đọc thăm dò không thấy lỗ; rollback không để lỗ |
+| N4 | `sequence_number` | 50 tin đồng thời cùng hội thoại → đúng `1..50`, không trùng, không lỗ; người đọc thăm dò không thấy lỗ; rollback không để lỗ; tin về trễ (giờ gửi cũ) nhận số cao hơn và vẫn được `resume` trả về |
 | N5 | `resume` | ngắt client, gửi 120 tin, nối lại với `last=k` → nhận đúng `k+1..120`, qua `hasMore`; tin trực tiếp đến **giữa lúc phát lại** không mất, không trùng (chèn trễ ở bước 4) |
 | N6 | Nhiều instance | 2 API + Valkey: sự kiện từ worker tới client nối vào instance bất kỳ |
 | N7 | Tải | 500 kết nối đồng thời + phát tới tất cả, ghi thời gian vào PR |
 | N8 | Kiểm lại phiên | khóa thành viên/đăng xuất → socket bị ngắt trong chu kỳ (thu ngắn trong test) |
-| N9 | Bộ đệm | thu hồi phiên sau khi kết nối → `resume` kế tiếp bị từ chối |
+| N9 | Bộ đệm TTL | thu hồi phiên sau khi kết nối → socket bị ngắt hoặc `resume` bị từ chối trong vòng một TTL (TTL thu ngắn trong test); không còn sống mãi |
 
-**Mutation** (ghi kết quả vào PR): bỏ kiểm quyền ở `subscribe` → N2/N3 đỏ; đổi bộ đếm thành `max()+1` → N4 đỏ; đọc trước khi vào phòng → N5 đỏ; dùng bộ đệm theo request cho socket → N9 đỏ; bỏ bước 3 của bắt tay → N1 đỏ.
+**Mutation** (ghi kết quả vào PR): bỏ kiểm quyền ở `subscribe` → N2/N3 đỏ; bỏ khóa tư vấn (chỉ `MAX+1`) → N4 đỏ; đọc trước khi vào phòng → N5 đỏ; dùng WeakMap theo request cho socket → N9 đỏ; bỏ bước 3 của bắt tay → N1 đỏ.

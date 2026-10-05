@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **NHÁP — chờ duyệt** |
+| Trạng thái | **ĐÃ DUYỆT 06/10/2026**; điều chỉnh đã ghi trong bản; câu hỏi chưa chốt xử lý khi code tới |
 | Nguồn | Phụ lục v2.3 §21, v2.2 §14, §15, §17; Brief P3.2 mục 21, P8 (`outbox_events`), P9 (`DomainEvent`), P10 F4; `apps/worker/CLAUDE.md` |
 | Liên quan | `fsm-spec.md` (nơi ghi sự kiện), `realtime-spec.md` (người tiêu thụ đầu tiên), N16, N40, ADR-004 |
 | Ngày | 06/10/2026 |
@@ -71,11 +71,11 @@ Vấn đề: relay phải thấy sự kiện của **mọi** org, nhưng `app_ro
 | B. Role thứ 5 `relay_role` có `BYPASSRLS` | Đơn giản | Thêm role lệch P16 (đã thêm `auth_role` một lần); BYPASSRLS đọc được payload mọi tenant |
 | C. Dùng `migration_role` | Không cần gì thêm | Cấm (CLAUDE.md, spec RLS §3: chỉ pipeline migration) |
 
-Hướng A: `app.orgs_with_pending_outbox(p_limit int) RETURNS TABLE(org_id uuid)`, `STABLE SECURITY DEFINER`, `search_path` cố định, chỉ `EXECUTE` cho `app_role`, chỉ trả org còn tồn tại và có dòng `pending` đến hạn. Không trả payload.
+Hướng A: `app.outbox_pending_orgs(p_limit int) RETURNS TABLE(org_id uuid)`, `STABLE SECURITY DEFINER`, `search_path` cố định, chỉ trả org còn tồn tại và có dòng `pending` đến hạn. Không trả payload.
 
 Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
 
-1. `orgs = orgs_with_pending_outbox(50)`; xử lý tối đa 4 org song song.
+1. `orgs = outbox_pending_orgs(50)`; xử lý tối đa 4 org song song.
 2. **Giữ chỗ** (`TenantTx` của org, giao dịch ngắn):
    ```sql
    UPDATE outbox_events SET status='claimed', claimed_at=now(), attempts=attempts+1
@@ -92,6 +92,8 @@ Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
 `backoff(n) = min(2^n giây, 60 giây)`. Hạn mức 5 lần mượn từ webhook vào (v2.2 §14), Brief không nói cho outbox (O7).
 
 Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4 → sự kiện được đẩy lần hai sau khi hết hạn thuê. Đó là *at-least-once*.
+
+**Đã duyệt 06/10 (O1):** hướng A, tên `app.outbox_pending_orgs(p_limit int)`, **không thêm role**, `EXECUTE` **không** cấp cho `app_role` (chỉ `migration_role`). **Còn mở, phải chốt trước PR outbox (không chặn PR1):** ai gọi hàm? `worker/CLAUDE.md` và spec RLS §3 cho worker dùng `app_role`, mà `app_role` thì không gọi được. Nếu worker giữ thêm một kết nối `migration_role` (`BYPASSRLS`) thì một tiến trình chạy liên tục nắm quyền đọc mọi tenant, trái "chỉ pipeline migration, mỗi lần chạy ghi log". Hai lối: (1) cấp `EXECUTE` cho `app_role` (hàm chỉ trả `org_id`, không payload; lint `MIG-DEFINER` đã bắt buộc `search_path` cố định); (2) giữ như đã duyệt và ghi ngoại lệ có thời hạn cho kết nối `migration_role` của worker. Em nghiêng về (1).
 
 ## 5. Hàng đợi và người tiêu thụ
 
@@ -117,7 +119,7 @@ Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4
 
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
-| O1 | Cơ chế đọc nhiều tenant (§4) | Hướng A | **Cố vấn** (hàm mới ngoài danh sách; có thể là role mới nếu bác A) |
+| O1 | Cơ chế đọc nhiều tenant (§4) | **Đã chốt 06/10:** hướng A, `app.outbox_pending_orgs`, không thêm role; mở: role nào gọi hàm (§4) | Chốt trước PR outbox |
 | O2 | Tên hàng đợi sự kiện ra | `q.events.ws.{id}` / `q.events.org.{id}` | Cố vấn |
 | O3 | Payload tham chiếu hay chứa nội dung | Tham chiếu | Cố vấn |
 | O4 | Độ trễ cho phép từ commit tới phát realtime, ngưỡng báo động | poll 500ms, trễ P95 < 1 giây | CEO/Cố vấn |
