@@ -9,7 +9,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
-import { AuthService } from './modules/auth/auth.service.js';
 import { hashPassword } from './modules/auth/password.js';
 import { DatabaseService } from './modules/database/database.service.js';
 
@@ -58,7 +57,7 @@ beforeAll(async () => {
   }
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
-  setupApp(app, app.get(AuthService).auth);
+  setupApp(app);
   await app.listen(0, '127.0.0.1');
   url = await app.getUrl();
 });

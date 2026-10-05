@@ -38,6 +38,19 @@ export class AuthService implements OnApplicationShutdown {
     return pingDb(this.pool);
   }
 
+  /**
+   * Ids of the organisations in which `userId` is an ACTIVE member (a left, suspended or deleted membership is not listed), for the
+   * tenant middleware when the session has no usable organisation yet. Goes through `app.memberships_for_user` because without a
+   * tenant context `app_role` can read nothing. `userId` must be the person of an authenticated session, never a request value (N76).
+   */
+  async activeOrganisationIds(userId: string): Promise<string[]> {
+    const { rows } = await this.pool.query<{ org_id: string }>(
+      `SELECT org_id FROM app.memberships_for_user($1) WHERE status = 'active' ORDER BY org_id`,
+      [userId],
+    );
+    return rows.map((row) => row.org_id);
+  }
+
   async onApplicationShutdown(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
