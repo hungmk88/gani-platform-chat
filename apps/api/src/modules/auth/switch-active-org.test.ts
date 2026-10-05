@@ -19,15 +19,20 @@ const BASE = 'http://localhost:3000';
 const PW = randomBytes(18).toString('base64url');
 type Row = Record<string, unknown>;
 
-async function world() {
+async function world(mustSetUp = false) {
   const db = {
     user: [] as Row[],
     session: [] as Row[],
     account: [] as Row[],
     verification: [] as Row[],
   };
-  const query = vi.fn((_sql: string, params: unknown[]) =>
-    Promise.resolve({ rowCount: params[1] === A || params[1] === B ? 1 : 0 }),
+  // Two kinds of question reach the pool: the rule about the second factor (one parameter) and the membership (two).
+  const query = vi.fn((sql: string, params: unknown[]) =>
+    Promise.resolve(
+      sql.includes('is_platform_operator')
+        ? { rows: [{ must: mustSetUp }] }
+        : { rowCount: params[1] === A || params[1] === B ? 1 : 0 },
+    ),
   );
   const env = loadAuthEnv({
     BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
@@ -117,6 +122,20 @@ describe('POST /switch-org', () => {
     expect((await post(undefined)).status).toBe(400);
     expect(db.session).toHaveLength(1);
     expect(await read(cookie)).not.toBeNull();
+  });
+
+  it('answers 403 TWO_FACTOR_SETUP_REQUIRED to a person who must set up a second factor, before looking at anything else', async () => {
+    const { db, post, query } = await world(true);
+    const res = await post(A);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'TWO_FACTOR_SETUP_REQUIRED' });
+    expect((await post('not-a-uuid')).status).toBe(403);
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).not.toHaveBeenCalledWith(
+      expect.stringContaining('memberships_for_user($1) WHERE'),
+      expect.anything(),
+    );
+    expect(db.session).toHaveLength(1);
   });
 
   it('needs a signed-in session', async () => {
