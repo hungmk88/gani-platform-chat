@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { attemptsOf, statusCounts, writeEvents } from './db.js';
+import { attemptsOf, publishedAmong, statusCounts, writeEvents } from './db.js';
 import { spawnWorker, valkey, waitFor, workerEnv } from './harness.js';
 import { useQueueSuite } from './suite.js';
 
@@ -44,7 +44,7 @@ describe('K1: Valkey stopped', () => {
     expect(ids.filter((id) => !consumer.received.has(id))).toEqual([]);
   });
 
-  it('K1b: Valkey stopped while the worker is sending, events written meanwhile: all 200 are delivered', async () => {
+  it('K1b: Valkey stopped while the worker is sending, events written meanwhile: they wait, then all 200 are delivered', async () => {
     const org = await suite.newOrg();
     const first = await writeEvents(suite.app, org, 100);
     const worker = spawnWorker('dist/main.js', workerEnv());
@@ -53,17 +53,22 @@ describe('K1: Valkey stopped', () => {
       label: 'the worker to publish the first events',
     });
 
+    // The queue is up: the relay has not failed on the organisation yet.
+    expect(worker.logs('relay_org_failed')).toEqual([]);
     await valkey('stop');
     const second = await writeEvents(suite.app, org, 100);
-    // Some event is still unpublished and has been tried and put back: the relay saw the queue go down.
-    await waitFor(
-      async () => {
-        const counts = await statusCounts(suite.admin, org);
-        return counts.published < 200 && (await attemptsOf(suite.admin, org, 'pending')).max >= 1;
-      },
-      { timeoutMs: 20_000, label: 'the relay to meet the stopped Valkey' },
-    );
-    expect(worker.logs('publish_failed').length).toBeGreaterThan(0);
+    // The relay now knows the queue of the organisation, so the first thing it does in a pass is to ask the queue how full it is
+    // (backpressure). With Valkey down that question fails before anything is claimed: the organisation is skipped and logged, the
+    // events stay pending and no attempt is used (unlike K1a, where the relay knows no queue yet). Outbox spec §10 K1 as adjusted in N99.
+    await worker.waitLog('relay_org_failed', {
+      timeoutMs: 20_000,
+      where: (line) => line.orgId === org,
+    });
+    expect(await publishedAmong(suite.admin, org, second)).toBe(0);
+    const during = await statusCounts(suite.admin, org);
+    expect(during.dead_letter).toBe(0);
+    expect(during.published).toBeLessThan(200);
+    expect(during.published + during.pending + during.claimed).toBe(200);
 
     await valkey('start');
     await waitFor(async () => (await statusCounts(suite.admin, org)).published === 200, {

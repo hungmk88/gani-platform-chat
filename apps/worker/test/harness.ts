@@ -20,6 +20,27 @@ export interface WaitOptions {
   /** What is waited for: it goes into the failure message. */
   readonly label: string;
   readonly everyMs?: number;
+  /** Add the state given by `reportOnTimeout` to the failure message (default true). */
+  readonly report?: boolean;
+}
+
+let reporter: (() => Promise<string>) | undefined;
+
+/**
+ * What every `waitFor` that runs out of time adds to its message: the state of the test (the outbox rows, the worker logs). A test
+ * that goes red must carry the evidence to classify the failure; this is for diagnosis only and changes no deadline.
+ */
+export function reportOnTimeout(report: (() => Promise<string>) | undefined): void {
+  reporter = report;
+}
+
+async function stateAtDeadline(options: WaitOptions): Promise<string> {
+  if (options.report === false || !reporter) return '';
+  try {
+    return `\n--- state at the deadline ---\n${await reporter()}`;
+  } catch (error) {
+    return `\n--- state at the deadline: not available (${error instanceof Error ? error.message : String(error)}) ---`;
+  }
 }
 
 /**
@@ -42,7 +63,7 @@ export async function waitFor<T>(
     }
     if (Date.now() >= deadline)
       throw new Error(
-        `timed out after ${options.timeoutMs} ms waiting for ${options.label} (last: ${last})`,
+        `timed out after ${options.timeoutMs} ms waiting for ${options.label} (last: ${last})${await stateAtDeadline(options)}`,
       );
     await new Promise((resolve) => setTimeout(resolve, options.everyMs ?? 200));
   }
@@ -51,6 +72,20 @@ export async function waitFor<T>(
 /** Stops or starts the Valkey container of the job (`docker run --name`): the one thing a test does to the server. */
 export async function valkey(action: 'stop' | 'start'): Promise<void> {
   await exec('docker', [action, requireEnv('VALKEY_CONTAINER')], { timeout: 60_000 });
+}
+
+/** What Docker says about the Valkey container (`running`, `exited`, ...), for the state a failure reports. */
+export async function valkeyStatus(): Promise<string> {
+  try {
+    const { stdout } = await exec(
+      'docker',
+      ['inspect', '--format', '{{.State.Status}}', requireEnv('VALKEY_CONTAINER')],
+      { timeout: 20_000 },
+    );
+    return stdout.trim();
+  } catch {
+    return 'unknown';
+  }
 }
 
 /** Starts Valkey if a test left it stopped, and waits until it answers: one test must not poison the next. */
@@ -93,6 +128,18 @@ export interface WorkerProcess {
 const isLine = (value: unknown): value is LogLine => typeof value === 'object' && value !== null;
 
 const running = new Set<ChildProcess>();
+const spawned: { readonly entry: string; readonly tail: (count?: number) => string }[] = [];
+
+/** The end of the log of every worker this test started, for the state a failure reports. */
+export function workerTails(count = 40): string {
+  if (spawned.length === 0) return 'no worker was started';
+  return spawned
+    .map(
+      (w) =>
+        `--- worker ${w.entry}: last ${count} lines ---\n${w.tail(count) || '(it printed nothing)'}`,
+    )
+    .join('\n');
+}
 
 /**
  * Starts the worker as a real process, from `apps/worker`: `entry` is a path relative to it (`dist/main.js`, or the crash entry of
@@ -131,6 +178,7 @@ export function spawnWorker(entry: string, env: Readonly<Record<string, string>>
       }
     });
   const tail = (count = 40): string => lines.slice(-count).join('\n');
+  spawned.push({ entry, tail });
   return {
     logs: (message) => parsed().filter((line) => line.message === message),
     async waitLog(message, options) {
@@ -141,7 +189,7 @@ export function spawnWorker(entry: string, env: Readonly<Record<string, string>>
             Promise.resolve(
               parsed().find((l) => l.message === message && (options.where?.(l) ?? true)),
             ),
-          { timeoutMs: options.timeoutMs, label },
+          { timeoutMs: options.timeoutMs, label, report: false },
         );
       } catch (error) {
         throw new Error(
@@ -180,7 +228,9 @@ export async function killWorkers(): Promise<void> {
   await waitFor(() => Promise.resolve(running.size === 0), {
     timeoutMs: 10_000,
     label: 'the worker processes to end',
+    report: false,
   });
+  spawned.splice(0);
 }
 
 /** The settings of a worker in a test: the waits are short, everything else is what a deployment has. */

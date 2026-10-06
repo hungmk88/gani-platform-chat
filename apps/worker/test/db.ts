@@ -82,3 +82,25 @@ export async function attemptsOf(
   );
   return { min: rows[0]?.min ?? 0, max: rows[0]?.max ?? 0 };
 }
+
+/** How many of these events are `published`: the ones written while Valkey was down must not be. */
+export async function publishedAmong(
+  admin: Pool,
+  org: string,
+  ids: readonly string[],
+): Promise<number> {
+  const { rows } = await admin.query<{ n: string }>(
+    "SELECT count(*) AS n FROM outbox_events WHERE org_id = $1 AND id = ANY($2::uuid[]) AND status = 'published'",
+    [org, ids],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+/** The outbox of one organisation in a line: what a failed test reports about the database. */
+export async function describeOrg(admin: Pool, org: string): Promise<string> {
+  const counts = await statusCounts(admin, org);
+  const pending = await attemptsOf(admin, org, 'pending');
+  const claimed = await attemptsOf(admin, org, 'claimed');
+  const range = (r: { min: number; max: number }): string => `${r.min}..${r.max}`;
+  return `org ${org}: pending=${counts.pending} claimed=${counts.claimed} published=${counts.published} dead_letter=${counts.dead_letter}; attempts pending ${range(pending)}, claimed ${range(claimed)}`;
+}

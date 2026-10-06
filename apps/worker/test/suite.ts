@@ -1,8 +1,15 @@
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 
 import { startConsumer, type Consumer } from './consumer.js';
-import { adminPool, appPool, queueOf, removeOrg, seedOrg, type Pool } from './db.js';
-import { killWorkers, requireEnv, restoreValkey } from './harness.js';
+import { adminPool, appPool, describeOrg, queueOf, removeOrg, seedOrg, type Pool } from './db.js';
+import {
+  killWorkers,
+  reportOnTimeout,
+  requireEnv,
+  restoreValkey,
+  valkeyStatus,
+  workerTails,
+} from './harness.js';
 
 export interface Suite {
   readonly admin: Pool;
@@ -34,7 +41,18 @@ export function useQueueSuite(): Suite {
     pools = { admin: adminPool(), app: appPool() };
   });
 
+  // What a `waitFor` that runs out of time adds to its message: the outbox of the test, Valkey, and the end of the worker logs.
+  beforeEach(() => {
+    reportOnTimeout(async () => {
+      const lines: string[] = [];
+      for (const org of orgs) lines.push(await describeOrg(need().admin, org));
+      lines.push(`valkey container: ${await valkeyStatus()}`, workerTails());
+      return lines.join('\n');
+    });
+  });
+
   afterEach(async () => {
+    reportOnTimeout(undefined);
     await killWorkers();
     await restoreValkey(redisUrl);
     for (const consumer of consumers.splice(0)) await consumer.close();
