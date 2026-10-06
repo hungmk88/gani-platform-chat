@@ -1,5 +1,15 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -9,30 +19,78 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const STORE = 'packages/db/src/conversation-store.ts';
 const WRITES = [/\bUPDATE\s+(?:public\.)?conversations\b/i, /\.update\(\s*conversations\b/];
 
-function sources(): string[] {
+function walk(dir: string, found: string[]): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+    const path = join(dir, entry.name);
+    // A symlink is neither a directory nor a file here, so it is never followed (pnpm links packages into each other's node_modules).
+    if (entry.isDirectory()) walk(path, found);
+    else if (
+      entry.isFile() &&
+      /\.(ts|tsx|mts|mjs)$/.test(entry.name) &&
+      !/\.(test|spec)\.ts$/.test(entry.name)
+    )
+      found.push(path);
+  }
+}
+
+/** The source files (`<app or package>/src/**`) under `base`: never node_modules, build output, coverage folders or symlinks. */
+function sources(base: string): string[] {
   const found: string[] = [];
   for (const top of ['apps', 'packages']) {
-    for (const entry of readdirSync(join(root, top), { recursive: true, encoding: 'utf8' })) {
-      const path = entry.replaceAll('\\', '/');
-      if (!/\/src\/.*\.(ts|tsx|mts|mjs)$/.test(`${top}/${path}`)) continue;
-      if (/node_modules|\/dist\/|\.test\.ts$|\.spec\.ts$/.test(`${top}/${path}`)) continue;
-      found.push(relative(root, join(root, top, path)).replaceAll('\\', '/'));
+    for (const pkg of readdirSync(join(base, top), { withFileTypes: true })) {
+      const src = join(base, top, pkg.name, 'src');
+      if (pkg.isDirectory() && existsSync(src)) walk(src, found);
     }
   }
-  return found;
+  return found.map((path) => relative(base, path).split(sep).join('/')).sort();
 }
 
 describe('only the conversation store writes conversations', () => {
-  const writers = sources().filter((file) => {
-    const text = readFileSync(join(root, file), 'utf8');
-    return WRITES.some((pattern) => pattern.test(text));
-  });
+  const files = sources(root);
+  const writers = files.filter((file) =>
+    WRITES.some((pattern) => pattern.test(readFileSync(join(root, file), 'utf8'))),
+  );
 
-  it('finds the store itself, so the scan is not blind', () => {
+  it('finds the store itself, so the scan is not blind, and never looks into node_modules', () => {
     expect(writers).toContain(STORE);
+    expect(files.some((file) => file.includes('node_modules'))).toBe(false);
   });
 
   it('finds nothing else in the source of any package or app', () => {
     expect(writers.filter((file) => file !== STORE)).toEqual([]);
+  });
+});
+
+describe('the scan of the source tree', () => {
+  it('skips node_modules, coverage folders and symlinks (even a dangling one), and keeps real sources', () => {
+    const base = mkdtempSync(join(tmpdir(), 'guard-'));
+    try {
+      const put = (path: string, text = 'export const x = 1;') => {
+        mkdirSync(join(base, path, '..'), { recursive: true });
+        writeFileSync(join(base, path), text);
+      };
+      mkdirSync(join(base, 'apps'));
+      put('packages/a/src/keep.ts');
+      put('packages/a/src/deep/keep.mts');
+      put('packages/a/src/skip.test.ts');
+      put('packages/a/node_modules/b/src/dep.ts', 'UPDATE conversations');
+      put('packages/a/src/node_modules/c/dep.ts', 'UPDATE conversations');
+      put('packages/a/coverage/.tmp/gone.ts');
+      put('packages/b/dist/out.mjs');
+      try {
+        symlinkSync(join(base, 'does-not-exist'), join(base, 'packages/a/src/dangling'));
+        symlinkSync(
+          join(base, 'packages/a/node_modules'),
+          join(base, 'packages/a/src/linked'),
+          'junction',
+        );
+      } catch {
+        // Creating a symlink may need a privilege (Windows); the rest of the test still holds.
+      }
+      expect(sources(base)).toEqual(['packages/a/src/deep/keep.mts', 'packages/a/src/keep.ts']);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 });
