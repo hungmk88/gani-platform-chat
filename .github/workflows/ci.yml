@@ -129,14 +129,16 @@ jobs:
         if: failure()
         run: docker logs pg 2>&1 | tail -n 60
 
-  # The queue, on a real Valkey (outbox spec §10, N40). Separate from `db` on purpose: it stops and starts the server, which no
-  # database test may see. O-5a runs BullMQ alone; the kill-tests K1-K3 need PostgreSQL too and come with O-5b, which adds the same
-  # PostgreSQL steps as the `db` job (repeated, not shared: "Lặp với job db; xem PR rút gọn composite action sau").
+  # The queue, on a real Valkey and a real PostgreSQL (outbox spec §10, N40). Separate from `db` on purpose: it stops and starts the
+  # servers and kills worker processes, which no database test may see. The PostgreSQL steps are repeated from the `db` job, not
+  # shared: "Lặp với job db; xem PR rút gọn composite action sau".
   queue:
-    name: queue (BullMQ on Valkey)
+    name: queue (BullMQ on Valkey, kill-tests)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      PG_IMAGE: pgvector/pgvector:0.8.7-pg16
+      PG_DB: gani_platform
       VALKEY_IMAGE: valkey/valkey:8.0-alpine
       VALKEY_CONTAINER: valkey
       REDIS_URL: redis://127.0.0.1:6379
@@ -149,8 +151,28 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
-      # Same image and flags as infra/docker/docker-compose.yml. No password: the runner is thrown away and the port is bound to 127.0.0.1.
-      # The name is fixed because the tests stop and start the container with `docker stop|start`.
+      # --- PostgreSQL: the same steps as the `db` job (without the support login, which no queue test uses) ---
+      - name: Generate passwords
+        run: |
+          for name in POSTGRES APP_ROLE AUTH_ROLE MIGRATION_ROLE; do
+            password="$(openssl rand -hex 24)"
+            echo "::add-mask::${password}"
+            echo "${name}_PASSWORD=${password}" >> "$GITHUB_ENV"
+          done
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD -e POSTGRES_DB="$PG_DB" -p 127.0.0.1:5432:5432 "$PG_IMAGE"
+          for _ in $(seq 1 30); do
+            docker exec pg pg_isready -h 127.0.0.1 -U postgres -d "$PG_DB" && exit 0
+            sleep 2
+          done
+          echo "PostgreSQL did not become ready" >&2
+          exit 1
+      - name: Bootstrap roles
+        run: |
+          docker exec -i -e APP_ROLE_PASSWORD -e AUTH_ROLE_PASSWORD -e MIGRATION_ROLE_PASSWORD pg psql -v ON_ERROR_STOP=1 -U postgres -d "$PG_DB" < infra/db/bootstrap-roles.sql
+      # --- Valkey: same image and flags as infra/docker/docker-compose.yml. No password: the runner is thrown away and the port is
+      # bound to 127.0.0.1. The name is fixed because the tests stop and start the container with `docker stop|start`. ---
       - name: Start Valkey
         run: |
           docker run -d --name "$VALKEY_CONTAINER" -p 127.0.0.1:6379:6379 "$VALKEY_IMAGE"             valkey-server --appendonly yes --maxmemory-policy noeviction
@@ -166,8 +188,19 @@ jobs:
           docker exec "$VALKEY_CONTAINER" valkey-cli INFO server | grep -E '^(redis_version|valkey_version):' || true
           docker exec "$VALKEY_CONTAINER" valkey-cli CONFIG GET appendonly
           docker exec "$VALKEY_CONTAINER" valkey-cli CONFIG GET maxmemory-policy
-      - name: Run the queue tests
-        run: pnpm --filter @gani/worker test:integration
-      - name: Valkey log
+      # The kill-tests run `node dist/main.js` as a real process, so the worker and what it imports must be built.
+      - name: Build the worker
+        run: pnpm --filter "@gani/worker..." build
+      - name: Migrate and run the queue tests
+        run: |
+          base="127.0.0.1:5432/${PG_DB}"
+          export DATABASE_URL_APP="postgres://app_role:${APP_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_AUTH="postgres://auth_role:${AUTH_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
+          pnpm --filter @gani/db migrate
+          pnpm --filter @gani/worker test:integration
+      - name: Logs of the servers
         if: failure()
-        run: docker logs "$VALKEY_CONTAINER" 2>&1 | tail -n 60
+        run: |
+          docker logs pg 2>&1 | tail -n 60
+          docker logs "$VALKEY_CONTAINER" 2>&1 | tail -n 60
