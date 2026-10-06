@@ -1,5 +1,5 @@
 import type { ClaimedOutboxEvent } from '@gani/db';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WorkerConfig } from '../config.js';
 import type { LogFields, Logger } from '../logger.js';
@@ -7,7 +7,7 @@ import { backoffSeconds } from './job.js';
 import { OutboxRelay, type QueuePublisher, type RelayStore } from './outbox-relay.js';
 
 // The relay against a store that behaves like the real one (claim counts an attempt, fail dead-letters at the limit) and a queue that
-// can refuse.
+// can refuse. Timers are fake, so the loop and the shutdown are tested without waiting.
 type Settings = WorkerConfig['outbox'];
 const SETTINGS: Settings = {
   pollMs: 10,
@@ -17,6 +17,7 @@ const SETTINGS: Settings = {
   orgsPerTick: 50,
   orgParallel: 2,
   shutdownMs: 1000,
+  queueMaxWaiting: 100,
 };
 
 // prettier-ignore
@@ -67,13 +68,15 @@ function harness(events: ClaimedOutboxEvent[], settings: Partial<Settings> = {})
   const w = world(events);
   const logs: { level: string; message: string; fields: LogFields }[] = [];
   const log: Logger = { info: (m, f = {}) => void logs.push({ level: 'info', message: m, fields: f }), warn: (m, f = {}) => void logs.push({ level: 'warn', message: m, fields: f }), error: (m, f = {}) => void logs.push({ level: 'error', message: m, fields: f }) };
-  const q = { published: [] as Parameters<QueuePublisher['publish']>[0][number][], duplicates: [] as string[], fail: null as Error | null };
+  const q = { published: [] as Parameters<QueuePublisher['publish']>[0][number][], waiting: new Map<string, number>(), duplicates: [] as string[], fail: null as Error | null, gate: null as Promise<void> | null };
   const queue: QueuePublisher = {
-    publish: (jobs) => {
+    waiting: (name) => Promise.resolve(q.waiting.get(name) ?? 0),
+    publish: async (jobs) => {
       w.calls.push('publish');
-      if (q.fail) return Promise.reject(q.fail);
+      await q.gate;
+      if (q.fail) throw q.fail;
       q.published.push(...jobs);
-      return Promise.resolve({ duplicates: q.duplicates });
+      return { duplicates: q.duplicates };
     },
   };
   const relay = new OutboxRelay({ store: w.store, queue, log, settings: { ...SETTINGS, ...settings } });
@@ -159,5 +162,96 @@ describe('one pass of the relay', () => {
     await h.relay.tick();
     expect(h.hooks.peak).toBe(2);
     expect(h.rows.size).toBe(5);
+  });
+});
+
+describe('backpressure', () => {
+  it('skips an organisation whose queue is full, serves the others, and resumes when it drains', async () => {
+    const h = harness([event('a1', 'A'), event('b1', 'B', 'ws-2')], { queueMaxWaiting: 5 });
+    await h.relay.tick();
+    const [a2, b2] = [event('a2', 'A'), event('b2', 'B', 'ws-2')];
+    h.rows.set('a2', { e: a2, status: 'pending', attempts: 0 });
+    h.rows.set('b2', { e: b2, status: 'pending', attempts: 0 });
+    h.q.waiting.set('q.events.ws.ws-1', 5);
+    await h.relay.tick();
+    expect([h.status('a2'), h.status('b2')]).toEqual(['pending', 'published']);
+    expect(h.seen('queue_full')).toEqual([
+      {
+        level: 'warn',
+        message: 'queue_full',
+        fields: { orgId: 'A', queue: 'q.events.ws.ws-1', waiting: 5, max: 5 },
+      },
+    ]);
+    h.q.waiting.set('q.events.ws.ws-1', 4);
+    await h.relay.tick();
+    expect(h.status('a2')).toBe('published');
+  });
+});
+
+describe('the loop and the shutdown', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('pauses pollMs when idle, drains without pausing while batches are full, and stops at once in a pause', async () => {
+    const h = harness(Array.from({ length: 7 }, (_, i) => event(`e${i}`, 'A')));
+    h.relay.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.q.published).toHaveLength(7);
+    expect(h.calls.filter((c) => c === 'orgs')).toHaveLength(3);
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(h.calls.filter((c) => c === 'orgs')).toHaveLength(4);
+    expect(await h.relay.stop()).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(h.calls.filter((c) => c === 'orgs')).toHaveLength(4);
+  });
+
+  it('waits for the pass in progress, then starts no other', async () => {
+    const h = harness([event('e1', 'A')]);
+    let release!: () => void;
+    h.q.gate = new Promise<void>((resolve) => (release = resolve));
+    h.relay.start();
+    await vi.advanceTimersByTimeAsync(0);
+    let stopped = false;
+    const stopping = h.relay.stop().then((clean) => ((stopped = true), clean));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(stopped).toBe(false);
+    release();
+    expect(await stopping).toBe(true);
+    expect(h.status('e1')).toBe('published');
+    expect(h.calls.filter((c) => c === 'orgs')).toHaveLength(1);
+  });
+
+  it('reports a shutdown that takes longer than shutdownMs', async () => {
+    const h = harness([event('e1', 'A')]);
+    h.q.gate = new Promise<void>(() => undefined);
+    h.relay.start();
+    await vi.advanceTimersByTimeAsync(0);
+    const stopping = h.relay.stop();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await stopping).toBe(false);
+    expect(h.seen('shutdown_timeout')[0]?.fields).toEqual({ shutdownMs: 1000 });
+  });
+
+  it('survives a pass that throws, logs it, and tries again after the pause', async () => {
+    const h = harness([event('e1', 'A')]);
+    const orgs = vi.spyOn(h.store, 'pendingOrgs').mockRejectedValueOnce(new Error('db down'));
+    h.relay.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.seen('relay_tick_failed')).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(orgs).toHaveBeenCalledTimes(2);
+    expect(h.status('e1')).toBe('published');
+    await h.relay.stop();
+  });
+
+  it('cannot be started twice, and stopping a relay that never started is clean', async () => {
+    const h = harness([]);
+    expect(await h.relay.stop()).toBe(true);
+    const other = harness([]);
+    other.relay.start();
+    expect(() => other.relay.start()).toThrowError(/already started/);
+    await other.relay.stop();
   });
 });

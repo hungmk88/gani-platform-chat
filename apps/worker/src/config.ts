@@ -12,6 +12,8 @@ export interface WorkerConfig {
     readonly orgsPerTick: number;
     readonly orgParallel: number;
     readonly shutdownMs: number;
+    /** A queue with this many jobs waiting takes no more from its organisation until it drains (backpressure). */
+    readonly queueMaxWaiting: number;
   };
 }
 
@@ -52,6 +54,7 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       orgsPerTick: whole('OUTBOX_ORGS_PER_TICK', 50, 1, 1_000),
       orgParallel: whole('OUTBOX_ORG_PARALLEL', 4, 1, 32),
       shutdownMs: whole('OUTBOX_SHUTDOWN_MS', 10_000, 1_000, 120_000),
+      queueMaxWaiting: whole('OUTBOX_QUEUE_MAX_WAITING', 10_000, 1, 1_000_000),
     },
   };
   if (problems.length > 0) throw new ConfigError(problems);
