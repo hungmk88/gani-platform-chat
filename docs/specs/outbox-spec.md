@@ -129,7 +129,7 @@ Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4
 | O5 | Hạn lưu `published` | **Đã chốt 06/10:** 30 ngày; bỏ partition thuộc `PartitionMaintenanceJob` (hạn 01/01/2027), **không** thuộc chuỗi outbox | Xong |
 | O6 | Valkey mất job sau khi đã `published` (§9) | **Đã chốt:** chấp nhận cho realtime; đối soát cho automation (S4) | Xong |
 | O7 | Số lần thử, backoff của outbox | **Đã chốt 06/10:** 5 lần, `min(2^n, 60)` giây | Xong |
-| O8 | BullMQ chạy trên Valkey 8 chưa kiểm chứng (N40) | **Vẫn treo:** ca K1 ở O-5 chốt; hỏng thì quay về Redis 7 | O-5 |
+| O8 | BullMQ chạy trên Valkey 8 (N40) | **Đã chốt 06/10/2026:** BullMQ 5.81.5 chạy trên Valkey 8.0.11 (CI run #135: K1, K2 và 5 test của O-5a xanh); không phải quay về Redis 7 | Xong |
 
 ## 9. Giới hạn thành thật
 
@@ -149,7 +149,16 @@ Chỉ chạy được trên CI (N16). Mỗi ca có người tiêu thụ kiểm t
 | K6 | Hàng đợi từ chối mãi | Sau 5 lần → `dead_letter`, chỉ số báo động tăng; `requeue` đưa lại được |
 | K7 | Cô lập | `app_role` không đặt tenant đọc `outbox_events` → lỗi `TN001`; hàm §4 chỉ trả `org_id`; relay của org A không đọc payload org B |
 
-**Mutation** (ghi kết quả vào PR): bỏ `SKIP LOCKED` → K5 đỏ; đánh dấu `published` **trước** khi đẩy → K1/K2 đỏ; ghi outbox ở transaction riêng → K4 đỏ; bỏ bước thu hồi → K2 đỏ.
+**Kết quả (06/10/2026, CI run #135 trên `main`, job `queue` 1 phút 23 giây):**
+
+| Ca | Kết quả | Ghi chú |
+|---|---|---|
+| K1 | **PASS** (K1a theo spec; K1b thêm) | K1a: Valkey dừng trước khi relay chạy: sự kiện ở `pending`, `attempts = 1`, 0 `published`, sau khi bật lại đủ 100. K1b: Valkey dừng khi relay **đã biết** hàng đợi: bước hỏi backpressure lỗi trước khi claim, nên `attempts` **không tăng** (cảnh báo `queue_unreachable`); "`attempts` tăng" chỉ đúng khi relay chưa biết hàng đợi (N99). |
+| K2 | **PASS** (K2a sau đẩy, K2b trước đẩy) | Điểm lỗi **không** chèn bằng `APP_ENV=test` trong mã chạy thật mà bằng lối vào test `apps/worker/test/support/crash-main.mjs` (mã chạy thật không có công tắc; `no-crash-switch.spec.ts` quét `src/` và `dist/`). K2a: hàng đợi đúng 20 job, mỗi id nhận đúng 1 lần. |
+| K3 | Chưa | Thuộc O-5b-2 (cùng SIGTERM). |
+| K4–K7 | Ngoài phạm vi O-5 | Theo các PR O-1…O-3. |
+
+**Mutation** (ghi kết quả vào PR): bỏ `SKIP LOCKED` → K5 đỏ; đánh dấu `published` **trước** khi đẩy → K1/K2 đỏ; ghi outbox ở transaction riêng → K4 đỏ; bỏ bước thu hồi → K2 đỏ. **Đã chạy:** M1 (`published` trước khi đẩy) → `verify` và `queue` đỏ (run #139); M2 (bỏ thu hồi) và M3 (bỏ `jobId`) chưa chạy; ghi tiếp ở N99.
 
 ## 11. Chia PR và hạ tầng (chốt 06/10/2026, N97)
 
