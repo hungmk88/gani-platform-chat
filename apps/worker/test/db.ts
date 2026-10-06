@@ -104,3 +104,12 @@ export async function describeOrg(admin: Pool, org: string): Promise<string> {
   const range = (r: { min: number; max: number }): string => `${r.min}..${r.max}`;
   return `org ${org}: pending=${counts.pending} claimed=${counts.claimed} published=${counts.published} dead_letter=${counts.dead_letter}; attempts pending ${range(pending)}, claimed ${range(claimed)}`;
 }
+
+/** Every event of the organisation, whatever its status: the set that was written, read from the table once nothing writes any more. */
+export async function idsOf(admin: Pool, org: string): Promise<string[]> {
+  const { rows } = await admin.query<{ id: string }>(
+    'SELECT id FROM outbox_events WHERE org_id = $1',
+    [org],
+  );
+  return rows.map((row) => row.id);
+}
