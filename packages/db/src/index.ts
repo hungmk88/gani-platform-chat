@@ -8,6 +8,7 @@ export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';
 export { agentSettings } from './schema/agent-settings.js';
 export { apiKeys } from './schema/api-keys.js';
+export { channelAccounts } from './schema/channel-accounts.js';
 export { auditLogs } from './schema/audit-logs.js';
 export { authSchema, authUsers } from './schema/auth.js';
 export { conversationEvents } from './schema/conversation-events.js';
