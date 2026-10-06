@@ -1,7 +1,7 @@
 import type { ClaimedOutboxEvent } from '@gani/db';
 import { describe, expect, it } from 'vitest';
 
-import { backoffSeconds, queueNameOf, toJob } from './job.js';
+import { backoffSeconds, errorCodeOf, queueNameOf, toJob } from './job.js';
 
 // prettier-ignore
 const event = (over: Partial<ClaimedOutboxEvent> = {}): ClaimedOutboxEvent => ({
@@ -44,5 +44,21 @@ describe('backoffSeconds', () => {
   // prettier-ignore
   it.each([[1, 2], [2, 4], [3, 8], [4, 16], [5, 32], [6, 60], [7, 60], [30, 60], [0, 2]])('after attempt %i waits %i seconds', (attempts, seconds) => {
     expect(backoffSeconds(attempts)).toBe(seconds);
+  });
+});
+
+describe('errorCodeOf', () => {
+  it('says the queue is down for a refused or closed connection, whatever the message names', () => {
+    expect(
+      errorCodeOf(
+        Object.assign(new Error('connect ECONNREFUSED 10.0.0.9:6379'), { code: 'ECONNREFUSED' }),
+      ),
+    ).toBe('E_QUEUE_DOWN');
+    expect(errorCodeOf(new Error('Connection is closed.'))).toBe('E_QUEUE_DOWN');
+  });
+
+  it('says the queue refused for anything else, and never returns more than a code', () => {
+    for (const error of [new Error('NOSCRIPT No matching script'), 'boom', null, { code: 7 }])
+      expect(errorCodeOf(error)).toBe('E_QUEUE');
   });
 });
