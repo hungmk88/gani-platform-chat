@@ -1,0 +1,48 @@
+// Errors of the conversation state machine. `status` and `code` are what a controller's exception filter will answer with (P9,
+// RFC 9457); `InvalidTransitionError` comes from the domain package with code `invalid_transition` (409, F6).
+
+export class ConversationNotFoundError extends Error {
+  readonly status = 404;
+  readonly code = 'not_found';
+  constructor() {
+    super('conversation not found');
+    this.name = 'ConversationNotFoundError';
+  }
+}
+
+/** Somebody else holds the conversation; `assignedUserId` lets the client say who (P9). */
+export class ConversationAlreadyClaimedError extends Error {
+  readonly status = 409;
+  readonly code = 'conversation_already_claimed';
+  constructor(readonly assignedUserId: string | null) {
+    super('conversation already claimed');
+    this.name = 'ConversationAlreadyClaimedError';
+  }
+}
+
+/** The client acted on a version that is no longer current: reload and try again. */
+export class VersionConflictError extends Error {
+  readonly status = 409;
+  readonly code = 'version_conflict';
+  constructor() {
+    super('conversation changed since it was read');
+    this.name = 'VersionConflictError';
+  }
+}
+
+/** A system event lost the race three times: not an answer for a user, the job that raised it is retried (N96). */
+export class ConversationContendedError extends Error {
+  readonly code = 'conversation_contended';
+  constructor(readonly attempts: number) {
+    super(`conversation kept changing under the event (${attempts} attempts)`);
+    this.name = 'ConversationContendedError';
+  }
+}
+
+/** A bug in the caller: an action of a person (T09, T12, T13, T15, T16, T21) must say which version it saw. */
+export class MissingExpectedVersionError extends Error {
+  constructor(readonly transition: string) {
+    super(`transition ${transition} needs expectedVersion`);
+    this.name = 'MissingExpectedVersionError';
+  }
+}
