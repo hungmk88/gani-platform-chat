@@ -28,7 +28,8 @@ services:
   # Valkey thay Redis 7 vì giấy phép (xem QUESTIONS.md); AOF bật theo Brief P5.
   cache:
     image: valkey/valkey:8.0-alpine
-    command: ['valkey-server', '--appendonly', 'yes']
+    # noeviction: BullMQ needs a queue that never drops a key (it is also Valkey's default; written down on purpose).
+    command: ['valkey-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
     ports:
       - '127.0.0.1:6379:6379'
     volumes:

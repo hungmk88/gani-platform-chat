@@ -128,3 +128,46 @@ jobs:
       - name: PostgreSQL log
         if: failure()
         run: docker logs pg 2>&1 | tail -n 60
+
+  # The queue, on a real Valkey (outbox spec §10, N40). Separate from `db` on purpose: it stops and starts the server, which no
+  # database test may see. O-5a runs BullMQ alone; the kill-tests K1-K3 need PostgreSQL too and come with O-5b, which adds the same
+  # PostgreSQL steps as the `db` job (repeated, not shared: "Lặp với job db; xem PR rút gọn composite action sau").
+  queue:
+    name: queue (BullMQ on Valkey)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VALKEY_IMAGE: valkey/valkey:8.0-alpine
+      VALKEY_CONTAINER: valkey
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      # Same image and flags as infra/docker/docker-compose.yml. No password: the runner is thrown away and the port is bound to 127.0.0.1.
+      # The name is fixed because the tests stop and start the container with `docker stop|start`.
+      - name: Start Valkey
+        run: |
+          docker run -d --name "$VALKEY_CONTAINER" -p 127.0.0.1:6379:6379 "$VALKEY_IMAGE"             valkey-server --appendonly yes --maxmemory-policy noeviction
+          for _ in $(seq 1 30); do
+            docker exec "$VALKEY_CONTAINER" valkey-cli ping | grep -q PONG && exit 0
+            sleep 2
+          done
+          echo "Valkey did not become ready" >&2
+          exit 1
+      # For the record of N40: which server it is, and that the AOF and the memory policy are what BullMQ asks for.
+      - name: Show the Valkey settings
+        run: |
+          docker exec "$VALKEY_CONTAINER" valkey-cli INFO server | grep -E '^(redis_version|valkey_version):' || true
+          docker exec "$VALKEY_CONTAINER" valkey-cli CONFIG GET appendonly
+          docker exec "$VALKEY_CONTAINER" valkey-cli CONFIG GET maxmemory-policy
+      - name: Run the queue tests
+        run: pnpm --filter @gani/worker test:integration
+      - name: Valkey log
+        if: failure()
+        run: docker logs "$VALKEY_CONTAINER" 2>&1 | tail -n 60
