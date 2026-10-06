@@ -1,0 +1,313 @@
+import { randomUUID } from 'node:crypto';
+
+import { createDbPool, type ConversationRow, type TenantContext } from '@gani/db';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { DatabaseService } from '../database/database.service.js';
+import {
+  ConversationStateMachine,
+  conversationStore,
+  type ConversationStore,
+  type TransitionOutcome,
+} from './conversation-state-machine.js';
+import { ConversationAlreadyClaimedError, ConversationNotFoundError } from './errors.js';
+
+// M1.2 PR2c-3 (N96) on PostgreSQL with the real store and the pool of app_role: the claim race (CLAUDE.md: claim-race.spec), the
+// whole life of a conversation, atomicity and isolation. Needs a database, so it runs in the `db` job of CI and not on a dev machine.
+const need = (name: string): string => {
+  const value = process.env[name];
+  if (!value)
+    throw new Error(`${name} is not set: this test needs PostgreSQL (see the db job of CI)`);
+  return value;
+};
+const [A, WA, WB] = [randomUUID(), randomUUID(), randomUUID()];
+const AGENTS = Array.from({ length: 50 }, () => randomUUID());
+const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
+const db = new DatabaseService(need('DATABASE_URL_APP'), (url, options) =>
+  createDbPool(url, { ...options, max: AGENTS.length }),
+);
+const fsm = new ConversationStateMachine();
+const ctx = (workspaceIds: string[], orgId = A): TenantContext => ({ orgId, workspaceIds });
+const by = (agent: string, n = 0) => ({
+  actor: { kind: 'agent', id: agent } as const,
+  traceId: `trace-${n}`,
+});
+const sqlState = async (p: Promise<unknown>): Promise<string | undefined> =>
+  p.then(
+    () => undefined,
+    (e: unknown) => {
+      for (let c = e; c instanceof Error; c = c.cause)
+        if ('code' in c && typeof c.code === 'string') return c.code;
+      return 'none';
+    },
+  );
+
+const create = (workspace = WA) =>
+  db.withTenant(ctx([workspace]), (tx) =>
+    fsm.create(tx, { workspaceId: workspace, ...by(AGENTS[0] as string) }),
+  );
+const idOf = (out: TransitionOutcome): string =>
+  out.kind === 'changed' ? out.conversation.id : '';
+/** A conversation that waits in the queue (created, then the bot asks for a person during working hours). */
+async function waiting(): Promise<string> {
+  const id = idOf(await create());
+  await db.withTenant(ctx([WA]), (tx) =>
+    fsm.transition(
+      tx,
+      id,
+      { type: 'needs_human', inHours: true },
+      { actor: { kind: 'bot' }, traceId: 'q' },
+    ),
+  );
+  return id;
+}
+const stored = async (id: string) =>
+  (
+    await admin.query<{
+      state: string;
+      version: number;
+      assigned_user_id: string | null;
+      closed_at: Date | null;
+      outcome: string | null;
+      after_hours_hold: boolean;
+    }>(
+      'SELECT state, version, assigned_user_id, closed_at, outcome, after_hours_hold FROM conversations WHERE id = $1',
+      [id],
+    )
+  ).rows[0];
+const eventsOf = async (id: string) =>
+  (
+    await admin.query<Record<string, unknown>>(
+      `SELECT event_type, from_state, to_state, from_hold, to_hold, actor_kind, actor_id, version_after, outcome, trace_id, detail
+     FROM conversation_events WHERE conversation_id = $1 ORDER BY version_after, occurred_at`,
+      [id],
+    )
+  ).rows;
+
+beforeAll(async () => {
+  await admin.query('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [
+    A,
+    `t-${A}`,
+    'T',
+  ]);
+  await admin.query(
+    `INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ($1, $3, 'wa', 'WA', 'service'), ($2, $3, 'wb', 'WB', 'service')`,
+    [WA, WB, A],
+  );
+  await admin.query(
+    `INSERT INTO users (id, email, status) SELECT u, u::text || '@example.test', 'active' FROM unnest($1::uuid[]) AS u`,
+    [AGENTS],
+  );
+  await admin.query(
+    `INSERT INTO org_members (id, org_id, user_id, role, status) SELECT gen_random_uuid(), $2, u, 'sales', 'active' FROM unnest($1::uuid[]) AS u`,
+    [AGENTS, A],
+  );
+});
+
+afterAll(async () => {
+  // Children first; a failing step is swallowed because the CI database is thrown away after the job.
+  for (const [text, params] of [
+    ['DELETE FROM conversation_events WHERE org_id = $1', [A]],
+    ['DELETE FROM conversations WHERE org_id = $1', [A]],
+    ['DELETE FROM org_members WHERE org_id = $1', [A]],
+    ['DELETE FROM workspaces WHERE org_id = $1', [A]],
+    ['DELETE FROM organizations WHERE id = $1', [A]],
+    ['DELETE FROM users WHERE id = ANY($1::uuid[])', [AGENTS]],
+  ] as const)
+    await admin.query(text, [...params]).catch(() => undefined);
+  await Promise.all([admin.end(), db.onApplicationShutdown()]);
+});
+
+/** `n` callers wait at the gate; the last to arrive opens it for all. */
+function gate(n: number): () => Promise<void> {
+  let arrived = 0;
+  let open!: () => void;
+  const opened = new Promise<void>((resolve) => (open = resolve));
+  return () => {
+    if (++arrived === n) open();
+    return opened;
+  };
+}
+
+/** 50 agents claim one conversation: all start together, and all have read it before any of them writes. */
+async function claimRace(store: ConversationStore, id: string) {
+  const [start, read] = [gate(AGENTS.length), gate(AGENTS.length)];
+  const machine = new ConversationStateMachine({
+    ...store,
+    loadConversation: async (tx, conversationId) => {
+      const row = await store.loadConversation(tx, conversationId);
+      await read();
+      return row;
+    },
+  });
+  return Promise.allSettled(
+    AGENTS.map((agent, n) =>
+      db.withTenant(ctx([WA]), async (tx) => {
+        await start();
+        return machine.transition(tx, id, { type: 'claim', userId: agent }, by(agent, n));
+      }),
+    ),
+  );
+}
+type Changed = Extract<TransitionOutcome, { kind: 'changed' }>;
+const wins = (results: PromiseSettledResult<TransitionOutcome>[]): Changed[] =>
+  results.flatMap((r) => (r.status === 'fulfilled' && r.value.kind === 'changed' ? [r.value] : []));
+
+describe('claim-race: 50 agents claim one conversation at once', () => {
+  it('exactly one wins, the other 49 are told who holds it, and the history has one claim', async () => {
+    const id = await waiting();
+    const results = await claimRace(conversationStore, id);
+    const [won] = wins(results);
+    const winner = won?.conversation.snapshot.assignedUserId;
+    expect(wins(results)).toHaveLength(1);
+    expect(winner).toEqual(expect.any(String));
+    const lost = results.flatMap((r) => (r.status === 'rejected' ? [r.reason as unknown] : []));
+    expect(lost).toHaveLength(AGENTS.length - 1);
+    for (const reason of lost) expect(reason).toBeInstanceOf(ConversationAlreadyClaimedError);
+    for (const reason of lost)
+      expect(reason).toMatchObject({
+        code: 'conversation_already_claimed',
+        assignedUserId: winner,
+      });
+    expect(await stored(id)).toMatchObject({
+      state: 'HUMAN_ACTIVE',
+      assigned_user_id: winner,
+      version: 2,
+    });
+    expect((await eventsOf(id)).filter((e) => e['event_type'] === 'claimed')).toHaveLength(1);
+  });
+
+  it('runs under READ COMMITTED, which the claim relies on (no Redlock)', async () => {
+    const { rows } = await admin.query<{ level: string }>(
+      "SELECT current_setting('default_transaction_isolation') AS level",
+    );
+    expect(rows[0]?.level).toBe('read committed');
+  });
+
+  // Mutation: the same race with the UPDATE that forgets "state = from" must be caught, or the test above proves nothing.
+  it('goes red when the UPDATE drops its state condition: every agent "wins"', async () => {
+    const mutant: ConversationStore = {
+      ...conversationStore,
+      applyTransition: async (tx, w) => {
+        await tx.execute(`SELECT set_config('app.fsm', 'on', true)`);
+        const next = w.next;
+        const result =
+          await tx.execute(`UPDATE conversations SET state = '${next.state}', assigned_user_id = '${String(next.assignedUserId)}',
+          version = version + 1 WHERE id = '${w.id}' RETURNING id, org_id, workspace_id, state, version, assigned_user_id, after_hours_hold, closed_at, outcome`);
+        await tx.execute(`SELECT set_config('app.fsm', 'off', true)`);
+        const r = result.rows[0];
+        if (!r) return null;
+        return {
+          id: r['id'],
+          orgId: r['org_id'],
+          workspaceId: r['workspace_id'],
+          state: r['state'],
+          version: r['version'],
+          assignedUserId: r['assigned_user_id'],
+          afterHoursHold: r['after_hours_hold'],
+          closedAt: r['closed_at'],
+          outcome: r['outcome'],
+        } as ConversationRow;
+      },
+    };
+    expect(wins(await claimRace(mutant, await waiting())).length).toBeGreaterThan(1);
+  });
+});
+
+describe('the life of a conversation, event by event', () => {
+  it('goes from the first message to the close and leaves one event per step', async () => {
+    const id = idOf(await create());
+    const [agent] = AGENTS as [string];
+    const step = (
+      event: Parameters<ConversationStateMachine['transition']>[2],
+      who: Parameters<ConversationStateMachine['transition']>[3],
+    ) => db.withTenant(ctx([WA]), (tx) => fsm.transition(tx, id, event, who));
+    await step({ type: 'needs_human', inHours: true }, { actor: { kind: 'bot' }, traceId: 't1' });
+    await step({ type: 'claim', userId: agent }, by(agent, 2));
+    await step({ type: 'agent_waits_customer' }, { ...by(agent, 3), expectedVersion: 2 });
+    await step(
+      { type: 'customer_message', now: new Date(), agentOnline: true },
+      { actor: { kind: 'customer' }, traceId: 't4' },
+    );
+    await step(
+      { type: 'close', now: new Date(), outcome: 'won' },
+      { ...by(agent, 5), expectedVersion: 4 },
+    );
+    const events = await eventsOf(id);
+    expect(
+      events.map((e) => [
+        e['event_type'],
+        e['from_state'],
+        e['to_state'],
+        e['version_after'],
+        e['actor_kind'],
+        (e['detail'] as { transition: string }).transition,
+      ]),
+    ).toEqual([
+      ['created', null, 'BOT_ACTIVE', 0, 'agent', 'T01'],
+      ['state_changed', 'BOT_ACTIVE', 'HUMAN_WAITING_Q', 1, 'bot', 'T02'],
+      ['claimed', 'HUMAN_WAITING_Q', 'HUMAN_ACTIVE', 2, 'agent', 'T05'],
+      ['state_changed', 'HUMAN_ACTIVE', 'PENDING_CUSTOMER', 3, 'agent', 'T09'],
+      ['state_changed', 'PENDING_CUSTOMER', 'HUMAN_ACTIVE', 4, 'customer', 'T10'],
+      ['state_changed', 'HUMAN_ACTIVE', 'CLOSED', 5, 'agent', 'T13'],
+    ]);
+    expect(events[5]).toMatchObject({ outcome: 'won', trace_id: 'trace-5', actor_id: agent });
+    expect(events[1]).toMatchObject({ actor_id: null, from_hold: false, to_hold: false });
+    expect(await stored(id)).toMatchObject({
+      state: 'CLOSED',
+      version: 5,
+      assigned_user_id: null,
+      outcome: 'won',
+      after_hours_hold: false,
+      closed_at: expect.any(Date) as Date,
+    });
+  });
+});
+
+describe('atomicity and isolation', () => {
+  it('a failure after the UPDATE leaves the state and the history as they were', async () => {
+    const id = idOf(await create());
+    const failing = new ConversationStateMachine({
+      ...conversationStore,
+      insertConversationEvent: () => Promise.reject(new Error('event failed')),
+    });
+    const run = db.withTenant(ctx([WA]), (tx) =>
+      failing.transition(
+        tx,
+        id,
+        { type: 'needs_human', inHours: true },
+        { actor: { kind: 'bot' }, traceId: 'x' },
+      ),
+    );
+    await expect(run).rejects.toThrow('event failed');
+    expect(await stored(id)).toMatchObject({ state: 'BOT_ACTIVE', version: 0 });
+    expect(await eventsOf(id)).toHaveLength(1);
+  });
+
+  it('a conversation of another workspace or another organisation is not found, and stays as it was', async () => {
+    const hidden = idOf(await create(WB));
+    const open = (context: TenantContext, id: string) =>
+      db.withTenant(context, (tx) =>
+        fsm.transition(
+          tx,
+          id,
+          { type: 'needs_human', inHours: true },
+          { actor: { kind: 'bot' }, traceId: 'x' },
+        ),
+      );
+    await expect(open(ctx([WA]), hidden)).rejects.toThrow(ConversationNotFoundError);
+    await expect(open(ctx([WB], randomUUID()), hidden)).rejects.toThrow(ConversationNotFoundError);
+    await expect(open(ctx([WA]), randomUUID())).rejects.toThrow(ConversationNotFoundError);
+    expect(await stored(hidden)).toMatchObject({ state: 'BOT_ACTIVE', version: 0 });
+  });
+
+  it('cannot create a conversation in a workspace the context does not hold (42501)', async () => {
+    expect(
+      await sqlState(
+        db.withTenant(ctx([WA]), (tx) =>
+          fsm.create(tx, { workspaceId: WB, ...by(AGENTS[0] as string) }),
+        ),
+      ),
+    ).toBe('42501');
+  });
+});
