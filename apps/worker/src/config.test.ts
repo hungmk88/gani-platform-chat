@@ -21,14 +21,14 @@ describe('readConfig', () => {
   it('takes the two URLs and gives every other setting its default', () => {
     expect(readConfig(URLS)).toEqual({
       databaseUrl: URLS.DATABASE_URL_APP, redisUrl: URLS.REDIS_URL,
-      outbox: { pollMs: 500, leaseSeconds: 60, batchSize: 100, maxAttempts: 5, orgsPerTick: 50, orgParallel: 4, shutdownMs: 10_000 },
+      outbox: { pollMs: 500, leaseSeconds: 60, batchSize: 100, maxAttempts: 5, orgsPerTick: 50, orgParallel: 4, shutdownMs: 10_000, queueMaxWaiting: 10_000 },
     });
   });
 
   // prettier-ignore
   it('reads each setting from its own variable', () => {
-    const env = { ...URLS, OUTBOX_POLL_MS: '250', OUTBOX_LEASE_S: '30', OUTBOX_BATCH: '10', OUTBOX_MAX_ATTEMPTS: '3', OUTBOX_ORGS_PER_TICK: '7', OUTBOX_ORG_PARALLEL: '2', OUTBOX_SHUTDOWN_MS: '5000' };
-    expect(readConfig(env).outbox).toEqual({ pollMs: 250, leaseSeconds: 30, batchSize: 10, maxAttempts: 3, orgsPerTick: 7, orgParallel: 2, shutdownMs: 5000 });
+    const env = { ...URLS, OUTBOX_POLL_MS: '250', OUTBOX_LEASE_S: '30', OUTBOX_BATCH: '10', OUTBOX_MAX_ATTEMPTS: '3', OUTBOX_ORGS_PER_TICK: '7', OUTBOX_ORG_PARALLEL: '2', OUTBOX_SHUTDOWN_MS: '5000', OUTBOX_QUEUE_MAX_WAITING: '300' };
+    expect(readConfig(env).outbox).toEqual({ pollMs: 250, leaseSeconds: 30, batchSize: 10, maxAttempts: 3, orgsPerTick: 7, orgParallel: 2, shutdownMs: 5000, queueMaxWaiting: 300 });
   });
 
   it('treats an empty variable as not set', () => {
@@ -46,7 +46,7 @@ describe('readConfig', () => {
   // prettier-ignore
   it.each([
     ['OUTBOX_POLL_MS', '10'], ['OUTBOX_POLL_MS', '999999'], ['OUTBOX_LEASE_S', '0'], ['OUTBOX_BATCH', '1001'], ['OUTBOX_MAX_ATTEMPTS', '0'], ['OUTBOX_ORGS_PER_TICK', '1001'],
-    ['OUTBOX_ORG_PARALLEL', '33'], ['OUTBOX_SHUTDOWN_MS', '10'], ['OUTBOX_BATCH', '1.5'], ['OUTBOX_BATCH', 'ten'], ['OUTBOX_BATCH', '-1'],
+    ['OUTBOX_ORG_PARALLEL', '33'], ['OUTBOX_SHUTDOWN_MS', '10'], ['OUTBOX_BATCH', '1.5'], ['OUTBOX_BATCH', 'ten'], ['OUTBOX_BATCH', '-1'], ['OUTBOX_QUEUE_MAX_WAITING', '0'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);
