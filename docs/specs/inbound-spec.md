@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **BẢN NHÁP, chờ duyệt** (07/10/2026). Phần phụ thuộc cấu trúc payload của Zalo **chưa xác minh** (`zalo-channel-spec.md` §7) |
+| Trạng thái | **ĐÃ DUYỆT 07/10/2026** (I1, I2, I6, I7 chốt; I3 và I5 còn mở). Phần phụ thuộc cấu trúc payload của Zalo **chưa xác minh** (`zalo-channel-spec.md` §7), PR chuẩn hóa chờ |
 | Nguồn | Brief P3.2 mục 13, 14; P8 (`inbound_events`, `messages`, `conversations`); P9 (webhook, `NormalizedInboundMessage`); P10 F1 bước 1–3; P14 (FSM); Phụ lục v2.1 (`sequence_number`), v2.2 §14, §15 |
 | Liên quan | `zalo-channel-spec.md` (nơi sự kiện được ghi), `fsm-spec.md` §2, §4 (T01, T10, T11, T14), `realtime-spec.md` §4 (`sequence_number`), `outbox-spec.md` (khuôn claim/thuê/thu hồi/dead-letter), N96, N98, N100 |
 | Ngày | 07/10/2026 |
@@ -66,13 +66,13 @@ Chỉ số: `inbound_pending`, tuổi sự kiện cũ nhất, `inbound_dead_lett
 
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
-| I1 | UNIQUE vs partition | Bảng khóa `inbound_event_keys` không partition | Anh/cố vấn |
-| I2 | Một hội thoại mở cho mỗi cặp (kênh, người dùng) | Index unique một phần + khóa tư vấn | Anh |
+| I1 | UNIQUE vs partition | **Đã chốt 07/10:** bảng khóa `inbound_event_keys` không partition, `UNIQUE(channel_account_id, platform_message_id)`, `ON CONFLICT DO NOTHING` cùng transaction, job dọn khóa | Xong |
+| I2 | Một hội thoại mở cho mỗi cặp (kênh, người dùng) | **Đã chốt 07/10:** index unique một phần + khóa tư vấn | Xong |
 | I3 | Hạn lưu và che PII của `payload` thô | 30 ngày, không log; xem lại khi có chính sách | Anh/pháp lý |
 | I4 | Khách nhắn lại sau khi đóng | ≤ 72 giờ mở lại (T14), sau đó hội thoại mới | Brief P14 |
 | I5 | Sự kiện không có `platform_message_id` | Khóa = băm thân thô | Tài liệu |
-| I6 | Thăm dò thay hàng đợi workspace | Đề xuất; xem lại khi đo tải | Anh |
-| I7 | Ảnh/file | Ghi loại tin + tham chiếu, không tải | Anh (chốt N100) |
+| I6 | Thăm dò thay hàng đợi workspace | **Đã chốt 07/10 (N100):** xem lại khi đo tải | Xong |
+| I7 | Ảnh/file | **Đã chốt 07/10 (N100):** ghi loại tin + tham chiếu, không tải | Xong |
 
 ## 7. Giới hạn thành thật
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **BẢN NHÁP, chờ duyệt** (07/10/2026). **Giá trị chính sách là "tạm, chờ anh xác nhận"** (§1) |
+| Trạng thái | **ĐÃ DUYỆT 07/10/2026** (C1–C6). **Giá trị chính sách là "tạm, chờ anh xác nhận"** (§1); nghĩa của `api_closed` ở phía Zalo vẫn chờ tài liệu |
 | Nguồn | Brief P3.2 mục 13; P8 (`channel_policies`, `conversations.window_state`); P9 (`channel_window_closed`, `POST …/messages`); Phụ lục v2.2 §13; danh sách tính năng B3; thông báo chính sách gửi tin của Zalo OA (xem `zalo-channel-spec.md` §7, Z-h, Z-i) |
 | Liên quan | `zalo-channel-spec.md`, `inbound-spec.md`, `fsm-spec.md`, N100 |
 | Ngày | 07/10/2026 |
@@ -60,12 +60,12 @@ Không có màn hình trong M1.3. Cách đổi: PR migration thêm dòng `effect
 
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
-| C1 | `api_closed` ở phía Zalo | Theo `outside_window_allowed`; lỗi ngoài khung = `api_closed` | Tài liệu |
-| C2 | Có lưu `conversations.window_state` không | Chưa (tính khi đọc/gửi) | Anh |
-| C3 | Gửi `paid_only` có được không | Chặn trong M1.3 | Anh |
-| C4 | Giá trị chính sách chính thức | Seed tạm theo thông báo 15/01/2024 | **Anh** |
-| C5 | Hạn mức "8 tin" tính cho tin của ai (bot, agent, hệ thống) | Mọi tin OA gửi sau tin khách gần nhất | Tài liệu |
-| C6 | Hai OA khác gói dịch vụ có chính sách khác nhau | Chưa; chính sách theo `channel_type` | Anh |
+| C1 | `api_closed` ở phía Zalo | **Đã chốt 07/10:** theo `outside_window_allowed`; lỗi ngoài khung = `api_closed` (nghĩa phía Zalo chờ tài liệu) | Tài liệu |
+| C2 | Có lưu `conversations.window_state` không | **Đã chốt 07/10:** chưa; tính lại khi đọc/gửi | Xong |
+| C3 | Gửi `paid_only` có được không | **Đã chốt 07/10:** chặn trong M1.3 | Xong |
+| C4 | Giá trị chính sách chính thức | **Đã chốt 07/10:** seed tạm theo thông báo 15/01/2024; giá trị chính thức do chủ đầu tư cung cấp sau (migration `effective_from` mới) | **Anh** |
+| C5 | Hạn mức "8 tin" tính cho tin của ai (bot, agent, hệ thống) | **Đã chốt 07/10:** mọi tin OA gửi sau tin khách gần nhất (đối chiếu khi có tài liệu) | Tài liệu |
+| C6 | Hai OA khác gói dịch vụ có chính sách khác nhau | **Đã chốt 07/10:** chưa; chính sách theo `channel_type` | Xong |
 
 ## 6. Giới hạn thành thật
 

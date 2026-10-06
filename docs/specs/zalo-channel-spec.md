@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **BẢN NHÁP, chờ duyệt** (07/10/2026). Nhiều sự thật về Zalo **chưa xác minh bằng tài liệu chính thức** (§7); phần phụ thuộc chúng không được viết mã cho tới khi xác minh |
+| Trạng thái | **ĐÃ DUYỆT 07/10/2026** (Z1 chốt; Z2, Z3, Z4, Z6 và mọi dòng "Chưa" của §7 **chờ tài liệu Zalo**, PR phụ thuộc chúng chờ, không viết mã dựa trên điều chưa xác minh) |
 | Nguồn | Brief P3.2 mục 7, 13, 14; P7 module 06; P8 nhóm M02 (`channel_accounts`); P9 (webhook vào, mã lỗi, endpoint); P10 F1 bước 1–2; P21 S3; P22 Q6; Phụ lục v2.2 §7, §14 |
 | Liên quan | `channel-policy-spec.md`, `inbound-spec.md`, `outbox-spec.md` (khuôn hàm `SECURITY DEFINER`, thuê và thu hồi), `rls-spec-M01.md` §8, N38, N98, N100 |
 | Ngày | 07/10/2026 |
@@ -92,7 +92,7 @@ Fixture payload và chữ ký **tính theo công thức đã ghi**, **stub Zalo*
 
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
-| Z1 | Chỉ mục `(org_id, workspace_id, type)` có unique không | Không unique (một workspace nhiều OA) | Anh |
+| Z1 | Chỉ mục `(org_id, workspace_id, type)` có unique không | **Đã chốt 07/10:** không unique (một workspace nhiều OA) | Xong |
 | Z2 | Khóa webhook theo ứng dụng hay theo OA | Chờ tài liệu | Q6 / tài liệu |
 | Z3 | Zalo xử lý phản hồi không-2xx ra sao | Trả cùng một mã cho sai chữ ký và kênh lạ | Tài liệu |
 | Z4 | Ngưỡng làm mới token và thuê | Cấu hình; số theo thời hạn thật | Tài liệu |
