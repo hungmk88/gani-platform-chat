@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Run by hand on any branch (Actions -> CI -> Run workflow). It is how a mutation test of the kill-tests runs on a temporary branch
+  # without a pull request, so that no Merge button exists for it (N99: GitHub Free enforces no branch protection, N38).
+  workflow_dispatch:
 
 permissions:
   contents: read
