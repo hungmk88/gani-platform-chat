@@ -11,6 +11,7 @@ export { authSchema, authUsers } from './schema/auth.js';
 export { conversations } from './schema/conversations.js';
 export { featureFlagsGlobal } from './schema/feature-flags-global.js';
 export { featureFlagsOverrides } from './schema/feature-flags-overrides.js';
+export { messages } from './schema/messages.js';
 export { orgMembers, type OrgRole } from './schema/org-members.js';
 export { organizations } from './schema/organizations.js';
 export { platformAccessLogs } from './schema/platform-access-logs.js';
