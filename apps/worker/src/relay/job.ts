@@ -67,6 +67,7 @@ const CONNECTION_CODES = new Set([
   'ENOTFOUND',
   'EAI_AGAIN',
   'EPIPE',
+  'E_QUEUE_DOWN', // raised by our own publisher: no connection, or no answer in time
 ]);
 
 /** The code stored in `last_error` for a failed publish: the queue is unreachable, or it refused. Never the message (it can name a host). */
@@ -76,7 +77,8 @@ export function errorCodeOf(error: unknown): string {
       ? error.code
       : '';
   const message = error instanceof Error ? error.message : '';
-  return CONNECTION_CODES.has(code) || /connection is closed|connect econn/i.test(message)
+  return CONNECTION_CODES.has(code) ||
+    /connection is closed|connect econn|stream isn't writeable|command timed out/i.test(message)
     ? 'E_QUEUE_DOWN'
     : 'E_QUEUE';
 }
