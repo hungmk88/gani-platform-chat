@@ -6,7 +6,8 @@
 - `src/config.ts`: đọc env, sai thì không khởi động. `src/tenant-job.ts`: `runForJob`. `src/relay/job.ts`: sự kiện → job, tên hàng đợi, backoff.
 - `src/relay/outbox-relay.ts`: `OutboxRelay` (`tick()`, `start()`, `stop()`: vòng poll, tắt gọn, backpressure) trên hai cổng `RelayStore` và `QueuePublisher`, không biết BullMQ. `src/logger.ts`: log JSON, chỉ id và mã.
 - `src/queue/bullmq-publisher.ts`: `BullmqPublisher` (cổng `QueuePublisher` trên BullMQ). **Chỉ `src/queue/` được import `bullmq`/`ioredis`** (ESLint chặn chỗ khác; ngược lại `src/queue/` không import `pg`/`drizzle-orm`).
-- Sắp có (O-4c-2): kho thật, `startWorker` và `src/main.ts`.
+- `src/relay/db-store.ts`: `createDbRelayStore` (cổng `RelayStore` trên `@gani/db`): mỗi bước một transaction ngắn của một org, qua `runForJob` rồi `withTenant`; chỉ `pendingOrgs` chạy ngoài tenant. `src/worker.ts`: `startWorker` (dựng relay, `shutdown()`: relay → hàng đợi → pool, mỗi bước lỗi hay treo quá `OUTBOX_SHUTDOWN_MS` thì ghi log và đi tiếp, trả `false`; gọi lại thì trả lại kết quả cũ). `src/main.ts`: đọc cấu hình (sai thì in tên biến, thoát 1), dựng pool `app_role` (`max = OUTBOX_ORG_PARALLEL + 2`) và bộ nối BullMQ, `SIGINT`/`SIGTERM` → `shutdown()` → thoát 0 hoặc 1; tín hiệu thứ hai thoát ngay.
+- Chạy: `pnpm dev:worker` (gốc; cần Postgres và Valkey đang chạy, `.env` ở gốc) hoặc `pnpm --filter @gani/worker build && pnpm --filter @gani/worker start` (đọc biến từ môi trường).
 - SQL nằm ở `packages/db` (`pendingOrgs`, `claimOutboxBatch`, …); worker không import `drizzle-orm`/`pg` (ADR-002). Không import `@gani/domain` (chưa đóng gói, N61).
 - Biến môi trường: `.env.example` (`DATABASE_URL_APP`, `REDIS_URL`, `OUTBOX_*`); đặc tả: `docs/specs/outbox-spec.md`.
 
