@@ -54,16 +54,18 @@ describe('K1: Valkey stopped', () => {
     });
 
     // The queue is up: the relay has not failed on the organisation yet.
-    expect(worker.logs('relay_org_failed')).toEqual([]);
+    expect(worker.logs('queue_unreachable')).toEqual([]);
     await valkey('stop');
     const second = await writeEvents(suite.app, org, 100);
     // The relay now knows the queue of the organisation, so the first thing it does in a pass is to ask the queue how full it is
-    // (backpressure). With Valkey down that question fails before anything is claimed: the organisation is skipped and logged, the
-    // events stay pending and no attempt is used (unlike K1a, where the relay knows no queue yet). Outbox spec §10 K1 as adjusted in N99.
-    await worker.waitLog('relay_org_failed', {
+    // (backpressure). With Valkey down that question fails before anything is claimed: the organisation is skipped and a warning
+    // `queue_unreachable` is logged, the events stay pending and no attempt is used (unlike K1a, where the relay knows no queue yet).
+    // Outbox spec §10 K1 as adjusted in N99.
+    const unreachable = await worker.waitLog('queue_unreachable', {
       timeoutMs: 20_000,
       where: (line) => line.orgId === org,
     });
+    expect(unreachable).toMatchObject({ level: 'warn', code: 'E_QUEUE_DOWN' });
     expect(await publishedAmong(suite.admin, org, second)).toBe(0);
     const during = await statusCounts(suite.admin, org);
     expect(during.dead_letter).toBe(0);
