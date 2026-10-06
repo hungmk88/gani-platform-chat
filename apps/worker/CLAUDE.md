@@ -4,7 +4,8 @@
 
 - **Node thuần, không NestJS** (lệch Brief P5; relay nhỏ, không cần DI, test chạy không cần SWC). **Khi worker có ≥ 3 loại job thì xem lại** quyết định này.
 - `src/config.ts`: đọc env, sai thì không khởi động. `src/tenant-job.ts`: `runForJob`. `src/relay/job.ts`: sự kiện → job, tên hàng đợi, backoff.
-- Sắp có: `src/relay/outbox-relay.ts` (O-4b), `src/queue/bullmq-publisher.ts` và `src/main.ts` (O-4c). Chỉ `src/queue/` được import `bullmq`/`ioredis`.
+- `src/relay/outbox-relay.ts`: `OutboxRelay.tick()` trên hai cổng `RelayStore` và `QueuePublisher`, không biết BullMQ. `src/logger.ts`: log JSON, chỉ id và mã.
+- Sắp có: vòng poll, tắt gọn và backpressure (O-4b-2); `src/queue/bullmq-publisher.ts` và `src/main.ts` (O-4c). Chỉ `src/queue/` được import `bullmq`/`ioredis`.
 - SQL nằm ở `packages/db` (`pendingOrgs`, `claimOutboxBatch`, …); worker không import `drizzle-orm`/`pg` (ADR-002). Không import `@gani/domain` (chưa đóng gói, N61).
 - Biến môi trường: `.env.example` (`DATABASE_URL_APP`, `REDIS_URL`, `OUTBOX_*`); đặc tả: `docs/specs/outbox-spec.md`.
 
@@ -23,7 +24,7 @@
 ## Outbox
 
 - Mọi sự kiện nghiệp vụ ghi `outbox_events` trong **cùng transaction** với dữ liệu.
-- `OutboxRelayWorker` đẩy lên queue. Không publish trực tiếp từ service.
+- `OutboxRelay` đẩy lên queue: thu hồi → giữ chỗ → đẩy (ngoài transaction) → đánh dấu; đẩy lỗi thì lùi theo backoff, hết lần thử thì `dead_letter`. Không publish trực tiếp từ service.
 
 ## Kiểm chứng
 

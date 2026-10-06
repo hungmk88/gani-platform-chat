@@ -59,3 +59,24 @@ export function toJob(event: ClaimedOutboxEvent): EventJob {
 export function backoffSeconds(attempts: number): number {
   return Math.min(2 ** Math.max(attempts, 1), 60);
 }
+
+const CONNECTION_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EPIPE',
+]);
+
+/** The code stored in `last_error` for a failed publish: the queue is unreachable, or it refused. Never the message (it can name a host). */
+export function errorCodeOf(error: unknown): string {
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : '';
+  const message = error instanceof Error ? error.message : '';
+  return CONNECTION_CODES.has(code) || /connection is closed|connect econn/i.test(message)
+    ? 'E_QUEUE_DOWN'
+    : 'E_QUEUE';
+}
