@@ -158,7 +158,7 @@ Chỉ chạy được trên CI (N16). Mỗi ca có người tiêu thụ kiểm t
 | K3 | Chưa | Thuộc O-5b-2 (cùng SIGTERM). |
 | K4–K7 | Ngoài phạm vi O-5 | Theo các PR O-1…O-3. |
 
-**Mutation** (ghi kết quả vào PR): bỏ `SKIP LOCKED` → K5 đỏ; đánh dấu `published` **trước** khi đẩy → K1/K2 đỏ; ghi outbox ở transaction riêng → K4 đỏ; bỏ bước thu hồi → K2 đỏ. **Đã chạy:** M1 (`published` trước khi đẩy) → `verify` và `queue` đỏ (run #139); M2 (bỏ thu hồi) và M3 (bỏ `jobId`) chưa chạy; ghi tiếp ở N99.
+**Mutation** (ghi kết quả vào PR): bỏ `SKIP LOCKED` → K5 đỏ; đánh dấu `published` **trước** khi đẩy → K1/K2 đỏ; ghi outbox ở transaction riêng → K4 đỏ; bỏ bước thu hồi → K2 đỏ. **Đã chạy (06/10/2026):** M1 (`published` trước khi đẩy, run #139), M2 (bỏ thu hồi, run #146), M3 (bỏ `jobId`, run #147): cả ba làm `verify` và `queue` đỏ, kill-test bắt được; chi tiết ở N99. **Chưa chạy:** `stop()` không chờ lượt đang chạy, `main` thoát 0 ở tín hiệu thứ hai (cùng O-5b-2).
 
 ## 11. Chia PR và hạ tầng (chốt 06/10/2026, N97)
 
