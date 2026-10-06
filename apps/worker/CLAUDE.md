@@ -33,6 +33,8 @@
 
 ## Kiểm chứng
 
+- **`test/support/crash-main.mjs` lặp lại cách `src/main.ts` dựng worker** (cấu hình, pool, kho, bộ nối, `startWorker`; các dòng ghi "same as main.ts") và chỉ khác ở chỗ bọc hàng đợi để tự `SIGKILL` đúng điểm (`CRASH_AT=before_publish|after_publish`, ca K2). **Ai sửa cách `main.ts` dựng worker phải sửa `crash-main.mjs` theo.** Mã chạy thật không có công tắc này: `test/no-crash-switch.spec.ts` quét `src/` (không tính test) và `dist/` và đỏ nếu thấy tên công tắc.
+- Kill-test (`k1`, `k2`, ...): worker là **tiến trình thật** (`spawnWorker` trong `test/harness.ts`, chạy `dist/main.js` nên phải `build` trước), ghi sự kiện bằng `insertOutboxEvent` dưới `withTenant` thật, đọc DB bằng `migration_role`; mỗi ca một org mới; chờ theo trạng thái quan sát được, không `sleep`.
 - Test tích hợp (`apps/worker/test/*.spec.ts`, `pnpm --filter @gani/worker test:integration`): cần Valkey thật (`REDIS_URL`, `VALKEY_CONTAINER`), **chỉ chạy trên CI** (job `queue`, N41: máy dev không có Docker). Mỗi test dùng tên hàng đợi mới; không retry; chờ bằng `waitFor` có hạn và thông điệp lỗi nêu trạng thái cuối. `test/` được import `bullmq`/`ioredis`/`@gani/domain` (ESLint); `src/` thì không (ngoài `src/queue/`).
 
 - Kill queue sau commit → sự kiện vẫn đi (outbox kill-test, O-5).
