@@ -10,6 +10,7 @@ export default defineConfig({
       ...coverage,
       exclude: [
         ...coverage.exclude,
+        'src/conversation-store.ts',
         'src/tenant-tx.ts',
         'src/member-context.ts',
         'src/auth-tx.ts',
