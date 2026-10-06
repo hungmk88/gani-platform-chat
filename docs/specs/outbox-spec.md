@@ -158,7 +158,11 @@ Chỉ chạy được trên CI (N16). Mỗi ca có người tiêu thụ kiểm t
 | O-1 | `packages/db` | bảng `outbox_events`, `insertOutboxEvent` (đã xong) |
 | O-2 | `apps/api` | `OutboxWriter`; `ConversationStateMachine` ghi effects cùng transaction, kiểm bằng ca ROLLBACK; `conversation.manager_alert` vào danh mục |
 | O-3 | `packages/db` | `app.outbox_pending_orgs` (hàm `SECURITY DEFINER`, không phải view), kho cho relay: giữ chỗ, đánh dấu, thất bại, thu hồi, `requeue` |
-| O-4 | `apps/worker` | khung worker, relay, BullMQ (`bullmq` + `ioredis`, ghim phiên bản chính xác, `pnpm audit --audit-level=high`); tenant lấy từ payload job, job thiếu `orgId` thì fail ngay; `jobId = event.id`, trùng thì log rõ rồi bỏ qua |
+| O-4a | `apps/worker` | khung worker (Node thuần, không NestJS), `config.ts` (thiếu hoặc sai biến thì không khởi động), `runForJob` (job thiếu `orgId` thì fail ngay, không truy vấn), dữ liệu job, tên hàng đợi, backoff |
+| O-4b | `apps/worker` | `OutboxRelay`: vòng poll theo org, thu hồi → giữ chỗ → đẩy → đánh dấu, tắt gọn, trên cổng hàng đợi giả |
+| O-4c | `apps/worker` | bộ nối BullMQ (`bullmq` 5.81.5 + `ioredis` 5.11.1, ghim đúng phiên bản, `pnpm audit --audit-level=high`), `main.ts`, script `dev`/`start`; `jobId = event.id`, trùng thì log rồi bỏ qua |
 | O-5 | CI + test | job CI **`queue` riêng** (không nhét vào `db`): Valkey 8, AOF bật; K1–K3 giết tiến trình thật |
 
-Thứ tự O-1 → (O-2 // O-3) → O-4 → O-5; mỗi PR tạo từ `main` sau khi PR trước merge, không xếp chồng.
+Thứ tự O-1 → (O-2 // O-3) → O-4a → O-4b → O-4c → O-5; mỗi PR tạo từ `main` sau khi PR trước merge, không xếp chồng.
+
+**Worker (O-4, chốt 06/10/2026):** Node thuần, không NestJS (lệch Brief P5 "NestJS standalone": relay chỉ vài trăm dòng, không cần DI, test chạy được không cần SWC). Biến môi trường: `DATABASE_URL_APP`, `REDIS_URL` (bắt buộc), `OUTBOX_POLL_MS=500`, `OUTBOX_LEASE_S=60`, `OUTBOX_BATCH=100`, `OUTBOX_MAX_ATTEMPTS=5`, `OUTBOX_ORGS_PER_TICK=50`, `OUTBOX_ORG_PARALLEL=4`, `OUTBOX_SHUTDOWN_MS=10000`. Chỉ số và health check để sau O-5.
