@@ -26,6 +26,11 @@ const queueImports = {
   group: ['bullmq', 'bullmq/*', 'ioredis', 'ioredis/*'],
   message: 'Chỉ import bullmq/ioredis trong apps/worker/src/queue/ (cổng QueuePublisher).',
 };
+// The worker does not import the domain package at run time (it is not packaged, N61); its tests may, for `uuidv7`.
+const domainImports = {
+  group: ['@gani/domain', '@gani/domain/*'],
+  message: 'apps/worker/src không import @gani/domain (N61); chỉ test/ được dùng.',
+};
 const banImports = (...patterns) => ['error', { patterns }];
 
 export default defineConfig(
@@ -68,9 +73,15 @@ export default defineConfig(
   { files: strictAnyFiles, rules: { '@typescript-eslint/no-explicit-any': 'error' } },
   { files: ['packages/db/**'], rules: { 'no-restricted-imports': banImports(queueImports) } },
   {
-    files: ['apps/worker/src/queue/**'],
-    rules: { 'no-restricted-imports': banImports(dbImports) },
+    files: ['apps/worker/src/**'],
+    rules: { 'no-restricted-imports': banImports(dbImports, queueImports, domainImports) },
   },
+  {
+    files: ['apps/worker/src/queue/**'],
+    rules: { 'no-restricted-imports': banImports(dbImports, domainImports) },
+  },
+  // The integration tests of the worker use BullMQ, ioredis and `uuidv7` directly; they still may not touch the database client.
+  { files: ['apps/worker/test/**'], rules: { 'no-restricted-imports': banImports(dbImports) } },
   // CLAUDE.md rule 4: only the state machine changes the state of a conversation, and it does so through conversation-store.ts.
   // Tests may write test data directly. The scan in packages/db/src/conversation-store-guard.test.ts is the second lock.
   {

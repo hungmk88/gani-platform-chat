@@ -33,6 +33,8 @@
 
 ## Kiểm chứng
 
+- Test tích hợp (`apps/worker/test/*.spec.ts`, `pnpm --filter @gani/worker test:integration`): cần Valkey thật (`REDIS_URL`, `VALKEY_CONTAINER`), **chỉ chạy trên CI** (job `queue`, N41: máy dev không có Docker). Mỗi test dùng tên hàng đợi mới; không retry; chờ bằng `waitFor` có hạn và thông điệp lỗi nêu trạng thái cuối. `test/` được import `bullmq`/`ioredis`/`@gani/domain` (ESLint); `src/` thì không (ngoài `src/queue/`).
+
 - Kill queue sau commit → sự kiện vẫn đi (outbox kill-test, O-5).
 - Kill worker khi đang nhận 50 tin/s → 0 tin mất.
 - Job thiếu `orgId` → fail ngay, có log.
