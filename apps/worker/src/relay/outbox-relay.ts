@@ -80,11 +80,6 @@ export class OutboxRelay {
     const known = this.queues.get(orgId) ?? new Set<string>();
     for (const job of jobs) known.add(job.queue);
     this.queues.set(orgId, known);
-    // MUTATION M1 (temporary, never to be merged): mark published BEFORE sending.
-    await store.markPublished(
-      orgId,
-      claimed.map((e) => e.id),
-    );
     let result;
     try {
       result = await queue.publish(jobs);
