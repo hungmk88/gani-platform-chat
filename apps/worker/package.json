@@ -9,7 +9,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@gani/db": "workspace:*"
+    "@gani/db": "workspace:*",
+    "bullmq": "5.81.5",
+    "ioredis": "5.11.1"
   },
   "devDependencies": {
     "@gani/config": "workspace:*",

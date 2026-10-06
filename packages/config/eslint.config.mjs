@@ -17,6 +17,17 @@ const only = (selector) => ({
     'Only ConversationStateMachine changes conversations, through packages/db/src/conversation-store.ts.',
 });
 
+// The two groups of the no-restricted-imports rule: each one is allowed in one place only (turned off for that place below).
+const dbImports = {
+  group: ['pg', 'pg/*', 'postgres', 'drizzle-orm', 'drizzle-orm/*'],
+  message: 'Chỉ import client DB trong packages/db (qua TenantTx).',
+};
+const queueImports = {
+  group: ['bullmq', 'bullmq/*', 'ioredis', 'ioredis/*'],
+  message: 'Chỉ import bullmq/ioredis trong apps/worker/src/queue/ (cổng QueuePublisher).',
+};
+const banImports = (...patterns) => ['error', { patterns }];
+
 export default defineConfig(
   {
     ignores: [
@@ -51,21 +62,15 @@ export default defineConfig(
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
       // ADR-002: mọi truy vấn đi qua TenantTx trong packages/db.
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['pg', 'pg/*', 'postgres', 'drizzle-orm', 'drizzle-orm/*'],
-              message: 'Chỉ import client DB trong packages/db (qua TenantTx).',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': banImports(dbImports, queueImports),
     },
   },
   { files: strictAnyFiles, rules: { '@typescript-eslint/no-explicit-any': 'error' } },
-  { files: ['packages/db/**'], rules: { 'no-restricted-imports': 'off' } },
+  { files: ['packages/db/**'], rules: { 'no-restricted-imports': banImports(queueImports) } },
+  {
+    files: ['apps/worker/src/queue/**'],
+    rules: { 'no-restricted-imports': banImports(dbImports) },
+  },
   // CLAUDE.md rule 4: only the state machine changes the state of a conversation, and it does so through conversation-store.ts.
   // Tests may write test data directly. The scan in packages/db/src/conversation-store-guard.test.ts is the second lock.
   {
