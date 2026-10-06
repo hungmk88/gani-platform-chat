@@ -36,10 +36,10 @@ Service **không bao giờ** gọi hàng đợi hay Socket.IO trực tiếp (wor
 | `actor_kind`, `actor_id`, `trace_id`, `occurred_at` | Khớp `DomainEvent` của P9 |
 | `status` | `pending` → `claimed` → `published`; `claimed` → `pending` (thử lại); → `dead_letter` |
 | `attempts int`, `available_at`, `claimed_at`, `published_at` | Thử lại và hợp đồng thuê (§4) |
-| `last_error text` | Chỉ **mã** lỗi, không thông điệp thô, không PII |
+| `last_error text` | Chỉ **mã** lỗi, không thông điệp thô, không PII: `CHECK` không rỗng và **≤ 64 ký tự** |
 | `created_at` | |
 
-PK `(id, created_at)`, partition tháng (`app.create_log_partitions`), `ENABLE`+`FORCE` RLS theo `org_id`, chỉ mục Brief `(status, created_at)` **cộng** chỉ mục riêng cho relay: `(available_at) WHERE status = 'pending'`.
+PK `(id, created_at)`, partition tháng (`app.create_log_partitions`), `ENABLE`+`FORCE` RLS theo `org_id`, chỉ mục Brief `(status, created_at)` **cộng** hai chỉ mục một phần cho relay: `(org_id, available_at) WHERE status = 'pending'` (việc đến hạn; cũng là thứ danh sách org quét) và `(org_id, claimed_at) WHERE status = 'claimed'` (việc relay chết để lại). `CHECK`: `status` thuộc bốn giá trị, `published_at` có **khi và chỉ khi** `published`, `claimed` phải có `claimed_at`, `attempts ≥ 0`, `payload` là object. Đã dựng ở O-1 (migration `202610061200`).
 Quyền `app_role`: `SELECT, INSERT`, và `UPDATE` **theo cột** (`status, attempts, available_at, claimed_at, published_at, last_error`). `payload` và định danh **bất biến** vì không được `UPDATE`; không có `DELETE`.
 
 ## 3. Ghi sự kiện
@@ -71,11 +71,11 @@ Vấn đề: relay phải thấy sự kiện của **mọi** org, nhưng `app_ro
 | B. Role thứ 5 `relay_role` có `BYPASSRLS` | Đơn giản | Thêm role lệch P16 (đã thêm `auth_role` một lần); BYPASSRLS đọc được payload mọi tenant |
 | C. Dùng `migration_role` | Không cần gì thêm | Cấm (CLAUDE.md, spec RLS §3: chỉ pipeline migration) |
 
-Hướng A: `app.outbox_pending_orgs(p_limit int) RETURNS TABLE(org_id uuid)`, `STABLE SECURITY DEFINER`, `search_path` cố định, chỉ trả org còn tồn tại và có dòng `pending` đến hạn. Không trả payload.
+Hướng A: `app.outbox_pending_orgs(p_limit int, p_lease_seconds int DEFAULT 60) RETURNS TABLE(org_id uuid)`, `STABLE SECURITY DEFINER`, `search_path` cố định, chỉ trả org còn tồn tại và có dòng `pending` đến hạn **hoặc** dòng `claimed` quá `p_lease_seconds` (relay chết giữa chừng, bước 5). Không trả payload. Tham số thứ hai là chỗ lệch nhẹ so với chữ ký ban đầu `(p_limit int)`: không có nó hàm không biết org nào có dòng cần thu hồi, và hằng số thuê nằm trong hàm sẽ lệch với `OUTBOX_LEASE_S` của worker (N97).
 
 Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
 
-1. `orgs = outbox_pending_orgs(50)`; xử lý tối đa 4 org song song.
+1. `orgs = outbox_pending_orgs(50, OUTBOX_LEASE_S)`; xử lý tối đa 4 org song song.
 2. **Giữ chỗ** (`TenantTx` của org, giao dịch ngắn):
    ```sql
    UPDATE outbox_events SET status='claimed', claimed_at=now(), attempts=attempts+1
@@ -93,7 +93,7 @@ Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
 
 Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4 → sự kiện được đẩy lần hai sau khi hết hạn thuê. Đó là *at-least-once*.
 
-**Đã chốt 06/10 (O1):** hướng A, tên `app.outbox_pending_orgs(p_limit int)`, **không thêm role**, `EXECUTE` cấp cho **`app_role`** (worker dùng `app_role`, như `worker/CLAUDE.md`). Hàm chỉ trả `org_id`, không payload, không lộ dữ liệu; `MIG-DEFINER` đã bắt buộc `search_path` cố định. Không cấp cho `auth_role`, `support_role`, `PUBLIC`: test kiểm đúng tập quyền.
+**Đã chốt 06/10 (O1):** hướng A, tên `app.outbox_pending_orgs(p_limit int, p_lease_seconds int)` (mặc định 60), **không thêm role**, `EXECUTE` cấp cho **`app_role`** (worker dùng `app_role`, như `worker/CLAUDE.md`). Hàm chỉ trả `org_id`, không payload, không lộ dữ liệu; `MIG-DEFINER` đã bắt buộc `search_path` cố định. Không cấp cho `auth_role`, `support_role`, `PUBLIC`: test kiểm đúng tập quyền.
 
 ## 5. Hàng đợi và người tiêu thụ
 
@@ -120,13 +120,13 @@ Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
 | O1 | Cơ chế đọc nhiều tenant (§4) | **Đã chốt 06/10:** hướng A, `app.outbox_pending_orgs`, `EXECUTE` cho `app_role`, không thêm role | Xong |
-| O2 | Tên hàng đợi sự kiện ra | `q.events.ws.{id}` / `q.events.org.{id}` | Cố vấn |
-| O3 | Payload tham chiếu hay chứa nội dung | Tham chiếu | Cố vấn |
-| O4 | Độ trễ cho phép từ commit tới phát realtime, ngưỡng báo động | poll 500ms, trễ P95 < 1 giây | CEO/Cố vấn |
-| O5 | Hạn lưu `published` | 30 ngày | CEO |
-| O6 | Valkey mất job sau khi đã `published` (§9) | Chấp nhận cho realtime; tự đối soát cho automation (S4) | Cố vấn |
-| O7 | Số lần thử, backoff của outbox | 5 lần, mũ 2 tối đa 60 giây | Cố vấn |
-| O8 | BullMQ chạy trên Valkey 8 chưa kiểm chứng (N40) | Kiểm bằng ca K1 ngay PR đầu của outbox; hỏng thì quay về Redis 7 | Cố vấn |
+| O2 | Tên hàng đợi sự kiện ra | **Đã chốt 06/10:** `q.events.ws.{workspaceId}` / `q.events.org.{orgId}` | Xong |
+| O3 | Payload tham chiếu hay chứa nội dung | **Đã chốt:** tham chiếu (spec §3) | Xong |
+| O4 | Độ trễ cho phép, ngưỡng báo động | **Đã chốt 06/10:** poll 500 ms; cảnh báo khi tuổi cũ nhất > 30 giây, khẩn > 120 giây | Xong |
+| O5 | Hạn lưu `published` | **Đã chốt 06/10:** 30 ngày; bỏ partition thuộc `PartitionMaintenanceJob` (hạn 01/01/2027), **không** thuộc chuỗi outbox | Xong |
+| O6 | Valkey mất job sau khi đã `published` (§9) | **Đã chốt:** chấp nhận cho realtime; đối soát cho automation (S4) | Xong |
+| O7 | Số lần thử, backoff của outbox | **Đã chốt 06/10:** 5 lần, `min(2^n, 60)` giây | Xong |
+| O8 | BullMQ chạy trên Valkey 8 chưa kiểm chứng (N40) | **Vẫn treo:** ca K1 ở O-5 chốt; hỏng thì quay về Redis 7 | O-5 |
 
 ## 9. Giới hạn thành thật
 
@@ -147,3 +147,15 @@ Chỉ chạy được trên CI (N16). Mỗi ca có người tiêu thụ kiểm t
 | K7 | Cô lập | `app_role` không đặt tenant đọc `outbox_events` → lỗi `TN001`; hàm §4 chỉ trả `org_id`; relay của org A không đọc payload org B |
 
 **Mutation** (ghi kết quả vào PR): bỏ `SKIP LOCKED` → K5 đỏ; đánh dấu `published` **trước** khi đẩy → K1/K2 đỏ; ghi outbox ở transaction riêng → K4 đỏ; bỏ bước thu hồi → K2 đỏ.
+
+## 11. Chia PR và hạ tầng (chốt 06/10/2026, N97)
+
+| PR | Nơi | Nội dung |
+|---|---|---|
+| O-1 | `packages/db` | bảng `outbox_events`, `insertOutboxEvent` (đã xong) |
+| O-2 | `apps/api` | `OutboxWriter`; `ConversationStateMachine` ghi effects cùng transaction, kiểm bằng ca ROLLBACK; `conversation.manager_alert` vào danh mục |
+| O-3 | `packages/db` | `app.outbox_pending_orgs` (hàm `SECURITY DEFINER`, không phải view), kho cho relay: giữ chỗ, đánh dấu, thất bại, thu hồi, `requeue` |
+| O-4 | `apps/worker` | khung worker, relay, BullMQ (`bullmq` + `ioredis`, ghim phiên bản chính xác, `pnpm audit --audit-level=high`); tenant lấy từ payload job, job thiếu `orgId` thì fail ngay; `jobId = event.id`, trùng thì log rõ rồi bỏ qua |
+| O-5 | CI + test | job CI **`queue` riêng** (không nhét vào `db`): Valkey 8, AOF bật; K1–K3 giết tiến trình thật |
+
+Thứ tự O-1 → (O-2 // O-3) → O-4 → O-5; mỗi PR tạo từ `main` sau khi PR trước merge, không xếp chồng.
