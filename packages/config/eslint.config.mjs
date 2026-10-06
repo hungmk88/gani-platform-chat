@@ -10,6 +10,13 @@ const strictAnyFiles = [
   'apps/api/src/modules/**/*.{ts,tsx,mts,cts}',
 ];
 
+// A selector of the conversation-write rule below, with its one message.
+const only = (selector) => ({
+  selector,
+  message:
+    'Only ConversationStateMachine changes conversations, through packages/db/src/conversation-store.ts.',
+});
+
 export default defineConfig(
   {
     ignores: [
@@ -59,5 +66,24 @@ export default defineConfig(
   },
   { files: strictAnyFiles, rules: { '@typescript-eslint/no-explicit-any': 'error' } },
   { files: ['packages/db/**'], rules: { 'no-restricted-imports': 'off' } },
+  // CLAUDE.md rule 4: only the state machine changes the state of a conversation, and it does so through conversation-store.ts.
+  // Tests may write test data directly. The scan in packages/db/src/conversation-store-guard.test.ts is the second lock.
+  {
+    files: ['**/*.{ts,tsx,mts,cts}'],
+    ignores: [
+      'packages/db/src/conversation-store.ts',
+      'packages/db/test/**',
+      '**/*.test.ts',
+      '**/*.spec.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        only("CallExpression[callee.property.name='update'][arguments.0.name='conversations']"),
+        only(String.raw`TemplateElement[value.raw=/UPDATE\s+(public\.)?conversations\b/i]`),
+        only(String.raw`Literal[value=/UPDATE\s+(public\.)?conversations\b/i]`),
+      ],
+    },
+  },
   prettier,
 );

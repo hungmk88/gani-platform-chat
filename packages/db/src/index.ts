@@ -1,5 +1,6 @@
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
+export * from './conversation-store.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, type MemberContext } from './member-context.js';
 export { pingDb } from './ping.js';
