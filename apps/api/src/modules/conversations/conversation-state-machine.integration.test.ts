@@ -178,7 +178,9 @@ describe('claim-race: 50 agents claim one conversation at once', () => {
   });
 
   it('runs under READ COMMITTED, which the claim relies on (no Redlock)', async () => {
-    const { rows } = await admin.query<{ level: string }>('SHOW default_transaction_isolation');
+    const { rows } = await admin.query<{ level: string }>(
+      "SELECT current_setting('default_transaction_isolation') AS level",
+    );
     expect(rows[0]?.level).toBe('read committed');
   });
 
