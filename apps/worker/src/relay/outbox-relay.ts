@@ -97,11 +97,20 @@ export class OutboxRelay {
     return claimed.length === settings.batchSize;
   }
 
-  /** Backpressure: an organisation whose queue is full is skipped for this pass, and the others go on (v2.2 §15). */
+  /**
+   * Backpressure: an organisation whose queue is full is skipped for this pass, and the others go on (v2.2 §15). A queue that cannot
+   * be asked (the server is down) skips the organisation the same way, with a warning: nothing is claimed, so no attempt is used (N99).
+   */
   private async isFull(orgId: string): Promise<boolean> {
     const { queue, log, settings } = this.deps;
     for (const name of this.queues.get(orgId) ?? []) {
-      const waiting = await queue.waiting(name);
+      let waiting: number;
+      try {
+        waiting = await queue.waiting(name);
+      } catch (error) {
+        log.warn('queue_unreachable', { orgId, queue: name, code: errorCodeOf(error) });
+        return true;
+      }
       if (waiting >= settings.queueMaxWaiting) {
         log.warn('queue_full', { orgId, queue: name, waiting, max: settings.queueMaxWaiting });
         return true;

@@ -27,7 +27,7 @@
 
 - Mọi sự kiện nghiệp vụ ghi `outbox_events` trong **cùng transaction** với dữ liệu.
 - `OutboxRelay` đẩy lên queue: thu hồi → giữ chỗ → đẩy (ngoài transaction) → đánh dấu; đẩy lỗi thì lùi theo backoff, hết lần thử thì `dead_letter`. Không publish trực tiếp từ service.
-- Backpressure: hàng đợi có ≥ `OUTBOX_QUEUE_MAX_WAITING` job chờ thì bỏ qua org đó ở lượt này (các org khác vẫn đi) và cảnh báo trong log. Relay chỉ biết các hàng đợi đã đẩy kể từ lúc khởi động, nên lô đầu của mỗi org sau khi khởi động chưa được kiểm (N98).
+- Backpressure: hàng đợi có ≥ `OUTBOX_QUEUE_MAX_WAITING` job chờ thì bỏ qua org đó ở lượt này (các org khác vẫn đi) và cảnh báo trong log. Relay chỉ biết các hàng đợi đã đẩy kể từ lúc khởi động, nên lô đầu của mỗi org sau khi khởi động chưa được kiểm (N98). Hỏi hàng đợi lỗi (Valkey sập) thì cũng bỏ qua org đó, cảnh báo `queue_unreachable`: không claim nên `attempts` không tăng (N99).
 - Bộ nối BullMQ: một `Queue` cho mỗi tên hàng đợi, chung một kết nối; job có `jobId` = id sự kiện, `attempts: 5`, backoff mũ 1 giây, giữ job xong 1 giờ/10.000 job và job lỗi 7 ngày/1000 job. Kết nối thất bại nhanh (`enableOfflineQueue: false`, 5 giây) và mọi lời gọi có hạn 5 giây: một `Queue` dựng khi chưa có kết nối thì chờ vô hạn (đã kiểm với cổng đóng), nên `publish`/`waiting` chờ kết nối `ready` trước. Lỗi thành `E_QUEUE_DOWN`.
 - Tắt gọn: `stop()` chờ lượt đang chạy, không bắt đầu lượt mới, trả `false` và cảnh báo nếu quá `OUTBOX_SHUTDOWN_MS`; phần còn `claimed` do tắt cứng được thu hồi sau thời hạn thuê.
 

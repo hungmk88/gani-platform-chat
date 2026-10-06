@@ -68,9 +68,9 @@ function harness(events: ClaimedOutboxEvent[], settings: Partial<Settings> = {})
   const w = world(events);
   const logs: { level: string; message: string; fields: LogFields }[] = [];
   const log: Logger = { info: (m, f = {}) => void logs.push({ level: 'info', message: m, fields: f }), warn: (m, f = {}) => void logs.push({ level: 'warn', message: m, fields: f }), error: (m, f = {}) => void logs.push({ level: 'error', message: m, fields: f }) };
-  const q = { published: [] as Parameters<QueuePublisher['publish']>[0][number][], waiting: new Map<string, number>(), duplicates: [] as string[], fail: null as Error | null, gate: null as Promise<void> | null };
+  const q = { published: [] as Parameters<QueuePublisher['publish']>[0][number][], waiting: new Map<string, number>(), duplicates: [] as string[], fail: null as Error | null, waitingFail: null as Error | null, gate: null as Promise<void> | null };
   const queue: QueuePublisher = {
-    waiting: (name) => Promise.resolve(q.waiting.get(name) ?? 0),
+    waiting: (name) => (q.waitingFail ? Promise.reject(q.waitingFail) : Promise.resolve(q.waiting.get(name) ?? 0)),
     publish: async (jobs) => {
       w.calls.push('publish');
       await q.gate;
@@ -185,6 +185,36 @@ describe('backpressure', () => {
     h.q.waiting.set('q.events.ws.ws-1', 4);
     await h.relay.tick();
     expect(h.status('a2')).toBe('published');
+  });
+});
+
+describe('a queue that cannot be asked', () => {
+  it('skips the organisations it knows the queue of, with a warning, claims nothing and uses no attempt, and resumes when it answers', async () => {
+    const h = harness([event('a1', 'A'), event('b1', 'B', 'ws-2')]);
+    await h.relay.tick();
+    for (const [id, org, ws] of [
+      ['a2', 'A', 'ws-1'],
+      ['b2', 'B', 'ws-2'],
+    ] as const)
+      h.rows.set(id, { e: event(id, org, ws), status: 'pending', attempts: 0 });
+    h.calls.length = 0;
+    h.q.waitingFail = Object.assign(new Error('the queue did not answer in time'), {
+      code: 'E_QUEUE_DOWN',
+    });
+    expect(await h.relay.tick()).toBe(false);
+    expect(h.calls.filter((c) => c.startsWith('claim') || c === 'publish')).toEqual([]);
+    expect([h.rows.get('a2'), h.rows.get('b2')].map((r) => [r?.status, r?.attempts])).toEqual([
+      ['pending', 0],
+      ['pending', 0],
+    ]);
+    expect(h.seen('relay_org_failed')).toEqual([]);
+    expect(h.seen('queue_unreachable').map((l) => [l.level, l.fields])).toEqual([
+      ['warn', { orgId: 'A', queue: 'q.events.ws.ws-1', code: 'E_QUEUE_DOWN' }],
+      ['warn', { orgId: 'B', queue: 'q.events.ws.ws-2', code: 'E_QUEUE_DOWN' }],
+    ]);
+    h.q.waitingFail = null;
+    await h.relay.tick();
+    expect([h.status('a2'), h.status('b2')]).toEqual(['published', 'published']);
   });
 });
 
