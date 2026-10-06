@@ -46,6 +46,7 @@ Cột do FSM sở hữu: `state`, `version`, `assigned_user_id`, `after_hours_ho
 | T14 | `CLOSED` | `customer_message` | `now − closed_at ≤ 72h` | `BOT_ACTIVE` | mở lại cùng hội thoại, `closed_at=null`, `assigned=null` | `state_changed` |
 | T15 | `HUMAN_ACTIVE`, `PENDING_CUSTOMER` | `transfer(u2)` | — | **giữ nguyên** | `assigned=u2` | `agent.transferred` (+ audit) |
 | T16 | `HUMAN_ACTIVE`, `PENDING_CUSTOMER` | `reassign(u2)` (Manager/Admin) | — | **giữ nguyên** | `assigned=u2` | `agent.reassigned` (+ audit) |
+| T21 | `HUMAN_WAITING_Q` | `reassign(u2)` (Manager/Admin) | — | `HUMAN_ACTIVE` | `assigned=u2` | `state_changed`, `agent.reassigned` (+ audit) — **F2, chốt 06/10** |
 | T17 | `HUMAN_ACTIVE` | `agent_offline_timeout` | offline > 10 phút, khách còn tin chưa trả lời, `inHours` | `HUMAN_WAITING_Q` | `assigned=null` | `state_changed` + báo quản lý |
 | T18 | `HUMAN_ACTIVE` | `agent_offline_timeout` | như T17 nhưng `!inHours` | `BOT_ACTIVE` | `hold=true`, `assigned=null` | `state_changed` |
 | T19 | `HUMAN_ACTIVE` | `agent_logout` | `inHours` | `HUMAN_WAITING_Q` | `assigned=null` | `state_changed` |
@@ -59,7 +60,7 @@ Cột do FSM sở hữu: `state`, `version`, `assigned_user_id`, `after_hours_ho
 
 1. `after_hours_hold = false OR state = 'BOT_ACTIVE'`
 2. `state IN ('HUMAN_ACTIVE','PENDING_CUSTOMER') ⇒ assigned_user_id IS NOT NULL`; `state IN ('BOT_ACTIVE','HUMAN_WAITING_Q','CLOSED') ⇒ assigned_user_id IS NULL` (nếu F3 bị bác thì bỏ `HUMAN_WAITING_Q` khỏi vế này)
-3. `state = 'CLOSED' ⇒ closed_at IS NOT NULL AND outcome IS NOT NULL`; ngược lại `closed_at IS NULL`
+3. `state = 'CLOSED' ⇔ closed_at IS NOT NULL ⇔ outcome IS NOT NULL` (hai chiều; mở lại T14 xóa cả hai); `outcome IN ('won','lost','resolved','resolved_by_bot')`
 4. `(org_id, assigned_user_id)` tham chiếu `org_members` (khóa ngoại kép), `ON DELETE RESTRICT`
 
 Dữ liệu không đạt bất biến bị DB từ chối ngay cả khi mã FSM sai.
@@ -97,7 +98,7 @@ Giới hạn thành thật: `app.fsm` do chính mã ứng dụng đặt, nên tr
 ## 6. Va chạm
 
 - **Claim (T05, T06):** đúng câu của Brief, điều kiện mở rộng v0.4: `WHERE id=$c AND (state='HUMAN_WAITING_Q' OR (state='BOT_ACTIVE' AND after_hours_hold))`, không kiểm `version`, có `version=version+1`. 0 dòng → `409 conversation_already_claimed`. Không Redlock. **Phải `READ COMMITTED`**: người thua chờ khóa dòng, thắng commit, người thua đánh giá lại điều kiện thấy sai → 0 dòng. Ở `REPEATABLE READ` họ nhận lỗi tuần tự hóa `40001` thay vì 0 dòng, nên cấm.
-- **Hành động của người (T09, T12, T13, T15, T16):** thêm `AND version=$v` với `$v` là bản client đang xem. 0 dòng → `409 version_conflict`.
+- **Hành động của người (T09, T12, T13, T15, T16, T21):** thêm `AND version=$v` với `$v` là bản client đang xem. 0 dòng → `409 version_conflict`.
 - **Sự kiện hệ thống (T01–T04, T07, T08, T10, T11, T14, T17–T20):** không có client để bảo tải lại. 0 dòng → đọc lại và `decide` lại, tối đa 3 lần; còn thua → ghi log `trace_id`, dòng việc quay về hàng đợi để thử lại (không mất tin).
 - 0 dòng không nói được "va chạm" hay "không tồn tại": bước đọc ở §4.1 đã phân biệt (không thấy → 404).
 
@@ -111,11 +112,11 @@ PK `(id, occurred_at)`, partition tháng bằng `app.create_log_partitions` (nh�
 | # | Vấn đề | Đề xuất tạm | Cần |
 |---|---|---|---|
 | F1 | `HUMAN_WAITING_Q`: khách nhắn thì bot trả lời hay im? F1 bước 3 chỉ nói im ở `HUMAN_ACTIVE`/`PENDING_CUSTOMER`; T07 lại nói "bot nhận lời nhắn" | Im lặng ở `HUMAN_WAITING_Q` (khách đã được báo chờ người) | Cố vấn |
-| F2 | `reassign` (Manager) được dùng ở `HUMAN_WAITING_Q` không? Brief: "gán bất kể ai đang giữ" | Chỉ `HUMAN_ACTIVE`/`PENDING_CUSTOMER`; ở hàng chờ thì dùng claim | Cố vấn |
-| F3 | Dọn `assigned_user_id` khi về `HUMAN_WAITING_Q`/`BOT_ACTIVE`? | Có (bất biến §3.2) | Cố vấn |
-| F4 | Giá trị `outcome` ("Won/Lost/giải quyết") và bot đóng (T04) ghi gì | `won`, `lost`, `resolved`, `resolved_by_bot` | CEO |
-| F5 | Mốc 72h tính từ `closed_at`? | Có | Cố vấn |
-| F6 | `invalid_transition` không có trong bảng mã lỗi P9 | Thêm `409 invalid_transition`; Brief liệt kê đóng nên cần duyệt | Cố vấn |
+| F2 | `reassign` (Manager) ở `HUMAN_WAITING_Q` | **Đã chốt 06/10: được**, chuyển thẳng `HUMAN_ACTIVE` + `assigned` (T21); không dùng cho `BOT_ACTIVE` + hold (dùng claim) | Xong |
+| F3 | Dọn `assigned_user_id` khi về hàng chờ/bot | **Đã chốt 06/10: có**, `CHECK` hai chiều (§3.2) | Xong |
+| F4 | Giá trị `outcome` | **Đã chốt 06/10:** `won, lost, resolved, resolved_by_bot` + `CHECK` | Xong |
+| F5 | Mốc 72h | **Đã chốt 06/10:** từ `closed_at` | Xong |
+| F6 | Mã lỗi chuyển trạng thái sai | **Đã chốt 06/10:** `409 invalid_transition` (khác `version_conflict`); còn cập nhật bảng mã lỗi P9 của Brief | Cập nhật P9 |
 | F7 | `conversation_events` là **O** (P8) còn `conversations` là **O+W**: người không có workspace đó vẫn đọc được event của hội thoại ở workspace khác trong cùng org | **Đã chốt 06/10:** giữ **O** theo Brief (không thêm `workspace_id`) **và** thêm test bắt buộc "workspace A không thấy event của workspace B". Để test đạt, policy `conversation_events_app` thêm `EXISTS (SELECT 1 FROM conversations c WHERE c.org_id = conversation_events.org_id AND c.id = conversation_events.conversation_id)`: RLS của `conversations` lọc theo workspace nên event chỉ thấy khi hội thoại thấy (cả `USING` và `WITH CHECK`). Cách này là đề xuất của em, chờ xác nhận ở dàn ý PR1 | Xác nhận cách |
 | F8 | Bộ hẹn giờ cho T07, T17, T18, T19, T08 chưa có chủ (SLA S4, presence S4) | S2 chỉ cung cấp phương thức + test; người gọi làm ở S4 | Chốt phạm vi |
 
