@@ -75,6 +75,18 @@ const stored = async (id: string) =>
       [id],
     )
   ).rows[0];
+const outboxOf = async (id: string) =>
+  (
+    await admin.query<{
+      event_type: string;
+      aggregate_version: number;
+      payload: Record<string, unknown>;
+      workspace_id: string;
+    }>(
+      'SELECT event_type, aggregate_version, payload, workspace_id FROM outbox_events WHERE aggregate_id = $1 ORDER BY aggregate_version, id',
+      [id],
+    )
+  ).rows;
 const eventsOf = async (id: string) =>
   (
     await admin.query<Record<string, unknown>>(
@@ -107,6 +119,7 @@ beforeAll(async () => {
 afterAll(async () => {
   // Children first; a failing step is swallowed because the CI database is thrown away after the job.
   for (const [text, params] of [
+    ['DELETE FROM outbox_events WHERE org_id = $1', [A]],
     ['DELETE FROM conversation_events WHERE org_id = $1', [A]],
     ['DELETE FROM conversations WHERE org_id = $1', [A]],
     ['DELETE FROM org_members WHERE org_id = $1', [A]],
@@ -253,6 +266,19 @@ describe('the life of a conversation, event by event', () => {
     ]);
     expect(events[5]).toMatchObject({ outcome: 'won', trace_id: 'trace-5', actor_id: agent });
     expect(events[1]).toMatchObject({ actor_id: null, from_hold: false, to_hold: false });
+    const outbox = await outboxOf(id);
+    expect(outbox.map((e) => [e.event_type, e.aggregate_version])).toEqual([
+      ['conversation.created', 0],
+      ['conversation.state_changed', 1],
+      ['conversation.handoff_requested', 1],
+      ['conversation.state_changed', 2],
+      ['conversation.assigned', 2],
+      ['conversation.state_changed', 3],
+      ['conversation.state_changed', 4],
+      ['conversation.state_changed', 5],
+    ]);
+    expect(outbox.every((e) => e.workspace_id === WA)).toBe(true);
+    expect(outbox[4]?.payload).toEqual({ conversationId: id, assignedUserId: agent });
     expect(await stored(id)).toMatchObject({
       state: 'CLOSED',
       version: 5,
@@ -265,23 +291,50 @@ describe('the life of a conversation, event by event', () => {
 });
 
 describe('atomicity and isolation', () => {
-  it('a failure after the UPDATE leaves the state and the history as they were', async () => {
-    const id = idOf(await create());
-    const failing = new ConversationStateMachine({
-      ...conversationStore,
-      insertConversationEvent: () => Promise.reject(new Error('event failed')),
-    });
-    const run = db.withTenant(ctx([WA]), (tx) =>
-      failing.transition(
+  const needsHuman = (machine: ConversationStateMachine, id: string) =>
+    db.withTenant(ctx([WA]), (tx) =>
+      machine.transition(
         tx,
         id,
         { type: 'needs_human', inHours: true },
         { actor: { kind: 'bot' }, traceId: 'x' },
       ),
     );
-    await expect(run).rejects.toThrow('event failed');
+
+  // N96: the effects and the transition are one transaction. The history row is written last, so when it fails the outbox rows
+  // already exist inside the transaction; that none is left afterwards is the proof, and `written` shows they did exist.
+  it('a failure of the history row takes the outbox rows and the new state back with it', async () => {
+    const id = idOf(await create());
+    let written = 0;
+    const failing = new ConversationStateMachine({
+      ...conversationStore,
+      insertOutboxEvent: async (tx, event) => {
+        await conversationStore.insertOutboxEvent(tx, event);
+        written++;
+      },
+      insertConversationEvent: () => Promise.reject(new Error('event failed')),
+    });
+    await expect(needsHuman(failing, id)).rejects.toThrow('event failed');
+    expect(written).toBe(2);
     expect(await stored(id)).toMatchObject({ state: 'BOT_ACTIVE', version: 0 });
     expect(await eventsOf(id)).toHaveLength(1);
+    expect((await outboxOf(id)).map((e) => e.event_type)).toEqual(['conversation.created']);
+  });
+
+  it('a failure of an outbox row leaves the state and the history as they were', async () => {
+    const id = idOf(await create());
+    let calls = 0;
+    const failing = new ConversationStateMachine({
+      ...conversationStore,
+      insertOutboxEvent: (tx, event) =>
+        ++calls === 2
+          ? Promise.reject(new Error('outbox failed'))
+          : conversationStore.insertOutboxEvent(tx, event),
+    });
+    await expect(needsHuman(failing, id)).rejects.toThrow('outbox failed');
+    expect(await stored(id)).toMatchObject({ state: 'BOT_ACTIVE', version: 0 });
+    expect(await eventsOf(id)).toHaveLength(1);
+    expect(await outboxOf(id)).toHaveLength(1);
   });
 
   it('a conversation of another workspace or another organisation is not found, and stays as it was', async () => {

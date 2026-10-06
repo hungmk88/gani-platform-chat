@@ -2,6 +2,7 @@ import {
   applyTransition,
   insertConversation,
   insertConversationEvent,
+  insertOutboxEvent,
   loadConversation,
   type ConversationRow,
   type TenantTx,
@@ -27,10 +28,11 @@ import {
   MissingExpectedVersionError,
   VersionConflictError,
 } from './errors.js';
+import { OutboxWriter, conversationOutboxEvent } from './outbox-writer.js';
 
 // prettier-ignore
-export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent };
-/** The four functions of the conversation store; a test passes a fake. */
+export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent };
+/** The functions of the conversation store and of the outbox the state machine writes through; a test passes a fake. */
 export type ConversationStore = typeof conversationStore;
 
 export interface Actor {
@@ -76,10 +78,14 @@ const changed = (row: ConversationRow, d: { transition: TransitionId; effects: r
 /**
  * The only module that changes the state of a conversation (CLAUDE.md rule 4). Every method takes the caller's `TenantTx` and never
  * commits, so a message, its transition and its history are one transaction. It decides with the pure `decide` of the domain package
- * and writes through the conversation store; the outbox rows of `effects` are written by the caller until the outbox lands.
+ * and writes through the conversation store: the new state, the rows of the outbox for each of its effects, and the history, in that
+ * order, on the one transaction. The history goes last on purpose: if it fails, the rollback has to take the outbox rows away too.
  */
 export class ConversationStateMachine {
-  constructor(private readonly store: ConversationStore = conversationStore) {}
+  constructor(
+    private readonly store: ConversationStore = conversationStore,
+    private readonly outbox: OutboxWriter = new OutboxWriter(store),
+  ) {}
 
   /** T01: a new conversation in `workspaceId`, `BOT_ACTIVE`, version 0. */
   async create(
@@ -94,7 +100,7 @@ export class ConversationStateMachine {
       workspaceId: input.workspaceId,
       ...decision.next,
     });
-    await this.record(tx, row.id, null, decision, row.version, input);
+    await this.record(tx, toRecord(row), null, decision, input);
     return changed(row, decision);
   }
 
@@ -135,7 +141,7 @@ export class ConversationStateMachine {
         next: decision.next,
       });
       if (written) {
-        await this.record(tx, id, row, decision, written.version, options);
+        await this.record(tx, toRecord(written), row, decision, options);
         return changed(written, decision);
       }
       if (CLAIMS.has(decision.transition))
@@ -150,16 +156,17 @@ export class ConversationStateMachine {
   // prettier-ignore
   private async record(
     tx: TenantTx,
-    id: string,
+    row: ConversationRecord,
     from: ConversationRow | null,
-    d: { transition: TransitionId; history: string; next: ConversationSnapshot },
-    version: number,
+    d: { transition: TransitionId; history: string; next: ConversationSnapshot; effects: readonly ConversationEffect[] },
     by: { actor: Actor; traceId: string },
   ): Promise<void> {
+    const fact = { conversationId: row.id, workspaceId: row.workspaceId, version: row.version, transition: d.transition, from, to: d.next, actor: by.actor, traceId: by.traceId };
+    for (const effect of d.effects) await this.outbox.add(tx, conversationOutboxEvent(effect, fact));
     await this.store.insertConversationEvent(tx, {
-      id: uuidv7(), conversationId: id, eventType: d.history, fromState: from?.state ?? null, toState: d.next.state,
+      id: uuidv7(), conversationId: row.id, eventType: d.history, fromState: from?.state ?? null, toState: d.next.state,
       fromHold: from?.afterHoursHold ?? null, toHold: d.next.afterHoursHold, actorKind: by.actor.kind, actorId: by.actor.id ?? null,
-      versionAfter: version, outcome: d.next.outcome, traceId: by.traceId, detail: { transition: d.transition },
+      versionAfter: row.version, outcome: d.next.outcome, traceId: by.traceId, detail: { transition: d.transition },
     });
   }
 }
