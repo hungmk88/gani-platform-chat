@@ -67,12 +67,13 @@ describe('case 5: workspace isolation of conversations', () => {
   });
 
   it('with {WA} UPDATE reaches a row of WA and no row of WB (0 rows, not an error)', async () => {
+    // A column the state machine does not own: the columns it owns are refused by the guard trigger (conversations-fsm.spec).
     const own = await asApp([WA], () =>
-      app.query("UPDATE conversations SET state = 'HUMAN_ACTIVE' WHERE id = $1", [CA]),
+      app.query('UPDATE conversations SET last_message_at = now() WHERE id = $1', [CA]),
     );
     expect(own.rowCount).toBe(1);
     const foreign = await asApp([WA], () =>
-      app.query("UPDATE conversations SET state = 'CLOSED' WHERE id = $1", [CB]),
+      app.query('UPDATE conversations SET last_message_at = now() WHERE id = $1', [CB]),
     );
     expect(foreign.rowCount).toBe(0);
   });
@@ -106,14 +107,19 @@ describe('case 5: workspace isolation of conversations', () => {
 
 describe('the columns of conversations', () => {
   it('accepts the five states of the state machine and nothing else (23514)', async () => {
-    for (const state of [
-      'BOT_ACTIVE',
-      'HUMAN_WAITING_Q',
-      'HUMAN_ACTIVE',
-      'PENDING_CUSTOMER',
-      'CLOSED',
-    ]) {
-      await admin.query(insertSql, [uuidv7(), A, WA, state]);
+    // Each state with the columns its invariants ask for (conversations-fsm.spec checks the invariants themselves).
+    const member = users.get(A);
+    const full = `INSERT INTO conversations (id, org_id, workspace_id, state, assigned_user_id, closed_at, outcome)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+    const now = new Date();
+    for (const [state, assigned, closedAt, outcome] of [
+      ['BOT_ACTIVE', null, null, null],
+      ['HUMAN_WAITING_Q', null, null, null],
+      ['HUMAN_ACTIVE', member, null, null],
+      ['PENDING_CUSTOMER', member, null, null],
+      ['CLOSED', null, now, 'resolved'],
+    ] as const) {
+      await admin.query(full, [uuidv7(), A, WA, state, assigned, closedAt, outcome]);
     }
     for (const state of ['bot_active', 'OPEN', '']) {
       expect(await sqlState(admin.query(insertSql, [uuidv7(), A, WA, state])), state).toBe('23514');
