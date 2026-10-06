@@ -57,7 +57,10 @@ Danh mục sự kiện của S2 (ghi cùng transaction với thao tác gây ra):
 | `conversation.assigned` | FSM T05, T06 | `conversationId`, `assignedUserId` |
 | `agent.transferred`, `agent.reassigned` | FSM T15, T16 | `conversationId`, `fromUserId`, `toUserId` |
 | `conversation.handoff_requested` | FSM T02, T08 | `conversationId` (S5 sẽ sinh thẻ tóm tắt) |
+| `conversation.manager_alert` | FSM T17 (agent offline lâu, khách còn chờ, trong giờ) | `conversationId`, `reason` (`agent_offline`) |
 | `message.created` | luồng tin nhắn | `conversationId`, `messageId`, `sequenceNumber` |
+
+**Thứ tự ghi trong một transaction (O-2):** trạng thái mới, rồi các dòng outbox theo thứ tự effects, rồi dòng `conversation_events` **cuối cùng**. Dòng lịch sử đứng cuối có chủ đích: nếu nó lỗi thì rollback phải kéo cả các dòng outbox đã ghi trước đó, và test chứng minh điều đó (các dòng outbox đã tồn tại bên trong transaction, rồi biến mất). `OutboxWriter` từ chối payload có khóa trông như nội dung hoặc người (`text`, `body`, `content`, `name`, `email`, `phone`, `address`) và giá trị không phải giá trị đơn (object, mảng).
 
 Sự kiện cho `lead.*`, `workspace.autonomy_downgraded`, `payment.*` thuộc sprint sau. Đổi cấu trúc không tương thích → tăng `event_version`, phát song song hai bản trong thời gian chuyển; người nhận bỏ qua trường lạ.
 
