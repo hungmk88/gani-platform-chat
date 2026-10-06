@@ -74,7 +74,7 @@ Vấn đề: relay phải thấy sự kiện của **mọi** org, nhưng `app_ro
 | B. Role thứ 5 `relay_role` có `BYPASSRLS` | Đơn giản | Thêm role lệch P16 (đã thêm `auth_role` một lần); BYPASSRLS đọc được payload mọi tenant |
 | C. Dùng `migration_role` | Không cần gì thêm | Cấm (CLAUDE.md, spec RLS §3: chỉ pipeline migration) |
 
-Hướng A: `app.outbox_pending_orgs(p_limit int, p_lease_seconds int DEFAULT 60) RETURNS TABLE(org_id uuid)`, `STABLE SECURITY DEFINER`, `search_path` cố định, chỉ trả org còn tồn tại và có dòng `pending` đến hạn **hoặc** dòng `claimed` quá `p_lease_seconds` (relay chết giữa chừng, bước 5). Không trả payload. Tham số thứ hai là chỗ lệch nhẹ so với chữ ký ban đầu `(p_limit int)`: không có nó hàm không biết org nào có dòng cần thu hồi, và hằng số thuê nằm trong hàm sẽ lệch với `OUTBOX_LEASE_S` của worker (N97).
+Hướng A: `app.outbox_pending_orgs(p_limit int, p_lease_seconds int DEFAULT 60) RETURNS TABLE(org_id uuid)`, `STABLE SECURITY DEFINER`, `search_path` cố định, chỉ trả org còn tồn tại và có dòng `pending` đến hạn **hoặc** dòng `claimed` quá `p_lease_seconds` (relay chết giữa chừng, bước 5). Không trả payload. Giới hạn kiểm tra thật (`22023`): `p_limit` từ 1 đến 1000, `p_lease_seconds` ≥ 1. Org đã xóa mềm không được trả. Xếp theo việc cũ nhất. Là **hàm**, không phải view (view không có definer nên `app_role` bị RLS chặn). Tham số thứ hai là chỗ lệch nhẹ so với chữ ký ban đầu `(p_limit int)`: không có nó hàm không biết org nào có dòng cần thu hồi, và hằng số thuê nằm trong hàm sẽ lệch với `OUTBOX_LEASE_S` của worker (N97).
 
 Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
 
@@ -90,7 +90,7 @@ Vòng lặp mỗi `OUTBOX_POLL_MS` (đề xuất 500):
    `SKIP LOCKED` cho nhiều relay chạy song song mà không xử lý cùng một lô.
 3. **Đẩy** `queue.addBulk` với `jobId = id` (ngoài transaction DB: không giữ kết nối trong lúc gọi Valkey).
 4. **Đánh dấu** (giao dịch ngắn): thành công → `status='published', published_at=now() WHERE id = ANY($1) AND status='claimed'`. Thất bại → `status='pending', available_at=now()+backoff(attempts), last_error=<mã>`; `attempts >= 5` → `dead_letter`.
-5. **Thu hồi** mỗi vòng: `claimed` quá `OUTBOX_LEASE_S` (60) → `pending` (relay chết giữa bước 2 và 4). Không cộng `attempts` lần nữa.
+5. **Thu hồi** mỗi vòng: `claimed` quá `OUTBOX_LEASE_S` (60) → `pending` (relay chết giữa bước 2 và 4). Không cộng `attempts` lần nữa. Nếu dòng đã dùng hết `attempts` (relay chết ngay mỗi lần thử) thì sang `dead_letter` với `last_error = 'E_LEASE_EXPIRED'`, để một dòng làm relay sập không lặp mãi (O-3).
 
 `backoff(n) = min(2^n giây, 60 giây)`. Hạn mức 5 lần mượn từ webhook vào (v2.2 §14), Brief không nói cho outbox (O7).
 
@@ -116,7 +116,7 @@ Hệ quả có chủ đích: chết **sau** bước 3 và **trước** bước 4
 
 - Chỉ số: `outbox_pending` (đếm), `outbox_oldest_pending_age_seconds`, `outbox_dead_letter` (đếm), `outbox_publish_failures_total`. Ngưỡng báo động đề xuất: tuổi cũ nhất > 30 giây cảnh báo, > 120 giây khẩn; mọi `dead_letter` > 0 báo ngay (O4).
 - Hạn lưu: dòng `published` giữ 30 ngày rồi bỏ cả partition (`PartitionMaintenanceJob`); **không bỏ partition còn dòng chưa `published`** (O5).
-- Xử lý lại `dead_letter`: S2 chỉ có hàm SQL `requeue` chạy tay theo runbook; nút trên bảng điều khiển vận hành thuộc sprint sau.
+- Xử lý lại `dead_letter`: S2 chỉ có hàm `requeueDeadLetters` của kho (`packages/db`), chạy tay theo runbook, theo từng org (trong `TenantTx`) và có thể giới hạn theo id; nút trên bảng điều khiển vận hành thuộc sprint sau.
 
 ## 8. Câu hỏi mở
 
