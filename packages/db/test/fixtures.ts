@@ -14,6 +14,7 @@ const TENANT_TABLES = [
   'audit_logs',
   'platform_access_logs',
   'api_keys',
+  'channel_accounts',
   'team_members',
   'teams',
   'workspace_members',
@@ -26,7 +27,13 @@ export const flagKeyOf = (org: string) => `f_${org.replaceAll('-', '')}`;
 
 /** Inserts an organization and one row in every RLS table (as migration_role); returns the id of its user. */
 export async function seedTenant(admin: pg.Client, org: string): Promise<string> {
-  const [user, workspace, team, conversation] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
+  const [user, workspace, team, conversation, channelAccount] = [
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+  ];
   // Every value is generated here (UUIDs, random hex), never client input.
   await admin.query(`
     INSERT INTO organizations (id, slug, name) VALUES ('${org}', 't-${org}', 'T');
@@ -41,6 +48,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO feature_flags_global (key, description, owner, remove_by) VALUES ('${flagKeyOf(org)}', 'seed', 'seed', current_date + 30);
     INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
+    INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ('${channelAccount}', '${org}', '${workspace}', 'zalo_oa', 'oa-${org}', 'OA', 'app-seed', decode('${randomBytes(32).toString('hex')}', 'hex'));
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');

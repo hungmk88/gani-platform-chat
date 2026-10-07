@@ -199,6 +199,10 @@ describe('column-level SELECT', () => {
     ['invite_token_hash', 'org_members'],
     ['invite_expires_at', 'org_members'],
     ['key_hash', 'api_keys'],
+    ['app_secret_enc', 'channel_accounts'],
+    ['oa_secret_key_enc', 'channel_accounts'],
+    ['access_token_enc', 'channel_accounts'],
+    ['refresh_token_enc', 'channel_accounts'],
   ])('%s of %s is denied (42501), as is SELECT *', async (column, table) => {
     expect(await query(VALID, `SELECT ${column} FROM ${table}`)).toBe('42501');
     expect(await query(VALID, `SELECT * FROM ${table}`)).toBe('42501');
