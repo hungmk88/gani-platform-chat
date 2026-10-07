@@ -13,6 +13,9 @@ import { sqlState, url } from './db.js';
 // this one too by rls-all-tables.spec and support-access.spec, which read the catalog.
 const [A, B, WA, WB] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const AX = uuidv7();
+// The it.each tables are built when the file is collected, before beforeAll: a value that beforeAll sets (as uA) is still undefined
+// there, and Drizzle drops undefined keys ("No values to set"). The column privilege is checked before the foreign key, so any uuid will do.
+const SOMEONE = uuidv7();
 const userIds: string[] = [];
 let pool: pg.Pool;
 let admin: pg.Client;
@@ -253,7 +256,7 @@ describe('UPDATE by column', () => {
     ['type', { type: 'facebook' }],
     ['external_account_id', { externalAccountId: 'other' }],
     ['app_id', { appId: 'other' }],
-    ['created_by', { createdBy: uA }],
+    ['created_by', { createdBy: SOMEONE }],
     ['created_at', { createdAt: new Date() }],
     ['id', { id: uuidv7() }],
   ])('refuses to change %s (42501)', async (_column, set) => {
