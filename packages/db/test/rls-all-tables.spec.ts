@@ -13,6 +13,7 @@ const GLOBAL_TABLES: Record<string, { app: string[]; support: string[] }> = {
   users: { app: [], support: [] },
   schema_migrations: { app: [], support: [] },
   feature_flags_global: { app: ['SELECT'], support: ['SELECT'] },
+  channel_policies: { app: ['SELECT'], support: ['SELECT'] },
   // The auth tables (PR6a, spec §3.1): only auth_role has a privilege, app_role and support_role have none.
   sessions: { app: [], support: [] },
   accounts: { app: [], support: [] },
