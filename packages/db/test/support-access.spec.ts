@@ -203,6 +203,7 @@ describe('column-level SELECT', () => {
     ['oa_secret_key_enc', 'channel_accounts'],
     ['access_token_enc', 'channel_accounts'],
     ['refresh_token_enc', 'channel_accounts'],
+    ['payload', 'inbound_events'],
   ])('%s of %s is denied (42501), as is SELECT *', async (column, table) => {
     expect(await query(VALID, `SELECT ${column} FROM ${table}`)).toBe('42501');
     expect(await query(VALID, `SELECT * FROM ${table}`)).toBe('42501');
