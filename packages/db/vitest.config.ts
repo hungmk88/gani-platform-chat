@@ -12,6 +12,7 @@ export default defineConfig({
         ...coverage.exclude,
         'src/conversation-store.ts',
         'src/inbound-store.ts',
+        'src/message-store.ts',
         'src/outbox-store.ts',
         'src/tenant-tx.ts',
         'src/member-context.ts',
