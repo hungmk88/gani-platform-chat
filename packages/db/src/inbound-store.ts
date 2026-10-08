@@ -1,4 +1,5 @@
-import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
+import type pg from 'pg';
 
 import { inboundEventKeys } from './schema/inbound-event-keys.js';
 import { inboundEvents } from './schema/inbound-events.js';
@@ -16,6 +17,12 @@ function assertErrorCode(code: string): void {
   // The error does not repeat the value: it may be the very text this check is there to keep out.
   if (!ERROR_CODE.test(code)) {
     throw new TypeError('error code must match ^[A-Z][A-Z0-9_]{0,63}$ (a code, never a message)');
+  }
+}
+
+function assertWhole(name: string, value: number, min: number): void {
+  if (!Number.isInteger(value) || value < min) {
+    throw new RangeError(`${name} must be a whole number of at least ${min}`);
   }
 }
 
@@ -158,4 +165,132 @@ export async function markInboundIgnored(
     .where(and(isEvent(key), eq(inboundEvents.status, 'claimed')))
     .returning({ id: inboundEvents.id });
   return rows.length === 1;
+}
+
+export interface InboundFailure extends InboundEventKey {
+  /** From the claim: how many times it has been tried, this one included. It names the claim that failed (see below). */
+  readonly attempts: number;
+  /** A code, never a message: checked, and never repeated in an error. */
+  readonly errorCode: string;
+  readonly maxAttempts: number;
+  /** Chosen by the caller (the backoff is its policy, not the store's). */
+  readonly retryAfterSeconds: number;
+}
+
+/**
+ * The processing failed: back to `pending` after `retryAfterSeconds`, or `dead_letter` once `attempts` reached `maxAttempts`. The
+ * code stays in `last_error` (also for a dead letter, to tell the runbook why). `attempts` is not raised: the claim did that.
+ *
+ * Only the claim that is being failed is touched: the row must still be `claimed` AND at the same `attempts`. Without the second
+ * test, a worker whose lease was taken back could fail the claim of the worker that took the event after it. `null`: not the
+ * claim of this worker any more.
+ */
+export async function failInboundEvent(
+  tx: TenantTx,
+  failure: InboundFailure,
+): Promise<'pending' | 'dead_letter' | null> {
+  assertErrorCode(failure.errorCode);
+  assertWhole('attempts', failure.attempts, 1);
+  assertWhole('maxAttempts', failure.maxAttempts, 1);
+  assertWhole('retryAfterSeconds', failure.retryAfterSeconds, 0);
+  const dead = failure.attempts >= failure.maxAttempts;
+  const e = inboundEvents;
+  const [row] = await tx
+    .update(e)
+    .set({
+      status: dead ? 'dead_letter' : 'pending',
+      claimedAt: null,
+      lastError: failure.errorCode,
+      ...(dead
+        ? {}
+        : { availableAt: sql`now() + make_interval(secs => ${failure.retryAfterSeconds})` }),
+    })
+    .where(and(isEvent(failure), eq(e.status, 'claimed'), eq(e.attempts, failure.attempts)))
+    .returning({ status: e.status });
+  return row ? (dead ? 'dead_letter' : 'pending') : null;
+}
+
+/**
+ * Takes back what a dead worker left `claimed` longer than `leaseSeconds` ago: `pending` again (`attempts` is not counted twice), or
+ * `dead_letter` (`E_LEASE_EXPIRED`) when it has already used `maxAttempts`, so a worker that crashes on every try cannot loop for ever.
+ */
+export async function reapExpiredInboundClaims(
+  tx: TenantTx,
+  leaseSeconds: number,
+  maxAttempts: number,
+): Promise<number> {
+  assertWhole('leaseSeconds', leaseSeconds, 1);
+  assertWhole('maxAttempts', maxAttempts, 1);
+  const e = inboundEvents;
+  const rows = await tx
+    .update(e)
+    .set({
+      status: sql`CASE WHEN ${e.attempts} >= ${maxAttempts} THEN 'dead_letter' ELSE 'pending' END`,
+      lastError: sql`CASE WHEN ${e.attempts} >= ${maxAttempts} THEN 'E_LEASE_EXPIRED' ELSE ${e.lastError} END`,
+      claimedAt: null,
+    })
+    .where(
+      and(
+        eq(e.status, 'claimed'),
+        sql`${e.claimedAt} < now() - make_interval(secs => ${leaseSeconds})`,
+      ),
+    )
+    .returning({ id: e.id });
+  return rows.length;
+}
+
+/**
+ * The runbook step for `dead_letter`: puts them (all of the organisation, or the given `keys`) back to `pending` with a fresh count and
+ * no error. An empty `keys` means none, not all.
+ */
+export async function requeueInboundDeadLetters(
+  tx: TenantTx,
+  keys?: readonly InboundEventKey[],
+): Promise<number> {
+  if (keys?.length === 0) return 0;
+  const rows = await tx
+    .update(inboundEvents)
+    .set({ status: 'pending', attempts: 0, availableAt: sql`now()`, lastError: null })
+    .where(
+      and(
+        eq(inboundEvents.status, 'dead_letter'),
+        keys ? or(...keys.map((key) => isEvent(key))) : undefined,
+      ),
+    )
+    .returning({ id: inboundEvents.id });
+  return rows.length;
+}
+
+/**
+ * The organisations that have inbound work for the worker, oldest work first: a due `pending` event, or a `claimed` one older than
+ * `leaseSeconds`. Asked outside any tenant, through `app.inbound_pending_orgs` (SECURITY DEFINER, ids only; it checks its own bounds);
+ * the events are then read one organisation at a time, through RLS.
+ */
+export async function pendingInboundOrgs(
+  pool: pg.Pool,
+  limit: number,
+  leaseSeconds: number,
+): Promise<string[]> {
+  const { rows } = await pool.query<{ org_id: string }>(
+    'SELECT org_id FROM app.inbound_pending_orgs($1, $2)',
+    [limit, leaseSeconds],
+  );
+  return rows.map((r) => r.org_id);
+}
+
+/**
+ * Removes the keys that stop duplicates once they are older than `retentionDays`, at most `limit` of them, for every organisation
+ * (`app.purge_inbound_event_keys`, SECURITY DEFINER; it refuses less than 30 days and a limit outside 1..10000 with 22023). Returns
+ * how many it removed; the caller asks again until it gets 0.
+ */
+export async function purgeInboundEventKeys(
+  pool: pg.Pool,
+  retentionDays: number,
+  limit: number,
+): Promise<number> {
+  const { rows } = await pool.query<{ removed: number }>(
+    'SELECT app.purge_inbound_event_keys($1, $2) AS removed',
+    [retentionDays, limit],
+  );
+  return rows[0]?.removed ?? 0;
 }
