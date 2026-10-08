@@ -81,7 +81,7 @@ BEGIN                                       -- TenantTx: set_config org + worksp
 COMMIT                                       -- hoặc ROLLBACK: không đổi trạng thái, không event, không outbox
 ```
 
-Ghi tin nhắn đến và `onCustomerMessage` chạy **cùng một transaction**: lưu tin (gán `sequence_number`, xem `realtime-spec.md` §4), gọi `decide`, ghi §4 bước 3–7. Tin không bao giờ ở lại mà trạng thái không đổi theo.
+Ghi tin nhắn đến và `onCustomerMessage` chạy **cùng một transaction**: lưu tin (gán `sequence_number`, xem `realtime-spec.md` §4), gọi `decide`, ghi §4 bước 3–7. Tin không bao giờ ở lại mà trạng thái không đổi theo. Cài đặt: `MessageService.receiveCustomerMessage` (`apps/api`, lưu tin rồi gọi `ConversationStateMachine.onCustomerMessage`; `agentOnline` do người gọi truyền, không có mặc định; hội thoại `CLOSED` quá 72 giờ thì FSM trả `unchanged` và người gọi phải kiểm trước, N107).
 
 ## 5. Chỉ FSM được đổi cột FSM (P3.2 mục 9, CLAUDE.md quy tắc 4)
 
