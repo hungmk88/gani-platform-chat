@@ -39,6 +39,7 @@ function fake(initial: ConversationRow | null) {
   const events: NewConversationEvent[] = [];
   const outbox: NewOutboxEvent[] = [];
   const messages: NewMessage[] = [];
+  const hooks = { failInsert: false };
   const conversations: ConversationStore = {
     loadConversation: (_tx, id) => (calls.push('load'), Promise.resolve(rows.get(id) ?? null)),
     insertConversation: () => Promise.reject(new Error('not used')),
@@ -54,10 +55,11 @@ function fake(initial: ConversationRow | null) {
   };
   const store: MessageStore = {
     loadConversation: conversations.loadConversation,
-    insertMessage: (_tx, m) => (calls.push('insertMessage'), messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length })),
+    insertMessage: (_tx, m) => (calls.push('insertMessage'), hooks.failInsert ? Promise.reject(new Error('stop')) : (messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length }))),
+    insertOutboxEvent: (_tx, e) => (calls.push('insertOutbox'), outbox.push(e), Promise.resolve()),
   };
   const fsm = new ConversationStateMachine(conversations);
-  return { fsm, service: new MessageService(fsm, store), rows, calls, events, outbox, messages };
+  return { fsm, service: new MessageService(fsm, store), rows, calls, events, outbox, messages, hooks };
 }
 const append = (over: Partial<AppendMessageInput> = {}): AppendMessageInput => ({
   conversationId: ID,
@@ -228,6 +230,46 @@ describe('MessageService.append', () => {
     },
   );
 
+  it('writes message.created right after the message: references only, no text, no version of the conversation', async () => {
+    const { service, calls, outbox } = fake(row({ workspaceId: 'w-9' }));
+    const stored = await service.append(TX, append({ body: PII, traceId: 'trace-9' }));
+    expect(calls).toEqual(['load', 'insertMessage', 'insertOutbox']);
+    expect(outbox).toMatchObject([
+      {
+        eventType: 'message.created',
+        aggregateType: 'conversation',
+        aggregateId: ID,
+        aggregateVersion: null,
+        workspaceId: 'w-9',
+        actorKind: 'customer',
+        actorId: null,
+        traceId: 'trace-9',
+        payload: { conversationId: ID, messageId: stored.id, sequenceNumber: 1 },
+      },
+    ]);
+    expect(Object.keys(outbox[0]?.payload ?? {}).sort()).toEqual([
+      'conversationId',
+      'messageId',
+      'sequenceNumber',
+    ]);
+    expect(JSON.stringify(outbox)).not.toContain('Nguyen');
+  });
+
+  it('names the agent as the actor of the message.created of an agent', async () => {
+    const { service, outbox } = fake(row());
+    await service.append(TX, append({ senderKind: 'agent', senderUserId: U2 }));
+    expect(outbox).toMatchObject([
+      { eventType: 'message.created', actorKind: 'agent', actorId: U2 },
+    ]);
+  });
+
+  it('writes no message.created when the message is not stored', async () => {
+    const { service, calls, outbox, hooks } = fake(row());
+    hooks.failInsert = true;
+    await expect(service.append(TX, append())).rejects.toThrow('stop');
+    expect([calls, outbox]).toEqual([['load', 'insertMessage'], []]);
+  });
+
   it('is not found for a conversation nobody can see, and stores nothing', async () => {
     const { service, calls } = fake(null);
     await expect(service.append(TX, append())).rejects.toThrow(ConversationNotFoundError);
@@ -243,7 +285,7 @@ describe('MessageService.receiveCustomerMessage', () => {
       agentOnline: false,
       now: NOW,
     });
-    expect(calls).toEqual(['load', 'insertMessage', 'load', 'apply']);
+    expect(calls).toEqual(['load', 'insertMessage', 'insertOutbox', 'load', 'apply']);
     expect(messages).toMatchObject([{ senderKind: 'customer', senderUserId: null }]);
     expect(result.message.sequenceNumber).toBe(1);
     expect(result.outcome).toMatchObject({ kind: 'changed', transition: 'T11' });

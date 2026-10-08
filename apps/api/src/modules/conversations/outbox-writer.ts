@@ -102,3 +102,38 @@ export function conversationOutboxEvent(
     traceId: f.traceId,
   };
 }
+
+/** What a stored message is, once stored: enough to build its outbox row. It names the message, it does not hold it. */
+export interface MessageFact {
+  readonly conversationId: string;
+  readonly workspaceId: string;
+  readonly messageId: string;
+  readonly sequenceNumber: number;
+  readonly senderKind: 'customer' | 'agent' | 'bot' | 'system';
+  readonly senderUserId?: string | null;
+  readonly traceId: string;
+}
+
+/**
+ * The outbox row of a new message (outbox spec §3): references only, never the text. `aggregateVersion` is null on purpose: a message
+ * does not change the `version` of its conversation (that belongs to the state machine), and its order is its `sequenceNumber`; the
+ * rule "drop a packet older than the aggregate version already held" is for the conversation events only (N107).
+ */
+export function messageCreatedOutboxEvent(f: MessageFact): NewOutboxEvent {
+  return {
+    id: uuidv7(),
+    workspaceId: f.workspaceId,
+    eventType: 'message.created',
+    aggregateType: 'conversation',
+    aggregateId: f.conversationId,
+    aggregateVersion: null,
+    payload: {
+      conversationId: f.conversationId,
+      messageId: f.messageId,
+      sequenceNumber: f.sequenceNumber,
+    },
+    actorKind: f.senderKind,
+    actorId: f.senderUserId ?? null,
+    traceId: f.traceId,
+  };
+}
