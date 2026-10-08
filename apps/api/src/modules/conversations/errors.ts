@@ -46,3 +46,15 @@ export class MissingExpectedVersionError extends Error {
     this.name = 'MissingExpectedVersionError';
   }
 }
+
+/** What is wrong with a message the caller asked to store: a fixed sentence, never a part of the message. */
+export type InvalidMessageReason = 'agent_needs_user' | 'only_agent_has_user' | 'text_needs_body';
+
+/** A bug in the caller: the message breaks a rule of the message service. The error says which rule, and never repeats the message. */
+export class InvalidMessageError extends Error {
+  readonly code = 'invalid_message';
+  constructor(readonly reason: InvalidMessageReason) {
+    super(`invalid message: ${reason}`);
+    this.name = 'InvalidMessageError';
+  }
+}

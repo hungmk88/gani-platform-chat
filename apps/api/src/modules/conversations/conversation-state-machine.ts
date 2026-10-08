@@ -153,6 +153,27 @@ export class ConversationStateMachine {
     }
   }
 
+  /**
+   * A customer wrote (inbound spec §4): T10/T11 from `PENDING_CUSTOMER`, T14 from `CLOSED` within 72 hours, nothing else changes. The
+   * caller says whether an agent is `agentOnline` (presence is S4, so there is no default: a silent one would change what happens to
+   * the customer). The message itself is stored by `MessageService`, in the same transaction and before this call.
+   */
+  onCustomerMessage(
+    tx: TenantTx,
+    conversationId: string,
+    input: { readonly now: Date; readonly agentOnline: boolean; readonly traceId: string },
+  ): Promise<TransitionOutcome> {
+    const event: ConversationEvent = {
+      type: 'customer_message',
+      now: input.now,
+      agentOnline: input.agentOnline,
+    };
+    return this.transition(tx, conversationId, event, {
+      actor: { kind: 'customer' },
+      traceId: input.traceId,
+    });
+  }
+
   // prettier-ignore
   private async record(
     tx: TenantTx,
