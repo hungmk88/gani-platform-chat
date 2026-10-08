@@ -3,8 +3,11 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  claimInboundBatch,
   createDbPool,
   insertIfAbsent,
+  markInboundIgnored,
+  markInboundProcessed,
   pendingInboundWorkspaces,
   withTenant,
   type NewInboundEvent,
@@ -12,9 +15,9 @@ import {
 import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
-// The first part of the inbound store (N106): record an event once, and list the workspaces with work.
-// Org A has workspaces WA and WA2 (an account in each); B is a stranger. The test that needs two transactions at once (the key) uses
-// two pooled connections and is the one PGlite cannot run. Times are offsets from now(), so nothing sleeps.
+// The inbound store (N106): record an event once, list the workspaces with work, claim a batch, and mark it.
+// Org A has workspaces WA and WA2 (an account in each); B is a stranger. The tests that need two transactions at once (the key, the
+// claim) use two pooled connections and are the ones PGlite cannot run. Times are offsets from now(), so nothing sleeps.
 const [A, B, WA2, CA2] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const orgs = [A, B];
 const users = new Map<string, string>();
@@ -68,6 +71,20 @@ const count = async (table: string, messageId?: string) =>
       [orgs, messageId ?? null],
     )
   ).rows[0]?.n;
+const row = async (id: string) =>
+  (
+    await admin.query<{
+      status: string;
+      attempts: number;
+      last_error: string | null;
+      claimed: boolean;
+      done: boolean;
+    }>(
+      'SELECT status, attempts, last_error, claimed_at IS NOT NULL AS claimed, processed_at IS NOT NULL AS done FROM inbound_events WHERE id = $1',
+      [id],
+    )
+  ).rows[0];
+
 beforeAll(async () => {
   admin = new pg.Client({ connectionString: url('migration') });
   await admin.connect();
@@ -197,4 +214,133 @@ describe('pendingInboundWorkspaces', () => {
     expect(await inA((tx) => pendingInboundWorkspaces(tx))).toEqual([WA2, WA]);
     expect(await inB((tx) => pendingInboundWorkspaces(tx))).toEqual([WB]);
   });
+});
+
+describe('claimInboundBatch', () => {
+  it('takes exactly the limit, the oldest first, of the one workspace asked, and counts the attempt', async () => {
+    await clear();
+    const ids: string[] = [];
+    for (const received of ['-5 minutes', '-4 minutes', '-3 minutes', '-2 minutes'])
+      ids.push(await put({ received }));
+    await put({ due: '10 minutes' });
+    await put({ status: 'processed' });
+    await put({ workspace: WA2, channel: CA2, received: '-10 minutes' });
+    const batch = await inA((tx) => claimInboundBatch(tx, { limit: 3, workspaceId: WA }));
+    expect(batch.map((b) => b.id)).toEqual(ids.slice(0, 3));
+    expect(batch.every((b) => b.attempts === 1 && b.workspaceId === WA && b.orgId === A)).toBe(
+      true,
+    );
+    expect(batch[0]?.receivedAt).toBeInstanceOf(Date);
+    for (const id of ids.slice(0, 3))
+      expect(await row(id)).toMatchObject({ status: 'claimed', attempts: 1, claimed: true });
+    // What is left of the workspace, and then the other workspace when none is named.
+    expect(
+      (await inA((tx) => claimInboundBatch(tx, { limit: 10, workspaceId: WA }))).map((b) => b.id),
+    ).toEqual([ids[3]]);
+    expect(
+      (await inA((tx) => claimInboundBatch(tx, { limit: 10 }))).map((b) => b.workspaceId),
+    ).toEqual([WA2]);
+    expect(await inA((tx) => claimInboundBatch(tx, { limit: 10 }))).toEqual([]);
+  });
+
+  it('never takes an event of another organisation', async () => {
+    await clear();
+    const theirs = await put({ org: B, workspace: WB, channel: CB });
+    expect(await inA((tx) => claimInboundBatch(tx, { limit: 10 }))).toEqual([]);
+    expect((await row(theirs))?.status).toBe('pending');
+  });
+
+  it.each([0, 1001, 1.5, Number.NaN])(
+    'refuses the limit %s before it reaches the database',
+    async (limit) => {
+      await expect(inA((tx) => claimInboundBatch(tx, { limit }))).rejects.toThrow(RangeError);
+    },
+  );
+
+  it('gives two workers that ask at once batches that do not overlap, each of exactly its limit', async () => {
+    await clear();
+    const ids: string[] = [];
+    for (let i = 0; i < 6; i++) ids.push(await put({ received: `-${10 - i} minutes` }));
+    let release!: () => void;
+    const hold = new Promise<void>((resolve) => (release = resolve));
+    let claimed!: () => void;
+    const firstClaimed = new Promise<void>((resolve) => (claimed = resolve));
+    // The first worker keeps its transaction open (its rows locked) while the second asks.
+    const first = inA(async (tx) => {
+      const batch = await claimInboundBatch(tx, { limit: 3 });
+      claimed();
+      await hold;
+      return batch;
+    });
+    await firstClaimed;
+    const second = await inA((tx) => claimInboundBatch(tx, { limit: 3 }));
+    release();
+    const firstBatch = await first;
+    expect([firstBatch.length, second.length]).toEqual([3, 3]);
+    const all = [...firstBatch, ...second].map((b) => b.id);
+    expect(new Set(all).size).toBe(6);
+    expect([...all].sort()).toEqual([...ids].sort());
+  });
+});
+
+describe('markInboundProcessed and markInboundIgnored', () => {
+  // The rows come from put(), with received_at = now(): microseconds in the database, milliseconds in a Date. The key made from a
+  // claimed row must still find its row.
+  const claimOne = async () => {
+    await clear();
+    const id = await put();
+    const [claimed] = await inA((tx) => claimInboundBatch(tx, { limit: 1 }));
+    return { id, key: { id: claimed?.id as string, receivedAt: claimed?.receivedAt as Date } };
+  };
+
+  it('marks a claimed event processed, once', async () => {
+    const { id, key } = await claimOne();
+    expect(await inA((tx) => markInboundProcessed(tx, key))).toBe(true);
+    expect(await row(id)).toMatchObject({ status: 'processed', done: true });
+    expect(await inA((tx) => markInboundProcessed(tx, key))).toBe(false);
+  });
+
+  it('says false when the worker no longer holds the event (the lease was taken back), and leaves the row alone', async () => {
+    const { id, key } = await claimOne();
+    await admin.query(
+      "UPDATE inbound_events SET status = 'pending', claimed_at = NULL WHERE id = $1",
+      [id],
+    );
+    expect(await inA((tx) => markInboundProcessed(tx, key))).toBe(false);
+    expect(await inA((tx) => markInboundIgnored(tx, key, 'E_NOT_A_MESSAGE'))).toBe(false);
+    expect(await row(id)).toMatchObject({ status: 'pending', done: false });
+  });
+
+  it('does not mark an event that is only pending', async () => {
+    await clear();
+    const id = await put();
+    const { rows } = await admin.query<{ received_at: Date }>(
+      'SELECT received_at FROM inbound_events WHERE id = $1',
+      [id],
+    );
+    const key = { id, receivedAt: rows[0]?.received_at as Date };
+    expect(await inA((tx) => markInboundProcessed(tx, key))).toBe(false);
+    expect((await row(id))?.status).toBe('pending');
+  });
+
+  it('marks an event ignored with the code of the reason', async () => {
+    const { id, key } = await claimOne();
+    expect(await inA((tx) => markInboundIgnored(tx, key, 'E_NOT_A_MESSAGE'))).toBe(true);
+    expect(await row(id)).toMatchObject({
+      status: 'ignored',
+      last_error: 'E_NOT_A_MESSAGE',
+      done: true,
+    });
+  });
+
+  it.each(['e_lower', 'Nguyen Van A', '090 123 4567', '', `E_${'X'.repeat(70)}`])(
+    'refuses %j as a reason, does not repeat it in the error, and leaves the row claimed',
+    async (reason) => {
+      const { id, key } = await claimOne();
+      const error = await inA((tx) => markInboundIgnored(tx, key, reason)).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(TypeError);
+      if (reason.trim()) expect((error as Error).message).not.toContain(reason.trim());
+      expect((await row(id))?.status).toBe('claimed');
+    },
+  );
 });
