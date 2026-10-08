@@ -2,7 +2,13 @@ import type { NewOutboxEvent, TenantTx } from '@gani/db';
 import type { ConversationEffect } from '@gani/domain';
 import { describe, expect, it, vi } from 'vitest';
 
-import { OutboxWriter, conversationOutboxEvent, type ConversationFact } from './outbox-writer.js';
+import {
+  OutboxWriter,
+  conversationOutboxEvent,
+  messageCreatedOutboxEvent,
+  type ConversationFact,
+  type MessageFact,
+} from './outbox-writer.js';
 
 const TX = {} as TenantTx;
 // prettier-ignore
@@ -78,5 +84,44 @@ describe('OutboxWriter', () => {
     const writer = new OutboxWriter({ insertOutboxEvent: () => Promise.resolve() });
     await expect(writer.add(TX, event({ ids: ['a'] }))).rejects.toThrow(/not a plain value/);
     await expect(writer.add(TX, event({ ref: { id: 'a' } }))).rejects.toThrow(/not a plain value/);
+  });
+});
+
+describe('messageCreatedOutboxEvent: the name of a message, never its text', () => {
+  // prettier-ignore
+  const message = (over: Partial<MessageFact> = {}): MessageFact => ({
+    conversationId: 'c-1', workspaceId: 'w-1', messageId: 'm-1', sequenceNumber: 7, senderKind: 'customer', traceId: 'trace', ...over,
+  });
+
+  it('is message.created on the conversation, with three references and no version', () => {
+    const e = messageCreatedOutboxEvent(message());
+    expect(e).toMatchObject({
+      eventType: 'message.created',
+      workspaceId: 'w-1',
+      aggregateType: 'conversation',
+      aggregateId: 'c-1',
+      aggregateVersion: null,
+      actorKind: 'customer',
+      actorId: null,
+      traceId: 'trace',
+      payload: { conversationId: 'c-1', messageId: 'm-1', sequenceNumber: 7 },
+    });
+    expect(Object.keys(e.payload).sort()).toEqual([
+      'conversationId',
+      'messageId',
+      'sequenceNumber',
+    ]);
+  });
+
+  it('names the person who sent it, gives each row its own id, and passes the filter of the writer', async () => {
+    const [a, b] = [
+      messageCreatedOutboxEvent(message({ senderKind: 'agent', senderUserId: 'u-2' })),
+      messageCreatedOutboxEvent(message()),
+    ];
+    expect(a).toMatchObject({ actorKind: 'agent', actorId: 'u-2' });
+    expect(a.id).not.toBe(b.id);
+    const insertOutboxEvent = vi.fn(() => Promise.resolve());
+    await new OutboxWriter({ insertOutboxEvent }).add(TX, a);
+    expect(insertOutboxEvent).toHaveBeenCalledWith(TX, a);
   });
 });

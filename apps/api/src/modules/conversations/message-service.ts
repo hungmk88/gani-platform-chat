@@ -1,5 +1,6 @@
 import {
   insertMessage,
+  insertOutboxEvent,
   loadConversation,
   type MessageKind,
   type MessageSenderKind,
@@ -10,9 +11,10 @@ import { uuidv7 } from '@gani/domain';
 
 import { ConversationStateMachine, type TransitionOutcome } from './conversation-state-machine.js';
 import { ConversationNotFoundError, InvalidMessageError } from './errors.js';
+import { OutboxWriter, messageCreatedOutboxEvent } from './outbox-writer.js';
 
 // prettier-ignore
-export const messageStore = { loadConversation, insertMessage };
+export const messageStore = { loadConversation, insertMessage, insertOutboxEvent };
 /** The functions of the stores the message service writes through; a test passes a fake. */
 export type MessageStore = typeof messageStore;
 
@@ -60,18 +62,20 @@ export class MessageService {
   constructor(
     private readonly fsm: ConversationStateMachine,
     private readonly store: MessageStore = messageStore,
+    private readonly outbox: OutboxWriter = new OutboxWriter(store),
   ) {}
 
   /**
    * Adds a message to a conversation the tenant can see (`ConversationNotFoundError` otherwise, 404), after checking it: an agent has
    * a `senderUserId` and nobody else does; a text has a body (an image, a file or a sticker may have none). The rule that broke is
-   * named by `InvalidMessageError`, and the error never carries the message. Returns its id and `sequence_number`.
+   * named by `InvalidMessageError`, and the error never carries the message. Writes `message.created` to the outbox right after the
+   * message, in the same transaction: both stay or both go. Returns its id and `sequence_number`.
    */
   async append(tx: TenantTx, input: AppendMessageInput): Promise<StoredMessage> {
     check(input);
     const conversation = await this.store.loadConversation(tx, input.conversationId);
     if (!conversation) throw new ConversationNotFoundError();
-    return this.store.insertMessage(tx, {
+    const stored = await this.store.insertMessage(tx, {
       id: uuidv7(),
       conversationId: conversation.id,
       workspaceId: conversation.workspaceId,
@@ -82,6 +86,19 @@ export class MessageService {
       platformMessageId: input.platformMessageId ?? null,
       platformSentAt: input.platformSentAt ?? null,
     });
+    await this.outbox.add(
+      tx,
+      messageCreatedOutboxEvent({
+        conversationId: conversation.id,
+        workspaceId: conversation.workspaceId,
+        messageId: stored.id,
+        sequenceNumber: stored.sequenceNumber,
+        senderKind: input.senderKind,
+        senderUserId: input.senderUserId ?? null,
+        traceId: input.traceId,
+      }),
+    );
+    return stored;
   }
 
   /**
