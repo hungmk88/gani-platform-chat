@@ -16,6 +16,7 @@ export { conversationEvents } from './schema/conversation-events.js';
 export { conversations } from './schema/conversations.js';
 export { featureFlagsGlobal } from './schema/feature-flags-global.js';
 export { featureFlagsOverrides } from './schema/feature-flags-overrides.js';
+export { inboundEventKeys } from './schema/inbound-event-keys.js';
 export { inboundEvents } from './schema/inbound-events.js';
 export { messages } from './schema/messages.js';
 export { orgMembers, type OrgRole } from './schema/org-members.js';
