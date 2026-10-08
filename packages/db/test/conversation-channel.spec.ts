@@ -58,7 +58,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await app.end();
-  await admin.query('DELETE FROM conversations WHERE org_id = ANY($1::uuid[])', [[A, B]]);
+  // Only what this spec made: the conversations of a channel. The conversation seedTenant made has a message and an event, and
+  // cleanupTenant removes it in the right order (messages first); deleting every conversation of the org here broke that (FK).
+  await admin.query(
+    'DELETE FROM conversations WHERE org_id = ANY($1::uuid[]) AND channel_account_id IS NOT NULL',
+    [[A, B]],
+  );
   await admin.query('DELETE FROM channel_accounts WHERE id = $1', [CA2]);
   await admin.query('DELETE FROM workspaces WHERE id = $1', [WA2]);
   for (const [org, user] of users) await cleanupTenant(admin, org, user);
