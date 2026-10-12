@@ -11,6 +11,7 @@
 - Migration theo mẫu expand → migrate → contract (≥ 2 release).
 - Migration SQL không được viết `BEGIN`/`COMMIT` bên trong (cũng không `ROLLBACK`, `START TRANSACTION`, `END`, `ABORT`): runner đã bọc mỗi file trong một transaction; lint `MIG-TXN` chặn.
 - Index nặng chạy `CREATE INDEX CONCURRENTLY`, không khóa `messages`.
+- Pool nào cũng đi qua `createDbPool`, nó đặt cho mọi kết nối `statement_timeout` 15 s, `lock_timeout` 5 s (cả khóa tư vấn), `idle_in_transaction_session_timeout` 30 s (N109). Cần lâu hơn thì truyền giá trị riêng; không có giá trị 0 (tắt giới hạn). Runner migration dùng client riêng nên không bị giới hạn này.
 
 ## 4 role DB (không được dùng lẫn)
 

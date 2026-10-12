@@ -7,6 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "smoke": "node scripts/smoke-start.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts"
