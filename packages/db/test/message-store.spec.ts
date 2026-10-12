@@ -346,16 +346,33 @@ describe('a platform time that is older than the floor (N117)', () => {
     },
   );
 
-  it('clamps 1970 to the floor, for the message and for the mark, and says how far behind it was', async () => {
+  it('clamps 1970 to the floor for the message, and says how far behind it was', async () => {
     const c = await conversation();
     const stored = await add(message(c, { platformSentAt: new Date(0) }));
     expect(Math.abs((await fromFloor(stored.id)) ?? 1e9)).toBeLessThan(60);
-    const mark = (await marks(c))?.customer as Date;
-    expect(Math.abs(mark.getTime() - (Date.now() - PLATFORM_TIME_FLOOR_DAYS * DAY))).toBeLessThan(
-      60_000,
-    );
     expect(stored.platformSentAtBehindSeconds).toBeGreaterThan(50 * 365 * 86_400);
     expect(stored.platformSentAtAheadSeconds).toBeNull();
+  });
+
+  it('opens the free window now for the first message of a conversation that has a time of 1970', async () => {
+    const c = await conversation();
+    await add(message(c, { platformSentAt: new Date(0) }));
+    const mark = (await marks(c))?.customer as Date;
+    // now(), not the floor (30 days ago, which is older than the 48 hours of the window).
+    expect(Math.abs(mark.getTime() - Date.now())).toBeLessThan(60_000);
+    expect(Date.now() - mark.getTime()).toBeLessThan(48 * 3_600_000);
+  });
+
+  it('changes nothing for a normal message after it, and a normal first message keeps its own time', async () => {
+    const c = await conversation();
+    await add(message(c, { platformSentAt: new Date(0) }));
+    const opened = (await marks(c))?.customer as Date;
+    await add(message(c, { platformSentAt: new Date(Date.now() - 2 * 3_600_000) }));
+    expect((await marks(c))?.customer?.toISOString()).toBe(opened.toISOString());
+    const other = await conversation();
+    const sentAt = new Date(Date.now() - 5 * 3_600_000);
+    await add(message(other, { platformSentAt: sentAt }));
+    expect((await marks(other))?.customer?.toISOString()).toBe(sentAt.toISOString());
   });
 
   it('clamps 31 days to the floor and keeps 29 days as it was', async () => {
