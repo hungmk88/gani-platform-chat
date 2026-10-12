@@ -39,7 +39,7 @@
       <div class="banner warn" style="border-radius: var(--r-card)">
         PROTOTYPE — không phải sản phẩm. Dữ liệu và tên người là giả. Không kết nối máy chủ.
       </div>
-      <h1>Prototype HTML — 4 màn Đợt 1</h1>
+      <h1>Prototype HTML — Đợt 1: 4 màn chính, khung app, 3 màn auth</h1>
       <p class="muted">
         Theo dàn ý đã duyệt (<code>docs/ui/prototype-outline-dot1.md</code>). Mở file này bằng trình duyệt, không cần cài
         đặt. Thanh đen trên cùng mỗi màn dùng để đổi <strong>trạng thái</strong>, <strong>vai trò</strong>,
@@ -122,6 +122,61 @@
       </section>
 
       <section>
+        <h2>1b. Khung app và 3 màn auth (đợt sớm — Q-U20 đã chốt)</h2>
+        <p class="muted">
+          Theo spec M8 bản nháp 3 và Phụ lục C v3 dòng 0, 5, 8, 9. Vẽ thẳng theo quyết định Q-U20, không có biến thể. Phần
+          còn lại (#2, #3) chờ spec cuối 30/10 và PR7.
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3>Khung app</h3>
+            <ul>
+              <li><a href="inbox.html?role=sales">Bình thường (Sales, trạng thái Online)</a></li>
+              <li><a href="inbox.html?role=sales&shell=disconnected">Mất kết nối realtime</a></li>
+              <li><a href="inbox.html?role=sales&shell=auto_offline">Tự chuyển Offline sau 5 phút</a></li>
+              <li><a href="inbox.html?role=sales&shell=busy_30">Bận quá 30 phút (nhắc agent)</a></li>
+              <li><a href="inbox.html?role=sales&shell=switching">Đang đổi workspace</a></li>
+              <li><a href="system.html?role=platform_operator">Menu platform operator (ngoài phiên: mở dữ liệu công ty → 403)</a></li>
+              <li><a href="customer.html?role=platform_operator&shell=platform_session">Dải phiên truy cập platform</a></li>
+              <li><a href="system.html?role=sales&state=403">403</a> · <a href="system.html?role=sales&state=404">404</a> · <a href="system.html?role=sales&state=maintenance">Bảo trì</a> · <a href="system.html?role=sales&state=error">Lỗi chung</a></li>
+            </ul>
+            <p class="small muted">Menu theo 8 vai trò: đổi "Vai trò" trên thanh đen.</p>
+          </div>
+          <div class="card">
+            <h3><a href="login.html?role=sales">Đăng nhập (#1)</a></h3>
+            <ul>
+              <li><a href="login.html?role=sales">Bình thường</a></li>
+              <li><a href="login.html?role=sales&state=loading">Đang đăng nhập</a></li>
+              <li><a href="login.html?role=sales&state=error">Lỗi chung</a></li>
+              <li><a href="login.html?role=sales&state=locked">Khóa 30 phút sau 5 lần sai</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="invite.html?role=sales">Nhận lời mời (#4) — phụ thuộc PR7</a></h3>
+            <ul>
+              <li><a href="invite.html?role=sales">Bình thường (Sales)</a></li>
+              <li><a href="invite.html?role=admin">Vai trò bắt buộc 2FA (Admin)</a></li>
+              <li><a href="invite.html?role=sales&state=expired">Link hết hạn (7 ngày)</a></li>
+              <li><a href="invite.html?role=sales&state=invalid">Link không hợp lệ</a></li>
+              <li><a href="invite.html?role=sales&state=used">Link đã dùng (N31)</a></li>
+              <li><a href="invite.html?role=sales&state=timeout">Quá thời gian → gửi link qua email</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="me.html?role=sales">Hồ sơ cá nhân (#5)</a></h3>
+            <ul>
+              <li><a href="me.html?role=sales">Thông tin</a></li>
+              <li><a href="me.html?role=sales&tab=security">Bảo mật — 2FA chưa bật (bấm Bật để xem QR + 10 mã)</a></li>
+              <li><a href="me.html?role=admin&tab=security">Bảo mật — Admin, 2FA bắt buộc</a></li>
+              <li><a href="me.html?role=sales&tab=security&state=tfa_on">Bảo mật — 2FA đã bật (không có nút tắt)</a></li>
+              <li><a href="me.html?role=sales&tab=notify">Thông báo (mặc định tắt)</a></li>
+              <li><a href="me.html?role=sales&state=loading">Đang tải</a> · <a href="me.html?role=sales&state=error">Lỗi</a> · <a href="me.html?role=sales&state=aioff">AI tắt</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
         <h2>2. Token (CĐT đã duyệt)</h2>
         <table class="plain" style="margin-top: var(--sp-3)">
           <thead>
@@ -191,7 +246,7 @@
         <h2>5. Bảo mật giao diện thể hiện trên prototype</h2>
         <ul>
           <li>T2: hội thoại "Phạm Hoa" chứa <code>&lt;script&gt;</code> và <code>&lt;img onerror&gt;</code>, hiện đúng chuỗi ký tự, không chạy.</li>
-          <li>T1: đổi workspace ở menu trái báo xóa cache và ngắt realtime (prototype chỉ mô phỏng thông báo).</li>
+          <li>T1: đổi workspace ở thanh trên cùng báo xóa cache và ngắt realtime (prototype chỉ mô phỏng thông báo).</li>
           <li>Nhận, chuyển, đóng, gộp, xuất bản, đổi bước lead: chờ máy chủ, khóa nút. Gửi tin, tag, ghi chú: hiện ngay.</li>
           <li>Bản nháp: prototype giữ trong bộ nhớ trang; app thật lưu máy chủ, không localStorage.</li>
         </ul>
