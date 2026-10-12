@@ -1,5 +1,7 @@
 # Code Review — Nhóm C: Xác thực (Better Auth, phiên, 2FA, bối cảnh tenant)
 
+> ⚠️ Cập nhật 12/10/2026: C-01 đã được đính chính. Xem 00-summary.md mục "Đính chính".
+
 - **Mốc code:** `main` = `a443721`. PR4b-2a (`efce039`) ngoài mốc và không đụng module auth.
 - **Ngày rà soát:** 12/10/2026. **Người rà soát:** Claude (chính tác giả phần lớn mã, xem mục "Giới hạn").
 - **Phạm vi:** `apps/api/src/modules/auth/*`, `apps/api/src/modules/request-context/*`, `apps/api/src/app-setup.ts`, `apps/api/src/main.ts`, `packages/db/src/schema/{auth,sessions,accounts,verifications,two-factors}.ts`, các migration bảng auth (`users`, `sessions`, `accounts`, `verifications`, `two_factors`, trigger `users_status_transition_check`, `app.auth_user_id`, `app.memberships_for_user`), thư viện `better-auth@1.7.7`.
