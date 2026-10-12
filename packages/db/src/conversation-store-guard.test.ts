@@ -18,6 +18,32 @@ import { describe, expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const STORE = 'packages/db/src/conversation-store.ts';
 const WRITES = [/\bUPDATE\s+(?:public\.)?conversations\b/i, /\.update\(\s*conversations\b/];
+// What the two patterns above miss (review D-03): `const c = conversations; tx.update(c)`. Only a file that imports the table can do it.
+// `message-store.ts` does, on purpose, for the marks of the conversation; the DB trigger is the lock that holds for the FSM columns.
+const MARKS = 'packages/db/src/message-store.ts';
+const FSM_KEYS = /\b(?:state|version|assignedUserId|afterHoursHold|closedAt|outcome)\s*:/;
+
+/** The `.update(x)` calls whose `x` is the `conversations` table or a name bound to it (`const c = conversations`). */
+export function aliasUpdates(source: string): string[] {
+  if (!/\bimport\b[^;]*\bconversations\b[^;]*\bfrom\b/.test(source)) return [];
+  const names = new Set(['conversations']);
+  for (const m of source.matchAll(
+    /\b(?:const|let|var)\s+(\w+)\s*(?::[^=;]+)?=\s*conversations\s*;/g,
+  ))
+    if (m[1]) names.add(m[1]);
+  return [...source.matchAll(/\.update\(\s*(\w+)\s*\)/g)]
+    .filter((m) => m[1] !== undefined && names.has(m[1]))
+    .map((m) => m[0]);
+}
+
+/** The text of the first `.set(...)` that follows `.update(...)`, up to `.where(`: what the statement writes. */
+export function setBlock(source: string): string {
+  const from = source.search(/\.update\(/);
+  if (from === -1) return '';
+  const set = source.indexOf('.set(', from);
+  const end = source.indexOf('.where(', set);
+  return set === -1 || end === -1 ? '' : source.slice(set, end);
+}
 
 function walk(dir: string, found: string[]): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -59,6 +85,45 @@ describe('only the conversation store writes conversations', () => {
 
   it('finds nothing else in the source of any package or app', () => {
     expect(writers.filter((file) => file !== STORE)).toEqual([]);
+  });
+});
+
+describe('writes through an alias of the table (review D-03)', () => {
+  const files = sources(root);
+  const sourceOf = (file: string) => readFileSync(join(root, file), 'utf8');
+
+  it('are only in the store and in the file that moves the marks', () => {
+    const writers = files.filter((file) => aliasUpdates(sourceOf(file)).length > 0);
+    expect(writers).toEqual([STORE, MARKS].sort());
+  });
+
+  it('write no column of the state machine in the file that moves the marks', () => {
+    const block = setBlock(sourceOf(MARKS));
+    expect(block).toContain('lastMessageAt');
+    expect(FSM_KEYS.test(block)).toBe(false);
+  });
+
+  it('sees an alias, a typed alias and the table itself, and nothing else', () => {
+    const imported = "import { conversations } from './schema/conversations.js';\n";
+    expect(
+      aliasUpdates(`${imported}const c = conversations;\ntx.update(c).set({ a: 1 });`),
+    ).toEqual(['.update(c)']);
+    expect(aliasUpdates(`${imported}const t: T = conversations;\ntx.update(t);`)).toEqual([
+      '.update(t)',
+    ]);
+    expect(aliasUpdates(`${imported}tx.update(conversations);`)).toEqual([
+      '.update(conversations)',
+    ]);
+    expect(aliasUpdates(`${imported}const c = messages;\ntx.update(c);`)).toEqual([]);
+    expect(aliasUpdates('const c = conversations;\ntx.update(c);')).toEqual([]);
+  });
+
+  it('sees a column of the state machine in a set block, and a mark only is clean', () => {
+    const writes = (set: string) => FSM_KEYS.test(setBlock(`tx.update(c)${set}.where(x)`));
+    expect(writes('.set({ lastMessageAt: now, updatedAt: now })')).toBe(false);
+    expect(writes('.set({ lastMessageAt: now, state: next })')).toBe(true);
+    expect(writes('.set({ ...fsm, version: sql`v + 1` })')).toBe(true);
+    expect(setBlock('no update here')).toBe('');
   });
 });
 

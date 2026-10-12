@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-import { createDbPool, type ConversationRow, type TenantContext } from '@gani/db';
+import {
+  createDbPool,
+  type ConversationRow,
+  type TenantContext,
+  type TransitionWrite,
+} from '@gani/db';
+import { InvalidTransitionError, snapshotViolations, type ConversationState } from '@gani/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { DatabaseService } from '../database/database.service.js';
@@ -57,6 +63,19 @@ async function waiting(): Promise<string> {
       id,
       { type: 'needs_human', inHours: true },
       { actor: { kind: 'bot' }, traceId: 'q' },
+    ),
+  );
+  return id;
+}
+/** A conversation the bot holds after hours: created, then the bot asks for a person outside working hours (T03). */
+async function holding(): Promise<string> {
+  const id = idOf(await create());
+  await db.withTenant(ctx([WA]), (tx) =>
+    fsm.transition(
+      tx,
+      id,
+      { type: 'needs_human', inHours: false },
+      { actor: { kind: 'bot' }, traceId: 'h' },
     ),
   );
   return id;
@@ -166,6 +185,32 @@ type Changed = Extract<TransitionOutcome, { kind: 'changed' }>;
 const wins = (results: PromiseSettledResult<TransitionOutcome>[]): Changed[] =>
   results.flatMap((r) => (r.status === 'fulfilled' && r.value.kind === 'changed' ? [r.value] : []));
 
+/** A store whose UPDATE tests only `id` and what `where` adds: a mutant of `applyTransition` (a test proves nothing until it goes red). */
+const mutantStore = (where: (w: TransitionWrite) => string): ConversationStore => ({
+  ...conversationStore,
+  applyTransition: async (tx, w) => {
+    await tx.execute(`SELECT set_config('app.fsm', 'on', true)`);
+    const next = w.next;
+    const result =
+      await tx.execute(`UPDATE conversations SET state = '${next.state}', assigned_user_id = '${String(next.assignedUserId)}',
+          version = version + 1 WHERE id = '${w.id}' ${where(w)} RETURNING id, org_id, workspace_id, state, version, assigned_user_id, after_hours_hold, closed_at, outcome`);
+    await tx.execute(`SELECT set_config('app.fsm', 'off', true)`);
+    const r = result.rows[0];
+    if (!r) return null;
+    return {
+      id: r['id'],
+      orgId: r['org_id'],
+      workspaceId: r['workspace_id'],
+      state: r['state'],
+      version: r['version'],
+      assignedUserId: r['assigned_user_id'],
+      afterHoursHold: r['after_hours_hold'],
+      closedAt: r['closed_at'],
+      outcome: r['outcome'],
+    } as ConversationRow;
+  },
+});
+
 describe('claim-race: 50 agents claim one conversation at once', () => {
   it('exactly one wins, the other 49 are told who holds it, and the history has one claim', async () => {
     const id = await waiting();
@@ -199,31 +244,136 @@ describe('claim-race: 50 agents claim one conversation at once', () => {
 
   // Mutation: the same race with the UPDATE that forgets "state = from" must be caught, or the test above proves nothing.
   it('goes red when the UPDATE drops its state condition: every agent "wins"', async () => {
-    const mutant: ConversationStore = {
-      ...conversationStore,
-      applyTransition: async (tx, w) => {
-        await tx.execute(`SELECT set_config('app.fsm', 'on', true)`);
-        const next = w.next;
-        const result =
-          await tx.execute(`UPDATE conversations SET state = '${next.state}', assigned_user_id = '${String(next.assignedUserId)}',
-          version = version + 1 WHERE id = '${w.id}' RETURNING id, org_id, workspace_id, state, version, assigned_user_id, after_hours_hold, closed_at, outcome`);
-        await tx.execute(`SELECT set_config('app.fsm', 'off', true)`);
-        const r = result.rows[0];
-        if (!r) return null;
-        return {
-          id: r['id'],
-          orgId: r['org_id'],
-          workspaceId: r['workspace_id'],
-          state: r['state'],
-          version: r['version'],
-          assignedUserId: r['assigned_user_id'],
-          afterHoursHold: r['after_hours_hold'],
-          closedAt: r['closed_at'],
-          outcome: r['outcome'],
-        } as ConversationRow;
+    const mutant = mutantStore(() => '');
+    expect(wins(await claimRace(mutant, await waiting())).length).toBeGreaterThan(1);
+  });
+});
+
+describe('claim-race on a conversation the bot holds after hours (T06, FSM spec §9.2)', () => {
+  it('exactly one wins, the other 49 are told who holds it, and the hold is released with the claim', async () => {
+    const id = await holding();
+    expect(await stored(id)).toMatchObject({
+      state: 'BOT_ACTIVE',
+      after_hours_hold: true,
+      version: 1,
+    });
+    const results = await claimRace(conversationStore, id);
+    const [won] = wins(results);
+    const winner = won?.conversation.snapshot.assignedUserId;
+    expect(wins(results)).toHaveLength(1);
+    expect(won).toMatchObject({ transition: 'T06' });
+    const lost = results.flatMap((r) => (r.status === 'rejected' ? [r.reason as unknown] : []));
+    expect(lost).toHaveLength(AGENTS.length - 1);
+    for (const reason of lost) expect(reason).toBeInstanceOf(ConversationAlreadyClaimedError);
+    expect(await stored(id)).toMatchObject({
+      state: 'HUMAN_ACTIVE',
+      assigned_user_id: winner,
+      after_hours_hold: false,
+      version: 2,
+    });
+    const claims = (await eventsOf(id)).filter((e) => e['event_type'] === 'claimed');
+    expect(claims).toMatchObject([{ from_hold: true, to_hold: false, version_after: 2 }]);
+    const assigned = (await outboxOf(id)).filter((e) => e.event_type === 'conversation.assigned');
+    expect(assigned).toHaveLength(1);
+  });
+
+  it('keeps whatever the table allows when 25 claims race one release after hours (T06 against T08)', async () => {
+    const id = await holding();
+    const start = gate(26);
+    const claims = AGENTS.slice(0, 25).map((agent, n) =>
+      db.withTenant(ctx([WA]), async (tx) => {
+        await start();
+        return fsm.transition(tx, id, { type: 'claim', userId: agent }, by(agent, n));
+      }),
+    );
+    const release = db.withTenant(ctx([WA]), async (tx) => {
+      await start();
+      const event = { type: 'release_after_hours', inHours: true } as const;
+      return fsm.transition(tx, id, event, { actor: { kind: 'system' }, traceId: 't08' });
+    });
+    const results = await Promise.allSettled([...claims, release]);
+    const claimed = wins(results.slice(0, 25));
+    expect(claimed.length).toBeLessThanOrEqual(1);
+    // A claim that loses is always "already claimed"; a release that loses finds the conversation held and the table has no row for it.
+    for (const r of results.slice(0, 25))
+      if (r.status === 'rejected') expect(r.reason).toBeInstanceOf(ConversationAlreadyClaimedError);
+    const released = results[25];
+    if (released?.status === 'rejected')
+      expect(released.reason).toBeInstanceOf(InvalidTransitionError);
+    expect(claimed.length + wins(results.slice(25)).length).toBeGreaterThan(0);
+    const now = await stored(id);
+    expect(['HUMAN_WAITING_Q', 'HUMAN_ACTIVE']).toContain(now?.state);
+    expect(
+      snapshotViolations({
+        state: now?.state as ConversationState,
+        afterHoursHold: now?.after_hours_hold ?? false,
+        assignedUserId: now?.assigned_user_id ?? null,
+        closedAt: now?.closed_at ?? null,
+        outcome: null,
+      }),
+    ).toEqual([]);
+    expect(now?.version).toBe((await eventsOf(id)).length - 1);
+  });
+
+  // The hold condition cannot be told from the state condition by any race the table allows (no row leads from BOT_ACTIVE + hold to
+  // BOT_ACTIVE without it), so it is staged: the claimer has read "BOT_ACTIVE + hold", and the hold is released behind its back.
+  const dropHoldBehindTheBack = (store: ConversationStore, id: string): ConversationStore => {
+    let done = false;
+    return {
+      ...store,
+      loadConversation: async (tx, conversationId) => {
+        const row = await store.loadConversation(tx, conversationId);
+        if (!done) {
+          done = true;
+          const c = await admin.connect();
+          try {
+            await c.query('BEGIN');
+            await c.query("SELECT set_config('app.fsm', 'on', true)");
+            await c.query(
+              'UPDATE conversations SET after_hours_hold = false, version = version + 1 WHERE id = $1',
+              [id],
+            );
+            await c.query('COMMIT');
+          } finally {
+            c.release();
+          }
+        }
+        return row;
       },
     };
-    expect(wins(await claimRace(mutant, await waiting())).length).toBeGreaterThan(1);
+  };
+  const claimOnce = (store: ConversationStore, id: string) =>
+    Promise.allSettled([
+      db.withTenant(ctx([WA]), (tx) =>
+        new ConversationStateMachine(store).transition(
+          tx,
+          id,
+          { type: 'claim', userId: AGENTS[1] as string },
+          by(AGENTS[1] as string),
+        ),
+      ),
+    ]);
+
+  it('does not claim a conversation whose hold went away after it was read: the UPDATE tests the flag too', async () => {
+    const id = await holding();
+    const [result] = await claimOnce(dropHoldBehindTheBack(conversationStore, id), id);
+    expect(result).toMatchObject({ status: 'rejected' });
+    expect((result as PromiseRejectedResult).reason).toBeInstanceOf(
+      ConversationAlreadyClaimedError,
+    );
+    expect(await stored(id)).toMatchObject({
+      state: 'BOT_ACTIVE',
+      after_hours_hold: false,
+      assigned_user_id: null,
+    });
+  });
+
+  it('goes red when the UPDATE drops its hold condition: a claim wins a conversation nobody holds after hours', async () => {
+    const id = await holding();
+    const mutant = mutantStore((w) => `AND state = '${w.from.state}'`);
+    const [result] = await claimOnce(dropHoldBehindTheBack(mutant, id), id);
+    expect(result).toMatchObject({ status: 'fulfilled' });
+    expect(await stored(id)).toMatchObject({ state: 'HUMAN_ACTIVE', after_hours_hold: false });
   });
 });
 
