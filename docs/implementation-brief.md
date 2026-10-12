@@ -1,5 +1,8 @@
 # Implementation Brief — Nền tảng Chat & AI Chatbot đa tenant
 
+> **ĐÃ THAY THẾ (v0.4 giữ làm lịch sử).** Bản hiện hành là **Brief Backend & Core v1.0** (12/10/2026) tại [`brief-backend-core-v1.0.md`](brief-backend-core-v1.0.md): 2 đợt + nhóm Chờ dữ liệu, 135 mã. Không sửa file này nữa; giữ nguyên để đối chiếu và làm hồ sơ cho luật sư. Khi hai bản khác nhau, theo v1.0 (hồ sơ gốc + Phụ lục v2.1–v2.3 vẫn thắng).
+> **Chưa chép sang v1.0:** chỉnh sửa N18 ở P8 (che họ tên cá nhân và ngày sinh trước khi gửi provider AI, đã sửa ở bản này; v1.0 P8 còn thiếu, P11 của v1.0 vẫn có). Xem `QUESTIONS.md` N18 và U13.
+
 Oct 2, 2026 · @HUNG MK
 
 **Mục lục:** [P1](#m8z9y9aq115.79) · [P2](#m8z9y9aq115.1512) · [P3](#m8z9y9aq115.3662) · [P4](#m8z9y9aq115.8896) · [P5](#m8z9y9aq115.10718) · [P6](#m8z9y9aq115.13243) · [P7](#m8z9y9aq115.16055) · [P8](#m8z9y9aq115.18594) · [P9](#m8z9y9aq115.24380) · [P10](#m8z9y9aq115.30615) · [P11](#m8z9y9aq115.34164) · [P12](#m8z9y9aq115.36626) · [P13](#m8z9y9aq115.37989) · [P14](#m8z9y9aq115.39472) · [P15](#m8z9y9aq115.41272) · [P16](#m8z9y9aq115.42294) · [P17](#m8z9y9aq115.43978) · [P18](#m8z9y9aq115.45468) · [P19](#m8z9y9aq115.47060) · [P20](#m8z9y9aq115.48487) · [P21](#m8z9y9aq115.50225) · [P22](#m8z9y9aq115.54817)
