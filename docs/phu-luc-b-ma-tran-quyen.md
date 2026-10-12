@@ -1,6 +1,6 @@
 # PHỤ LỤC B — MA TRẬN QUYỀN
 
-**Brief UI v1.0 · 12/10/2026 · sửa 13/10/2026 (thêm 2 dòng M9) · sửa lần 3 13/10/2026 (thêm 5 dòng U20-5, spec M8)**
+**Brief UI v1.0 · 12/10/2026 · sửa 13/10/2026 (thêm 2 dòng M9) · sửa lần 3 13/10/2026 (thêm 5 dòng U20-5, spec M8) · sửa lần 4 13/10/2026 (thêm 1 dòng Q-U20-1)**
 
 Nguồn đối chiếu quyền cho FE. Bản dạng văn bản do CĐT gửi 13/10/2026; file `.xlsx` không lưu vào repo. Khi Brief UI và Brief Backend mâu thuẫn về quyền, Brief Backend thắng (P9, P17); server kiểm quyền theo ma trận này.
 
@@ -35,6 +35,7 @@ Nguồn đối chiếu quyền cho FE. Bản dạng văn bản do CĐT gửi 13/
 | Tự động hóa | Sửa, xuất bản bot flow | ✓ | ✓ | ✓ | — | — | — | — | — |
 | Cài đặt | Cài đặt workspace, kênh, team | ✓ | ✓ | — | — | — | — | — | — |
 | Cài đặt | Mời thành viên, đổi vai trò | ✓ | ✓ (không nâng lên Owner) | — | — | — | — | — | — |
+| Cài đặt | **Đặt lại 2FA của người khác** ⬅ MỚI (Q-U20-1) | ✓ | ✓ | — | — | — | — | — | — |
 | Cài đặt | **Quản lý mẫu trả lời nhanh** ⬅ MỚI (U20-5) | ✓ | ✓ | ✓ | — | — | — | — | — |
 | Cài đặt | **Xem SLA, phân bổ, giờ làm việc** ⬅ MỚI (U20-5) | ✓ | ✓ | Xem | — | — | — | — | — |
 | AI | Bật/tắt AI nội bộ, ngân sách AI | ✓ | ✓ | — | — | — | — | — | — |
@@ -79,3 +80,8 @@ Thêm 5 dòng theo bảng CEO chốt 13/10/2026:
 - `Xem trường nhạy cảm` (Khách hàng) — Sales/Support thấy đầy đủ; Marketing/Viewer: Che (spec M8 §3.6); Platform op: Phiên.
 - `Quản lý mẫu trả lời nhanh` (Cài đặt) — Owner, Admin, Manager (spec M8 §3.2).
 - `Xem SLA, phân bổ, giờ làm việc` (Cài đặt) — Owner, Admin sửa; Manager: Xem (chỉ xem, không sửa).
+
+
+## Thay đổi lần 4 — 13/10/2026 (Q-U20-1, spec M8 bản nháp 3)
+
+- `Đặt lại 2FA của người khác` (Cài đặt) — chỉ Owner, Admin; còn lại —. Bắt buộc lý do, ghi audit, thu hồi mọi phiên của người bị đặt lại; người đó cài lại 2FA ở lần đăng nhập kế tiếp. Người dùng không tự tắt 2FA được (route tắt đã đóng, N79.4).

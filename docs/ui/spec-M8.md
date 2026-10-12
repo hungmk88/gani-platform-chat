@@ -1,8 +1,8 @@
 # Spec M8 — 11 hạng mục Đợt 1 chưa có màn spec
 
-Bản nháp 2 · 13/10/2026 · đã áp Q-M8-1→3 (U19) và U20-1→6 + dòng 4 Phụ lục B · Bổ sung cho Brief UI v1.0 · Người duyệt: CEO HUNG MK + cố vấn kỹ thuật
+Bản nháp 3 · 13/10/2026 · đã áp Q-M8-1→3 (U19), U20-1→6, dòng 4 Phụ lục B, Q-U20-1→6 (U21), U22, U23 · Bổ sung cho Brief UI v1.0 · Người duyệt: CEO HUNG MK + cố vấn kỹ thuật
 
-**Kết luận:** 9 hạng mục có giao diện ở Đợt 1 (hướng a), 2 hạng mục tạo bằng script quản trị (hướng b), không hạng mục nào bị gỡ khỏi Đợt 1. Phạm vi Đợt 1 giữ **58 mã**. Hai phần nhỏ đã được CEO chốt dời sang Đợt 2: phân bổ theo kỹ năng (C9) và lưu phân khúc (J4). Đồng hồ SLA dừng ngoài giờ và khi chờ khách (C8). Sáu điểm lệch với backend (U20) đã sửa: `/me` chỉ bật 2FA; danh sách phiên chỉ có thời điểm tạo và hạn; `/reset-password` chờ PR7; trạng thái agent còn 3 mức; giờ làm việc, ngày lễ, team ↔ kênh chờ Q7. Câu hỏi mới phát sinh ở mục 7.
+**Kết luận:** 9 hạng mục có giao diện ở Đợt 1 (hướng a), 2 hạng mục tạo bằng script quản trị (hướng b), không hạng mục nào bị gỡ khỏi Đợt 1. Phạm vi Đợt 1 giữ **58 mã**. Hai phần nhỏ đã được CEO chốt dời sang Đợt 2: phân bổ theo kỹ năng (C9) và lưu phân khúc (J4). Đồng hồ SLA dừng ngoài giờ và khi chờ khách (C8). Sáu điểm lệch với backend (U20) đã sửa: `/me` chỉ bật 2FA; danh sách phiên chỉ có thời điểm tạo và hạn; `/reset-password` chờ PR7; trạng thái agent còn 3 mức; giờ làm việc, ngày lễ, team ↔ kênh chờ Q7. Sáu câu phát sinh ở mục 8 (Q-U20) đã được CEO chốt ngày 13/10/2026.
 
 Căn cứ: Brief UI v1.0 · Brief Backend & Core v1.0 (P8, P14, P16, P17) · Phụ lục B Ma trận quyền · Phạm vi triển khai 135 mã · Phụ lục kỹ thuật v2.1–v2.3.
 
@@ -120,6 +120,10 @@ Mục 11 không phải "mã thiếu": đó là A5 (đăng nhập, 2FA, phiên) v
 
 Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Chờ nhân viên nhận", bỏ người phụ trách, báo quản lý (T17); ngoài giờ → bot giữ hội thoại, gắn cờ "Ngoài giờ", bỏ người phụ trách (T18). Khi Bận, đồng hồ SLA của hội thoại vẫn chạy và cảnh báo SLA vẫn bắn như bình thường.
 
+**Tự chuyển Offline khi mất kết nối (Q-U20-4, chốt):** mất kết nối realtime quá 5 phút → hệ thống tự chuyển agent sang Offline, rồi T17/T18 chạy như Offline chọn tay. Kết nối lại **không** tự chuyển Online: agent tự bật lại. Thanh trên cùng hiện "Đã chuyển Offline do mất kết nối".
+
+**"Bận" quá 30 phút (Q-U20-5, chốt theo đề xuất):** không tự đổi trạng thái, không đẩy hội thoại về hàng chờ. Sau 30 phút, chính agent thấy lời nhắc; Manager thấy số phút "Bận" ở trạng thái cả team và tự quyết nhắc agent (Manager không đổi được trạng thái người khác).
+
 **Trạng thái màn:**
 - Đang tải: skeleton form lịch
 - Trống: không có — lịch mặc định từ mẫu workspace
@@ -129,6 +133,7 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 - Tin đến ngoài giờ hoặc ngày lễ → hội thoại gắn cờ "Ngoài giờ", khách nhận lời nhắn; mở cửa → hội thoại vào "Chờ nhân viên nhận" (Brief-P10 F6)
 - Agent chuyển "Bận" → không nhận hội thoại tự động mới, vẫn giữ hội thoại đang xử lý; sau 15 phút hội thoại vẫn thuộc agent đó
 - Agent chuyển "Offline" trong giờ, khách còn tin chưa trả lời → sau 10 phút hội thoại về hàng chờ và quản lý nhận cảnh báo; Manager không có nút đổi trạng thái của agent khác
+- Ngắt mạng 5 phút → agent tự thành Offline và thấy thông báo; nối lại vẫn Offline cho tới khi agent tự bật Online
 
 > **Phụ thuộc Q7 (U18, hạn 28/12/2026) — U20-6:** giờ làm việc, ngày lễ của từng workspace; spec chi tiết chốt sau khi có Q7. Trước Q7, Hộp thư và thẻ SLA dùng giá trị tạm có nhãn "chờ Q7" (U18).
 
@@ -199,7 +204,9 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 - Nhận lời mời: đặt mật khẩu; vai trò bắt buộc 2FA phải cài 2FA ngay
 - Quên mật khẩu: **màn phụ thuộc PR7** (luồng đặt lại mật khẩu do PR7 tự viết, N84 — đường đặt lại của thư viện đã đóng); spec chi tiết bổ sung khi PR7 xong (U20-3)
 - `/me` tab Bảo mật — 2FA: **chỉ bật 2FA và xem trạng thái** (Đã bật / Chưa bật). Không có nút tắt; tắt hoặc đặt lại 2FA đi qua Admin (U20-1, N79.4)
-- `/me` tab Bảo mật — phiên: xem danh sách phiên, mỗi phiên chỉ hiện **thời điểm tạo** và **hạn**, không có IP, không có thiết bị (U20-2, N79.2); đăng xuất từng phiên
+- Bật 2FA: quét mã QR, nhập mã 6 số xác nhận, rồi **hiện 10 mã dự phòng một lần duy nhất**, mỗi mã dùng 1 lần; người dùng tự lưu (tải/chép) trước khi đóng (Q-U20-2, chốt). Màn nhập mã 2FA có link "Dùng mã dự phòng"
+- Đặt lại 2FA của người khác: ở `/settings/members` (#19), **chỉ Owner, Admin**, bắt buộc nhập lý do, ghi audit, thu hồi mọi phiên của người bị đặt lại; người đó phải cài lại 2FA ở lần đăng nhập kế tiếp (Q-U20-1, chốt)
+- `/me` tab Bảo mật — phiên: xem danh sách phiên, mỗi phiên chỉ hiện **thời điểm tạo** và **hạn**, không có IP, không có thiết bị (U20-2, N79.2); phiên đang dùng có nhãn **"Phiên này"**, các phiên khác có nút "Đăng xuất" (Q-U20-3, chốt)
 - `/me`: đổi tên, ảnh, mật khẩu; bật thông báo trình duyệt và âm thanh (C11)
 - Đổi workspace: danh sách workspace được cấp; đổi xong xóa cache và ngắt realtime của workspace cũ (Brief UI §2.6, test T1)
 **Trạng thái:**
@@ -210,7 +217,8 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 **Nghiệm thu:**
 - Người được mời đăng nhập lần đầu và vào Inbox ≤ 3 phút
 - Đổi workspace: không còn dữ liệu, thông báo hay sự kiện realtime nào của workspace cũ (test T1)
-- `/me` không có nút tắt 2FA với mọi vai trò; danh sách phiên không hiện IP hay thiết bị
+- `/me` không có nút tắt 2FA với mọi vai trò; danh sách phiên không hiện IP hay thiết bị; đúng 1 phiên mang nhãn "Phiên này" và phiên đó không có nút đăng xuất
+- Bật 2FA hiện đủ 10 mã dự phòng đúng 1 lần; đăng nhập bằng 1 mã dự phòng thành công, dùng lại mã đó bị từ chối
 
 ## 4. Thay đổi phạm vi Đợt 1
 
@@ -232,7 +240,7 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 
 ## 6. Đề xuất bổ sung (CEO đã đồng ý cả 3)
 
-1. **Phụ lục B — đã đóng.** DEV đã thêm 5 dòng (main, commit 98eb712, U20-5). Khác đề xuất ban đầu: "Đổi trạng thái agent của người khác" **chỉ Owner/Admin**, không phải "Manager trở lên"; thêm dòng "Xem trường nhạy cảm". Spec này đã sửa theo (mục 3.4, 3.6).
+1. **Phụ lục B.** DEV đã thêm 5 dòng (main, commit 98eb712, U20-5); bản nháp 3 thêm dòng thứ 6 "Đặt lại 2FA của người khác" — Owner ✓, Admin ✓, còn lại — (Q-U20-1). Khác đề xuất ban đầu: "Đổi trạng thái agent của người khác" **chỉ Owner/Admin**, không phải "Manager trở lên"; thêm dòng "Xem trường nhạy cảm". Spec này đã sửa theo (mục 3.4, 3.6).
 2. **Brief Backend P9 — thêm endpoint** cho các hạng mục trên (danh sách chi tiết: `endpoint-M8.md`, đã sửa theo U20, gửi cố vấn kỹ thuật review trước khi vào Brief).
 3. **Tên mã P3** đổi thành "Backup & khôi phục (RPO ≤ 1h, §22)" trong file Phạm vi, Brief Backend P3.2 và danh sách M11.
 
@@ -248,7 +256,18 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 | U20-6 | 1, 3.1, 3.4 | Ghi chú phụ thuộc Q7 (hạn 28/12/2026) |
 | Dòng 4 Phụ lục B | 3.4, 6 | Đổi trạng thái agent khác: chỉ Owner/Admin |
 
-## 8. Câu hỏi phát sinh từ U20 (cần trả lời trước bản cuối 30/10)
+## 8. Câu hỏi phát sinh từ U20 — đã chốt (CEO 13/10/2026)
+
+| # | Quyết định |
+| --- | --- |
+| Q-U20-1 | Đặt lại 2FA ở `/settings/members`: chỉ Owner/Admin, bắt buộc lý do, ghi audit. Thêm 1 dòng Phụ lục B |
+| Q-U20-2 | Có mã dự phòng: 10 mã, mỗi mã dùng 1 lần, hiện 1 lần duy nhất khi bật 2FA, người dùng tự lưu |
+| Q-U20-3 | Có nhãn "Phiên này"; các phiên khác có nút "Đăng xuất" |
+| Q-U20-4 | Mất kết nối > 5 phút → tự Offline; nối lại không tự Online; hiện "Đã chuyển Offline do mất kết nối" |
+| Q-U20-5 | Theo đề xuất: agent thấy nhắc sau 30 phút "Bận", Manager thấy số phút; không tự đổi trạng thái, không đẩy hàng chờ |
+| Q-U20-6 | Q7 chỉ chặn dữ liệu khởi tạo, không chặn dựng màn và vẽ wireframe |
+
+Bảng câu hỏi gốc (giữ để truy vết):
 
 | # | Câu hỏi | Vì sao phải hỏi | Đề xuất |
 | --- | --- | --- | --- |

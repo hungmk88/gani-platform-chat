@@ -1,6 +1,6 @@
 # Danh sách endpoint bổ sung từ Spec M8 — để cố vấn kỹ thuật review
 
-Bản nháp 2 · 13/10/2026 · đã sửa theo U20 · Dùng cho Brief Backend & Core P9, mục “Endpoint bổ sung”. Quy ước chung của P9 áp dụng (tiền tố `/v1`, cursor, mã lỗi, `Idempotency-Key` cho POST, RLS theo org/workspace). Tên và schema chi tiết chốt trong OpenAPI.
+Bản nháp 3 · 13/10/2026 · đã sửa theo U20, Q-U20-1→6, U22 · Dùng cho Brief Backend & Core P9, mục “Endpoint bổ sung”. Quy ước chung của P9 áp dụng (tiền tố `/v1`, cursor, mã lỗi, `Idempotency-Key` cho POST, RLS theo org/workspace). Tên và schema chi tiết chốt trong OpenAPI.
 
 **Tất cả endpoint dưới đây thuộc Đợt 1.** Phần dời Đợt 2 (phân bổ theo kỹ năng, lưu phân khúc) không có endpoint ở Đợt 1.
 
@@ -62,6 +62,8 @@ Quy tắc đồng hồ (đã chốt Q-M8-3): dừng ngoài giờ làm việc/ng�
 
 Realtime: sự kiện `agent.presence` (đã có trong namespace `/agent`).
 
+**Tự chuyển Offline (Q-U20-4, chốt):** mất kết nối realtime quá 5 phút → server đặt `offline` (như `PUT /v1/me/presence`), rồi T17/T18 chạy như thường; nối lại không tự đặt `online`. Client hiện "Đã chuyển Offline do mất kết nối". "Bận" quá 30 phút: không tự đổi (Q-U20-5); `GET /v1/workspaces/{id}/presence` trả thời điểm đổi trạng thái để hiện số phút.
+
 ## 6. Trường tùy chỉnh khách (J1)
 
 | Method + path                         | Quyền       | Audit | Ghi chú                                                                                                 |
@@ -86,19 +88,23 @@ Lọc/tìm: dùng `GET /v1/customers` đã có (P9), mở rộng tham số `fiel
 
 ## 8. Tài khoản cá nhân và xác thực (A5, A3, C11) — `/me`
 
-| Method + path                                                                               | Quyền                                                                                 | Audit                            | Ghi chú                                                                                                                                                  |
-|---------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `POST /v1/auth/login` · `POST /v1/auth/2fa/verify` · `POST /v1/auth/logout`                 | Công khai / Session                                                                   | ✓ (đăng nhập thất bại, khóa tạm) | Lỗi đăng nhập luôn chung một thông điệp                                                                                                                  |
-| `POST /v1/auth/password-reset/request` · `POST /v1/auth/password-reset/confirm`             | Công khai                                                                             | ✓                                | **Chờ PR7** (N84; đường của thư viện đã đóng). Tên đường chốt ở PR7. Yêu cầu tối thiểu: link một lần, có hạn; luôn trả 202 dù email có tồn tại hay không |
-| `GET /v1/invitations/{token}` · `POST /v1/invitations/{token}/accept`                       | Công khai (token)                                                                     | ✓                                | Đặt mật khẩu; vai trò bắt buộc 2FA → bước cài 2FA                                                                                                        |
-| `POST /v1/invitations` · `POST /v1/invitations/{id}/resend` · `DELETE /v1/invitations/{id}` | Owner/Admin                                                                           | ✓                                |                                                                                                                                                          |
-| `GET/PATCH /v1/me`                                                                          | Session                                                                               |                                  | Tên, ảnh                                                                                                                                                 |
-| `POST /v1/me/password`                                                                      | Session                                                                               | ✓                                | Yêu cầu mật khẩu cũ; đăng xuất các phiên khác                                                                                                            |
-| `GET /v1/me/2fa` · `POST /v1/me/2fa/setup` · `POST /v1/me/2fa/enable`                       | Session                                                                               | ✓ (enable)                       | Chỉ xem trạng thái và bật (U20-1). **Không có** đường tắt 2FA cho người dùng (N79.4)                                                                     |
-| `POST /v1/members/{userId}/2fa/reset`                                                       | **Chờ Q-U20-1** (đề xuất Owner/Admin; 2FA của Owner chỉ Owner khác/platform operator) | ✓                                | Bắt buộc `reason`; thu hồi mọi phiên; buộc cài lại 2FA lần đăng nhập kế tiếp                                                                             |
-| `GET /v1/me/sessions` · `DELETE /v1/me/sessions/{id}`                                       | Session                                                                               | ✓ (DELETE)                       | Chỉ trả `id`, `createdAt`, `expiresAt` (+ `isCurrent` nếu duyệt Q-U20-3); không có IP/thiết bị (N79.2). DELETE = ghi `revoked_at` (N79.1)                |
-| `GET/PATCH /v1/me/notification-settings`                                                    | Session                                                                               |                                  | Thông báo trình duyệt, âm thanh                                                                                                                          |
-| `GET /v1/me/workspaces` · `POST /v1/me/workspaces/{id}/switch`                              | Session                                                                               |                                  | Trả token/ngữ cảnh mới; client xóa cache + ngắt realtime workspace cũ (T1)                                                                               |
+**Quy tắc (U22-3, CEO 13/10/2026):** đăng nhập, 2FA, phiên và đổi tổ chức đi qua **Better Auth ở `/api/auth/*`** đã chạy trong `apps/api` (PR6, `src/app-setup.ts`, `src/modules/auth/auth.config.ts`). **Không** tạo đường `/v1/auth/*` song song. Bảng dưới ghi đường của thư viện đang mở; đường đã đóng bằng `disabledPaths` không dùng.
+
+| Việc | Đường | Quyền | Audit | Ghi chú |
+|---|---|---|---|---|
+| Đăng nhập · đăng xuất | `POST /api/auth/sign-in/email` · `POST /api/auth/sign-out` | Công khai / Session | Chờ N13 | Lỗi luôn chung một thông điệp; khóa 5 lần sai / 30 phút (N85). **Ghi audit đăng nhập thất bại chờ cố vấn chốt N13** (U22-4) |
+| Nhập mã 2FA | `POST /api/auth/two-factor/verify-totp` · `POST /api/auth/two-factor/verify-backup-code` | Session đang chờ 2FA | | 5 mã sai liên tiếp khóa 30 phút; tắt "tin thiết bị này" (`trustDeviceMaxAge: 0`) |
+| Bật 2FA | `POST /api/auth/two-factor/enable` (trả mã QR và mã dự phòng) · xác nhận bằng `verify-totp` | Session | ✓ | **10 mã dự phòng**, hiện 1 lần (Q-U20-2). Người chưa cài xong chỉ đi được các đường cài đặt và `GET /v1/me/security-status` (cổng 2FA, N93) |
+| Tắt 2FA | — | — | | `/two-factor/disable` **đã đóng** (N79.4); không có đường tắt cho người dùng |
+| Đặt lại 2FA của người khác | `POST /v1/members/{userId}/2fa/reset` | **Owner, Admin** (Q-U20-1) | ✓ | Bắt buộc `reason`; thu hồi mọi phiên; buộc cài lại 2FA lần đăng nhập kế tiếp. Thêm 1 dòng Phụ lục B |
+| Trạng thái bảo mật | `GET /v1/me/security-status` | Session | | Đã có (PR6d-3) |
+| Phiên | `GET /api/auth/list-sessions` · `POST /api/auth/revoke-session` | Session | ✓ (thu hồi) | Chỉ `createdAt`, `expiresAt`; không IP/thiết bị (N79.2). Client đánh dấu **"Phiên này"** bằng cách so với phiên hiện tại (Q-U20-3). Thu hồi = ghi `revoked_at` (N79.1) |
+| Đổi tổ chức | `POST /api/auth/switch-org` | Session | | Đã có (N85): phiên mới, phiên cũ bị thu hồi |
+| Đổi workspace | Chờ cố vấn (câu 2 mục 10) | Session | | Client xóa cache + ngắt realtime workspace cũ (T1) |
+| Quên / đặt lại mật khẩu | **Chờ PR7** | Công khai | ✓ | Đường của thư viện đã đóng (N84). Tên đường chốt ở PR7. Yêu cầu tối thiểu: link một lần, có hạn; luôn trả 202 dù email có tồn tại hay không |
+| Mời thành viên | `POST /v1/members/invite` (đã có trong Brief P9) | Owner, Admin | ✓ | **Bỏ `/v1/invitations/*`** (U22-5). Lời mời là cột trên `org_members` (S1-11, N6); hạn 7 ngày (U1). Gửi lại và nhận lời mời: tên đường chốt ở PR7 |
+| Hồ sơ cá nhân | `GET/PATCH /v1/me` · `POST /v1/me/password` | Session | ✓ (mật khẩu) | Tên, ảnh; đổi mật khẩu yêu cầu mật khẩu cũ và đăng xuất các phiên khác. `/update-user` của thư viện đã đóng nên dùng đường `/v1` |
+| Thông báo | `GET/PATCH /v1/me/notification-settings` | Session | | Thông báo trình duyệt, âm thanh |
 
 ## 9. Script quản trị (không phải endpoint)
 
@@ -106,7 +112,7 @@ Lọc/tìm: dùng `GET /v1/customers` đã có (P9), mở rộng tham số `fiel
 
 ## 10. Câu hỏi cho cố vấn kỹ thuật
 
-(Thêm các câu Q-U20-1→6 ở `spec-M8` mục 8; Q-U20-4 — tự chuyển Offline khi mất kết nối — là câu cần cố vấn trả lời nhất.)
+(Q-U20-1→6 ở `spec-M8` mục 8 đã được CEO chốt 13/10/2026; cố vấn chỉ cần xác nhận cách làm của Q-U20-4 cùng `agent.presence` ở S4. N13 — audit đăng nhập thất bại — vẫn chờ cố vấn.)
 
 1.  Phục vụ SLA tạm dừng: lưu `sla_elapsed_seconds` + `sla_paused_at` trên hội thoại hay tính từ `conversation_events`? Đề xuất: lưu tích lũy, sự kiện chỉ để đối soát.
 2.  Đổi workspace: dùng token mới theo workspace, hay một token org-wide + header `X-Workspace-Id`? Ảnh hưởng RLS O+W và test T1.
