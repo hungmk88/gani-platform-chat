@@ -5,7 +5,8 @@ import type {
   NewOutboxEvent,
   TenantTx,
 } from '@gani/db';
-import { describe, expect, it } from 'vitest';
+import { Logger } from '@nestjs/common';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConversationStateMachine, type ConversationStore } from './conversation-state-machine.js';
 import {
@@ -39,7 +40,7 @@ function fake(initial: ConversationRow | null) {
   const events: NewConversationEvent[] = [];
   const outbox: NewOutboxEvent[] = [];
   const messages: NewMessage[] = [];
-  const hooks = { failInsert: false };
+  const hooks: { failInsert: boolean; ahead: number | null } = { failInsert: false, ahead: null };
   const conversations: ConversationStore = {
     loadConversation: (_tx, id) => (calls.push('load'), Promise.resolve(rows.get(id) ?? null)),
     insertConversation: () => Promise.reject(new Error('not used')),
@@ -55,7 +56,7 @@ function fake(initial: ConversationRow | null) {
   };
   const store: MessageStore = {
     loadConversation: conversations.loadConversation,
-    insertMessage: (_tx, m) => (calls.push('insertMessage'), hooks.failInsert ? Promise.reject(new Error('stop')) : (messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length }))),
+    insertMessage: (_tx, m) => (calls.push('insertMessage'), hooks.failInsert ? Promise.reject(new Error('stop')) : (messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length, platformSentAtAheadSeconds: hooks.ahead }))),
     insertOutboxEvent: (_tx, e) => (calls.push('insertOutbox'), outbox.push(e), Promise.resolve()),
   };
   const fsm = new ConversationStateMachine(conversations);
@@ -177,7 +178,11 @@ describe('MessageService.append', () => {
       TX,
       append({ platformMessageId: 'p-1', platformSentAt: sentAt }),
     );
-    expect(stored).toEqual({ id: messages[0]?.id, sequenceNumber: 1 });
+    expect(stored).toEqual({
+      id: messages[0]?.id,
+      sequenceNumber: 1,
+      platformSentAtAheadSeconds: null,
+    });
     expect(messages).toMatchObject([
       {
         conversationId: ID,
@@ -190,6 +195,34 @@ describe('MessageService.append', () => {
         platformSentAt: sentAt,
       },
     ]);
+  });
+
+  describe('a platform time that was ahead of now (N116)', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('warns with ids and the number of seconds, and nothing that was said, above five minutes', async () => {
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const { service, hooks, messages } = fake(row({ workspaceId: 'w-9' }));
+      hooks.ahead = 301;
+      await service.append(TX, append({ body: 'a secret sentence', traceId: 'trace-7' }));
+      expect(warn).toHaveBeenCalledTimes(1);
+      const line = String(warn.mock.calls[0]?.[0]);
+      expect(line).toContain('ahead by 301s');
+      expect(line).toContain(`message=${messages[0]?.id}`);
+      expect(line).toContain(`conversation=${ID} workspace=w-9 trace=trace-7`);
+      expect(line).not.toContain('secret');
+    });
+
+    it.each([null, 0.5, 300])(
+      'says nothing when it was %s seconds ahead (up to the limit)',
+      async (ahead) => {
+        const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        const { service, hooks } = fake(row());
+        hooks.ahead = ahead;
+        await service.append(TX, append());
+        expect(warn).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it('lets an agent have a user, and an image or a sticker have no body', async () => {

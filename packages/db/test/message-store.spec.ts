@@ -2,7 +2,13 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createDbPool, insertMessage, withTenant, type NewMessage } from '../src/index.js';
+import {
+  PLATFORM_CLOCK_SKEW_WARN_SECONDS,
+  createDbPool,
+  insertMessage,
+  withTenant,
+  type NewMessage,
+} from '../src/index.js';
 import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
@@ -240,6 +246,65 @@ describe('the marks of the conversation', () => {
     expect(rows[0]?.micro).toBe('10:00:00.123456');
     // last_message_at, set ahead on purpose, did not go back either.
     expect((await marks(c))?.last?.getTime()).toBe(before.getTime());
+  });
+});
+
+describe('a platform time that is ahead of now (N116)', () => {
+  const in2099 = new Date('2099-01-01T00:00:00Z');
+  const read = async (id: string, conversationId: string) => {
+    const { rows } = await admin.query<{
+      sent: Date | null;
+      sent_ok: boolean | null;
+      mark_ok: boolean;
+    }>(
+      `SELECT m.platform_sent_at AS sent, m.platform_sent_at <= now() AS sent_ok,
+              c.last_customer_message_at <= now() AS mark_ok
+       FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE m.id = $1 AND c.id = $2`,
+      [id, conversationId],
+    );
+    return rows[0] as { sent: Date | null; sent_ok: boolean | null; mark_ok: boolean };
+  };
+
+  it('clamps a time in 2099 to now: the message, the mark, and the number of seconds it was ahead', async () => {
+    const c = await conversation();
+    const stored = await add(message(c, { platformSentAt: in2099 }));
+    expect(await read(stored.id, c)).toMatchObject({ sent_ok: true, mark_ok: true });
+    expect(stored.platformSentAtAheadSeconds).toBeGreaterThan(3 * 365 * 86_400);
+  });
+
+  it('clamps a time a few minutes ahead too, and reports it as ahead by less than the warning limit', async () => {
+    const c = await conversation();
+    const stored = await add(message(c, { platformSentAt: new Date(Date.now() + 4 * 60_000) }));
+    expect(await read(stored.id, c)).toMatchObject({ sent_ok: true, mark_ok: true });
+    expect(stored.platformSentAtAheadSeconds).toBeGreaterThan(0);
+    expect(stored.platformSentAtAheadSeconds).toBeLessThan(PLATFORM_CLOCK_SKEW_WARN_SECONDS);
+  });
+
+  it('keeps a time in the past as it was, and a missing time as NULL with the mark at now()', async () => {
+    const [c1, c2] = [await conversation(), await conversation()];
+    const past = new Date('2026-01-01T10:00:00.123Z');
+    const kept = await add(message(c1, { platformSentAt: past }));
+    expect((await read(kept.id, c1)).sent?.toISOString()).toBe(past.toISOString());
+    expect(kept.platformSentAtAheadSeconds).toBeNull();
+    const none = await add(message(c2));
+    expect((await read(none.id, c2)).sent).toBeNull();
+    expect(none.platformSentAtAheadSeconds).toBeNull();
+    expect(Math.abs(((await marks(c2))?.customer as Date).getTime() - Date.now())).toBeLessThan(
+      60_000,
+    );
+  });
+
+  it('heals a mark that was written in the future: the next customer message brings it back to now', async () => {
+    const c = await conversation();
+    await admin.query('UPDATE conversations SET last_customer_message_at = $2 WHERE id = $1', [
+      c,
+      in2099,
+    ]);
+    const stored = await add(message(c, { platformSentAt: new Date('2026-01-01T09:00:00Z') }));
+    expect((await read(stored.id, c)).mark_ok).toBe(true);
+    const mark = (await marks(c))?.customer as Date;
+    expect(mark.getUTCFullYear()).toBeLessThan(2099);
+    expect(Math.abs(mark.getTime() - Date.now())).toBeLessThan(60_000);
   });
 });
 
