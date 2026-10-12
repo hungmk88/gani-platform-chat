@@ -1,5 +1,6 @@
 import type { WorkerConfig } from './config.js';
 import type { Logger } from './logger.js';
+import { PartitionMaintenanceJob, type PartitionStore } from './maintenance/partition-job.js';
 import { OutboxRelay, type QueuePublisher, type RelayStore } from './relay/outbox-relay.js';
 
 export interface WorkerDeps {
@@ -8,6 +9,8 @@ export interface WorkerDeps {
   readonly pool: { end(): Promise<void> };
   readonly log: Logger;
   readonly settings: WorkerConfig['outbox'];
+  /** The partition maintenance (PM-2b): absent, it is not run (the tests of the relay do not need it). */
+  readonly maintenance?: PartitionStore;
 }
 
 export interface RunningWorker {
@@ -20,6 +23,10 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
   const { store, queue, pool, log, settings } = deps;
   const relay = new OutboxRelay({ store, queue, log, settings });
   relay.start();
+  const job = deps.maintenance
+    ? new PartitionMaintenanceJob({ store: deps.maintenance, log })
+    : null;
+  job?.start();
 
   // A step that fails or hangs is logged and does not stop the next one; `pool.end()` waits for a connection a late pass still holds.
   // `relay.stop()` has its own deadline (and its own warning), so only the other two are timed here.
@@ -52,9 +59,11 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
     shutdown() {
       shutdown ??= (async () => {
         const stopped = await step('relay', () => relay.stop(), false);
+        // The job uses the pool too: it ends before the queue and the pool close.
+        const maintained = job ? await step('partition_job', () => job.stop()) : true;
         const closed = await step('queue', () => queue.close());
         const ended = await step('pool', () => pool.end());
-        return stopped && closed && ended;
+        return stopped && maintained && closed && ended;
       })();
       return shutdown;
     },
