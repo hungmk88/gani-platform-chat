@@ -26,7 +26,8 @@
   --color-note: #fef9c3;
   --color-note-text: #1f2937;
 
-  /* Token bổ sung, chờ CĐT duyệt (không có trong bảng đã duyệt) */
+  /* approved 13/10/2026 — nền mờ sau hộp thoại (.overlay); chỉ dùng cho hộp thoại,
+     ngăn kéo hồ sơ dưới 1280px không dùng token này */
   --overlay: rgb(31 41 55 / 40%);
 
   /* 4 cỡ chữ */
