@@ -6,6 +6,7 @@ export * from './message-store.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, type MemberContext } from './member-context.js';
 export * from './outbox-store.js';
+export * from './partition-store.js';
 export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';
 export { agentSettings } from './schema/agent-settings.js';
