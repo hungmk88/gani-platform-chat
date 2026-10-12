@@ -29,8 +29,11 @@
   /* approved 13/10/2026 — nền mờ sau hộp thoại (.overlay); chỉ dùng cho hộp thoại,
      ngăn kéo hồ sơ dưới 1280px không dùng token này */
   --overlay: rgb(31 41 55 / 40%);
-  /* Exception WCAG 3:1 approved 13/10/2026 — giữ 40% (viền hộp thoại / nền mờ 2,36:1).
-     Hiện hộp thoại chỉ có overlay, CHƯA có shadow: chờ CĐT chốt có thêm shadow hay không. */
+  /* Exception WCAG 3:1 approved 13/10/2026 — dialog has overlay + shadow */
+
+  /* Đề xuất 13/10/2026 — CHỜ CĐT DUYỆT GIÁ TRỊ. Bóng hộp thoại; chỉ dùng cho .dialog,
+     không dùng cho ngăn kéo, dropdown, tooltip (mỗi loại có token riêng nếu cần). */
+  --shadow-dialog: 0 10px 30px rgb(31 41 55 / 15%);
 
   /* 4 cỡ chữ */
   --fs-12: 12px;

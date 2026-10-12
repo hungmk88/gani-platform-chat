@@ -375,6 +375,7 @@ textarea.input {
   padding: var(--sp-5);
   border-radius: var(--r-dialog);
   background: var(--surface);
+  box-shadow: var(--shadow-dialog);
 }
 .dialog .actions {
   display: flex;
