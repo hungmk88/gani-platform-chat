@@ -72,11 +72,14 @@ describe('what each limit does', () => {
     const client = await pool.connect();
     const seen: string[] = [];
     client.on('error', (error: Error & { code?: string }) => seen.push(error.code ?? 'none'));
+    // One killed connection makes `pg` emit two errors: the server's 25P03, then, when the socket closes, "Connection terminated
+    // unexpectedly" with no code. Wait for `end` (it comes after both) instead of counting events at a poll tick.
+    const ended = new Promise<void>((resolve) => client.once('end', () => resolve()));
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock($1)', [KEY]);
-    for (let i = 0; i < 40 && seen.length === 0; i++) await pause(100);
+    await Promise.race([ended, pause(5_000)]);
     client.release(true);
-    expect(seen).toEqual(['25P03']);
+    expect(seen.filter((code) => code !== 'none')).toEqual(['25P03']);
     // The lock went with the connection: another connection takes it at once.
     await holder.query('BEGIN');
     try {
