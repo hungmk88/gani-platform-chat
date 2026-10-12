@@ -106,3 +106,121 @@ Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ đ�
 
 Nhấn `#` để thêm quy tắc vào file này.
 Đây là cách duy nhất để không lặp lại lỗi cũ.
+# CLAUDE.md — 2 bài học (bản ngắn gọn)
+
+---
+
+## Bảo mật tài liệu
+
+**Không bao giờ ghi giá trị thật của secret vào `.md`, `.txt`, spec, note, commit message, PR description.**
+
+### Được / Không được
+
+| ❌ KHÔNG | ✅ ĐƯỢC |
+|----------|---------|
+| `postgresql://user:pass@host` | `<đặt ở .env.test>` |
+| `npg_xxxxx`, `sk-ant-xxxxx`, `ghp_xxxxx` | `DATABASE_URL_APP`, `app_role` |
+| Private key, cert, token | Placeholder `<...>` |
+
+### Cách viết đúng
+
+```markdown
+❌ DATABASE_URL_APP=postgresql://app_role:app_password_123@host/db
+✅ DATABASE_URL_APP=<đặt ở .env.test>
+✅ Connection: xem `.env.test` (đã trong .gitignore)
+```
+
+### Scan trước khi push
+
+```powershell
+git grep -i -E "npg_|sk-|sk-ant-|AIza|AKIA|ghp_|password_"
+Get-ChildItem -Recurse -File -Exclude "*.git*","node_modules" |
+  Select-String -Pattern "npg_|sk-|sk-ant-|AIza|AKIA|ghp_"
+```
+
+Có kết quả → **DỪNG**.
+
+### Khi secret lộ — 5 bước
+
+1. Dừng ngay
+2. **Rotate** credential (Neon/AWS/provider)
+3. Update `.env.test` local
+4. Sửa tài liệu → placeholder
+5. Scan repo + ghi nhận vào Session Summary
+
+### Định kỳ
+
+- Cuối session lớn: scan repo
+- Trước paste tài liệu cho AI khác: đọc lại
+- Trước push public: scan
+
+---
+
+## Kiểm tra lệnh — không pipe che exit code
+
+**Exit code của pipeline = exit code của command CUỐI.**
+
+### Ví dụ SAI
+
+```bash
+pnpm test | grep "FAIL"     # ❌ grep thấy → exit 0, tưởng pass dù test fail
+pnpm lint | tail -1         # ❌ tail luôn exit 0
+```
+
+### Ví dụ ĐÚNG
+
+```bash
+# Cách 1 — redirect + đọc exit code (khuyến nghị)
+pnpm test > test.log 2>&1; echo "exit=$?"
+
+# Cách 2 — pipefail
+set -o pipefail; pnpm test | grep "FAIL"
+```
+
+PowerShell:
+```powershell
+pnpm test; echo "exit=$LASTEXITCODE"
+```
+
+### Quy tắc
+
+1. **Không** kết thúc lệnh kiểm bằng `| grep` hoặc `| tail` không có `pipefail`/`PIPESTATUS`.
+2. **Luôn** báo exit code thật khi pre-flight.
+3. **Không** viết "test pass" mà không có số liệu.
+
+### Report đúng format
+
+```
+| Lệnh | Exit | Ghi chú |
+|------|------|---------|
+| pnpm lint | 0 | |
+| pnpm --filter @gani/db test | 0 | 47 test, coverage 100% funcs |
+| pnpm --filter @gani/api test | 1 | SWC lỗi (N42) — giới hạn local |
+```
+
+### Lịch sử
+
+| Ngày | Sự kiện |
+|------|---------|
+| 12/10/2026 | `pnpm test \| grep` che exit → báo xanh khi coverage đỏ |
+| 12/10/2026 | `pnpm lint \| tail -1` che lỗi eslint |
+
+---
+
+## Cách apply
+
+Append 2 phần trên vào cuối `CLAUDE.md` → commit:
+
+```powershell
+git checkout -b docs/claude-md-rules
+git add CLAUDE.md
+git commit -m "docs(claude): add document security and pipe exit code rules"
+git push -u origin docs/claude-md-rules
+```
+
+Mở PR từ `6b829c1`, title:
+`docs(claude): add document security and pipe exit code rules`
+
+~60 dòng. Không gộp với PM-2b.
+
+
