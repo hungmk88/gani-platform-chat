@@ -37,11 +37,16 @@ export interface NewMessage {
 /** A platform time further than this ahead of the moment we received the message is worth a warning (N116). It is always clamped. */
 export const PLATFORM_CLOCK_SKEW_WARN_SECONDS = 300;
 
+/** A platform time older than this is not believed (1970, epoch 0, a clock that was reset); a late message of days is (N117). */
+export const PLATFORM_TIME_FLOOR_DAYS = 30;
+
 export interface StoredMessage {
   readonly id: string;
   readonly sequenceNumber: number;
   /** How many seconds `platformSentAt` was ahead of `now()` (it was clamped to `now()`); `null` when it was not ahead or absent. */
   readonly platformSentAtAheadSeconds: number | null;
+  /** How many seconds `platformSentAt` was behind `now()` when that is past the floor (it was clamped to the floor); else `null`. */
+  readonly platformSentAtBehindSeconds: number | null;
 }
 
 /**
@@ -63,11 +68,17 @@ export interface StoredMessage {
  * ahead is reported in `platformSentAtAheadSeconds` (the caller warns above `PLATFORM_CLOCK_SKEW_WARN_SECONDS`; nothing is refused,
  * so a clock that is a little off never loses a message). The customer mark is also capped at `now()` before `GREATEST`, so a mark
  * that was ever written in the future heals itself on the next customer message.
+ *
+ * The same goes for the past (N117): `GREATEST(.., now() - PLATFORM_TIME_FLOOR_DAYS)` on both columns. A message that arrives hours or
+ * days late keeps its time (inbound spec I-N7: it is shown in its place); only what is older than the floor is clamped to it, and
+ * `platformSentAtBehindSeconds` says by how much. The floor is a limit of belief, not a promise about the free window: a mark at
+ * the floor is still more than 48 hours old.
  */
 export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<StoredMessage> {
   const { orgId } = currentTenantContext();
   // `now()` is the start of this transaction, the same value in every statement below.
   const asked = sql`${message.platformSentAt?.toISOString() ?? null}::timestamptz`;
+  const floor = sql`now() - make_interval(days => ${PLATFORM_TIME_FLOOR_DAYS}::int)`;
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${message.conversationId}::text))`);
   const [next] = await tx
     .select({ value: sql<string>`coalesce(max(${messages.sequenceNumber}), 0) + 1` })
@@ -87,7 +98,7 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
       body: message.body ?? null,
       platformMessageId: message.platformMessageId ?? null,
       // LEAST ignores NULL, so a missing time is kept as NULL by the CASE and not turned into now().
-      platformSentAt: sql`CASE WHEN ${asked} IS NULL THEN NULL ELSE least(${asked}, now()) END`,
+      platformSentAt: sql`CASE WHEN ${asked} IS NULL THEN NULL ELSE greatest(least(${asked}, now()), ${floor}) END`,
     })
     .returning({
       id: messages.id,
@@ -95,12 +106,15 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
       ahead: sql<
         number | null
       >`CASE WHEN ${asked} > now() THEN extract(epoch FROM ${asked} - now())::float8 END`,
+      behind: sql<
+        number | null
+      >`CASE WHEN ${asked} < ${floor} THEN extract(epoch FROM now() - ${asked})::float8 END`,
     });
   if (!stored) throw new Error('message insert returned no row');
 
   const c = conversations;
   const never = sql`'-infinity'::timestamptz`;
-  const sentAt = sql`least(coalesce(${asked}, now()), now())`;
+  const sentAt = sql`greatest(least(coalesce(${asked}, now()), now()), ${floor})`;
   const marked = await tx
     .update(c)
     .set({
@@ -120,5 +134,6 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
     id: stored.id,
     sequenceNumber: stored.sequenceNumber,
     platformSentAtAheadSeconds: stored.ahead === null ? null : Number(stored.ahead),
+    platformSentAtBehindSeconds: stored.behind === null ? null : Number(stored.behind),
   };
 }

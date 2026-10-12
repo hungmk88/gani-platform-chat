@@ -40,7 +40,11 @@ function fake(initial: ConversationRow | null) {
   const events: NewConversationEvent[] = [];
   const outbox: NewOutboxEvent[] = [];
   const messages: NewMessage[] = [];
-  const hooks: { failInsert: boolean; ahead: number | null } = { failInsert: false, ahead: null };
+  const hooks: { failInsert: boolean; ahead: number | null; behind: number | null } = {
+    failInsert: false,
+    ahead: null,
+    behind: null,
+  };
   const conversations: ConversationStore = {
     loadConversation: (_tx, id) => (calls.push('load'), Promise.resolve(rows.get(id) ?? null)),
     insertConversation: () => Promise.reject(new Error('not used')),
@@ -56,7 +60,7 @@ function fake(initial: ConversationRow | null) {
   };
   const store: MessageStore = {
     loadConversation: conversations.loadConversation,
-    insertMessage: (_tx, m) => (calls.push('insertMessage'), hooks.failInsert ? Promise.reject(new Error('stop')) : (messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length, platformSentAtAheadSeconds: hooks.ahead }))),
+    insertMessage: (_tx, m) => (calls.push('insertMessage'), hooks.failInsert ? Promise.reject(new Error('stop')) : (messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length, platformSentAtAheadSeconds: hooks.ahead, platformSentAtBehindSeconds: hooks.behind }))),
     insertOutboxEvent: (_tx, e) => (calls.push('insertOutbox'), outbox.push(e), Promise.resolve()),
   };
   const fsm = new ConversationStateMachine(conversations);
@@ -182,6 +186,7 @@ describe('MessageService.append', () => {
       id: messages[0]?.id,
       sequenceNumber: 1,
       platformSentAtAheadSeconds: null,
+      platformSentAtBehindSeconds: null,
     });
     expect(messages).toMatchObject([
       {
@@ -223,6 +228,38 @@ describe('MessageService.append', () => {
         expect(warn).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('a platform time that was behind the floor (N117)', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('warns "clock skew backward" with ids and the number of seconds, and nothing that was said', async () => {
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const { service, hooks, messages } = fake(row({ workspaceId: 'w-9' }));
+      hooks.behind = 1_700_000_000;
+      await service.append(TX, append({ body: 'a secret sentence', traceId: 'trace-8' }));
+      expect(warn).toHaveBeenCalledTimes(1);
+      const line = String(warn.mock.calls[0]?.[0]);
+      expect(line).toContain('clock skew backward');
+      expect(line).toContain('1700000000s behind');
+      expect(line).toContain('more than 30 days');
+      expect(line).toContain(`message=${messages[0]?.id}`);
+      expect(line).toContain(`conversation=${ID} workspace=w-9 trace=trace-8`);
+      expect(line).not.toContain('ahead');
+      expect(line).not.toContain('secret');
+    });
+
+    it('says nothing when the time was not past the floor, and both messages are told apart', async () => {
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const quiet = fake(row());
+      await quiet.service.append(TX, append());
+      expect(warn).not.toHaveBeenCalled();
+      const both = fake(row());
+      both.hooks.ahead = 400;
+      both.hooks.behind = 99;
+      await both.service.append(TX, append());
+      expect(warn).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('lets an agent have a user, and an image or a sticker have no body', async () => {
