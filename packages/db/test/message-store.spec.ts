@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   PLATFORM_CLOCK_SKEW_WARN_SECONDS,
+  PLATFORM_TIME_FLOOR_DAYS,
   createDbPool,
   insertMessage,
   withTenant,
@@ -59,6 +60,9 @@ const marks = async (conversationId: string) =>
     )
   ).rows[0];
 const range = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+// Past times of these tests are relative to the clock, at UTC midnight 2-3 days ago: a fixed date would fall under the floor of N117.
+const HOUR = 3_600_000;
+const BASE = Math.floor((Date.now() - 2 * 86_400_000) / 86_400_000) * 86_400_000;
 
 beforeAll(async () => {
   admin = new pg.Client({ connectionString: url('migration') });
@@ -89,7 +93,7 @@ afterAll(async () => {
 describe('sequence_number', () => {
   it('starts at 1 and goes up by one, with the row written as given', async () => {
     const c = await conversation();
-    const sentAt = new Date('2026-01-01T10:00:00.123Z');
+    const sentAt = new Date(BASE + 10 * HOUR + 123);
     const first = await add(
       message(c, { platformMessageId: 'p-1', platformSentAt: sentAt, body: 'one' }),
     );
@@ -189,7 +193,7 @@ describe('sequence_number', () => {
 
   it('gives a message that arrives late a higher number, and it shows before the others by its send time', async () => {
     const c = await conversation();
-    const at = (h: number) => new Date(`2026-01-01T${String(h).padStart(2, '0')}:00:00Z`);
+    const at = (h: number) => new Date(BASE + h * HOUR);
     await add(message(c, { platformMessageId: 'p-b', platformSentAt: at(10) }));
     const late = await add(message(c, { platformMessageId: 'p-a', platformSentAt: at(9) }));
     await add(message(c, { platformMessageId: 'p-a2', platformSentAt: at(9) }));
@@ -210,8 +214,10 @@ describe('the marks of the conversation', () => {
     const afterAgent = await marks(c);
     expect(afterAgent?.last).toBeInstanceOf(Date);
     expect(afterAgent?.customer).toBeNull();
-    await add(message(c, { platformSentAt: new Date('2026-01-01T10:00:00Z') }));
-    expect((await marks(c))?.customer?.toISOString()).toBe('2026-01-01T10:00:00.000Z');
+    await add(message(c, { platformSentAt: new Date(BASE + 10 * HOUR) }));
+    expect((await marks(c))?.customer?.toISOString()).toBe(
+      new Date(BASE + 10 * HOUR).toISOString(),
+    );
   });
 
   it('uses now() for the customer mark when the platform gave no time', async () => {
@@ -223,7 +229,7 @@ describe('the marks of the conversation', () => {
 
   it('only moves the customer mark forward: a late message does not pull the window back', async () => {
     const c = await conversation();
-    const at = (h: number) => new Date(`2026-01-01T${String(h).padStart(2, '0')}:00:00Z`);
+    const at = (h: number) => new Date(BASE + h * HOUR);
     await add(message(c, { platformSentAt: at(10) }));
     await add(message(c, { platformSentAt: at(9) }));
     expect((await marks(c))?.customer?.toISOString()).toBe(at(10).toISOString());
@@ -234,11 +240,11 @@ describe('the marks of the conversation', () => {
   it('keeps a stored time that has microseconds above the same time in milliseconds', async () => {
     const c = await conversation();
     await admin.query(
-      "UPDATE conversations SET last_customer_message_at = '2026-01-01T10:00:00.123456Z', last_message_at = now() + interval '1 hour' WHERE id = $1",
+      `UPDATE conversations SET last_customer_message_at = '${new Date(BASE + 10 * HOUR).toISOString().slice(0, 19)}.123456Z', last_message_at = now() + interval '1 hour' WHERE id = $1`,
       [c],
     );
     const before = (await marks(c))?.last as Date;
-    await add(message(c, { platformSentAt: new Date('2026-01-01T10:00:00.123Z') }));
+    await add(message(c, { platformSentAt: new Date(BASE + 10 * HOUR + 123) }));
     const { rows } = await admin.query<{ micro: string }>(
       "SELECT to_char(last_customer_message_at AT TIME ZONE 'UTC', 'HH24:MI:SS.US') AS micro FROM conversations WHERE id = $1",
       [c],
@@ -282,7 +288,7 @@ describe('a platform time that is ahead of now (N116)', () => {
 
   it('keeps a time in the past as it was, and a missing time as NULL with the mark at now()', async () => {
     const [c1, c2] = [await conversation(), await conversation()];
-    const past = new Date('2026-01-01T10:00:00.123Z');
+    const past = new Date(BASE + 10 * HOUR + 123);
     const kept = await add(message(c1, { platformSentAt: past }));
     expect((await read(kept.id, c1)).sent?.toISOString()).toBe(past.toISOString());
     expect(kept.platformSentAtAheadSeconds).toBeNull();
@@ -300,11 +306,77 @@ describe('a platform time that is ahead of now (N116)', () => {
       c,
       in2099,
     ]);
-    const stored = await add(message(c, { platformSentAt: new Date('2026-01-01T09:00:00Z') }));
+    const stored = await add(message(c, { platformSentAt: new Date(BASE + 9 * HOUR) }));
     expect((await read(stored.id, c)).mark_ok).toBe(true);
     const mark = (await marks(c))?.customer as Date;
     expect(mark.getUTCFullYear()).toBeLessThan(2099);
     expect(Math.abs(mark.getTime() - Date.now())).toBeLessThan(60_000);
+  });
+});
+
+describe('a platform time that is older than the floor (N117)', () => {
+  const DAY = 86_400_000;
+  /** Seconds between the stored time and `now() - 30 days`: how far from the floor it landed. */
+  const fromFloor = async (id: string) => {
+    const { rows } = await admin.query<{ off: number | null }>(
+      `SELECT extract(epoch FROM platform_sent_at - (now() - make_interval(days => $2::int)))::float8 AS off
+       FROM messages WHERE id = $1`,
+      [id, PLATFORM_TIME_FLOOR_DAYS],
+    );
+    return rows[0]?.off ?? null;
+  };
+
+  it.each([
+    ['3 hours', 3 * 3_600_000],
+    ['3 days', 3 * DAY],
+    ['7 days', 7 * DAY],
+  ])(
+    'keeps the time of a message that arrives %s late: it is shown in its place',
+    async (_label, late) => {
+      const c = await conversation();
+      const sentAt = new Date(Date.now() - late);
+      const stored = await add(message(c, { platformSentAt: sentAt }));
+      const { rows } = await admin.query<{ sent: Date }>(
+        'SELECT platform_sent_at AS sent FROM messages WHERE id = $1',
+        [stored.id],
+      );
+      expect(rows[0]?.sent.toISOString()).toBe(sentAt.toISOString());
+      expect(stored.platformSentAtBehindSeconds).toBeNull();
+      expect((await marks(c))?.customer?.toISOString()).toBe(sentAt.toISOString());
+    },
+  );
+
+  it('clamps 1970 to the floor, for the message and for the mark, and says how far behind it was', async () => {
+    const c = await conversation();
+    const stored = await add(message(c, { platformSentAt: new Date(0) }));
+    expect(Math.abs((await fromFloor(stored.id)) ?? 1e9)).toBeLessThan(60);
+    const mark = (await marks(c))?.customer as Date;
+    expect(Math.abs(mark.getTime() - (Date.now() - PLATFORM_TIME_FLOOR_DAYS * DAY))).toBeLessThan(
+      60_000,
+    );
+    expect(stored.platformSentAtBehindSeconds).toBeGreaterThan(50 * 365 * 86_400);
+    expect(stored.platformSentAtAheadSeconds).toBeNull();
+  });
+
+  it('clamps 31 days to the floor and keeps 29 days as it was', async () => {
+    const c = await conversation();
+    const old = await add(message(c, { platformSentAt: new Date(Date.now() - 31 * DAY) }));
+    expect(Math.abs((await fromFloor(old.id)) ?? 1e9)).toBeLessThan(60);
+    expect(old.platformSentAtBehindSeconds).toBeGreaterThan(31 * 86_400 - 60);
+    const sentAt = new Date(Date.now() - 29 * DAY);
+    const kept = await add(message(c, { platformSentAt: sentAt }));
+    expect(Math.round(((await fromFloor(kept.id)) ?? 0) / 86_400)).toBe(1);
+    expect(kept.platformSentAtBehindSeconds).toBeNull();
+  });
+
+  it('does not touch a missing time, and a time in the future is still clamped to now()', async () => {
+    const c = await conversation();
+    const none = await add(message(c));
+    expect(none.platformSentAtBehindSeconds).toBeNull();
+    expect(await fromFloor(none.id)).toBeNull();
+    const future = await add(message(c, { platformSentAt: new Date('2099-01-01T00:00:00Z') }));
+    expect(future.platformSentAtBehindSeconds).toBeNull();
+    expect(future.platformSentAtAheadSeconds).toBeGreaterThan(0);
   });
 });
 

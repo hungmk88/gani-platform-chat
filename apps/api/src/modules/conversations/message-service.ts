@@ -1,5 +1,6 @@
 import {
   PLATFORM_CLOCK_SKEW_WARN_SECONDS,
+  PLATFORM_TIME_FLOOR_DAYS,
   insertMessage,
   insertOutboxEvent,
   loadConversation,
@@ -95,6 +96,13 @@ export class MessageService {
       // Ids and a number only: the time was clamped to now() by the store (N116), this is for whoever looks at the platform's clock.
       this.logger.warn(
         `platform time ahead by ${Math.round(ahead)}s, clamped: message=${stored.id} conversation=${conversation.id} workspace=${conversation.workspaceId} trace=${input.traceId}`,
+      );
+    }
+    const behind = stored.platformSentAtBehindSeconds;
+    if (behind !== null) {
+      // Ids and a number only: older than the floor, so the store clamped it to the floor (N117). Clock skew backward, or a bad time.
+      this.logger.warn(
+        `clock skew backward: platform time ${Math.round(behind)}s behind, more than ${PLATFORM_TIME_FLOOR_DAYS} days, clamped: message=${stored.id} conversation=${conversation.id} workspace=${conversation.workspaceId} trace=${input.traceId}`,
       );
     }
     await this.outbox.add(
