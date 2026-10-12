@@ -39,6 +39,12 @@ const DISABLED_PATHS = [
   '/request-password-reset',
 ];
 const SIGN_IN = '/sign-in/email';
+// Where the rate limiter reads the address of the caller (review C-01, N112 pending the deployment topology). This is the default of the
+// library, written down so that the decision is visible and changing it is a diff. Known and pinned by auth.rate-limit-ip.test.ts: a
+// request with no such header, or with a chain "a, b", has no trusted address and shares ONE bucket per path; a single value is taken
+// as it comes, so a caller who reaches the API directly can pick it. `advanced.ipAddress.trustedProxies` is the other half of N112.
+// Waiting for N112 / topology: do not set `trustedProxies` or change the header before the proxy in front of the API is known.
+const IP_ADDRESS_HEADERS: string[] = ['x-forwarded-for'];
 
 type Database = AdapterFactory<BetterAuthOptions>;
 
@@ -79,6 +85,7 @@ export function buildAuthOptions(
       // Secure and the __Secure- prefix follow the address: loadAuthEnv allows http only on a developer machine.
       useSecureCookies: env.secureCookies,
       defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },
+      ipAddress: { ipAddressHeaders: IP_ADDRESS_HEADERS },
     },
     databaseHooks: { session: { create: { before: sessionCreateBefore() } } },
     hooks: {
