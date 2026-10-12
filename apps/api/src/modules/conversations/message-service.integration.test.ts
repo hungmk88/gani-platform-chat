@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import { createDbPool, type TenantContext } from '@gani/db';
+import { snapshotViolations, type ConversationState } from '@gani/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { DatabaseService } from '../database/database.service.js';
 import { ConversationStateMachine, conversationStore } from './conversation-state-machine.js';
+import { ConversationAlreadyClaimedError, ConversationNotFoundError } from './errors.js';
 import { MessageService } from './message-service.js';
 
 // PR4b-2 (N96, N107) on PostgreSQL with the real stores and the pool of app_role: a customer message and the state change it causes are
-// one transaction (rollback). The states they lead to, the 20 messages and some claims at once (no deadlock, G8) and the edge of the
-// reopen window are the next part (PR4b-2b). Needs a database, so it runs in the `db` job of CI and not on a dev machine.
+// one transaction (rollback), the numbers and the state hold under 20 messages and some claims at once (no deadlock, G8), and the
+// reopen window at its edge. Needs a database, so it runs in the `db` job of CI and not on a dev machine.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -18,6 +20,8 @@ const need = (name: string): string => {
 };
 const [A, WA, WB] = [randomUUID(), randomUUID(), randomUUID()];
 const AGENTS = Array.from({ length: 4 }, () => randomUUID());
+const NOW = new Date('2026-10-06T12:00:00Z');
+const [MINUTE, HOUR] = [60_000, 3_600_000];
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const db = new DatabaseService(need('DATABASE_URL_APP'), (url, options) =>
   createDbPool(url, { ...options, max: 30 }),
@@ -29,6 +33,13 @@ const by = (agent: string, n = 0) => ({
   actor: { kind: 'agent', id: agent } as const,
   traceId: `t-${n}`,
 });
+const errorCodes = (reason: unknown): string[] => {
+  const found: string[] = [];
+  for (let e = reason; e instanceof Error; e = e.cause)
+    if ('code' in e && typeof e.code === 'string') found.push(e.code);
+  return found;
+};
+
 /** A conversation held by an agent who waits for the customer: created, queued, claimed, then PENDING_CUSTOMER (version 3). */
 async function pendingCustomer(workspace = WA): Promise<string> {
   const agent = AGENTS[0] as string;
@@ -57,6 +68,14 @@ async function pendingCustomer(workspace = WA): Promise<string> {
   );
   return id;
 }
+async function closedConversation(closedAt: Date): Promise<string> {
+  const id = randomUUID();
+  await admin.query(
+    "INSERT INTO conversations (id, org_id, workspace_id, state, closed_at, outcome) VALUES ($1, $2, $3, 'CLOSED', $4, 'won')",
+    [id, A, WA, closedAt],
+  );
+  return id;
+}
 const receive = (
   svc: MessageService,
   id: string,
@@ -74,8 +93,20 @@ const receive = (
     }),
   );
 
+interface Snapshot {
+  messages: number;
+  outbox: number;
+  messageCreated: number;
+  events: number;
+  state: string;
+  version: number;
+  assigned: string | null;
+  closedAt: string | null;
+  lastMessageAt: string | null;
+  lastCustomerAt: string | null;
+}
 /** Everything a message and its state change touch, read as the administrator. */
-async function snapshot(id: string) {
+async function snapshot(id: string): Promise<Snapshot> {
   const count = async (sql: string) =>
     (await admin.query<{ n: number }>(sql, [id])).rows[0]?.n as number;
   const row = (
@@ -109,6 +140,17 @@ async function snapshot(id: string) {
     lastCustomerAt: row?.customer?.toISOString() ?? null,
   };
 }
+/** `n` callers wait at the gate; the last to arrive opens it for all. */
+function gate(n: number): () => Promise<void> {
+  let arrived = 0;
+  let open!: () => void;
+  const opened = new Promise<void>((resolve) => (open = resolve));
+  return () => {
+    if (++arrived === n) open();
+    return opened;
+  };
+}
+
 beforeAll(async () => {
   await admin.query('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [
     A,
@@ -238,5 +280,116 @@ describe('one transaction: the message, its outbox row and its state change stan
     expect(event.rows).toEqual([
       { event_type: 'state_changed', actor_kind: 'customer', trace_id: 'trace-ok' },
     ]);
+  });
+});
+
+describe('the state a customer message leads to', () => {
+  it('T10 with an agent online keeps the agent; T11 with none sends the conversation to the queue', async () => {
+    const [online, away] = [await pendingCustomer(), await pendingCustomer()];
+    expect((await receive(service, online, true)).outcome).toMatchObject({ transition: 'T10' });
+    expect((await receive(service, away, false)).outcome).toMatchObject({ transition: 'T11' });
+    expect(await snapshot(online)).toMatchObject({
+      state: 'HUMAN_ACTIVE',
+      assigned: AGENTS[0],
+      version: 4,
+    });
+    expect(await snapshot(away)).toMatchObject({
+      state: 'HUMAN_WAITING_Q',
+      assigned: null,
+      version: 4,
+    });
+  });
+
+  it.each([
+    ['71h59m', 72 * HOUR - MINUTE, true],
+    ['72h00m00s (the limit counts)', 72 * HOUR, true],
+    ['72h01m', 72 * HOUR + MINUTE, false],
+  ])(
+    'closed %s before the message: reopened is %s, and the message is stored either way',
+    async (_label, ago, reopened) => {
+      const closedAt = new Date(NOW.getTime() - ago);
+      const id = await closedConversation(closedAt);
+      const { outcome } = await receive(service, id, false, { now: NOW });
+      const s = await snapshot(id);
+      if (reopened) {
+        expect(outcome).toMatchObject({ kind: 'changed', transition: 'T14' });
+        expect(s).toMatchObject({ state: 'BOT_ACTIVE', closedAt: null, version: 1 });
+      } else {
+        expect(outcome).toEqual({ kind: 'unchanged', reason: 'reopen_window_passed' });
+        expect(s).toMatchObject({ state: 'CLOSED', closedAt: closedAt.toISOString(), version: 0 });
+      }
+      expect(s).toMatchObject({ messages: 1, messageCreated: 1 });
+    },
+  );
+});
+
+describe('20 customer messages and some claims at once (the lock order, G8)', () => {
+  it('numbers the messages 1..20, deadlocks nowhere and leaves a state the table accepts, five times', async () => {
+    for (let round = 0; round < 5; round++) {
+      const id = await pendingCustomer();
+      const start = gate(23);
+      const customers = Array.from({ length: 20 }, (_, n) =>
+        db.withTenant(ctx([WA]), async (tx) => {
+          await start();
+          return service.receiveCustomerMessage(tx, {
+            conversationId: id,
+            kind: 'text',
+            body: `m${n}`,
+            traceId: `r${round}-${n}`,
+            agentOnline: false,
+          });
+        }),
+      );
+      const claims = AGENTS.slice(1).map((agent, n) =>
+        db.withTenant(ctx([WA]), async (tx) => {
+          await start();
+          return fsm.transition(tx, id, { type: 'claim', userId: agent }, by(agent, n));
+        }),
+      );
+      const results = await Promise.allSettled([...customers, ...claims]);
+
+      const codes = results.flatMap((r) => (r.status === 'rejected' ? errorCodes(r.reason) : []));
+      expect(
+        codes.filter((c) => c === '40P01' || c === '40001'),
+        `round ${round}`,
+      ).toEqual([]);
+      const sent = results.slice(0, 20);
+      expect(sent.every((r) => r.status === 'fulfilled')).toBe(true);
+      const numbers = sent.flatMap((r) =>
+        r.status === 'fulfilled' && 'message' in r.value ? [r.value.message.sequenceNumber] : [],
+      );
+      expect(numbers.sort((x, y) => x - y)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
+      const lost = results
+        .slice(20)
+        .flatMap((r) => (r.status === 'rejected' ? [r.reason as unknown] : []));
+      for (const reason of lost) expect(reason).toBeInstanceOf(ConversationAlreadyClaimedError);
+
+      const s = await snapshot(id);
+      expect(['HUMAN_WAITING_Q', 'HUMAN_ACTIVE']).toContain(s.state);
+      const state = s.state as ConversationState;
+      expect(
+        snapshotViolations({
+          state,
+          afterHoursHold: false,
+          assignedUserId: s.assigned,
+          closedAt: null,
+          outcome: null,
+        }),
+      ).toEqual([]);
+      expect(s.version).toBe(s.events - 1);
+      expect(s).toMatchObject({ messages: 20, messageCreated: 20 });
+      expect(s.lastMessageAt).not.toBeNull();
+      expect(s.lastCustomerAt).not.toBeNull();
+    }
+  });
+});
+
+describe('a conversation of another workspace', () => {
+  it('is not found, and leaves no message and no outbox row', async () => {
+    const other = await pendingCustomer(WB);
+    const before = await snapshot(other);
+    await expect(receive(service, other, true)).rejects.toThrow(ConversationNotFoundError);
+    expect(await snapshot(other)).toEqual(before);
+    expect(before.messages).toBe(0);
   });
 });
