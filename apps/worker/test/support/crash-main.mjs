@@ -12,6 +12,7 @@ import { createDbPool } from '@gani/db';
 
 import { readConfig } from '../../dist/config.js';
 import { createLogger } from '../../dist/logger.js';
+import { createDbPartitionStore } from '../../dist/maintenance/db-store.js';
 import { createBullmqPublisher } from '../../dist/queue/bullmq-publisher.js';
 import { createDbRelayStore } from '../../dist/relay/db-store.js';
 import { startWorker } from '../../dist/worker.js';
@@ -45,5 +46,12 @@ const queue = {
   },
 };
 
-startWorker({ store: createDbRelayStore({ pool }), queue, pool, log, settings: config.outbox }); // same as main.ts
+startWorker({
+  store: createDbRelayStore({ pool }),
+  queue,
+  pool,
+  log,
+  settings: config.outbox,
+  maintenance: createDbPartitionStore({ pool }),
+}); // same as main.ts
 log.info('worker_started');

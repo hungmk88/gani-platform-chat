@@ -2,6 +2,7 @@ import { createDbPool } from '@gani/db';
 
 import { ConfigError, readConfig } from './config.js';
 import { createLogger } from './logger.js';
+import { createDbPartitionStore } from './maintenance/db-store.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
 import { createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
@@ -33,6 +34,7 @@ const worker = startWorker({
   pool,
   log,
   settings: config.outbox,
+  maintenance: createDbPartitionStore({ pool }),
 });
 log.info('worker_started');
 
