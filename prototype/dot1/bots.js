@@ -63,8 +63,12 @@ function errors(f) {
   return list;
 }
 
+let fieldSeq = 0;
 function field(label, control) {
-  return h('div', { class: 'field' }, h('label', {}, label), control);
+  fieldSeq += 1;
+  const id = `bf-${fieldSeq}`;
+  control.id = id; // gắn nhãn với ô nhập (axe: label, select-name)
+  return h('div', { class: 'field' }, h('label', { for: id }, label), control);
 }
 function input(st, key, attrs = {}) {
   return h('input', { class: 'input', value: st[key] ?? '', ...attrs, oninput: (e) => { st[key] = e.target.value; } });
