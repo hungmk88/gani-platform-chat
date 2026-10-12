@@ -71,8 +71,9 @@ export interface StoredMessage {
  *
  * The same goes for the past (N117): `GREATEST(.., now() - PLATFORM_TIME_FLOOR_DAYS)` on both columns. A message that arrives hours or
  * days late keeps its time (inbound spec I-N7: it is shown in its place); only what is older than the floor is clamped to it, and
- * `platformSentAtBehindSeconds` says by how much. The floor is a limit of belief, not a promise about the free window: a mark at
- * the floor is still more than 48 hours old.
+ * `platformSentAtBehindSeconds` says by how much. `platform_sent_at` goes to the floor, which keeps the message at the start of the
+ * conversation's order. The customer mark does NOT go to the floor, which is more than 48 hours old and would keep the free window
+ * shut for a customer who is writing now: a time that is not believed starts the window at `now()`, the moment we received it.
  */
 export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<StoredMessage> {
   const { orgId } = currentTenantContext();
@@ -114,7 +115,7 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
 
   const c = conversations;
   const never = sql`'-infinity'::timestamptz`;
-  const sentAt = sql`greatest(least(coalesce(${asked}, now()), now()), ${floor})`;
+  const sentAt = sql`CASE WHEN ${asked} < ${floor} THEN now() ELSE least(coalesce(${asked}, now()), now()) END`;
   const marked = await tx
     .update(c)
     .set({
