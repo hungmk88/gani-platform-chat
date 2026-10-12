@@ -1,4 +1,6 @@
-# Dàn ý prototype HTML — 4 màn Đợt 1 (chờ CĐT duyệt trước khi dựng)
+# Dàn ý prototype HTML — 4 màn Đợt 1
+
+**Trạng thái:** CĐT đã chốt token và 4 câu P1–P4 (mục 10). Chờ CĐT duyệt toàn bộ dàn ý rồi mới dựng.
 
 Căn cứ: Brief UI v1.0 (Phần 2, 4, 5.6, 6, Phụ lục C), Phụ lục B, file 135 mã, Brief Backend v1.0 P9/P14, `QUESTIONS.md` U1–U18.
 Hạn nộp wireframe: **30/11/2026** (trước S2). Tài liệu này chỉ là dàn ý; chưa dựng gì.
@@ -18,7 +20,7 @@ Prototype dùng font hệ thống thay Inter (tự host sẽ thêm khi dựng ap
 
 ## 2. Token dự kiến (để CĐT kiểm không có giá trị lạ)
 
-Giá trị là đề xuất, vendor quyết khi dựng (Brief UI §1.1). Tỉ lệ tương phản đã tính theo công thức WCAG 2.1.
+**CĐT đã duyệt bảng token.** Giá trị do vendor quyết (Brief UI §1.1); đổi giá trị nào phải nộp lại bảng. Tỉ lệ tương phản đã tính theo công thức WCAG 2.1.
 
 | Nhóm | Token | Giá trị đề xuất | Tương phản |
 |---|---|---|---|
@@ -70,10 +72,11 @@ Quy tắc: nút chính là màu nhấn, mỗi màn đúng 1 nút chính. Xanh/v�
 |---|---|---|---|---|
 | Nhận | bấm "Nhận" | **1** | `A` | 1 |
 | Trả lời | bấm vào ô soạn, gõ, Enter | **1** (+ gõ) | `R`, gõ, Enter | 1 + gõ |
-| Chuyển | "Chuyển" → chọn người + chip lý do trong cùng hộp thoại → "Xác nhận" | **2** | `T`, chọn, Enter | 3 |
+| Chuyển — biến thể A | "Chuyển" → bấm chip người nhận (lý do chọn sẵn trong cùng hộp thoại, đổi được) | **2** | `T`, chọn, Enter | 2 |
+| Chuyển — biến thể B | "Chuyển" → tìm người nhận → chọn → chọn lý do → "Xác nhận" | **2** | `T`, gõ tên, Enter, chọn lý do, Enter | 3 (+ gõ) |
 | Đóng | "Đóng" → bấm kết quả (bấm là đóng) | **2** | `E`, chọn, Enter | 2 |
 
-Ghi chú: Chuyển có 3 thao tác thực, nằm ngoài ngưỡng nếu đếm thô. CĐT đã chấp nhận định nghĩa ở M5; bảng này giữ cả hai cột để biên bản duyệt ghi rõ. Phương án giữ 2 thao tác thật: chọn chip lý do mặc định sẵn và bấm vào tên người là xác nhận luôn (vẽ thêm biến thể B để so sánh).
+Ghi chú: vẽ cả hai biến thể Chuyển, CĐT chọn sau khi xem (P1). A đạt 2 thao tác thật nhưng chỉ hiện được số ít người nhận dạng chip (đề xuất: người trong team + người gần đây; còn lại mở ô tìm, khi đó thành B). B đạt 2 theo định nghĩa M5, 3 thao tác thật. Bảng giữ cả hai cột để biên bản duyệt ghi rõ.
 
 **Phím tắt** (chỉ ngoài ô soạn): `A R T E N J K / ? Esc`; trong ô soạn chỉ có Enter, Shift+Enter, Esc, `/`. Không dùng Ctrl/Cmd+Shift.
 
@@ -97,7 +100,7 @@ Ghi chú: Chuyển có 3 thao tác thực, nằm ngoài ngưỡng nếu đếm t
 
 **Frame:** bình thường (6 cột); đang tải; trống; lỗi; cột nhiều thẻ (cuộn trong cột); thẻ đang lưu (khóa kéo, chờ máy chủ); kéo sang **Thua** → hộp chọn lý do (bắt buộc, chặn nếu bỏ trống); kéo sang **Thắng**; bộ lọc (người phụ trách, bước, kênh nguồn, khoảng ngày); "Không áp dụng AI".
 
-**Quy ước theo U6:** 6 cột là 6 bước, **tên tạm "Bước 1–6"** kèm nhãn "mặc định, chờ O1". Thắng / Thua là trạng thái kết thúc riêng (API `POST /v1/leads/{id}/close`, tách `PATCH /v1/leads/{id}/stage`). Vẽ 2 biến thể để CĐT chọn: (A) bộ lọc "Đang mở / Thắng / Thua", (B) hai cột phụ bên phải. Kéo thẻ sang cột phụ gọi `close`.
+**Quy ước theo U6:** 6 cột là 6 bước, **tên tạm "Bước 1–6"** kèm nhãn "mặc định, chờ O1". Thắng / Thua là trạng thái kết thúc riêng (API `POST /v1/leads/{id}/close`, tách `PATCH /v1/leads/{id}/stage`). Vẽ 2 biến thể, CĐT chọn khi có O1 (P2): (A) bộ lọc "Đang mở / Thắng / Thua", (B) hai cột phụ bên phải. Kéo thẻ sang cột phụ gọi `close`.
 
 **Thẻ lead:** tên khách, công ty, người phụ trách, ngày liên hệ cuối, số ngày ở bước hiện tại, nguồn (kênh + liên kết hội thoại gốc).
 
@@ -107,7 +110,7 @@ Ghi chú: Chuyển có 3 thao tác thực, nằm ngoài ngưỡng nếu đếm t
 
 ## 7. Màn 4 — Trình dựng bot (dạng form)
 
-Không có canvas (U16). Brief UI §5.6 và Phụ lục C đã cho phép phương án này. **Cần ghi vào phụ lục hợp đồng:** D1 trong file 135 mã ghi "Flow kéo-thả"; chuyển canvas sang Đợt 2 là đổi phạm vi nghiệm thu D1.
+Không có canvas (U16). Brief UI §5.6 và Phụ lục C đã cho phép phương án này. **Phạm vi D1 (đã chốt, P3):** CĐT bổ sung phụ lục hợp đồng đổi D1 từ "Flow kéo-thả" thành "Form builder (canvas hoãn Đợt 2)". FE làm theo form, không chờ phụ lục.
 
 **Frame:** danh sách flow (mỗi kênh một flow chào bắt buộc; mẫu mặc định theo workspace, D3); trình chỉnh flow dạng form; cấu hình node; nhánh lỗi; chạy thử (D2); xuất bản; lịch sử phiên bản; lỗi cấu hình node; **chặn xuất bản khi thiếu câu chào bắt buộc**; đang tải / trống / lỗi; "Không áp dụng AI" (node `ai_answer` là Đợt 2, ẩn).
 
@@ -140,11 +143,11 @@ Không có canvas (U16). Brief UI §5.6 và Phụ lục C đã cho phép phươn
 3. Mỗi màn nộp kèm 3 thứ: danh sách token, bảng đếm click (Hộp thư), bảng đối chiếu mã. Kiểm tương phản bằng công cụ trước khi nộp.
 4. Biên bản duyệt ghi rõ các dòng "chờ spec chính thức" (M8, Q7, O1, O7) để không coi là đã chốt.
 
-## 10. Việc cần CĐT quyết trước khi dựng
+## 10. Quyết định của CĐT về dàn ý
 
-| # | Câu hỏi | Mặc định đề xuất |
+| # | Câu hỏi | Đã chốt |
 |---|---|---|
-| P1 | Duyệt định nghĩa đếm click (Chuyển = 3 thao tác thực, tính 2 theo M5) hay yêu cầu biến thể B (2 thao tác thật)? | Vẽ cả hai, CĐT chọn |
-| P2 | Thắng/Thua: bộ lọc (A) hay cột phụ (B)? | Vẽ cả hai |
-| P3 | Ghi thay đổi phạm vi D1 (canvas sang Đợt 2) vào phụ lục hợp đồng | Có |
-| P4 | Prototype dùng font hệ thống thay Inter | Có |
+| P1 | Đếm click cho Chuyển | Vẽ 2 biến thể: A (2 thao tác, chip người nhận + chip lý do chọn sẵn), B (3 thao tác, tìm → chọn → lý do). CĐT chọn sau khi xem |
+| P2 | Thắng/Thua: bộ lọc hay cột phụ | Vẽ cả hai; CĐT chọn khi có O1 |
+| P3 | Phạm vi D1 | CĐT bổ sung phụ lục: "Form builder (canvas hoãn Đợt 2)"; FE không chờ |
+| P4 | Hình thức prototype | HTML thuần, nút đổi trạng thái + vai trò, font hệ thống; không cần Figma đợt này |
