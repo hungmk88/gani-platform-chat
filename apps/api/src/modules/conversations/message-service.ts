@@ -1,4 +1,5 @@
 import {
+  PLATFORM_CLOCK_SKEW_WARN_SECONDS,
   insertMessage,
   insertOutboxEvent,
   loadConversation,
@@ -8,6 +9,7 @@ import {
   type TenantTx,
 } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
+import { Logger } from '@nestjs/common';
 
 import { ConversationStateMachine, type TransitionOutcome } from './conversation-state-machine.js';
 import { ConversationNotFoundError, InvalidMessageError } from './errors.js';
@@ -59,6 +61,8 @@ function check(input: AppendMessageInput): void {
  * order. A path that changed the conversation first could wait for a writer that holds the lock and wants the row (deadlock, 40P01).
  */
 export class MessageService {
+  private readonly logger = new Logger(MessageService.name);
+
   constructor(
     private readonly fsm: ConversationStateMachine,
     private readonly store: MessageStore = messageStore,
@@ -86,6 +90,13 @@ export class MessageService {
       platformMessageId: input.platformMessageId ?? null,
       platformSentAt: input.platformSentAt ?? null,
     });
+    const ahead = stored.platformSentAtAheadSeconds;
+    if (ahead !== null && ahead > PLATFORM_CLOCK_SKEW_WARN_SECONDS) {
+      // Ids and a number only: the time was clamped to now() by the store (N116), this is for whoever looks at the platform's clock.
+      this.logger.warn(
+        `platform time ahead by ${Math.round(ahead)}s, clamped: message=${stored.id} conversation=${conversation.id} workspace=${conversation.workspaceId} trace=${input.traceId}`,
+      );
+    }
     await this.outbox.add(
       tx,
       messageCreatedOutboxEvent({

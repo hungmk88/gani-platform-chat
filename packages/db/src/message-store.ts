@@ -34,9 +34,14 @@ export interface NewMessage {
   readonly platformSentAt?: Date | null;
 }
 
+/** A platform time further than this ahead of the moment we received the message is worth a warning (N116). It is always clamped. */
+export const PLATFORM_CLOCK_SKEW_WARN_SECONDS = 300;
+
 export interface StoredMessage {
   readonly id: string;
   readonly sequenceNumber: number;
+  /** How many seconds `platformSentAt` was ahead of `now()` (it was clamped to `now()`); `null` when it was not ahead or absent. */
+  readonly platformSentAtAheadSeconds: number | null;
 }
 
 /**
@@ -52,9 +57,17 @@ export interface StoredMessage {
  * window (the platform's send time, or now). Both only go forward (`GREATEST`): `now()` is the time the transaction began, and a
  * writer that began early but got the lock late must not write an older time over a newer one; a late message does not pull the
  * window back.
+ *
+ * The platform's time is never trusted past `now()` (N116): a message cannot have been sent after we received it, and `GREATEST` would
+ * keep a future time for ever. `platform_sent_at` and the customer mark both take `LEAST(platform time, now())`, and a time that was
+ * ahead is reported in `platformSentAtAheadSeconds` (the caller warns above `PLATFORM_CLOCK_SKEW_WARN_SECONDS`; nothing is refused,
+ * so a clock that is a little off never loses a message). The customer mark is also capped at `now()` before `GREATEST`, so a mark
+ * that was ever written in the future heals itself on the next customer message.
  */
 export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<StoredMessage> {
   const { orgId } = currentTenantContext();
+  // `now()` is the start of this transaction, the same value in every statement below.
+  const asked = sql`${message.platformSentAt?.toISOString() ?? null}::timestamptz`;
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${message.conversationId}::text))`);
   const [next] = await tx
     .select({ value: sql<string>`coalesce(max(${messages.sequenceNumber}), 0) + 1` })
@@ -73,14 +86,21 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
       kind: message.kind,
       body: message.body ?? null,
       platformMessageId: message.platformMessageId ?? null,
-      platformSentAt: message.platformSentAt ?? null,
+      // LEAST ignores NULL, so a missing time is kept as NULL by the CASE and not turned into now().
+      platformSentAt: sql`CASE WHEN ${asked} IS NULL THEN NULL ELSE least(${asked}, now()) END`,
     })
-    .returning({ id: messages.id, sequenceNumber: messages.sequenceNumber });
+    .returning({
+      id: messages.id,
+      sequenceNumber: messages.sequenceNumber,
+      ahead: sql<
+        number | null
+      >`CASE WHEN ${asked} > now() THEN extract(epoch FROM ${asked} - now())::float8 END`,
+    });
   if (!stored) throw new Error('message insert returned no row');
 
   const c = conversations;
   const never = sql`'-infinity'::timestamptz`;
-  const sentAt = sql`coalesce(${message.platformSentAt?.toISOString() ?? null}::timestamptz, now())`;
+  const sentAt = sql`least(coalesce(${asked}, now()), now())`;
   const marked = await tx
     .update(c)
     .set({
@@ -88,7 +108,7 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
       updatedAt: sql`now()`,
       ...(message.senderKind === 'customer'
         ? {
-            lastCustomerMessageAt: sql`greatest(coalesce(${c.lastCustomerMessageAt}, ${never}), ${sentAt})`,
+            lastCustomerMessageAt: sql`greatest(least(coalesce(${c.lastCustomerMessageAt}, ${never}), now()), ${sentAt})`,
           }
         : {}),
     })
@@ -96,5 +116,9 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
     .returning({ id: c.id });
   // The insert above is refused by the policy for a conversation the tenant cannot see; this is the net under it.
   if (marked.length === 0) throw new Error('conversation not visible: the message was not kept');
-  return stored;
+  return {
+    id: stored.id,
+    sequenceNumber: stored.sequenceNumber,
+    platformSentAtAheadSeconds: stored.ahead === null ? null : Number(stored.ahead),
+  };
 }
