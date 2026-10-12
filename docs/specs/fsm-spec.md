@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Trạng thái | **ĐÃ DUYỆT 06/10/2026**; điều chỉnh đã ghi trong bản; câu hỏi chưa chốt xử lý khi code tới |
-| Nguồn | Brief P14 (bảng + bổ sung v0.4), P10 F1/F6, P3.2 mục 3 và 9, P8 M04; Phụ lục v2.1 §3, §9, v2.3 §20 |
+| Nguồn | Brief v1.0 P14 (bảng + phần "Bổ sung"), P10 F1/F6, P3.2 mục 3 và 9, P8 M04; Phụ lục v2.1 §3, §9, v2.3 §20 |
 | Liên quan | `outbox-spec.md` (sự kiện đi cùng transaction), `realtime-spec.md` (`sequence_number`, `version`), N75 (bảng khung `conversations`), ADR-004 |
 | Ngày | 06/10/2026 |
 
@@ -35,7 +35,7 @@ Cột do FSM sở hữu: `state`, `version`, `assigned_user_id`, `after_hours_ho
 | T03 | `BOT_ACTIVE` | `needs_human` | `!inHours` | `BOT_ACTIVE` | `hold=true` | `state_changed` |
 | T04 | `BOT_ACTIVE` | `bot_resolved` | — | `CLOSED` | `hold=false`, `closed_at` | `state_changed` |
 | T05 | `HUMAN_WAITING_Q` | `claim(u)` | — | `HUMAN_ACTIVE` | `assigned=u` | `state_changed`, `assigned` |
-| T06 | `BOT_ACTIVE` + `hold` | `claim(u)` (v0.4) | — | `HUMAN_ACTIVE` | `assigned=u`, `hold=false` | `state_changed`, `assigned` |
+| T06 | `BOT_ACTIVE` + `hold` | `claim(u)` (P14 Bổ sung) | — | `HUMAN_ACTIVE` | `assigned=u`, `hold=false` | `state_changed`, `assigned` |
 | T07 | `HUMAN_WAITING_Q` | `wait_expired` | `!inHours` hoặc `slaExceeded` | `BOT_ACTIVE` | `hold=true`, `assigned=null` | `state_changed` |
 | T08 | `BOT_ACTIVE` + `hold` | `release_after_hours` (F6) | `inHours` | `HUMAN_WAITING_Q` | `hold=false` | `state_changed`, `handoff_requested` |
 | T09 | `HUMAN_ACTIVE` | `agent_waits_customer` | — | `PENDING_CUSTOMER` | — | `state_changed` |
@@ -97,7 +97,7 @@ Giới hạn thành thật: `app.fsm` do chính mã ứng dụng đặt, nên tr
 
 ## 6. Va chạm
 
-- **Claim (T05, T06):** đúng câu của Brief, điều kiện mở rộng v0.4: `WHERE id=$c AND (state='HUMAN_WAITING_Q' OR (state='BOT_ACTIVE' AND after_hours_hold))`, không kiểm `version`, có `version=version+1`. 0 dòng → `409 conversation_already_claimed`. Không Redlock. **Phải `READ COMMITTED`**: người thua chờ khóa dòng, thắng commit, người thua đánh giá lại điều kiện thấy sai → 0 dòng. Ở `REPEATABLE READ` họ nhận lỗi tuần tự hóa `40001` thay vì 0 dòng, nên cấm.
+- **Claim (T05, T06):** đúng câu của Brief, điều kiện mở rộng (Brief v1.0 P14 "Bổ sung"; trước đây gọi là bổ sung v0.4): `WHERE id=$c AND (state='HUMAN_WAITING_Q' OR (state='BOT_ACTIVE' AND after_hours_hold))`, không kiểm `version`, có `version=version+1`. 0 dòng → `409 conversation_already_claimed`. Không Redlock. **Phải `READ COMMITTED`**: người thua chờ khóa dòng, thắng commit, người thua đánh giá lại điều kiện thấy sai → 0 dòng. Ở `REPEATABLE READ` họ nhận lỗi tuần tự hóa `40001` thay vì 0 dòng, nên cấm.
 - **Hành động của người (T09, T12, T13, T15, T16, T21):** thêm `AND version=$v` với `$v` là bản client đang xem. 0 dòng → `409 version_conflict`.
 - **Sự kiện hệ thống (T01–T04, T07, T08, T10, T11, T14, T17–T20):** không có client để bảo tải lại. 0 dòng → đọc lại và `decide` lại, tối đa 3 lần; còn thua → ghi log `trace_id`, dòng việc quay về hàng đợi để thử lại (không mất tin).
 - 0 dòng không nói được "va chạm" hay "không tồn tại": bước đọc ở §4.1 đã phân biệt (không thấy → 404).
