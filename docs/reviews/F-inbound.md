@@ -1,5 +1,7 @@
 # Code Review — Nhóm F: Tin vào (inbound: bảng, hàm DB, kho, khóa chống trùng)
 
+> ⚠️ Cập nhật 13/10/2026: F-02 đã được nâng lên HIGH; lệnh `git grep` ở dòng "Ngoài mốc" dùng pathspec không hiệu lực (kết luận vẫn đúng). Xem 00-summary.md mục "Phát hiện đã nâng mức" và G-docs.md G-08.
+
 - **Mốc code:** `main` = `61c1e79` (PM-2b-2, #97). Nhóm D và E đã rà ở `1dfd6c5`, không rà lại.
 - **Ngày rà soát:** 13/10/2026. **Người rà soát:** Claude (chính tác giả, xem mục "Giới hạn").
 - **Phạm vi (tầng DB và kho):** migration `202610071000` (`channel_accounts`), `202610071100`/`202610071110` (`channel_policies` và hạt giống), `202610071200`, `202610071210` (`inbound_events`), `202610071220` (`inbound_event_keys`, `purge_inbound_event_keys`), `202610071300` (`channel_account_for_webhook`), `202610071310` (cột kênh của `conversations`), `202610071320` (`inbound_pending_orgs`); `packages/db/src/inbound-store.ts`, `message-store.ts` (đã có D-02); các spec `inbound-*`, `conversation-channel`, `channel-*`; đối chiếu `docs/specs/inbound-spec.md`.

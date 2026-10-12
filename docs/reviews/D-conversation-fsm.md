@@ -1,5 +1,7 @@
 # Code Review — Nhóm D: Hội thoại và máy trạng thái (FSM)
 
+> ⚠️ Cập nhật 12/10/2026: D-02 đã được nâng lên HIGH và đã đóng (#88, #90, #91). Xem 00-summary.md mục "Phát hiện đã nâng mức".
+
 - **Mốc code:** `main` = `1dfd6c5` (M1.3 hoàn tất, gồm PR4b-2a, 4b-2b và PR fix #85). So với `82caafe`, #85 chỉ đổi `@gani/domain` (ra `dist`), timeout của pool và smoke CI: không file nào của nhóm D hay E.
 - **Ngày rà soát:** 12/10/2026. **Người rà soát:** Claude (chính tác giả, xem mục "Giới hạn").
 - **Phạm vi:** `packages/domain/src/conversation/*`, `packages/db/src/{conversation-store,message-store}.ts`, `apps/api/src/modules/conversations/*`, migration `202610031830`, `202610061000`, `202610061020`, `202610061100`, `202610061110`, test FSM (domain, `conversations-fsm.spec`, `conversation-events.spec`, `conversation-state-machine.integration.test.ts`, `message-service.integration.test.ts`), đối chiếu `docs/specs/fsm-spec.md`.
