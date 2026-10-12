@@ -40,6 +40,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Build first: typed ESLint reads the types of workspace packages from their dist/.
       - run: pnpm build
+      # Start the built API once: tsc and vitest read .ts, so only a real process finds an import that Node cannot load (review A-01).
+      - run: pnpm --filter @gani/api smoke
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -123,10 +125,11 @@ jobs:
           export DATABASE_URL_AUTH="postgres://auth_role:${AUTH_ROLE_PASSWORD}@${base}"
           export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
           export DATABASE_URL_SUPPORT="postgres://support_test_login:${SUPPORT_TEST_LOGIN_PASSWORD}@${base}"
+          # The tests import @gani/domain, which exports its dist/: build it and @gani/db before anything runs (review A-01).
+          pnpm --filter "@gani/db..." build
           pnpm --filter @gani/db migrate
           pnpm --filter @gani/db test:integration
           # Better Auth on the real adapter as auth_role (N79); reuses this job's PostgreSQL. Split it into its own job if it adds > 30 s.
-          pnpm --filter @gani/db build
           pnpm --filter @gani/api test:integration
       - name: PostgreSQL log
         if: failure()
