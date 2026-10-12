@@ -1,6 +1,6 @@
 ## Phụ lục C — Wireframe 10 hạng mục phải duyệt trước khi code
 
-Bản sửa 13/10/2026 · đối chiếu `danh-sach-man-M11.md`, `spec-M8.md` bản nháp 2, ADR-003, N79, N84, U20 (main `98eb712`)
+Bản v3 · 13/10/2026 · áp U23 và Q-U20-1→6 (CEO 13/10/2026) · đối chiếu `danh-sach-man-M11.md`, `spec-M8.md` bản nháp 3, ADR-003, N79, N84, U20 (main `98eb712`)
 
 Vendor nộp wireframe dạng prototype bấm được (Figma hoặc tương đương).
 
@@ -14,16 +14,16 @@ Vendor nộp wireframe dạng prototype bấm được (Figma hoặc tương đ�
 
 | # | Màn (số M11) | Phải thể hiện | Trạng thái phải vẽ | Hạn duyệt |
 |---|---|---|---|---|
-| 0 | **Khung app** (thành phần dùng chung) | Thanh trên cùng: bộ đổi workspace, bộ chọn trạng thái agent **Online / Bận / Offline**, menu cá nhân; menu 5 nhóm theo vai trò; dải "AI đang tắt"; dải phiên truy cập platform; 4 trang hệ thống (403, 404, Bảo trì, Lỗi chung) | Menu của từng vai trò (8 vai trò); đang đổi workspace; mất kết nối realtime | **23/11/2026** |
+| 0 | **Khung app** (thành phần dùng chung) | Thanh trên cùng: bộ đổi workspace, bộ chọn trạng thái agent **Online / Bận / Offline**, thông báo "Đã chuyển Offline do mất kết nối" (mất kết nối > 5 phút, Q-U20-4), menu cá nhân; menu 5 nhóm theo vai trò; dải "AI đang tắt"; dải phiên truy cập platform; 4 trang hệ thống (403, 404, Bảo trì, Lỗi chung) | Menu của từng vai trò (8 vai trò); đang đổi workspace; mất kết nối realtime | **23/11/2026** |
 | 1 | Hộp thư (#6) | 3 cột; bộ lọc; dòng hội thoại có SLA; thẻ handoff; ô soạn có `/` mẫu; khóa ô gửi khi hết khung Zalo; tải agent "Đang xử lý / Chờ khách"; hộp thoại Chuyển, Đóng (Đã xong / Không phản hồi / Spam), Gửi ZNS khi hết khung | Trống theo vai trò, lỗi, AI tắt, tin gửi lỗi, "Đã được [tên] nhận", **SLA tạm dừng** (ngoài giờ / chờ khách), mẫu có biến chưa điền | **23/11/2026** |
 | 2 | Hồ sơ khách (#8) + Gộp khách (#9) | Thông tin, định danh đa kênh có nhãn xác thực, tab Hội thoại/Lead/Ticket/Ghi chú, màn so sánh gộp 2 hồ sơ | SĐT bị che, trường nhạy cảm dạng Che (Marketing/Viewer), đề xuất gộp, cờ "chỉ người phục vụ" | **23/11/2026** |
 | 3 | Pipeline lead (#12) + Chi tiết lead (#13) | Kanban 6 bước, thẻ lead, kéo thả, drawer chi tiết lead, hộp chọn lý do Thua, bộ lọc | Trống, cột nhiều thẻ (cuộn), đang lưu | **23/11/2026** |
-| 4 | Trình dựng bot (#18) + Danh sách flow (#17) | Canvas + bảng node, cấu hình node, nhánh lỗi, chạy thử, xuất bản, danh sách flow có flow mặc định "Ngoài giờ"; **kèm phương án dự phòng dạng form** | Lỗi cấu hình, chặn xuất bản khi thiếu câu chào bắt buộc | **23/11/2026** |
+| 4 | Trình dựng bot (#18) + Danh sách flow (#17) | Trình dựng bot **dạng form** (danh sách bước, cấu hình node, nhánh lỗi), chạy thử, xuất bản, danh sách flow có flow mặc định "Ngoài giờ". **Không vẽ canvas** — canvas thuộc Đợt 2 (U16, phụ lục hợp đồng D1 "Form builder") | Lỗi cấu hình, chặn xuất bản khi thiếu câu chào bắt buộc | **23/11/2026** |
 | 5 | Đăng nhập (#1) | Form email + mật khẩu; link quên mật khẩu; thông báo lỗi | Đang tải nút; lỗi chung "Email hoặc mật khẩu không đúng" (không nói sai cái nào); khóa 30 phút sau 5 lần sai (ADR-003) | **23/11/2026** |
-| 6 | Xác thực 2 lớp (#2) | **Nhập mã 6 số từ ứng dụng xác thực (TOTP)**; link "Dùng mã dự phòng"; **luồng cài 2FA lần đầu**: mã QR, nhập mã xác nhận, hiện mã dự phòng 1 lần | Đang tải; mã sai; khóa tạm sau nhiều lần sai; cài 2FA bắt buộc (Owner/Admin/platform operator) | **23/11/2026** |
+| 6 | Xác thực 2 lớp (#2) | **Nhập mã 6 số từ ứng dụng xác thực (TOTP)**; link "Dùng mã dự phòng"; **luồng cài 2FA lần đầu**: mã QR, nhập mã xác nhận, hiện **10 mã dự phòng** một lần duy nhất, mỗi mã dùng 1 lần (Q-U20-2) | Đang tải; mã sai; khóa tạm sau nhiều lần sai; cài 2FA bắt buộc (Owner/Admin/platform operator) | **23/11/2026** |
 | 7 | Quên / đặt lại mật khẩu (#3) — **phụ thuộc PR7** | Form email xin link; form đặt mật khẩu mới; xác nhận thành công | Đã gửi: **"Nếu email có trong hệ thống, link đã được gửi"** (cùng một câu dù email có hay không); link hết hạn hoặc đã dùng; mật khẩu không đủ mạnh (≥ 12 ký tự, có chữ và số) | **23/11/2026** — duyệt bố cục; chi tiết duyệt lại khi PR7 xong |
 | 8 | Nhận lời mời (#4) — **phụ thuộc PR7** | Thông báo vai trò và workspace được mời; form đặt mật khẩu ngay trên trang; bước cài 2FA nếu vai trò bắt buộc | Link hết hạn; link đã dùng ("Đã chấp nhận, kiểm tra email để đặt mật khẩu" — N31); quá thời gian đặt mật khẩu trên trang → gửi link qua email | **23/11/2026** — duyệt bố cục; chi tiết duyệt lại khi PR7 xong |
-| 9 | Hồ sơ cá nhân (#5) | 3 tab: Thông tin (tên, ảnh, mật khẩu), Bảo mật (2FA, phiên), Thông báo (trình duyệt, âm thanh) | 2FA đã bật / chưa bật — **không có nút tắt**; danh sách phiên chỉ có thời điểm tạo + hạn, không IP, không thiết bị (U20-1, U20-2); nút đăng xuất từng phiên | **23/11/2026** |
+| 9 | Hồ sơ cá nhân (#5) | 3 tab: Thông tin (tên, ảnh, mật khẩu), Bảo mật (2FA, phiên), Thông báo (trình duyệt, âm thanh) | 2FA đã bật / chưa bật — **không có nút tắt**; danh sách phiên chỉ có thời điểm tạo + hạn, không IP, không thiết bị (U20-1, U20-2); phiên đang dùng có nhãn **"Phiên này"**, các phiên khác có nút đăng xuất (Q-U20-3) | **23/11/2026** |
 | 10 | Widget (Đợt 2) | Thu gọn, lời chào, form trước khi chat (có dòng thông báo dữ liệu), hội thoại, đánh giá; bản mobile và desktop; 2 thương hiệu mẫu | Ngoài giờ, mất mạng, có/không câu công bố AI | **01/03/2027** |
 
 ### Yêu cầu kèm mỗi wireframe
@@ -58,6 +58,6 @@ Ban đầu Phụ lục C ghi 4 màn chính (Hộp thư, Hồ sơ khách, Pipelin
 
 | Tài liệu | Chỗ cần sửa |
 |---|---|
-| Brief Backend P20 (checklist trước go-live) | "Wireframe 4 màn … trước S2 (30/11)" → "9 màn + khung app … duyệt trước 23/11" |
+| Brief Backend P22 (mục Điều kiện bắt đầu code) | "Wireframe 4 màn … trước S2 (30/11)" → "9 màn + khung app … duyệt trước 23/11" |
 | `danh-sach-man-M11.md` §5 mục 2 | "giữ 4 màn chính" → tham chiếu phụ lục này |
-| Brief UI §5.4 | Lời mời "hết hạn 72 giờ" **lệch** ADR-003 "hết hạn 7 ngày" — CEO chọn 1 con số |
+| Brief UI §5.4 | Lời mời "hết hạn 72 giờ" → "7 ngày" (đã chốt ở U1: 72 giờ là lỗi biên tập) |
