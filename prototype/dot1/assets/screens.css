@@ -1,0 +1,399 @@
+/* Bố cục riêng từng màn. Chỉ dùng biến trong tokens.css. */
+
+/* ---------- Hộp thư: 3 cột ---------- */
+.inbox {
+  display: grid;
+  grid-template-columns: 320px 1fr 300px;
+  flex: 1;
+  min-height: 0;
+}
+.inbox.narrow {
+  grid-template-columns: 320px 1fr;
+}
+@media (width < 1280px) {
+  .inbox {
+    grid-template-columns: 320px 1fr;
+  }
+  .inbox .col-right {
+    display: none;
+  }
+  .inbox .col-right.open {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: block;
+    width: 300px;
+    border-left: 1px solid var(--border-strong);
+  }
+}
+.inbox .narrow-only {
+  display: none;
+}
+@media (width < 1280px) {
+  .inbox .narrow-only {
+    display: inline-flex;
+  }
+}
+.col-left,
+.col-mid,
+.col-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+}
+.col-left,
+.col-mid {
+  border-right: 1px solid var(--border);
+}
+.col-right {
+  overflow: auto;
+  padding: var(--sp-4);
+}
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+.filters .full {
+  grid-column: 1 / -1;
+}
+.agent-load {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-12);
+}
+.conv-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.conv {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-1) var(--sp-2);
+  width: 100%;
+  padding: var(--sp-3);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.conv[aria-current='true'] {
+  background: var(--bg-subtle);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.conv .last {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.unread {
+  min-width: 20px;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-card);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: var(--fs-12);
+  text-align: center;
+}
+.conv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+}
+.handoff {
+  margin: var(--sp-3) var(--sp-4) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+}
+.handoff summary {
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  font-weight: 600;
+}
+.handoff .body {
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+.messages {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow: auto;
+  padding: var(--sp-4);
+}
+.msg {
+  max-width: 72%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-card);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.msg .meta {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+}
+.msg.customer {
+  align-self: flex-start;
+  background: var(--bg-subtle);
+}
+.msg.mine {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-on);
+}
+.msg.mine .meta {
+  color: var(--accent-on);
+}
+.msg.other,
+.msg.bot {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+}
+.msg.note {
+  align-self: flex-end;
+  background: var(--color-note);
+  color: var(--color-note-text);
+}
+.msg.system {
+  align-self: center;
+  max-width: 90%;
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+}
+.msg.failed {
+  outline: 2px solid var(--error-text);
+}
+.composer {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+.composer textarea {
+  resize: none;
+  max-height: calc(8 * 1.5em + var(--sp-2) * 2);
+}
+.composer.note-mode textarea {
+  background: var(--color-note);
+}
+.locked {
+  padding: var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+}
+.template-list {
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-card);
+}
+.template-list button {
+  display: block;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.template-list button:hover,
+.template-list button:focus-visible {
+  background: var(--bg-subtle);
+}
+.var-blank {
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-input);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.section {
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- Hồ sơ khách ---------- */
+.profile {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+}
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--border);
+}
+.tabs button {
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+.tabs button[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--sp-1) var(--sp-3);
+}
+.kv dt {
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+}
+.kv dd {
+  margin: 0;
+}
+.merge-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: center;
+}
+.merge-grid label {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-input);
+}
+
+/* ---------- Pipeline lead ---------- */
+.board {
+  display: flex;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  align-items: flex-start;
+  padding-bottom: var(--sp-3);
+}
+.column {
+  display: flex;
+  flex: 0 0 240px;
+  flex-direction: column;
+  max-height: calc(100vh - 260px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+}
+.column.terminal {
+  flex-basis: 200px;
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+.column.drop-target {
+  border-color: var(--accent);
+}
+.column header {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+.column .cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow-y: auto;
+  min-height: 80px;
+  padding: var(--sp-2);
+}
+.lead-card {
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  cursor: grab;
+}
+.lead-card[aria-busy='true'] {
+  cursor: progress;
+  opacity: 0.6;
+}
+.lead-card[aria-disabled='true'] {
+  cursor: default;
+}
+.drop-bar {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.drop-bar div {
+  flex: 1;
+  padding: var(--sp-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-card);
+  text-align: center;
+}
+
+/* ---------- Trình dựng bot (form) ---------- */
+.bots {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+}
+.flow-list button {
+  display: block;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-input);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.flow-list button[aria-current='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+.step {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+.step.has-error {
+  border-color: var(--error-text);
+}
+.step > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+}
+.step .body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+.branch {
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid var(--border-strong);
+}
+.test-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 360px;
+  overflow: auto;
+}

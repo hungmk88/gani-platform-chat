@@ -1,0 +1,59 @@
+/* Token Đợt 1 — bảng CĐT đã duyệt (docs/ui/prototype-outline-dot1.md §2).
+   Không dùng màu, cỡ chữ, khoảng cách, bo góc nào ngoài file này. */
+:root {
+  /* Nền, mặt, viền, chữ */
+  --bg: #ffffff;
+  --bg-subtle: #f3f4f6;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #6b7280;
+  --text: #1f2937;
+  --text-muted: #4b5563;
+
+  /* Một màu nhấn */
+  --accent: #1d4ed8;
+  --accent-on: #ffffff;
+
+  /* Chỉ cho trạng thái */
+  --ok-bg: #dcfce7;
+  --ok-text: #166534;
+  --warn-bg: #fef3c7;
+  --warn-text: #854d0e;
+  --error-bg: #fee2e2;
+  --error-text: #991b1b;
+
+  /* Ghi chú nội bộ */
+  --color-note: #fef9c3;
+  --color-note-text: #1f2937;
+
+  /* Token bổ sung, chờ CĐT duyệt (không có trong bảng đã duyệt) */
+  --overlay: rgb(31 41 55 / 40%);
+
+  /* 4 cỡ chữ */
+  --fs-12: 12px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+
+  /* Lưới 4/8 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 40px;
+  --sp-8: 48px;
+
+  /* Bo góc */
+  --r-input: 4px;
+  --r-card: 8px;
+  --r-dialog: 12px;
+
+  /* Chuyển động (tối đa 200 ms) */
+  --motion: 150ms;
+
+  /* Font hệ thống cho prototype; app thật dùng Inter tự host (P4) */
+  --font:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+}
