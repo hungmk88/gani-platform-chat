@@ -11,6 +11,7 @@
     ['support', 'Support'],
     ['marketing', 'Marketing'],
     ['viewer', 'Viewer'],
+    ['platform_operator', 'Platform op'],
   ];
   const ROLE_LABEL = Object.fromEntries(ROLES);
 
@@ -32,6 +33,22 @@
     'ticket.create': ['owner', 'admin', 'manager', 'sales', 'support'],
     'bot.edit': ['owner', 'admin', 'manager'],
   };
+
+  // Biến thể của khung app (Phụ lục C v3 dòng 0), dùng chung cho mọi màn có khung.
+  const SHELLS = [
+    ['normal', 'Bình thường'],
+    ['disconnected', 'Mất kết nối realtime'],
+    ['auto_offline', 'Tự chuyển Offline (> 5 phút)'],
+    ['busy_30', 'Bận quá 30 phút'],
+    ['switching', 'Đang đổi workspace'],
+    ['platform_session', 'Phiên truy cập platform'],
+  ];
+  const PRESENCE = [
+    ['online', 'Online'],
+    ['busy', 'Bận'],
+    ['offline', 'Offline'],
+  ];
+  let presence = null;
 
   const params = new URLSearchParams(location.search);
 
@@ -119,6 +136,7 @@
       h('a', { href: 'index.html' }, 'Mục lục'),
       select('Trạng thái:', 'state', config.states, Proto.state()),
       select('Vai trò:', 'role', ROLES, Proto.role()),
+      config.bare ? null : select('Khung:', 'shell', SHELLS, Proto.get('shell', 'normal')),
       (config.variants || []).map((v) => select(`${v.label}:`, v.name, v.options, Proto.get(v.name, v.options[0][0]))),
       h(
         'span',
@@ -143,6 +161,11 @@
   /* ---------- Khung app: menu 5 nhóm theo vai trò và theo đợt ---------- */
   function navItems() {
     const items = [];
+    if (Proto.role() === 'platform_operator') {
+      items.push(['platform', 'Platform', null]);
+      if (Proto.get('shell', 'normal') === 'platform_session') items.push(['customers', 'Khách hàng (trong phiên)', 'customer.html']);
+      return items;
+    }
     if (Proto.can('inbox.view')) items.push(['inbox', 'Hộp thư', 'inbox.html']);
     items.push(['customers', 'Khách hàng', 'customer.html']);
     items.push(['leads', 'Lead', 'leads.html', true]);
@@ -153,36 +176,86 @@
     return items;
   }
 
+  /* Thanh trên cùng: đổi workspace, trạng thái agent (Online / Bận / Offline, U20-4), menu cá nhân. */
+  function topbar() {
+    const shellState = Proto.get('shell', 'normal');
+    if (presence === null || shellState === 'auto_offline') presence = shellState === 'auto_offline' ? 'offline' : shellState === 'busy_30' ? 'busy' : 'online';
+    const isPlatform = Proto.role() === 'platform_operator';
+    return h(
+      'header',
+      { class: 'topbar', 'aria-label': 'Thanh trên cùng' },
+      isPlatform
+        ? h('span', { class: 'small muted' }, 'Nền tảng — không thuộc công ty nào')
+        : h(
+            'label',
+            { class: 'row small' },
+            'Workspace',
+            h(
+              'select',
+              {
+                class: 'input',
+                id: 'ws',
+                onchange: (event) => {
+                  Proto.toast(`Đã chuyển sang ${event.target.selectedOptions[0].textContent}: xóa toàn bộ cache, ngắt realtime của workspace cũ (T1).`);
+                },
+              },
+              h('option', {}, 'Gani Foods — B2B'),
+              h('option', {}, 'The Smile — Dịch vụ'),
+            ),
+          ),
+      h(
+        'span',
+        { class: 'row' },
+        Proto.can('inbox.view')
+          ? h(
+              'label',
+              { class: 'row small' },
+              'Trạng thái',
+              h(
+                'select',
+                {
+                  class: 'input',
+                  id: 'presence',
+                  onchange: (event) => {
+                    presence = event.target.value;
+                    Proto.toast(presence === 'online' ? 'Bạn đang Online: được phân bổ hội thoại tự động.' : presence === 'busy' ? 'Bận: không nhận hội thoại mới, vẫn giữ hội thoại đang xử lý.' : 'Offline: không nhận hội thoại; hội thoại còn tin chưa trả lời về hàng chờ sau 10 phút.');
+                    Proto.render();
+                  },
+                },
+                PRESENCE.map(([value, text]) => h('option', { value, selected: value === presence }, text)),
+              ),
+            )
+          : null,
+        h('a', { class: 'btn link', href: `me.html?role=${Proto.role()}` }, 'Hồ sơ cá nhân'),
+      ),
+    );
+  }
+
+  function shellBanners() {
+    const s = Proto.get('shell', 'normal');
+    if (s === 'disconnected') return h('div', { class: 'banner warn', role: 'status' }, 'Mất kết nối — đang thử kết nối lại… Tin mới sẽ tải bù khi nối lại. Quá 5 phút bạn sẽ được chuyển sang Offline.');
+    if (s === 'auto_offline')
+      return h('div', { class: 'banner warn', role: 'status' }, 'Đã chuyển Offline do mất kết nối. Đã kết nối lại — bật Online khi bạn sẵn sàng nhận hội thoại. ', h('button', { class: 'btn', onclick: () => { presence = 'online'; Proto.set('shell', 'normal'); } }, 'Bật Online'));
+    if (s === 'busy_30' && Proto.can('inbox.view')) return h('div', { class: 'banner info', role: 'status' }, 'Bạn đang Bận 32 phút. Hội thoại mới không được giao cho bạn.');
+    if (s === 'platform_session' && Proto.role() === 'platform_operator')
+      return h('div', { class: 'banner error', role: 'status' }, 'Phiên truy cập dữ liệu Gani Foods — còn 52 phút — Lý do: hỗ trợ lỗi kênh Zalo theo yêu cầu #128. Mọi thao tác được ghi nhật ký. ', h('button', { class: 'btn', onclick: () => Proto.set('shell', 'normal') }, 'Kết thúc phiên'));
+    return null;
+  }
+
   function shell(config, content) {
     const nav = h(
       'nav',
       { class: 'nav', 'aria-label': 'Menu chính' },
-      h(
-        'div',
-        { class: 'ws' },
-        h('label', { class: 'small muted', for: 'ws' }, 'Workspace'),
-        h(
-          'select',
-          {
-            id: 'ws',
-            onchange: (event) => {
-              Proto.toast(`Đã chuyển sang ${event.target.selectedOptions[0].textContent}: xóa toàn bộ cache, ngắt realtime của workspace cũ (T1).`);
-            },
-          },
-          h('option', {}, 'Gani Foods — B2B'),
-          h('option', {}, 'The Smile — Dịch vụ'),
-        ),
-      ),
       navItems().map(([key, label, href, sub]) =>
         h(
           'a',
           {
-            href: href ? `${href}?role=${Proto.role()}` : '#',
+            href: href ? `${href}?role=${Proto.role()}&shell=${Proto.get('shell', 'normal')}` : '#',
             class: sub ? 'sub' : null,
             'aria-current': key === config.page ? 'page' : null,
             onclick: href ? null : (event) => {
               event.preventDefault();
-              Proto.toast('Màn này ngoài 4 màn wireframe đợt này.');
+              Proto.toast('Màn này ngoài phạm vi prototype đợt này.');
             },
           },
           label,
@@ -190,7 +263,11 @@
       ),
       h('p', { class: 'small muted', style: 'margin-top:auto' }, `Đăng nhập: ${ROLE_LABEL[Proto.role()]}`),
     );
-    return h('div', { class: 'app', id: 'app' }, nav, h('main', { class: 'main' }, content));
+    const switching = Proto.get('shell', 'normal') === 'switching';
+    const body = switching
+      ? h('div', { class: 'state-box', 'aria-busy': 'true' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), h('p', {}, 'Đang đổi sang The Smile — Dịch vụ… Đã xóa dữ liệu và ngắt realtime của workspace cũ.'))
+      : content;
+    return h('div', { class: 'app', id: 'app' }, nav, h('main', { class: 'main' }, topbar(), shellBanners(), body));
   }
 
   /* AI tắt: Manager trở lên thấy dải báo; Sales/Support không thấy (§2.3). */
@@ -277,6 +354,15 @@
     Proto.render = () => {
       const root = document.getElementById('root');
       root.replaceChildren(protoBar(config), shell(config, config.render()));
+    };
+    Proto.render();
+  };
+
+  /* Trang không có khung app (đăng nhập, nhận lời mời, trang hệ thống ngoài phiên). */
+  Proto.mountBare = (config) => {
+    Proto.render = () => {
+      const root = document.getElementById('root');
+      root.replaceChildren(protoBar({ ...config, bare: true }), h('div', { class: 'bare', id: 'app' }, config.render()));
     };
     Proto.render();
   };

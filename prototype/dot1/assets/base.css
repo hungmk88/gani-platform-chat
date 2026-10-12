@@ -405,3 +405,56 @@ table.plain td {
   text-align: left;
   vertical-align: top;
 }
+
+/* Thanh trên cùng của khung app */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.topbar .input {
+  width: auto;
+}
+
+/* Trang không có khung (đăng nhập, lời mời, trang hệ thống) */
+.bare {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: var(--sp-8) var(--sp-4);
+}
+.auth-card {
+  width: min(400px, 100%);
+}
+
+/* Hồ sơ cá nhân (#5) */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+.qr {
+  display: grid;
+  place-items: center;
+  width: 160px;
+  height: 160px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-input);
+  color: var(--text-muted);
+}
+.codes {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: var(--sp-1) var(--sp-6);
+  margin: 0;
+}
