@@ -139,8 +139,8 @@
             <tr><td>Cỡ chữ</td><td colspan="3">12 / 14 / 16 / 20 px — Admin 14</td></tr>
             <tr><td>Khoảng cách</td><td colspan="3">4, 8, 12, 16, 24, 32, 40, 48 px</td></tr>
             <tr><td>Bo góc · chuyển động</td><td colspan="3">4 / 8 / 12 px · 150 ms (tối đa 200 ms)</td></tr>
-            <tr><td><code>--overlay</code> (duyệt 13/10/2026)</td><td>rgb(31 41 55 / 40%) — trên nền trắng ra #A5A9AF</td><td><span class="swatch" style="background: var(--overlay)"></span></td><td>Giữ 40%. Hộp thoại trắng / nền mờ 2,36, dưới 3:1: <strong>ngoại lệ WCAG được CĐT duyệt 13/10/2026 — hộp thoại có overlay + shadow</strong>. Chữ trong hộp thoại 14,68. Phạm vi: chỉ nền sau hộp thoại; ngăn kéo hồ sơ dưới 1280px không dùng.</td></tr>
-            <tr><td><code>--shadow-dialog</code> (<strong>đề xuất 13/10/2026 — chờ CĐT duyệt</strong>)</td><td>0 10px 30px rgb(31 41 55 / 15%)</td><td>—</td><td>Mép hộp thoại / nền mờ đo trên ảnh chụp: 2,65–2,80 (không shadow: 2,36). Phạm vi: chỉ hộp thoại (<code>.dialog</code>); không dùng cho ngăn kéo, dropdown, tooltip.</td></tr>
+            <tr><td><code>--overlay</code> (duyệt 13/10/2026)</td><td>rgb(31 41 55 / 40%) — trên nền trắng ra #A5A9AF</td><td><span class="swatch" style="background: var(--overlay)"></span></td><td>Giữ 40%. Riêng nền mờ: hộp thoại trắng / nền mờ 2,36. <strong>approved 13/10/2026 — hộp thoại đạt 3:1 nhờ shadow + hairline (<code>--shadow-dialog</code>), không cần ngoại lệ</strong>. Chữ trong hộp thoại 14,68. Phạm vi: chỉ nền sau hộp thoại; ngăn kéo hồ sơ dưới 1280px không dùng.</td></tr>
+            <tr><td><code>--shadow-dialog</code> (approved 13/10/2026)</td><td>0 0 0 1px rgb(31 41 55 / 20%), 0 10px 30px rgb(31 41 55 / 15%)</td><td>—</td><td>Đạt 3:1 cả 4 cạnh, đo trên ảnh chụp: đáy 3,77 · trái 3,60 · phải 3,60 · trên 3,67 (không shadow: 2,36). Phạm vi: chỉ hộp thoại (<code>.dialog</code>); không dùng cho ngăn kéo, dropdown, tooltip.</td></tr>
           </tbody>
         </table>
         <p class="small muted" style="margin-top: var(--sp-2)">
