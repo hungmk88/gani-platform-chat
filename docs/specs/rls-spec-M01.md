@@ -265,7 +265,7 @@ Chỉ lưu **hash SHA-256** của token mời, không lưu plaintext (chi tiết
 |---|---|
 | PK / tenant key | `id` / `org_id` |
 | Workspace key | `id` chính nó là workspace key của các bảng con |
-| Cột chính | `slug`, `name`, `template` (`b2b_sales` · `b2c_order` · `service`), `timezone`, `default_max_concurrent` (mặc định 5, bổ sung v0.4), `deleted_at` |
+| Cột chính | `slug`, `name`, `template` (`b2b_sales` · `b2c_order` · `service`), `timezone`, `default_max_concurrent` (mặc định 5; Brief v1.0 P14 "Giới hạn tải agent"), `deleted_at` |
 | Ràng buộc | `UNIQUE (org_id, id)` |
 | Index | `UNIQUE (org_id, slug)` |
 | RLS | O, mẫu chuẩn. *(Cố ý chỉ O, không O+W: người dùng cần thấy danh sách workspace để chọn; xem câu hỏi mở N-Workspace trong QUESTIONS.)* |
@@ -345,7 +345,7 @@ Policy dùng mẫu O. Với `platform_access_logs`, `app_role` **không** có qu
 
 Đọc cờ: tìm `overrides` theo workspace trước, rồi `overrides` theo org, rồi `global` (bảng cấu hình 2 lớp, P8).
 
-### 4.11 `agent_settings` — O *(bổ sung v0.4)*
+### 4.11 `agent_settings` — O *(từ Brief v1.0 P14 "Giới hạn tải agent"; tên bảng là của spec này)*
 
 | | |
 |---|---|

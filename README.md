@@ -1,6 +1,6 @@
 # Gani Platform Chat
 
-Nền tảng Chat & AI Chatbot đa tenant cho 5 công ty (Brief v0.4).
+Nền tảng Chat & AI Chatbot đa tenant cho 5 công ty (Brief Backend & Core v1.0, 12/10/2026).
 **Trạng thái:** Sprint 1 (nền móng) đang làm. Mới có khung monorepo, gói `domain` (UUIDv7) và API khung
 với `/healthz`; chưa có chức năng nghiệp vụ.
 
@@ -87,12 +87,13 @@ packages/
   domain/     UUIDv7 (RFC 9562)
   db/ ai-core/ channels/ ui/ testing/    mới là khung rỗng
 infra/docker/ docker-compose cho dev (PostgreSQL 16 + pgvector, Valkey, Mailpit)
-docs/         Brief v0.4, phụ lục kỹ thuật, ADR, đặc tả RLS
+docs/         Brief v1.0 (v0.4 giữ làm lịch sử), phụ lục kỹ thuật, ADR, đặc tả RLS
 prompts/ evals/                         quy ước (chưa có nội dung)
 ```
 
 ## Đọc trước khi làm việc
 
 - `CLAUDE.md`: quy tắc cốt lõi (và `CLAUDE.md` trong từng thư mục con).
-- `docs/implementation-brief.md`: Brief v0.4; hồ sơ gốc và phụ lục thắng khi mâu thuẫn.
+- `docs/brief-backend-core-v1.0.md`: Brief hiện hành; hồ sơ gốc và phụ lục thắng khi mâu thuẫn.
+- `docs/implementation-brief.md`: Brief v0.4, **đã thay thế**, giữ làm lịch sử (hồ sơ cho luật sư); không dùng làm nguồn mới.
 - `QUESTIONS.md`: chỗ chưa chốt. Gặp chỗ chưa rõ thì ghi vào đây, không tự đoán.
