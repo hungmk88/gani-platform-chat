@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prototype Đợt 1 — Mục lục</title>
+    <link rel="stylesheet" href="assets/tokens.css" />
+    <link rel="stylesheet" href="assets/base.css" />
+    <style>
+      .doc {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: var(--sp-6) var(--sp-4);
+      }
+      .doc section {
+        margin-top: var(--sp-6);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: var(--sp-3);
+      }
+      .grid ul {
+        margin: var(--sp-2) 0 0;
+        padding-left: var(--sp-4);
+      }
+      .swatch {
+        display: inline-block;
+        width: 24px;
+        height: 16px;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--r-input);
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="doc stack">
+      <div class="banner warn" style="border-radius: var(--r-card)">
+        PROTOTYPE — không phải sản phẩm. Dữ liệu và tên người là giả. Không kết nối máy chủ.
+      </div>
+      <h1>Prototype HTML — 4 màn Đợt 1</h1>
+      <p class="muted">
+        Theo dàn ý đã duyệt (<code>docs/ui/prototype-outline-dot1.md</code>). Mở file này bằng trình duyệt, không cần cài
+        đặt. Thanh đen trên cùng mỗi màn dùng để đổi <strong>trạng thái</strong>, <strong>vai trò</strong>,
+        <strong>biến thể</strong> và đếm click. Mọi link dưới đây mở đúng một khung (frame) để đưa vào biên bản duyệt.
+      </p>
+
+      <section>
+        <h2>1. Bốn màn và các khung</h2>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="inbox.html?role=sales">Hộp thư</a></h3>
+            <ul>
+              <li><a href="inbox.html?role=sales">Bình thường (Sales)</a></li>
+              <li><a href="inbox.html?role=sales&state=loading">Đang tải</a></li>
+              <li><a href="inbox.html?role=sales&state=empty">Trống — Sales</a></li>
+              <li><a href="inbox.html?role=admin&state=empty">Trống — Admin</a></li>
+              <li><a href="inbox.html?role=sales&state=error">Lỗi</a></li>
+              <li><a href="inbox.html?role=manager&state=aioff">AI tắt (Manager thấy dải báo)</a></li>
+              <li><a href="inbox.html?role=sales&state=aioff">AI tắt (Sales không thấy dải báo)</a></li>
+              <li><a href="inbox.html?role=sales&state=api_closed">Hết khung gửi Zalo</a></li>
+              <li><a href="inbox.html?role=sales&state=paid_only">Ngoài khung miễn phí</a></li>
+              <li><a href="inbox.html?role=sales&state=send_failed">Tin gửi lỗi (gửi một tin để xem)</a></li>
+              <li><a href="inbox.html?role=sales&state=claimed">"Đã được [tên] nhận" (bấm Nhận)</a></li>
+              <li><a href="inbox.html?role=sales&state=overload">Vượt giới hạn tải 5/5</a></li>
+              <li><a href="inbox.html?role=sales&transfer=A">Chuyển — biến thể A</a></li>
+              <li><a href="inbox.html?role=sales&transfer=B">Chuyển — biến thể B</a></li>
+              <li><a href="inbox.html?role=sales&o7=no">O7: kênh không hỗ trợ đã xem/thu hồi</a></li>
+              <li><a href="inbox.html?role=viewer">Viewer: không có Hộp thư</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="customer.html?role=sales">Hồ sơ khách</a></h3>
+            <ul>
+              <li><a href="customer.html?role=sales">Bình thường (Sales)</a></li>
+              <li><a href="customer.html?role=sales&state=loading">Đang tải</a></li>
+              <li><a href="customer.html?role=sales&state=empty">Trống</a></li>
+              <li><a href="customer.html?role=sales&state=error">Lỗi</a></li>
+              <li><a href="customer.html?role=sales&state=aioff">AI tắt — Không áp dụng AI</a></li>
+              <li><a href="customer.html?role=marketing">SĐT bị che (Marketing)</a></li>
+              <li><a href="customer.html?role=viewer">SĐT bị che (Viewer)</a></li>
+              <li><a href="customer.html?role=sales&state=merge_suggestion">Đề xuất gộp — Sales xác nhận</a></li>
+              <li><a href="customer.html?role=support&state=merge_suggestion">Đề xuất gộp — Support chỉ xem</a></li>
+              <li><a href="customer.html?role=manager&state=merge">Màn gộp 2 hồ sơ</a></li>
+              <li><a href="customer.html?role=sales&state=human_only">Cờ "Chỉ người phục vụ"</a></li>
+              <li><a href="customer.html?role=admin">Admin: tách hồ sơ đã gộp</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="leads.html?role=sales">Pipeline lead</a></h3>
+            <ul>
+              <li><a href="leads.html?role=sales">Bình thường — biến thể A (bộ lọc)</a></li>
+              <li><a href="leads.html?role=sales&terminal=B">Biến thể B (cột phụ Thắng/Thua)</a></li>
+              <li><a href="leads.html?role=sales&state=loading">Đang tải</a></li>
+              <li><a href="leads.html?role=sales&state=empty">Trống</a></li>
+              <li><a href="leads.html?role=sales&state=error">Lỗi</a></li>
+              <li><a href="leads.html?role=sales&state=aioff">AI tắt — Không áp dụng AI</a></li>
+              <li><a href="leads.html?role=sales&state=many">Cột nhiều thẻ (cuộn)</a></li>
+              <li><a href="leads.html?role=sales&state=saving">Đang lưu</a></li>
+              <li><a href="leads.html?role=sales&state=save_error">Lưu lỗi khi kéo (kéo một thẻ)</a></li>
+              <li><a href="leads.html?role=support">Support: chỉ xem</a></li>
+            </ul>
+            <p class="small muted">Lý do Thua: kéo thẻ vào "Thua" hoặc chọn "Thua…" ở ô Chuyển tới.</p>
+          </div>
+          <div class="card">
+            <h3><a href="bots.html?role=admin">Trình dựng bot (form)</a></h3>
+            <ul>
+              <li><a href="bots.html?role=admin">Bình thường</a></li>
+              <li><a href="bots.html?role=admin&state=loading">Đang tải</a></li>
+              <li><a href="bots.html?role=admin&state=empty">Trống</a></li>
+              <li><a href="bots.html?role=admin&state=error">Lỗi</a></li>
+              <li><a href="bots.html?role=admin&state=aioff">AI tắt — Không áp dụng AI</a></li>
+              <li><a href="bots.html?role=admin&state=config_error">Lỗi cấu hình node</a></li>
+              <li><a href="bots.html?role=admin&state=missing_greeting">Chặn xuất bản: thiếu câu chào</a></li>
+              <li><a href="bots.html?role=admin&state=published_view">Xem bản đã xuất bản</a></li>
+              <li><a href="bots.html?role=sales">Sales: không có quyền</a></li>
+            </ul>
+            <p class="small muted">Chạy thử: chọn kịch bản "Tool lỗi" để xem nhánh lỗi (D15).</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>2. Token (CĐT đã duyệt)</h2>
+        <table class="plain" style="margin-top: var(--sp-3)">
+          <thead>
+            <tr><th>Token</th><th>Giá trị</th><th>Mẫu</th><th>Tương phản (WCAG 2.1)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>--text</code> trên <code>--bg</code></td><td>#1F2937 / #FFFFFF</td><td><span class="swatch" style="background: var(--text)"></span></td><td>14,68</td></tr>
+            <tr><td><code>--text-muted</code></td><td>#4B5563</td><td><span class="swatch" style="background: var(--text-muted)"></span></td><td>7,56 (trên subtle 6,87)</td></tr>
+            <tr><td><code>--accent</code> / <code>--accent-on</code></td><td>#1D4ED8 / #FFFFFF</td><td><span class="swatch" style="background: var(--accent)"></span></td><td>6,70</td></tr>
+            <tr><td><code>--ok-*</code></td><td>#DCFCE7 / #166534</td><td><span class="swatch" style="background: var(--ok-bg)"></span></td><td>6,49</td></tr>
+            <tr><td><code>--warn-*</code></td><td>#FEF3C7 / #854D0E</td><td><span class="swatch" style="background: var(--warn-bg)"></span></td><td>6,15</td></tr>
+            <tr><td><code>--error-*</code></td><td>#FEE2E2 / #991B1B</td><td><span class="swatch" style="background: var(--error-bg)"></span></td><td>6,80</td></tr>
+            <tr><td><code>--color-note</code></td><td>#FEF9C3 / #1F2937</td><td><span class="swatch" style="background: var(--color-note)"></span></td><td>13,67</td></tr>
+            <tr><td><code>--border-strong</code></td><td>#6B7280</td><td><span class="swatch" style="background: var(--border-strong)"></span></td><td>4,83 (viền, ngưỡng 3:1)</td></tr>
+            <tr><td>Cỡ chữ</td><td colspan="3">12 / 14 / 16 / 20 px — Admin 14</td></tr>
+            <tr><td>Khoảng cách</td><td colspan="3">4, 8, 12, 16, 24, 32, 40, 48 px</td></tr>
+            <tr><td>Bo góc · chuyển động</td><td colspan="3">4 / 8 / 12 px · 150 ms (tối đa 200 ms)</td></tr>
+            <tr><td><code>--overlay</code> (duyệt 13/10/2026)</td><td>rgb(31 41 55 / 40%) — trên nền trắng ra #A5A9AF</td><td><span class="swatch" style="background: var(--overlay)"></span></td><td>Giữ 40%. Riêng nền mờ: hộp thoại trắng / nền mờ 2,36. <strong>approved 13/10/2026 — hộp thoại đạt 3:1 nhờ shadow + hairline (<code>--shadow-dialog</code>), không cần ngoại lệ</strong>. Chữ trong hộp thoại 14,68. Phạm vi: chỉ nền sau hộp thoại; ngăn kéo hồ sơ dưới 1280px không dùng.</td></tr>
+            <tr><td><code>--shadow-dialog</code> (approved 13/10/2026)</td><td>0 0 0 1px rgb(31 41 55 / 20%), 0 10px 30px rgb(31 41 55 / 15%)</td><td>—</td><td>Đạt 3:1 cả 4 cạnh, đo trên ảnh chụp: đáy 3,77 · trái 3,60 · phải 3,60 · trên 3,67 (không shadow: 2,36). Phạm vi: chỉ hộp thoại (<code>.dialog</code>); không dùng cho ngăn kéo, dropdown, tooltip.</td></tr>
+          </tbody>
+        </table>
+        <p class="small muted" style="margin-top: var(--sp-2)">
+          Vòng quay "Đang xử lý" là vòng lặp 800 ms, không phải chuyển cảnh; tắt khi người dùng bật giảm chuyển động. Font
+          hệ thống thay Inter (P4).
+        </p>
+      </section>
+
+      <section>
+        <h2>3. Đếm click — 4 thao tác chính (Hộp thư)</h2>
+        <p class="muted">
+          Ngưỡng ≤ 2 click hoặc 1 phím. Theo M5, bước phụ trong hộp thoại tính 1 click của hộp thoại. Dùng bộ đếm trên thanh
+          đen để kiểm lại trên prototype.
+        </p>
+        <table class="plain" style="margin-top: var(--sp-3)">
+          <thead>
+            <tr><th>Thao tác</th><th>Bằng chuột</th><th>Theo M5</th><th>Phím</th><th>Thao tác thật</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Nhận</td><td>"Nhận"</td><td>1</td><td><span class="kbd">A</span></td><td>1</td></tr>
+            <tr><td>Trả lời</td><td>Bấm ô soạn, gõ, Enter</td><td>1 + gõ</td><td><span class="kbd">R</span>, gõ, Enter</td><td>1 + gõ</td></tr>
+            <tr><td>Chuyển — A</td><td>"Chuyển" → chip người nhận (lý do chọn sẵn)</td><td>2</td><td><span class="kbd">T</span>, Tab, Enter</td><td>2</td></tr>
+            <tr><td>Chuyển — B</td><td>"Chuyển" → tìm → chọn → lý do → "Xác nhận"</td><td>2</td><td><span class="kbd">T</span>, gõ, chọn, lý do, Enter</td><td>3 + gõ</td></tr>
+            <tr><td>Đóng</td><td>"Đóng" → bấm kết quả</td><td>2</td><td><span class="kbd">E</span>, Tab, Enter</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>4. Đối chiếu mã tính năng</h2>
+        <table class="plain" style="margin-top: var(--sp-3)">
+          <thead>
+            <tr><th>Màn</th><th>Mã thể hiện</th><th>Chờ</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Hộp thư</td><td>B3, C1, C2, C3, C4, C5, C6, C7, C8, C10, C11, C20, E1, L1, J1–J6 (cột phải), G1 và I1 (tạo lead/ticket)</td><td>M8 (C7 quản lý mẫu, C8, C9, C10), Q7, O7</td></tr>
+            <tr><td>Hồ sơ khách</td><td>J1, J2, J3, J4, J6, G1, I1, I2, C6, §12 nhãn xác thực, §28 cờ</td><td>M8 (J1, J4), O2 (loại ticket)</td></tr>
+            <tr><td>Pipeline lead</td><td>G1, G2, G3</td><td>O1 (tên 6 bước, lý do Thua)</td></tr>
+            <tr><td>Trình dựng bot</td><td>D1 (form), D2, D3, D4, D6, D15</td><td>M8 + Q7 (giờ làm việc, D4)</td></tr>
+          </tbody>
+        </table>
+        <p class="small muted" style="margin-top: var(--sp-2)">
+          Nhãn khung nét đứt "chờ …" trên màn là giá trị tạm, chưa chốt. Trích dẫn tin (C24) là Đợt 2, chỉ vẽ để chốt O7.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Bảo mật giao diện thể hiện trên prototype</h2>
+        <ul>
+          <li>T2: hội thoại "Phạm Hoa" chứa <code>&lt;script&gt;</code> và <code>&lt;img onerror&gt;</code>, hiện đúng chuỗi ký tự, không chạy.</li>
+          <li>T1: đổi workspace ở menu trái báo xóa cache và ngắt realtime (prototype chỉ mô phỏng thông báo).</li>
+          <li>Nhận, chuyển, đóng, gộp, xuất bản, đổi bước lead: chờ máy chủ, khóa nút. Gửi tin, tag, ghi chú: hiện ngay.</li>
+          <li>Bản nháp: prototype giữ trong bộ nhớ trang; app thật lưu máy chủ, không localStorage.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
