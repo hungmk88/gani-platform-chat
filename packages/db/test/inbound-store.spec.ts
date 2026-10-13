@@ -149,11 +149,55 @@ describe('insertIfAbsent', () => {
   it('says duplicate across a month boundary, which a unique key of the partitioned table could not', async () => {
     await clear();
     const platformMessageId = 'm-month';
-    const a = newEvent({ platformMessageId, receivedAt: new Date('2001-02-15T00:00:00Z') });
-    const b = newEvent({ platformMessageId, receivedAt: new Date('2001-03-15T00:00:00Z') });
+    const a = newEvent({ platformMessageId });
+    const b = newEvent({ platformMessageId });
     expect(await inA((tx) => insertIfAbsent(tx, a))).toBe('inserted');
+    // The time of receipt is the database's, so the first event is put in another month by the admin role (as the retention job
+    // will find it): the row moves to another partition, and the key table does not look at partitions.
+    await admin.query(
+      "UPDATE inbound_events SET received_at = '2001-02-15T00:00:00Z' WHERE id = $1",
+      [a.id],
+    );
     expect(await inA((tx) => insertIfAbsent(tx, b))).toBe('duplicate');
     expect(await count('inbound_events', platformMessageId)).toBe(1);
+    expect(await count('inbound_event_keys', platformMessageId)).toBe(1);
+  });
+
+  it('sets received_at to the now() of the database, in the partition of the current month (F-02, N123)', async () => {
+    await clear();
+    const e = newEvent();
+    expect(await inA((tx) => insertIfAbsent(tx, e))).toBe('inserted');
+    const { rows } = await admin.query<{ recent: boolean; part: string }>(
+      `SELECT received_at <= now() AND received_at > now() - interval '1 minute' AS recent, tableoid::regclass::text AS part
+       FROM inbound_events WHERE id = $1`,
+      [e.id],
+    );
+    expect(rows[0]?.recent).toBe(true);
+    expect(rows[0]?.part).toMatch(/^inbound_events_y\d{4}m\d{2}$/);
+  });
+
+  it('refuses a receivedAt that got past the types, before the key, and writes neither the event nor the key', async () => {
+    await clear();
+    const e = {
+      ...newEvent(),
+      receivedAt: new Date('2001-01-01T00:00:00Z'),
+    } as unknown as NewInboundEvent;
+    const error = await inA((tx) => insertIfAbsent(tx, e)).catch((x: unknown) => x);
+    expect(error).toBeInstanceOf(TypeError);
+    expect((error as Error).message).toContain('"receivedAt"');
+    expect((error as Error).message).toContain('N123');
+    expect((error as Error).message).not.toContain('2001');
+    expect(await count('inbound_events', e.platformMessageId)).toBe(0);
+    expect(await count('inbound_event_keys', e.platformMessageId)).toBe(0);
+  });
+
+  it('does not let the type carry a receivedAt: this line stops compiling if the field comes back (N123)', () => {
+    const withTime: NewInboundEvent = {
+      ...newEvent(),
+      // @ts-expect-error receivedAt is not a field of NewInboundEvent: the database sets received_at (N123)
+      receivedAt: new Date(),
+    };
+    expect(withTime.id).toBeTruthy();
   });
 
   it('takes the key back with the event when the event is refused (an account of another workspace)', async () => {

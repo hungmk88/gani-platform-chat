@@ -21,7 +21,7 @@ Bảng nghiệp vụ, RLS theo org (**O**), **partition theo tháng** (`received
 | `platform_message_id` | id sự kiện/tin do nền tảng cấp (text) |
 | `event_type` | như nền tảng gửi (chưa xác minh tên, `zalo-channel-spec.md` §7 Z-e) |
 | `payload` | thân sự kiện (jsonb) để xử lý lại và điều tra. **jsonb không giữ byte gốc** (thứ tự khóa, khoảng trắng): chữ ký kiểm trên thân thô ở ingress trước khi ghi; nếu cần xử lý lại hay kiểm lại chữ ký từ byte gốc thì thêm cột `raw bytea` nullable bằng migration expand (N104). Không CHECK kiểu JSON (sự kiện đã qua chữ ký mà bị bảng từ chối thì mất tin) |
-| `received_at` | thời điểm nhận, khóa partition (không có `created_at`: trùng nghĩa, N104) |
+| `received_at` | thời điểm nhận, khóa partition (không có `created_at`: trùng nghĩa, N104). **Do DB đặt bằng `now()`**; `insertIfAbsent` không nhận giờ và từ chối `receivedAt` (N123) |
 | `status` | `pending` · `claimed` · `processed` · `ignored` · `dead_letter` |
 | `attempts`, `available_at`, `claimed_at`, `processed_at` | như `outbox_events`; `available_at` là mốc thử lại (backoff) |
 | `last_error` | **mã** (≤ 64 ký tự), không thông điệp: mã lỗi của lần thất bại gần nhất **hoặc mã lý do** của sự kiện `ignored` (bắt buộc có khi `ignored`) |
