@@ -52,20 +52,28 @@ export interface NewInboundEvent {
   readonly eventType: string;
   /** The body of the event. It holds what the customer wrote: PII. */
   readonly payload: Record<string, unknown>;
-  /** When it was received. Absent: the database's `now()`. */
-  readonly receivedAt?: Date;
+  // No `receivedAt`: the database sets `received_at = now()`. It is the partition key and the clock of the retention, so a time
+  // that comes from the caller (the platform's, say) could put the row out of every partition (review F-02, N123).
 }
 
 /**
  * Records an event once. The key goes first, with `ON CONFLICT DO NOTHING`: no row inserted means the platform sent it again, and the
  * event is NOT written (`'duplicate'`). Otherwise the event is written in the same transaction (`'inserted'`), so if that fails the key
  * goes with it. A second webhook for the same key waits for the first to commit, then sees the duplicate. The key table is what stops
- * duplicates; `inbound_events` cannot, as it is partitioned by month (I1).
+ * duplicates; `inbound_events` cannot, as it is partitioned by month (I1). The time of receipt is the database's: an event that carries a
+ * `receivedAt` (it got past the types) is refused with `TypeError` before anything is written, so no key is left without its event.
  */
 export async function insertIfAbsent(
   tx: TenantTx,
   event: NewInboundEvent,
 ): Promise<'inserted' | 'duplicate'> {
+  // A time that came from the caller is refused first, before the key: the error does not repeat the value (it is a time, not PII,
+  // but the rule is the same as for the error codes).
+  if ('receivedAt' in event) {
+    throw new TypeError(
+      'NewInboundEvent must not contain "receivedAt" (the DB sets received_at = now(); see N123)',
+    );
+  }
   const { orgId } = currentTenantContext();
   const key = await tx
     .insert(inboundEventKeys)
@@ -77,7 +85,16 @@ export async function insertIfAbsent(
     .onConflictDoNothing()
     .returning({ platformMessageId: inboundEventKeys.platformMessageId });
   if (key.length === 0) return 'duplicate';
-  await tx.insert(inboundEvents).values({ ...event, orgId });
+  // Field by field, so a field that is not in the type is not passed on to the table.
+  await tx.insert(inboundEvents).values({
+    id: event.id,
+    orgId,
+    workspaceId: event.workspaceId,
+    channelAccountId: event.channelAccountId,
+    platformMessageId: event.platformMessageId,
+    eventType: event.eventType,
+    payload: event.payload,
+  });
   return 'inserted';
 }
 
