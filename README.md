@@ -1,8 +1,9 @@
 # Gani Platform Chat
 
 Nền tảng Chat & AI Chatbot đa tenant cho 5 công ty (Brief Backend & Core v1.0, 12/10/2026).
-**Trạng thái:** Sprint 1 (nền móng) đang làm. Mới có khung monorepo, gói `domain` (UUIDv7) và API khung
-với `/healthz`; chưa có chức năng nghiệp vụ.
+**Trạng thái (13/10/2026):** M1.1 (nền, tenant, RLS, xác thực) và M1.2 (hội thoại, FSM, outbox, worker) đã xong;
+M1.3 (inbound) xong phần cơ sở dữ liệu và kho, còn webhook và bộ xử lý (PR6). Chưa có AI, giao diện (`admin`, `widget`)
+và kênh Zalo chạy thật. Tổng hợp rà soát mã: `docs/reviews/00-summary.md`.
 
 ## Yêu cầu
 
@@ -49,7 +50,7 @@ pnpm format:check
 
 CI (`.github/workflows/ci.yml`) chạy đúng các lệnh trên, thêm `pnpm audit --audit-level=high` và quét secret
 bằng `gitleaks` trên toàn bộ lịch sử, và kiểm migration (`pnpm --filter @gani/db lint:migrations`: RLS, UUIDv4,
-CASCADE, `SECURITY DEFINER`, khối `-- rollback:`, tên file). Quy tắc PR: ≤ 400 dòng, Conventional Commits, không commit `.env` hay file do công cụ
+CASCADE, `SECURITY DEFINER`, khối `-- rollback:`, tên file). Quy tắc PR: ≤ 400 dòng (mục tiêu; vượt thì báo trước, xem `CLAUDE.md`), Conventional Commits, không commit `.env` hay file do công cụ
 tự sinh ở thư mục gốc.
 
 ## Cơ sở dữ liệu (dev)
@@ -80,14 +81,16 @@ chạy, kiểm tra: `where.exe sh`. Nếu không có thì dùng Git Bash để c
 
 ```
 apps/
-  api/        NestJS (ESM): HTTP API, hiện có /healthz
-  worker/ admin/ widget/        mới là khung rỗng
+  api/        NestJS (ESM): HTTP API; module auth, hội thoại, bối cảnh tenant; /healthz, /readyz
+  worker/     Node thuần: outbox relay (BullMQ), bảo trì partition; chưa có bộ xử lý inbound
+  admin/ widget/        mới là khung rỗng
 packages/
   config/     tsconfig, ESLint, Prettier, cấu hình Vitest dùng chung
-  domain/     UUIDv7 (RFC 9562)
-  db/ ai-core/ channels/ ui/ testing/    mới là khung rỗng
+  domain/     UUIDv7 (RFC 9562), FSM hội thoại thuần (`decide`, bảng chuyển trạng thái)
+  db/         schema Drizzle, migration (RLS, partition), kho (outbox, inbound, tin nhắn), lint migration
+  ai-core/ channels/ ui/ testing/    mới là khung rỗng
 infra/docker/ docker-compose cho dev (PostgreSQL 16 + pgvector, Valkey, Mailpit)
-docs/         Brief v1.0 (v0.4 giữ làm lịch sử), phụ lục kỹ thuật, ADR, đặc tả RLS
+docs/         Brief v1.0 (v0.4 giữ làm lịch sử), phụ lục kỹ thuật, ADR, đặc tả (`specs/`), rà soát mã (`reviews/`)
 prompts/ evals/                         quy ước (chưa có nội dung)
 ```
 
@@ -96,4 +99,5 @@ prompts/ evals/                         quy ước (chưa có nội dung)
 - `CLAUDE.md`: quy tắc cốt lõi (và `CLAUDE.md` trong từng thư mục con).
 - `docs/brief-backend-core-v1.0.md`: Brief hiện hành; hồ sơ gốc và phụ lục thắng khi mâu thuẫn.
 - `docs/implementation-brief.md`: Brief v0.4, **đã thay thế**, giữ làm lịch sử (hồ sơ cho luật sư); không dùng làm nguồn mới.
+- `docs/reviews/00-summary.md`: tổng hợp rà soát mã M1.1–M1.3 (phát hiện, trạng thái, N-số).
 - `QUESTIONS.md`: chỗ chưa chốt. Gặp chỗ chưa rõ thì ghi vào đây, không tự đoán.

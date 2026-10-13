@@ -1,7 +1,8 @@
 # Gani Foods Platform — Quy tắc cốt lõi
 
 Nền tảng Chat & AI Chatbot đa tenant cho 5 công ty.
-Đọc `docs/implementation-brief.md` (Brief v0.4) trước khi làm bất cứ việc gì.
+Đọc `docs/brief-backend-core-v1.0.md` (Brief Backend & Core v1.0) trước khi làm bất cứ việc gì.
+`docs/implementation-brief.md` (v0.4) đã bị thay thế, chỉ giữ làm lịch sử.
 Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 
 ## CÁCH LÀM VIỆC (bắt buộc)
@@ -9,12 +10,12 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 1. Mọi yêu cầu code → **vào Plan Mode trước** (Shift+Tab ×2).
    Đọc code, hiểu ngữ cảnh, trình phương án. KHÔNG code ở lượt đầu.
 2. Chờ tôi duyệt phương án rồi mới code.
-3. Chia PR ≤ 400 dòng. Trunk-based. Conventional Commits.
+3. Chia PR ≤ 400 dòng (mục tiêu, xem "KÍCH THƯỚC PR"). Trunk-based. Conventional Commits.
 4. Gặp chỗ chưa chốt trong Brief → ghi vào `QUESTIONS.md`, KHÔNG tự đoán.
 
 ## GIT WORKFLOW
 
-### Từ PR3 trở đi
+### Nhánh và PR
 
 - Mỗi PR làm trên branch riêng:
   - `feat/<mô-tả>`, `fix/<mô-tả>`, `chore/<mô-tả>`, `docs/<mô-tả>`, `test/<mô-tả>`
@@ -38,10 +39,14 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ để lại file thuộc PR này
 (không `.env`, không file do công cụ tự sinh ở root).
 
-### Trước PR3 (PR1b, PR2)
+## KÍCH THƯỚC PR
 
-- Anh commit thủ công.
-- Em KHÔNG tự commit, không tự push.
+- **≤ 400 dòng là mục tiêu, không phải trần cứng** (không tính file sinh tự động). Mỗi file ≤ 500 dòng.
+- Vượt 400: **báo trước khi push**, kèm số dòng, lý do không tách được và phương án tách. Anh quyết giữ hay tách.
+  Đã có ca được chấp nhận ở 454–464 dòng vì tách ra làm mất tính nguyên tử.
+- Tách theo ranh giới nghiệp vụ: mỗi PR đứng một mình và CI xanh; không cắt đôi một thay đổi cho vừa số dòng.
+- PR báo cáo rà soát (docs): mỗi file ≤ 400 dòng, cả PR ≤ 450.
+- Nguồn: N126 trong `QUESTIONS.md`.
 
 ## 5 QUY TẮC KHÔNG THỂ THỎA HIỆP
 
@@ -106,11 +111,8 @@ Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ đ�
 
 Nhấn `#` để thêm quy tắc vào file này.
 Đây là cách duy nhất để không lặp lại lỗi cũ.
-# CLAUDE.md — 2 bài học (bản ngắn gọn)
 
----
-
-## Bảo mật tài liệu
+## BẢO MẬT TÀI LIỆU
 
 **Không bao giờ ghi giá trị thật của secret vào `.md`, `.txt`, spec, note, commit message, PR description.**
 
@@ -125,7 +127,7 @@ Nhấn `#` để thêm quy tắc vào file này.
 ### Cách viết đúng
 
 ```markdown
-❌ DATABASE_URL_APP=postgresql://app_role:app_password_123@host/db
+❌ DATABASE_URL_APP=postgresql://app_role:xxxx@host/db   # mật khẩu viết thẳng vào tài liệu
 ✅ DATABASE_URL_APP=<đặt ở .env.test>
 ✅ Connection: xem `.env.test` (đã trong .gitignore)
 ```
@@ -133,7 +135,7 @@ Nhấn `#` để thêm quy tắc vào file này.
 ### Scan trước khi push
 
 ```powershell
-git grep -i -E "npg_|sk-|sk-ant-|AIza|AKIA|ghp_|password_"
+git grep -i -E "npg_|sk-|sk-ant-|AIza|AKIA|ghp_|PASSWORD="
 Get-ChildItem -Recurse -File -Exclude "*.git*","node_modules" |
   Select-String -Pattern "npg_|sk-|sk-ant-|AIza|AKIA|ghp_"
 ```
@@ -154,9 +156,7 @@ Có kết quả → **DỪNG**.
 - Trước paste tài liệu cho AI khác: đọc lại
 - Trước push public: scan
 
----
-
-## Kiểm tra lệnh — không pipe che exit code
+## KIỂM TRA LỆNH — KHÔNG PIPE CHE EXIT CODE
 
 **Exit code của pipeline = exit code của command CUỐI.**
 
@@ -198,29 +198,6 @@ pnpm test; echo "exit=$LASTEXITCODE"
 | pnpm --filter @gani/api test | 1 | SWC lỗi (N42) — giới hạn local |
 ```
 
-### Lịch sử
+## LỊCH SỬ
 
-| Ngày | Sự kiện |
-|------|---------|
-| 12/10/2026 | `pnpm test \| grep` che exit → báo xanh khi coverage đỏ |
-| 12/10/2026 | `pnpm lint \| tail -1` che lỗi eslint |
-
----
-
-## Cách apply
-
-Append 2 phần trên vào cuối `CLAUDE.md` → commit:
-
-```powershell
-git checkout -b docs/claude-md-rules
-git add CLAUDE.md
-git commit -m "docs(claude): add document security and pipe exit code rules"
-git push -u origin docs/claude-md-rules
-```
-
-Mở PR từ `6b829c1`, title:
-`docs(claude): add document security and pipe exit code rules`
-
-~60 dòng. Không gộp với PM-2b.
-
-
+Nhật ký thay đổi quy tắc: `docs/claude-changelog.md`.

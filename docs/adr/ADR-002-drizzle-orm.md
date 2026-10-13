@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | Chấp nhận (Q4, cố vấn đồng ý) · chờ review PR0 |
+| Trạng thái | Chấp nhận (Q4, cố vấn đồng ý) · đã áp dụng trong repo (`packages/db`) |
 | Ngày | 03/10/2026 |
 | Nguồn | Brief P16, P22-Q4 |
 

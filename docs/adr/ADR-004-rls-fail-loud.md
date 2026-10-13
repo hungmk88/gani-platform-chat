@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | Chấp nhận (Brief P16 "3 role DB" đã chốt); chi tiết cài đặt chờ cố vấn duyệt |
+| Trạng thái | Chấp nhận (Brief P16 "3 role DB" đã chốt) · đã cài (migration, `rls-all-tables.spec`); duyệt chi tiết cài đặt của cố vấn chưa ghi nhận trong repo (review G-03) |
 | Ngày | 03/10/2026 |
 | Nguồn | Brief P16, P3.2 mục 2; Phụ lục v2.1 §2, v2.3 §20 |
 
@@ -41,10 +41,25 @@ Lý do dùng hàm: sau khi một transaction đã `SET LOCAL`, biến trở thà
 `app_role`, `migration_role`, `support_role` theo Brief P16. Đề xuất thêm `auth_role` — **lệch Brief có chủ đích, cần cố vấn duyệt** (xem spec §3).
 
 ## `SECURITY DEFINER`: danh sách đóng
-Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Ở S1 chỉ cho phép đúng các đối tượng sau (đều theo spec §3.6):
-- `app.support_access_ok()`, `app.memberships_for_user()`, `app.lookup_invite()`, `app.accept_invite()`.
-- View `app.org_users` (chạy bằng quyền owner, cùng mức rủi ro).
-Thêm đối tượng thứ sáu phải qua cố vấn duyệt.
+Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm thêm phải có dòng trong bảng dưới và một N-số trong `QUESTIONS.md`.
+
+**Cho phép ở S1 (spec §3.6):**
+- `app.support_access_ok()`, `app.memberships_for_user()`: đã tạo.
+- `app.lookup_invite()`, `app.accept_invite()`: **chưa tạo**, chờ PR7 (`rls-spec-M01.md` §3.6, §3.7).
+- View `app.org_users` (chạy bằng quyền owner, cùng mức rủi ro): đã tạo.
+
+**Đã thêm sau S1** (13/10/2026: 8 hàm `SECURITY DEFINER` có trong migration; hai hàm đầu ở trên, sáu hàm dưới đây; xác nhận của cố vấn cho từng hàm chưa ghi nhận trong repo, review G-01):
+
+| Hàm | Migration | N |
+|---|---|---|
+| `app.outbox_pending_orgs` | `202610061300` | N94 |
+| `app.purge_inbound_event_keys` | `202610071220` | N104 |
+| `app.channel_account_for_webhook` | `202610071300` | N101, N105 |
+| `app.inbound_pending_orgs` | `202610071320` | N104 |
+| `app.ensure_log_partitions` | `202610121500` | N110 |
+| `app.log_default_partition_rows` | `202610131000` | N110 |
+
+Chưa có test hay lint so tập hàm thật với bảng này (`MIG-DEFINER` chỉ kiểm `search_path`): việc còn mở, N125.
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 
