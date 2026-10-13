@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **NHÁP — chờ cố vấn kỹ thuật duyệt** (điều kiện mở PR1; Brief P22 "Điều kiện duyệt") |
+| Trạng thái | **ĐÃ CÀI MỘT PHẦN (M1.1; `lookup_invite`, `accept_invite` chờ PR7); xác nhận của cố vấn kỹ thuật chưa ghi nhận trong repo** (trước đây NHÁP, điều kiện mở PR1; Brief P22 "Điều kiện duyệt"; review G-03) |
 | Nguồn | Brief P3.2 (mục 1, 2, 10, 20), P8, P16, P17; Phụ lục v2.1 §1–2, §10; v2.3 §20 |
 | Quyết định liên quan | ADR-002 (Drizzle), ADR-003 (Better Auth), ADR-004 (fail-loud) |
 | Ngày | 03/10/2026 |

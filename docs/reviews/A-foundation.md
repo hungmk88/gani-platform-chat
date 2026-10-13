@@ -1,5 +1,7 @@
 # Code Review — Nhóm A: Nền móng (config, domain, kết nối DB, CI, kho mã)
 
+> ⚠️ Cập nhật 13/10/2026: lệnh `git grep` ở dòng 116 dùng pathspec không hiệu lực (kết luận vẫn đúng). Xem `G-docs.md` G-08.
+
 - **Mốc code:** `main` = `a443721` (M1.3 PR4b-1). PR4b-2a (`efce039`) và mọi thứ sau đó **ngoài mốc**.
 - **Ngày rà soát:** 12/10/2026. **Người rà soát:** Claude (chính tác giả phần lớn mã, xem mục "Giới hạn").
 - **Phạm vi:** `packages/config/*`, `packages/domain/src/*`, `packages/db/src/{pool,tenant-context,tenant-tx,validate,auth-tx,auth-db,member-context}.ts`, `infra/*`, `.github/workflows/ci.yml`, `.githooks/*`, `turbo.json`, `package.json` gốc, `.gitignore`, `.env.example`, `pnpm-lock.yaml`.

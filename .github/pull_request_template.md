@@ -4,7 +4,7 @@
 
 ### Code Quality
 - [ ] Đã vào Plan Mode trước khi code, phương án đã được duyệt
-- [ ] PR ≤ 400 dòng (không tính file sinh tự động)
+- [ ] PR ≤ 400 dòng (mục tiêu; vượt thì đã báo trước, xem `CLAUDE.md` "KÍCH THƯỚC PR"; không tính file sinh tự động)
 - [ ] `pnpm test && pnpm lint && pnpm typecheck` **pass**
 - [ ] Không có `any` trong `src/modules/*` (nếu là API)
 - [ ] Không log PII, chỉ log `messageId`, `traceId`, `orgId`

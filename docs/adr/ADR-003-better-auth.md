@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | Chấp nhận có điều kiện (Q5) · chờ review PR0 và cố vấn duyệt `auth_role` |
+| Trạng thái | Chấp nhận có điều kiện (Q5) · đã áp dụng (Better Auth 1.7.7, `auth_role`); duyệt `auth_role` của cố vấn chưa ghi nhận trong repo (review G-03) |
 | Ngày | 03/10/2026 |
 | Nguồn | Brief P17, P22-Q5; Phụ lục v2.1 |
 

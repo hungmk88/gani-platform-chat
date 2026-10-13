@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | Chấp nhận (Brief v0.4 P6 đã chốt) · chờ review PR0 |
+| Trạng thái | Chấp nhận (Brief v0.4 P6 đã chốt) · đã áp dụng trong repo |
 | Ngày | 03/10/2026 |
 | Nguồn | Brief P4, P6 |
 
