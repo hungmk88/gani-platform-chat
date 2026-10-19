@@ -241,6 +241,10 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     await admin.query('UPDATE users SET deleted_at = now() WHERE id = $1', [
       people['ownerGone']?.id,
     ]);
+    // Undo the revocation the database makes for a deleted person (DB side of DB-01): the session must fail on its own.
+    await admin.query('UPDATE sessions SET revoked_at = NULL WHERE user_id = $1', [
+      people['ownerGone']?.id,
+    ]);
     for (const [path, method] of [
       ['/v1/test/protected', 'POST'],
       ['/v1/me/security-status', 'GET'],

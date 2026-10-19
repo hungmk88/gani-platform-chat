@@ -169,6 +169,10 @@ describe('the account lock', () => {
 describe('a soft-deleted person', () => {
   const remove = (id: string) =>
     admin.query('UPDATE users SET deleted_at = now() WHERE id = $1', [id]);
+  // The database revokes the sessions of a deleted person too (trigger of the DB side of DB-01). Undone here, so what is tested is
+  // that the adapter itself leaves the deleted person out, with or without that trigger.
+  const unrevoke = (id: string) =>
+    admin.query('UPDATE sessions SET revoked_at = NULL WHERE user_id = $1', [id]);
 
   it('cannot sign in, and is answered exactly as a wrong password and an unknown address', async () => {
     const [gone, other] = [await newUser(), await newUser()];
@@ -189,6 +193,7 @@ describe('a soft-deleted person', () => {
     const cookie = cookieOf(await signIn(u.email));
     expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).not.toBeNull();
     await remove(u.id);
+    await unrevoke(u.id);
     expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).toBeNull();
     expect((await post('/switch-org', { orgId: org }, cookie)).status).toBe(401);
   });
