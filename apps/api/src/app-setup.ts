@@ -4,12 +4,16 @@ import { toNodeHandler } from 'better-auth/node';
 
 import { AuthService } from './modules/auth/auth.service.js';
 import { DatabaseService } from './modules/database/database.service.js';
+import { ProblemFilter, parserErrors } from './modules/request-context/problem.filter.js';
+import { securityHeaders } from './modules/request-context/security-headers.js';
 import { SessionResolver } from './modules/request-context/session-resolver.js';
 import { createTenantContextMiddleware } from './modules/request-context/tenant-context.middleware.js';
 import { createTwoFactorGate } from './modules/request-context/two-factor.gate.js';
 
 type Mountable = {
+  disable(setting: string): unknown;
   all(path: string, handler: ReturnType<typeof toNodeHandler>): unknown;
+  use(handler: typeof securityHeaders | typeof parserErrors): unknown;
   use(handler: ReturnType<typeof createTwoFactorGate>): unknown;
   use(path: string, handler: ReturnType<typeof createTenantContextMiddleware>): unknown;
 };
@@ -25,6 +29,9 @@ export function setupApp(app: NestExpressApplication): void {
   const express = app.getHttpAdapter().getInstance() as Mountable;
   const authService = app.get(AuthService);
   const database = app.get(DatabaseService);
+  // Before anything answers (AR-04): the gate's 403, Better Auth and Nest all send the security headers, and no X-Powered-By.
+  express.disable('x-powered-by');
+  express.use(securityHeaders);
   // First of all, for /api/auth and /v1 alike (N93): nothing of Better Auth or of ours runs for a person who has to set up a second factor.
   express.use(
     createTwoFactorGate({
@@ -34,6 +41,9 @@ export function setupApp(app: NestExpressApplication): void {
   );
   express.all('/api/auth/{*any}', toNodeHandler(authService.auth));
   app.useBodyParser('json');
+  // A body the parser refuses (malformed, too large) is answered as problem+json, and so is every error Nest catches (AR-03).
+  express.use(parserErrors);
+  app.useGlobalFilters(new ProblemFilter());
   express.use(
     '/v1',
     createTenantContextMiddleware({
