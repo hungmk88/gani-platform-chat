@@ -28,3 +28,18 @@ export const CursorQuerySchema = z.object({
 
 export const cursorPage = <T extends z.ZodType>(item: T, id: string) =>
   z.object({ data: z.array(item), nextCursor: z.string().nullable() }).meta({ id });
+
+/** A problem+json response of the OpenAPI document. */
+export const problemResponse = (description: string) => ({
+  description,
+  content: { 'application/problem+json': { schema: ProblemSchema } },
+});
+
+/** Answers every /v1 route can give before its handler runs: the tenant middleware and the 2FA gate (N92, N93). */
+export const EDGE_ERRORS = {
+  401: problemResponse('unauthorized: no valid session.'),
+  403: problemResponse(
+    'no_organisation, org_not_selected, two_factor_setup_required or forbidden.',
+  ),
+  503: problemResponse('service_unavailable: the session or the membership could not be read.'),
+} as const;
