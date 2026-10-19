@@ -1,4 +1,4 @@
-/* global Proto */
+/* global Proto, location */
 /* #1 Đăng nhập (spec M8 §3.8, Phụ lục C v3 dòng 5). Đăng nhập qua Better Auth `/api/auth/sign-in/email`. */
 const { h } = Proto;
 
@@ -24,7 +24,7 @@ function form() {
     onsubmit: (e) => {
       e.preventDefault();
       Proto.serverAction(submit, 'Đăng nhập', () => {
-        if (NEEDS_2FA.includes(Proto.role())) Proto.toast('Bước tiếp: nhập mã 2FA (màn #2 — chưa làm ở đợt sớm này).');
+        if (NEEDS_2FA.includes(Proto.role())) location.href = `twofa.html?role=${Proto.role()}`;
         else Proto.toast('Đăng nhập thành công — vào trang mặc định theo vai trò.');
       });
     },

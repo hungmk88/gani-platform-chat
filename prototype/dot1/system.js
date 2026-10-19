@@ -9,6 +9,13 @@ const PAGES = {
   error: ['Đã có lỗi.', 'Không phải do bạn. Thử lại sau ít phút; nếu còn lỗi, gửi mã bên dưới cho Admin.', 'Thử lại'],
 };
 
+/* Về trang chính của vai trò (mục đầu tiên trong menu), không cố định Hộp thư. */
+function homeAction(label) {
+  const href = Proto.homeHref();
+  if (href) return h('a', { class: 'btn primary', href }, label);
+  return h('button', { class: 'btn primary', onclick: () => Proto.toast('Trang chính của vai trò này (Platform, #30) ngoài phạm vi prototype đợt này.') }, label);
+}
+
 Proto.mount({
   page: 'system',
   states: [['403', '403 — Không có quyền'], ['404', '404 — Không tìm thấy'], ['maintenance', 'Bảo trì'], ['error', 'Lỗi chung']],
@@ -18,6 +25,6 @@ Proto.mount({
       h('h1', {}, title),
       h('p', { class: 'muted' }, text),
       Proto.get('state', '403') === 'error' ? h('p', { class: 'trace muted' }, 'Mã: 7f3a9c1e-…') : null,
-      h('a', { class: 'btn primary', href: `inbox.html?role=${Proto.role()}` }, action)));
+      homeAction(action)));
   },
 });

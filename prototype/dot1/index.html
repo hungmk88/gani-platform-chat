@@ -39,7 +39,7 @@
       <div class="banner warn" style="border-radius: var(--r-card)">
         PROTOTYPE — không phải sản phẩm. Dữ liệu và tên người là giả. Không kết nối máy chủ.
       </div>
-      <h1>Prototype HTML — Đợt 1: 4 màn chính, khung app, 3 màn auth</h1>
+      <h1>Prototype HTML — Đợt 1: 4 màn chính, khung app, 4 màn auth</h1>
       <p class="muted">
         Theo dàn ý đã duyệt (<code>docs/ui/prototype-outline-dot1.md</code>). Mở file này bằng trình duyệt, không cần cài
         đặt. Thanh đen trên cùng mỗi màn dùng để đổi <strong>trạng thái</strong>, <strong>vai trò</strong>,
@@ -122,10 +122,10 @@
       </section>
 
       <section>
-        <h2>1b. Khung app và 3 màn auth (đợt sớm — Q-U20 đã chốt)</h2>
+        <h2>1b. Khung app và 4 màn auth (đợt sớm — Q-U20 đã chốt)</h2>
         <p class="muted">
-          Theo spec M8 bản nháp 3 và Phụ lục C v3 dòng 0, 5, 8, 9. Vẽ thẳng theo quyết định Q-U20, không có biến thể. Phần
-          còn lại (#2, #3) chờ spec cuối 30/10 và PR7.
+          Theo spec M8 bản nháp 3 và Phụ lục C v3 dòng 0, 5, 6, 8, 9. Vẽ thẳng theo quyết định Q-U20, không có biến thể. Phần
+          còn lại (#3) chờ PR7.
         </p>
         <div class="grid" style="margin-top: var(--sp-3)">
           <div class="card">
@@ -150,6 +150,19 @@
               <li><a href="login.html?role=sales&state=error">Lỗi chung</a></li>
               <li><a href="login.html?role=sales&state=locked">Khóa 30 phút sau 5 lần sai</a></li>
             </ul>
+          </div>
+          <div class="card">
+            <h3><a href="twofa.html?role=admin">Xác thực 2 lớp (#2)</a></h3>
+            <ul>
+              <li><a href="twofa.html?role=admin">Nhập mã 6 số</a></li>
+              <li><a href="twofa.html?role=admin&state=loading">Đang kiểm tra</a></li>
+              <li><a href="twofa.html?role=admin&state=wrong">Mã sai</a></li>
+              <li><a href="twofa.html?role=admin&state=locked">Khóa 30 phút sau 5 lần sai</a></li>
+              <li><a href="twofa.html?role=admin&state=backup">Dùng mã dự phòng (thử k7m2-q9xp 2 lần)</a></li>
+              <li><a href="twofa.html?role=owner&state=enroll_required">Bắt buộc cài 2FA lần đầu (Owner)</a></li>
+              <li><a href="twofa.html?role=admin&state=reset_by_admin">Cài lại sau khi Admin đặt lại</a></li>
+            </ul>
+            <p class="small muted">Không phụ thuộc PR7 (Phụ lục C v3 dòng 6).</p>
           </div>
           <div class="card">
             <h3><a href="invite.html?role=sales">Nhận lời mời (#4) — phụ thuộc PR7</a></h3>
