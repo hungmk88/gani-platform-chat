@@ -49,6 +49,9 @@
     ['offline', 'Offline'],
   ];
   let presence = null;
+  let presenceShell = null;
+  // Trạng thái agent khớp với khung đang xem (U20-4, Q-U20-4, Q-U20-5).
+  const SHELL_PRESENCE = { auto_offline: 'offline', busy_30: 'busy' };
 
   const params = new URLSearchParams(location.search);
 
@@ -176,10 +179,19 @@
     return items;
   }
 
+  /* Trang chính của vai trò = mục đầu tiên có màn trong menu; null nếu màn đó ngoài phạm vi prototype. */
+  Proto.homeHref = () => {
+    const first = navItems().find(([, , href]) => href);
+    return first ? `${first[2]}?role=${Proto.role()}` : null;
+  };
+
   /* Thanh trên cùng: đổi workspace, trạng thái agent (Online / Bận / Offline, U20-4), menu cá nhân. */
   function topbar() {
     const shellState = Proto.get('shell', 'normal');
-    if (presence === null || shellState === 'auto_offline') presence = shellState === 'auto_offline' ? 'offline' : shellState === 'busy_30' ? 'busy' : 'online';
+    if (shellState !== presenceShell) {
+      presence = SHELL_PRESENCE[shellState] || 'online';
+      presenceShell = shellState;
+    }
     const isPlatform = Proto.role() === 'platform_operator';
     return h(
       'header',

@@ -1,4 +1,4 @@
-/* global Proto */
+/* global Proto, location */
 /* #4 Nhận lời mời (spec M8 §3.8, Phụ lục C v3 dòng 8) — phụ thuộc PR7: duyệt bố cục, chi tiết duyệt lại khi PR7 xong. */
 const { h } = Proto;
 
@@ -26,7 +26,7 @@ function acceptForm() {
       if (pass.value !== again.value) { err.textContent = 'Hai lần nhập mật khẩu chưa khớp.'; again.classList.add('invalid'); return; }
       err.textContent = '';
       Proto.serverAction(submit, 'Đặt mật khẩu và tham gia', () => {
-        if (NEEDS_2FA.includes(Proto.role())) Proto.toast('Vai trò của bạn bắt buộc 2FA: bước tiếp là cài 2FA (màn #2).');
+        if (NEEDS_2FA.includes(Proto.role())) location.href = `twofa.html?role=${Proto.role()}&state=enroll_required`;
         else Proto.toast('Đã tham gia. Vào Hộp thư.');
       });
     },
