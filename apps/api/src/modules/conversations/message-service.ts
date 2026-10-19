@@ -57,9 +57,9 @@ function check(input: AppendMessageInput): void {
  * Stores the messages of a conversation (inbound spec §4). Every method takes the caller's `TenantTx` and never commits, so a message
  * and the state change it causes are one transaction (FSM spec §4). The SQL is in `packages/db` (`insertMessage`).
  *
- * LOCK ORDER (N107): `insertMessage` takes the advisory lock of the conversation and only then updates its row. Whatever else changes
- * the conversation in the same transaction must come after the message, never before it: `receiveCustomerMessage` does it in that
- * order. A path that changed the conversation first could wait for a writer that holds the lock and wants the row (deadlock, 40P01).
+ * LOCK ORDER (N107, review AR-05): `insertMessage` and the state machine's `applyTransition` both take the conversation's lock before
+ * they update its row (packages/db conversation-lock.ts), so a message and a transition may come in either order in one transaction
+ * (a claim, then the agent's first reply) without a deadlock (40P01). `receiveCustomerMessage` stores the message first.
  */
 export class MessageService {
   private readonly logger = new Logger(MessageService.name);
