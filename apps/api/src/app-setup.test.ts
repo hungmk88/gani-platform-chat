@@ -117,6 +117,7 @@ async function start(mustSetUp = false): Promise<string> {
     .overrideProvider(AuthService)
     .useValue({
       auth,
+      origin: base,
       ping: () => Promise.resolve(true),
       activeOrganisationIds: () => Promise.resolve([ORG]),
       mustSetUpTwoFactor: () => Promise.resolve(mustSetUp),
@@ -192,6 +193,23 @@ describe('setupApp', () => {
     const answer = (await res.json()) as { body: unknown; ctx: Record<string, unknown> };
     expect(answer.body).toEqual({ hello: 'world' });
     expect(answer.ctx).toMatchObject({ orgId: ORG, role: 'sales', workspaceIds: [WORKSPACE] });
+  });
+
+  it('refuses a change under /v1 that carries the session cookie from another origin (CSRF, N136)', async () => {
+    const url = await start();
+    const signedIn = await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW });
+    const cookie = signedIn.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    const forged = await fetch(`${url}/v1/test/context`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example.test', cookie },
+      body: '{}',
+    });
+    expect(forged.status).toBe(403);
+    expect(await forged.json()).toMatchObject({ code: 'forbidden' });
+    expect((await fetch(`${url}/v1/me/security-status`, { headers: { cookie } })).status).toBe(200);
   });
 
   it('leaves /api/auth and /healthz outside the tenant middleware', async () => {
