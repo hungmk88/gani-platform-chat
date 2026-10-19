@@ -39,13 +39,16 @@ export async function requiresTwoFactor(pool: Pool, userId: string): Promise<boo
   return rows[0]?.required === true;
 }
 
-/** True when the person must have a second factor and has not enabled it. One query, so no other source can disagree. */
+/**
+ * True when the person must have a second factor and has not enabled it. One query, so no other source can disagree. Fails closed: a
+ * person the query cannot find (unknown, or soft-deleted) is "must", never "not required" (review DB-01: a deleted owner went through).
+ */
 export async function mustSetUpTwoFactor(pool: Pool, userId: string): Promise<boolean> {
   const { rows } = await pool.query<{ must: boolean }>(
     `SELECT (${REQUIRED} AND NOT u.two_factor_enabled) AS must FROM users u WHERE u.id = $1 AND u.deleted_at IS NULL`,
     [userId],
   );
-  return rows[0]?.must === true;
+  return rows[0]?.must !== false;
 }
 
 export interface TwoFactorStatus {
