@@ -25,7 +25,7 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - REST `/v1`, lỗi RFC 9457 (`application/problem+json`).
 - `org_id` không bao giờ nhận từ client.
 - Cursor pagination, không offset.
-- Idempotency-Key cho POST tạo dữ liệu.
+- Idempotency-Key cho POST tạo dữ liệu: gắn `@Idempotent()` (`modules/idempotency`, N134). Thiếu khóa → 400; cùng khóa khác request → 422 `idempotency_key_reused`; đang chạy → 409 `idempotency_in_progress`; 2xx/4xx được trả lại 24 giờ, 5xx thì không.
 - Webhook vào: verify → ghi `inbound_events` → trả 200 < 100ms → worker xử lý.
 
 ## Kiểm chứng

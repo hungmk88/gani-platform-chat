@@ -3,7 +3,8 @@ import { Logger, MethodNotAllowedException, NotFoundException } from '@nestjs/co
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConversationNotFoundError, VersionConflictError } from '../conversations/errors.js';
-import { codeOfStatus, ProblemFilter, toProblem } from './problem.filter.js';
+import { codeOfStatus, ProblemFilter, StoredProblem, toProblem } from './problem.filter.js';
+import { problem } from './problem.js';
 import { runWithRequestContext } from './request-context.js';
 
 const TRACE = '0190a000-0000-7000-8000-000000000001';
@@ -53,6 +54,11 @@ describe('toProblem (AR-03)', () => {
     });
     expect(toProblem('a string', TRACE)).toMatchObject({ status: 500 });
     expect(toProblem({ status: 404, code: 'not a code!' }, TRACE)).toMatchObject({ status: 500 });
+  });
+
+  it('gives back the problem kept for an Idempotency-Key as it is, with its own traceId (N134)', () => {
+    const kept = problem(409, 'conversation_already_claimed', 'Taken.', 'first-trace');
+    expect(toProblem(new StoredProblem(kept), TRACE)).toBe(kept);
   });
 });
 
