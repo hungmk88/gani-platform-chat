@@ -3,7 +3,9 @@ import { z } from 'zod';
 
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
+  AssigneeBodySchema,
   ClaimConflictSchema,
+  CloseBodySchema,
   ConversationIdSchema,
   ConversationListQuerySchema,
   ConversationPageSchema,
@@ -103,4 +105,39 @@ export function registerConversations(registry: OpenAPIRegistry): void {
       body: { content: { 'application/json': { schema: VersionBodySchema } } },
     },
   });
+  const bodyOf = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
+  const assignee = {
+    ...action.responses,
+    422: problemResponse(
+      'invalid_assignee: not a member of the workspace who may hold conversations; idempotency_key_reused.',
+    ),
+  };
+  for (const [path, summary, body, responses] of [
+    [
+      'transfer',
+      'Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited.',
+      AssigneeBodySchema,
+      assignee,
+    ],
+    [
+      'assign',
+      'Give the conversation to someone, whoever holds it or from the queue (T16, T21). Owner, admin, manager. Audited.',
+      AssigneeBodySchema,
+      assignee,
+    ],
+    [
+      'close',
+      'Close with the outcome of the conversation (T13). Sales and support: one they hold.',
+      CloseBodySchema,
+      action.responses,
+    ],
+  ] as const)
+    registry.registerPath({
+      ...action,
+      method: 'post',
+      path: `/v1/conversations/{id}/${path}`,
+      summary,
+      request: { ...byId, headers: IdempotencyHeadersSchema, body: bodyOf(body) },
+      responses,
+    });
 }
