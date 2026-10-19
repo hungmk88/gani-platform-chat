@@ -6,7 +6,7 @@ const NEEDS_2FA = ['owner', 'admin', 'platform_operator'];
 
 function form() {
   const s = Proto.state();
-  const email = h('input', { id: 'email', class: 'input', type: 'email', autocomplete: 'username', value: 'linh@gani.vn' });
+  const email = h('input', { id: 'email', class: 'input', type: 'email', autocomplete: 'username', value: 'linh@example.test' });
   const pass = h('input', { id: 'pass', class: 'input', type: 'password', autocomplete: 'current-password' });
   const error = s === 'error'
     ? h('p', { class: 'field-error', role: 'alert' }, 'Email hoặc mật khẩu không đúng.')

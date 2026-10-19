@@ -30,7 +30,7 @@ function infoTab() {
         h('span', { class: 'avatar', 'aria-hidden': 'true' }, 'L'),
         h('button', { class: 'btn', onclick: () => Proto.toast('Chọn ảnh JPG/PNG ≤ 2 MB.') }, 'Đổi ảnh')),
       h('div', { class: 'field' }, h('label', { for: 'name' }, 'Họ tên'), h('input', { id: 'name', class: 'input', value: 'Trần Linh' })),
-      h('div', { class: 'field' }, h('label', { for: 'mail' }, 'Email (chỉ Admin đổi được)'), h('input', { id: 'mail', class: 'input', value: 'linh@gani.vn', readonly: true })),
+      h('div', { class: 'field' }, h('label', { for: 'mail' }, 'Email (chỉ Admin đổi được)'), h('input', { id: 'mail', class: 'input', value: 'linh@example.test', readonly: true })),
       h('p', { class: 'pending-spec' }, 'Chờ spec cuối: endpoint lưu tên/ảnh (Better Auth đã tắt /update-user).')),
     h('form', {
       class: 'card stack',
