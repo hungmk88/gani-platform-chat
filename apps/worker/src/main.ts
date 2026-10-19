@@ -1,8 +1,10 @@
 import { createDbPool } from '@gani/db';
 
 import { ConfigError, readConfig } from './config.js';
+import { startHttp, type WorkerHttp } from './http.js';
 import { createLogger } from './logger.js';
 import { createDbPartitionStore } from './maintenance/db-store.js';
+import { WorkerMetrics } from './metrics.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
 import { createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
@@ -24,6 +26,16 @@ function configOrExit(): ReturnType<typeof readConfig> {
 }
 
 const config = configOrExit();
+const metrics = new WorkerMetrics();
+// The probes come first: a worker that cannot serve them (a port in use) does not start at all.
+let http: WorkerHttp;
+try {
+  http = await startHttp({ ...config.http, metrics });
+} catch (error) {
+  log.error('worker_http_failed', { code: (error as { code?: string }).code ?? 'unknown' });
+  process.exit(1);
+}
+log.info('worker_http_listening', { port: http.port });
 const pool = createDbPool(config.databaseUrl, {
   max: config.outbox.orgParallel + 2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
@@ -35,6 +47,8 @@ const worker = startWorker({
   log,
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
+  metrics,
+  http,
 });
 log.info('worker_started');
 

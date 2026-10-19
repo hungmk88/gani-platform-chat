@@ -15,6 +15,13 @@ export interface WorkerConfig {
     /** A queue with this many jobs waiting takes no more from its organisation until it drains (backpressure). */
     readonly queueMaxWaiting: number;
   };
+  /** The worker's own HTTP endpoints (`/healthz`, `/metrics`), for the probes and the monitoring (review OPS-02). */
+  readonly http: {
+    /** 0: a free port the system picks (the tests); the port is logged in `worker_http_listening`. */
+    readonly port: number;
+    /** `/healthz` answers 503 when the relay has not ended a pass for this long: its loop is stuck. */
+    readonly healthMaxAgeMs: number;
+  };
 }
 
 /** Lists every wrong variable at once, by name only: a URL carries a password and is never echoed. */
@@ -55,6 +62,11 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       orgParallel: whole('OUTBOX_ORG_PARALLEL', 4, 1, 32),
       shutdownMs: whole('OUTBOX_SHUTDOWN_MS', 10_000, 1_000, 120_000),
       queueMaxWaiting: whole('OUTBOX_QUEUE_MAX_WAITING', 10_000, 1, 1_000_000),
+    },
+    http: {
+      port: whole('WORKER_HTTP_PORT', 9464, 0, 65_535),
+      // A pass is short, but one over many organisations with Valkey down waits 5 s for each: 120 s leaves room for that.
+      healthMaxAgeMs: whole('WORKER_HEALTH_MAX_AGE_S', 120, 10, 3_600) * 1000,
     },
   };
   if (problems.length > 0) throw new ConfigError(problems);
