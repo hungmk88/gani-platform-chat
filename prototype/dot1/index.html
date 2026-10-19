@@ -208,6 +208,35 @@
       </section>
 
       <section>
+        <h2>1c. Màn S3 — Kênh (#24) và Cấu hình Zalo OA (#25), nộp 07/12</h2>
+        <p class="muted">
+          Theo <code>docs/specs/zalo-channel-spec.md</code> và <code>channel-policy-spec.md</code> (đã duyệt 07/10). Chỉ
+          Owner, Admin. Phần chờ tài liệu Zalo (Z2, Z4, Q6) có nhãn nét đứt.
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="channels.html?role=admin">Kênh (#24)</a></h3>
+            <ul>
+              <li><a href="channels.html?role=admin">Bình thường</a></li>
+              <li><a href="channels.html?role=admin&state=loading">Đang tải</a> · <a href="channels.html?role=admin&state=empty">Trống</a> · <a href="channels.html?role=admin&state=error">Lỗi</a></li>
+              <li><a href="channels.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="channels.html?role=admin&state=token_expiring">Token sắp hết hạn</a> · <a href="channels.html?role=admin&state=disconnected">Mất kết nối</a></li>
+              <li><a href="channels.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="channels.html?role=admin&screen=detail">Cấu hình Zalo OA (#25)</a></h3>
+            <ul>
+              <li><a href="channels.html?role=admin&screen=detail">Bình thường (làm mới token, chép webhook URL)</a></li>
+              <li><a href="channels.html?role=admin&screen=detail&state=token_expiring">Token sắp hết hạn</a></li>
+              <li><a href="channels.html?role=admin&screen=detail&state=disconnected">Mất kết nối — Kết nối lại</a></li>
+              <li><a href="channels.html?role=admin&screen=detail&state=loading">Đang tải</a> · <a href="channels.html?role=admin&screen=detail&state=error">Lỗi</a> · <a href="channels.html?role=admin&screen=detail&state=empty">Không tồn tại</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
         <h2>2. Token (CĐT đã duyệt)</h2>
         <table class="plain" style="margin-top: var(--sp-3)">
           <thead>
@@ -273,6 +302,7 @@
             <tr><td>#4 Nhận lời mời</td><td>A3, A5 (N31, U1: 7 ngày)</td><td>PR7</td></tr>
             <tr><td>#5 Hồ sơ cá nhân</td><td>A5, C11 (U20-1/2, Q-U20-1/2/3)</td><td>Endpoint lưu tên/ảnh (<code>PATCH /v1/me</code>)</td></tr>
             <tr><td>Trang hệ thống (#31)</td><td>—</td><td>—</td></tr>
+            <tr><td>#24 Kênh · #25 Cấu hình Zalo OA</td><td>B1, B2 (trạng thái token, làm mới), B3 (chính sách gửi, chỉ xem)</td><td>Z2, Z4, Q6 (tài liệu Zalo); endpoint quản lý kênh chưa có trong P9</td></tr>
           </tbody>
         </table>
         <p class="small muted" style="margin-top: var(--sp-2)">

@@ -175,7 +175,7 @@
     items.push(['tickets', 'Ticket', null, true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', null]);
-    if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt', null]);
+    if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
     return items;
   }
 
