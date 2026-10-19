@@ -1,0 +1,13 @@
+{
+  "name": "gani-prototype-tools",
+  "private": true,
+  "description": "Smoke test và kiểm tra axe cho prototype HTML (prototype/dot1). Không thuộc workspace pnpm.",
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke-core.mjs"
+  },
+  "dependencies": {
+    "axe-core": "4.10.3",
+    "playwright-core": "1.56.1"
+  }
+}
