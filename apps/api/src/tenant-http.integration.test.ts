@@ -100,6 +100,7 @@ const call = (cookie: string | null, path = '/v1/test/context', init: RequestIni
     ...init,
     headers: {
       'content-type': 'application/json',
+      origin: 'http://localhost:3000',
       ...(cookie ? { cookie } : {}),
       ...(init.headers as Record<string, string> | undefined),
     },
