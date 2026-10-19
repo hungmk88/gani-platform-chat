@@ -1,23 +1,11 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-import { ProblemSchema } from './schemas.js';
+import { problemResponse as problem } from './schemas.js';
 
 // The contract the front end builds on (Brief P18): generated from the Zod schemas the API validates with, so the two cannot drift.
 // docs/openapi/openapi.json is this document as committed; document.test.ts fails when they differ (run `pnpm --filter @gani/api
 // openapi` after changing an endpoint). Each module adds its paths through a register function listed in REGISTER below.
-
-const problem = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: ProblemSchema } },
-});
-
-/** Answers every /v1 route can give before its handler runs: the tenant middleware and the 2FA gate (N92, N93). */
-export const EDGE_ERRORS = {
-  401: problem('unauthorized: no valid session.'),
-  403: problem('no_organisation, org_not_selected, two_factor_setup_required or forbidden.'),
-  503: problem('service_unavailable: the session or the membership could not be read.'),
-} as const;
 
 function registerPlatform(registry: OpenAPIRegistry): void {
   const status = (values: [string, ...string[]]) => z.object({ status: z.enum(values) });

@@ -91,6 +91,22 @@ describe('ProblemFilter', () => {
   });
 });
 
+describe('a refusal of RLS (ADR-004, N58)', () => {
+  it('answers 42501 as 404 not_found, also as the cause of a Drizzle error, and leaves TN001 a 500', () => {
+    const rls = Object.assign(new Error('new row violates row-level security policy'), {
+      code: '42501',
+    });
+    expect(toProblem(rls, TRACE)).toMatchObject({ status: 404, code: 'not_found' });
+    expect(toProblem(new Error('Failed query', { cause: rls }), TRACE)).toMatchObject({
+      status: 404,
+    });
+    expect(toProblem(new Error('x', { cause: { code: 'TN001' } }), TRACE)).toMatchObject({
+      status: 500,
+    });
+    expect(JSON.stringify(toProblem(rls, TRACE))).not.toContain('row-level');
+  });
+});
+
 describe('codeOfStatus (Brief P9, N132)', () => {
   it('gives the code of P9 for a status it names, and the status name in snake_case otherwise', () => {
     expect([400, 401, 403, 404, 413, 429, 500].map(codeOfStatus)).toEqual([
