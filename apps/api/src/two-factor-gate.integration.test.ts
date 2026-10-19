@@ -116,6 +116,7 @@ beforeAll(async () => {
   await person('ownerYes', 'owner');
   await person('viewer', 'viewer');
   await person('nobody', null);
+  await person('ownerGone', 'owner');
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: [ProtectedController],
@@ -232,6 +233,23 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     it('lets a person who has to set up sign out', async () => {
       expect((await raw(await login('ownerNo'), '/api/auth/sign-out', 'POST')).status).toBe(200);
     });
+  });
+
+  it('turns away an owner without a second factor who was soft-deleted after signing in: 401, never through (review DB-01)', async () => {
+    const cookie = await login('ownerGone');
+    expect((await raw(cookie, '/v1/test/protected', 'POST')).status).toBe(403);
+    await admin.query('UPDATE users SET deleted_at = now() WHERE id = $1', [
+      people['ownerGone']?.id,
+    ]);
+    for (const [path, method] of [
+      ['/v1/test/protected', 'POST'],
+      ['/v1/me/security-status', 'GET'],
+    ] as const) {
+      const res = await raw(cookie, path, method);
+      expect(res.status, path).toBe(401);
+      expect(res.json, path).toMatchObject({ code: 'UNAUTHENTICATED' });
+    }
+    expect((await raw(cookie, '/api/auth/list-sessions')).status).not.toBe(200);
   });
 
   it('a person with no organisation is turned away by the tenant middleware, not by the gate', async () => {

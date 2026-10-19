@@ -165,6 +165,35 @@ describe('the account lock', () => {
   });
 });
 
+// Review DB-01: a person whose users row is soft-deleted does not exist for sign-in, and a session they already had stops working.
+describe('a soft-deleted person', () => {
+  const remove = (id: string) =>
+    admin.query('UPDATE users SET deleted_at = now() WHERE id = $1', [id]);
+
+  it('cannot sign in, and is answered exactly as a wrong password and an unknown address', async () => {
+    const [gone, other] = [await newUser(), await newUser()];
+    await remove(gone.id);
+    const answers = await Promise.all([
+      signIn(gone.email),
+      wrong(other.email),
+      signIn(`${randomUUID()}@example.test`),
+    ]);
+    const texts = await Promise.all(answers.map((r) => r.text()));
+    expect(answers.map((r) => r.status)).toEqual([401, 401, 401]);
+    expect(new Set(texts).size).toBe(1);
+  });
+
+  it('loses a session made before the deletion: no session is read, and /switch-org answers 401', async () => {
+    const u = await newUser();
+    const org = await newOrg(u.id, 'active');
+    const cookie = cookieOf(await signIn(u.email));
+    expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).not.toBeNull();
+    await remove(u.id);
+    expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).toBeNull();
+    expect((await post('/switch-org', { orgId: org }, cookie)).status).toBe(401);
+  });
+});
+
 describe('POST /switch-org', () => {
   const live = async (userId: string) =>
     (
