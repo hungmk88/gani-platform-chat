@@ -48,7 +48,7 @@ export function isOpenToUnfinishedSetup(req: Req): boolean {
 /**
  * The 2FA rule for every HTTP request, at the edge, BEFORE Better Auth and before anything of ours: a person with a session who must
  * set up a second factor and has not can only reach TWO_FACTOR_SETUP_ROUTES (under /api/auth) and /v1/me/security-status; everything
- * else is 403 TWO_FACTOR_SETUP_REQUIRED. Without a session the request passes (signing in, and the tenant middleware's 401 after).
+ * else is 403 two_factor_setup_required. Without a session the request passes (signing in, and the tenant middleware's 401 after).
  * Every path not named above is closed to such a person, so a new route is closed by default. If the session or the rule cannot be
  * read the request is refused with 503: an unknown answer never lets a request through.
  */
@@ -65,7 +65,7 @@ export function createTwoFactorGate(deps: TwoFactorGateDeps) {
       const cause = error instanceof Error ? errorCode(error) : 'unknown';
       logger.warn(`two-factor gate failed (${cause}) trace=${traceId}`);
       const detail = 'The service cannot answer right now. Try again.';
-      return sendProblem(res, problem(503, 'SERVICE_UNAVAILABLE', detail, traceId));
+      return sendProblem(res, problem(503, 'service_unavailable', detail, traceId));
     }
     if (blocked) {
       const { code, message } = TWO_FACTOR_SETUP_REQUIRED;

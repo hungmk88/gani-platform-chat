@@ -96,7 +96,7 @@ const raw = (cookie: string, path: string, method = 'GET') =>
     });
     req.on('error', fail).end(method === 'POST' ? '{}' : undefined);
   });
-const CODE = 'TWO_FACTOR_SETUP_REQUIRED';
+const CODE = 'two_factor_setup_required';
 
 beforeAll(async () => {
   need('DATABASE_URL_APP');
@@ -202,7 +202,7 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     }
     const anonymous = await raw('', '/v1/me/security-status');
     expect(anonymous.status).toBe(401);
-    expect(anonymous.json).toMatchObject({ code: 'UNAUTHENTICATED' });
+    expect(anonymous.json).toMatchObject({ code: 'unauthorized' });
   });
 
   describe('whitelist paths', () => {
@@ -251,7 +251,7 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     ] as const) {
       const res = await raw(cookie, path, method);
       expect(res.status, path).toBe(401);
-      expect(res.json, path).toMatchObject({ code: 'UNAUTHENTICATED' });
+      expect(res.json, path).toMatchObject({ code: 'unauthorized' });
     }
     expect((await raw(cookie, '/api/auth/list-sessions')).status).not.toBe(200);
   });
@@ -259,6 +259,6 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
   it('a person with no organisation is turned away by the tenant middleware, not by the gate', async () => {
     const res = await raw(await login('nobody'), '/v1/test/protected', 'POST');
     expect(res.status).toBe(403);
-    expect(res.json).toMatchObject({ code: 'NO_ORGANISATION' });
+    expect(res.json).toMatchObject({ code: 'no_organisation' });
   });
 });
