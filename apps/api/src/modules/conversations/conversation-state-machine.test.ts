@@ -108,12 +108,12 @@ describe('claim', () => {
 
   it('is already claimed (0 rows, Brief P14) even when what changed under it was not another claim', async () => {
     const { machine, rows, hooks } = fake(row({ state: 'HUMAN_WAITING_Q' }));
-    hooks.beforeApply = () => void rows.set(ID, row({ state: 'CLOSED', closedAt: NOW, outcome: 'won', version: 1 }));
+    hooks.beforeApply = () => void rows.set(ID, row({ state: 'CLOSED', closedAt: NOW, outcome: 'resolved', version: 1 }));
     expect(await err(machine.transition(TX, ID, claim, OPTS))).toMatchObject({ code: 'conversation_already_claimed', assignedUserId: null });
   });
 
   it('is an invalid transition, not a claim race, on a conversation the bot handles or that is closed', async () => {
-    for (const r of [row(), row({ state: 'CLOSED', closedAt: NOW, outcome: 'won' })]) {
+    for (const r of [row(), row({ state: 'CLOSED', closedAt: NOW, outcome: 'resolved' })]) {
       await expect(fake(r).machine.transition(TX, ID, claim, OPTS)).rejects.toThrow(InvalidTransitionError);
     }
   });
@@ -124,7 +124,7 @@ describe('the actions of a person need the version they saw', () => {
   const ACTIONS: [string, ConversationEvent, ConversationRow][] = [
     ['T09', say({ type: 'agent_waits_customer' }), held('HUMAN_ACTIVE')],
     ['T12', say({ type: 'hand_back_to_bot' }), held('HUMAN_ACTIVE')],
-    ['T13', say({ type: 'close', now: NOW, outcome: 'won' }), held('PENDING_CUSTOMER')],
+    ['T13', say({ type: 'close', now: NOW, outcome: 'resolved' }), held('PENDING_CUSTOMER')],
     ['T15', say({ type: 'transfer', toUserId: U2 }), held('HUMAN_ACTIVE')],
     ['T16', say({ type: 'reassign', toUserId: U2 }), held('PENDING_CUSTOMER')],
     ['T21', say({ type: 'reassign', toUserId: U2 }), row({ state: 'HUMAN_WAITING_Q', version: 3 })],

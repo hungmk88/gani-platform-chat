@@ -165,30 +165,34 @@
   function navItems() {
     const items = [];
     if (Proto.role() === 'platform_operator') {
-      items.push(['platform', 'Platform', null]);
+      items.push(['platform', 'Platform', 'platform.html']);
       if (Proto.get('shell', 'normal') === 'platform_session') items.push(['customers', 'Khách hàng (trong phiên)', 'customer.html']);
       return items;
     }
     if (Proto.can('inbox.view')) items.push(['inbox', 'Hộp thư', 'inbox.html']);
     items.push(['customers', 'Khách hàng', 'customer.html']);
     items.push(['leads', 'Lead', 'leads.html', true]);
-    items.push(['tickets', 'Ticket', null, true]);
+    if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
-    items.push(['overview', 'Tổng quan & Báo cáo', null]);
-    if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
+    items.push(['overview', 'Tổng quan & Báo cáo', 'overview.html']);
+    if (['owner', 'admin'].includes(Proto.role())) {
+      items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
+      items.push(['audit', 'Audit log', 'audit.html', true]);
+      items.push(['autonomy', 'Tự chủ & feature flag', 'autonomy.html', true]);
+    }
     return items;
   }
 
   /* Trang mặc định theo vai trò (apps/admin/CLAUDE.md). href = null khi màn đó chưa có trong prototype. */
   const HOME = {
-    owner: ['Tổng quan (#16)', null],
-    admin: ['Tổng quan (#16)', null],
-    manager: ['Tổng quan (#16)', null],
+    owner: ['Tổng quan (#16)', 'overview.html'],
+    admin: ['Tổng quan (#16)', 'overview.html'],
+    manager: ['Tổng quan (#16)', 'overview.html'],
     sales: ['Hộp thư', 'inbox.html'],
     support: ['Hộp thư', 'inbox.html'],
-    marketing: ['Tổng quan (#16)', null],
-    viewer: ['Tổng quan (#16)', null],
-    platform_operator: ['Platform (#30)', null],
+    marketing: ['Tổng quan (#16)', 'overview.html'],
+    viewer: ['Tổng quan (#16)', 'overview.html'],
+    platform_operator: ['Platform (#30)', 'platform.html'],
   };
   Proto.home = () => {
     const [label, page] = HOME[Proto.role()];

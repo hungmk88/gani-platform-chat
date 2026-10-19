@@ -419,3 +419,19 @@
   text-align: left;
   color: inherit;
 }
+
+/* #16 Tổng quan: ô chỉ số */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-4);
+}
+.tile-value {
+  font-size: var(--fs-20);
+}
+.tile-value.error {
+  color: var(--error-text);
+}
+.tile-value.warn {
+  color: var(--warn-text);
+}

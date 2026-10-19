@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 
+import { lockConversation } from './conversation-lock.js';
 import { conversationEvents } from './schema/conversation-events.js';
 import { conversations } from './schema/conversations.js';
 import { currentTenantContext } from './tenant-context.js';
@@ -98,13 +99,16 @@ export async function insertConversation(
  * the row is not visible. Under READ COMMITTED (the default, do not raise it) a loser waits for the winner's lock and re-tests
  * the condition, so exactly one of many concurrent claims matches. No Redlock.
  *
- * `app.fsm` is on only around this statement (guard trigger 202610061110). No try/finally on purpose: a failed statement aborts
+ * It takes the conversation's lock first (lockConversation, review AR-05), as `insertMessage` does, so the two never wait for each
+ * other in opposite orders. `app.fsm` is on only around this statement (guard trigger 202610061110). No try/finally on purpose: a failed statement aborts
  * the transaction, the setting dies with the rollback, and a further statement would only hide the real error.
  */
 export async function applyTransition(
   tx: TenantTx,
   write: TransitionWrite,
 ): Promise<ConversationRow | null> {
+  // The conversation's lock before its row (review AR-05): see conversation-lock.ts.
+  await lockConversation(tx, write.id);
   await tx.execute(sql`SELECT set_config('app.fsm', 'on', true)`);
   const [row] = await tx
     .update(conversations)
