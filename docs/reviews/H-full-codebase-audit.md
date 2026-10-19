@@ -36,7 +36,7 @@
 - Số hàm `SECURITY DEFINER` là **8**, không phải 9.
 - DB-04 rộng hơn đã ghi: thiếu cả ngữ cảnh org trên bảng thường rỗng cũng trả 0 dòng im lặng (xem bảng D).
 
-**Còn chờ anh quyết** (`QUESTIONS.md`): SEC-02 (topology, N112), N113 (băm token phiên), N129 (trạng thái `disabled` của `users`).
+**Đã chốt 19/10/2026** (`QUESTIONS.md`): N113 giữ token phiên thô; N129 không thêm trạng thái `disabled`; N112/SEC-02 giữ mặc định của thư viện tới khi có sơ đồ triển khai (bản thân sơ đồ vẫn mở).
 
 ---
 
