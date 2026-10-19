@@ -97,12 +97,14 @@ Proto.mountBare({
     ['backup', 'Dùng mã dự phòng'],
     ['enroll_required', 'Bắt buộc cài 2FA lần đầu'],
     ['reset_by_admin', 'Cài lại sau khi Admin đặt lại'],
+    ['aioff', 'AI tắt — Không áp dụng'],
   ],
   render: () => {
     const s = Proto.state();
     if (s !== lastState) { mode = s === 'backup' ? 'backup' : 'totp'; lastState = s; }
     const enroll = s === 'enroll_required' || s === 'reset_by_admin';
     return h('main', { class: 'card stack auth-card' },
+      Proto.noAiNote(),
       h('h1', {}, enroll ? 'Cài xác thực 2 lớp' : 'Xác thực 2 lớp'),
       enroll ? enrollRequired() : mode === 'backup' ? backupForm() : totpForm(),
       backToLogin());
