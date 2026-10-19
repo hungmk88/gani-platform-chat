@@ -18,6 +18,26 @@
 - Phát hiện mới: **TEST-01** (P3).
 - PR mở duy nhất **#3** (`feat/pr3b0-tenant-context`, 02/10/2026): mọi file của nó đã có trên `main` ở dạng mới hơn → đề nghị anh đóng PR.
 
+
+### Cập nhật 19/10/2026 (lần 2): đã sửa và đính chính
+
+| Mục | Nhánh (chờ anh tạo PR) | Bằng chứng chính |
+|---|---|---|
+| DB-01 (DB) | `fix/db-deleted-user-memberships` | db integration 673/673; `memberships_for_user` bỏ user đã xóa; trigger thu hồi phiên |
+| DB-01 (API) | `fix/api-deleted-user-auth` | 7 test mới đỏ trên mã cũ; HTTP: phiên cũ 401, `get-session` `null`, đăng nhập lại 401 |
+| SEC-01 | `fix/api-auth-error-sanitize` | Tái hiện như audit (thu quyền `sessions`): log có 0 token, 0 email, 0 `Failed query` |
+| AR-03, AR-04, SEC-03 | `fix/api-http-edge` | `/nope` → problem+json 404; đủ header bảo mật, không `X-Powered-By`; body không có `token` |
+| TEST-01 | `test/db-rerunnable-integration` | 3 lần liên tiếp trên cùng DB (xen test API + worker): 669/669 mỗi lần |
+
+**Đính chính** (kiểm qua HTTP trên API build thật):
+- Cookie phiên được ký HMAC bằng `BETTER_AUTH_SECRET`. Gửi riêng token thô, token kèm chữ ký giả, hay header `Bearer` đều bị 401. Vì vậy:
+  - SEC-01 giữ P1 vì vi phạm quy tắc 5 (email vào log), nhưng token lộ ra **không** dùng được ngay;
+  - SEC-03 và C-02 hạ xuống P3.
+- Số hàm `SECURITY DEFINER` là **8**, không phải 9.
+- DB-04 rộng hơn đã ghi: thiếu cả ngữ cảnh org trên bảng thường rỗng cũng trả 0 dòng im lặng (xem bảng D).
+
+**Còn chờ anh quyết** (`QUESTIONS.md`): SEC-02 (topology, N112), N113 (băm token phiên), N129 (trạng thái `disabled` của `users`).
+
 ---
 
 ## A. Executive Summary
@@ -31,7 +51,7 @@
 
 **Ba rủi ro lớn nhất (đều đã tái hiện):**
 1. **DB-01** — User đã soft-delete vẫn đăng nhập, giữ phiên, qua middleware tenant **và vượt cổng 2FA**.
-2. **SEC-01** — Khi một truy vấn DB lỗi, Better Auth in nguyên SQL + tham số ra log. Em đo được: **session token xuất hiện trong log**. Token lại lưu thô trong DB (C-02), nên đây là credential dùng được ngay.
+2. **SEC-01** — Khi một truy vấn DB lỗi, Better Auth in nguyên SQL + tham số ra log. Em đo được: **session token xuất hiện trong log**. Email (PII) cũng vào log ở đường đăng nhập. *(Đính chính 19/10: token không dùng được nếu thiếu `BETTER_AUTH_SECRET`, vì cookie được ký HMAC; xem mục "Cập nhật 19/10 (lần 2)".)*
 3. **SEC-02 (= C-01)** — Giới hạn tốc độ đăng nhập bị né bằng cách đổi `X-Forwarded-For`: 14/14 lần không bị 429.
 
 **Ảnh hưởng trực tiếp đến vận hành:**
@@ -138,21 +158,21 @@ Sắp theo mức độ. "Cũ" = đã có trong `docs/reviews`, em kiểm lại �
 | ID | Sev | Conf | File/Line | Vấn đề | Tác động | Giải pháp |
 |---|---|---|---|---|---|---|
 | **DB-01** | **P1** | CONFIRMED | `apps/api/src/modules/auth/revoking-adapter.ts:53`; `migrations/202610031910_create_memberships_for_user.sql`; `apps/api/src/modules/auth/two-factor.ts:44` | User đã soft-delete vẫn đăng nhập, qua middleware tenant, vượt cổng 2FA (không thấy user = "không cần 2FA") | Người bị thu hồi quyền vẫn đọc dữ liệu khách hàng; 2FA fail-open | Lọc `deleted_at` trong adapter; JOIN `users` trong `memberships_for_user`; cổng 2FA fail-closed; thu hồi phiên khi xóa user |
-| **SEC-01** | **P1** | CONFIRMED | `apps/api/src/modules/auth/auth.config.ts:52-137` (không cấu hình logger) | Lỗi DB → Better Auth log `DrizzleQueryError` kèm params (session token, email) | Lộ credential và PII vào log | Logger tùy biến chỉ ghi mã lỗi; bọc adapter để làm sạch lỗi; băm token (C-02) |
+| **SEC-01** | **P1** | CONFIRMED | `apps/api/src/modules/auth/auth.config.ts:52-137` (không cấu hình logger) | Lỗi DB → Better Auth log `DrizzleQueryError` kèm params (session token, email) | PII vào log (vi phạm quy tắc 5); token chỉ dùng được khi có thêm secret | Bọc adapter làm sạch lỗi; logger chỉ ghi mã lỗi — **đã sửa, nhánh `fix/api-auth-error-sanitize`** |
 | **SEC-02** (= C-01, cũ) | **P1** khi có proxy | CONFIRMED | `apps/api/src/modules/auth/auth.config.ts:47` | Rate limit đăng nhập tin `X-Forwarded-For` của client | Password spraying không bị giới hạn theo IP | Chốt topology (N112), `trustedProxies`, giới hạn theo email, store dùng chung |
 | **AR-01** | **P1** (go-live) | CONFIRMED | `apps/api/src/app.module.ts:7` | Không có luồng chat end-to-end; AI, kênh, realtime, UI chưa có | Chưa có sản phẩm để vận hành | Vertical slice |
 | **DB-02** | **P1** (go-live) | CONFIRMED | Không có `app.accept_invite`, không có script bootstrap | Không có cách tạo user/org | Môi trường mới không ai đăng nhập được | PR7 (invite) + script bootstrap có chặn |
 | **OPS-01** | **P1** (go-live) | CONFIRMED | `infra/` | Không Dockerfile, IaC, deploy, backup/PITR | Không triển khai lặp lại được; RPO/RTO chưa kiểm chứng | Chốt Q2 → hạ tầng tối thiểu |
 | AR-03 | P2 | CONFIRMED | `curl /nope`; không có global filter | Định dạng lỗi không thống nhất; lỗi domain 404/409 sẽ thành 500 | Hợp đồng API sai khi thêm endpoint | Global exception filter → RFC 9457 |
 | AR-04 / SEC-04 | P2 | CONFIRMED | Mọi response | `X-Powered-By: Express`; không HSTS, `nosniff`, chống nhúng khung; CORS chưa khai báo | Thiếu một lớp phòng thủ | Header bảo mật ở rìa |
-| SEC-03 | P2 | CONFIRMED | Response sign-in, `get-session` | Token phiên trả trong JSON | XSS lấy được token, `HttpOnly` mất tác dụng | Hook loại `token` khỏi body |
-| C-02 (cũ) | P2 (nâng từ LOW) | CONFIRMED | `sessions.token` | Token lưu thô | Kết hợp SEC-01 thì nặng hơn | Băm token |
+| SEC-03 | P3 (hạ từ P2) | CONFIRMED | Response sign-in, `get-session` | Token phiên trả trong JSON | XSS đọc được token, nhưng không dùng được nếu thiếu secret (cookie ký HMAC) | Hook loại `token` khỏi body — **đã sửa, `fix/api-http-edge`** |
+| C-02 (cũ) | P3 (hạ lại) | CONFIRMED | `sessions.token` | Token lưu thô | Chỉ nguy hiểm khi lộ cả DB lẫn `BETTER_AUTH_SECRET` | Chờ anh quyết (N113) |
 | DB-03 | P2 | CONFIRMED | `packages/db/scripts/migrate.mjs:70` | Không chạy được `CONCURRENTLY`; không `lock_timeout` | Khóa bảng khi deploy | Chế độ no-transaction cho từng file; đặt timeout |
 | AR-02 | P2 | CONFIRMED | `apps/worker/src/relay/outbox-relay.ts:188` | Relay chạy khi chưa có consumer | Valkey và outbox ùn | Cờ bật/tắt relay; consumer tối thiểu |
 | AR-05 | P2 | POTENTIAL | `packages/db/src/conversation-store.ts:104` | `applyTransition` không lấy advisory lock | Deadlock khi có đường "claim rồi gửi tin" | Lấy lock trước UPDATE |
 | OPS-02 | P2 | CONFIRMED | `apps/*` | Không metrics/tracing; worker không có health | Không cảnh báo được sự cố | Health, metrics tối thiểu |
 | F-04 (cũ) | P3 | CONFIRMED | `app.channel_account_for_webhook` | `app_role` lấy được secret đã mã hóa của mọi tenant nếu biết id | Mở rộng bề mặt | Thu hẹp hàm (N124) |
-| DB-04 | P3 | CONFIRMED | Policy `conversations`/`messages` | Fail-loud khi thiếu workspace phụ thuộc dữ liệu | 0 dòng im lặng ở code mới | Kiểm cả hai biến ngữ cảnh trong một hàm |
+| DB-04 | P3 | CONFIRMED | Mọi policy RLS | Fail-loud phụ thuộc dữ liệu: Postgres chỉ gọi `app.current_org()`/`app.current_workspaces()` khi có dòng phải lọc. Bảng thường rỗng (hoặc org không có dòng) mà thiếu ngữ cảnh → 0 dòng im lặng, không `TN001`. *Đính chính 19/10: không chỉ thiếu workspace; bảng partition thì luôn báo lỗi* | Không rò dữ liệu (không có dòng nào), nhưng đảm bảo "báo lỗi" của `CLAUDE.md` không tuyệt đối và test dễ phụ thuộc dữ liệu | Giữ `withTenant` là đường duy nhất; test phải tự tạo dữ liệu (đã làm trong TEST-01) |
 | DB-05 | P3 | CONFIRMED | Grant theo cột | `app_role` UPDATE cả cột định danh (`id`, `org_id`, `workspace_id`…) | Trái least privilege | Thu hẹp grant |
 | DB-06 | P3 | CONFIRMED | `messages` | Thiếu FK `sender_user_id`, CHECK agent ⇔ user, giới hạn độ dài | Dữ liệu sai từ đường ghi khác | FK + CHECK |
 | AR-06 | P3 | CONFIRMED | 4 file trong `apps/api/src/modules/auth` | SQL thô ngoài `packages/db` (trái ADR-002) | Bề mặt review bị tách đôi | Gom về `packages/db` |
@@ -165,7 +185,7 @@ Sắp theo mức độ. "Cũ" = đã có trong `docs/reviews`, em kiểm lại �
 | AR-10 | P3 | CONFIRMED | `apps/worker/src/relay/outbox-relay.ts:166` | Backpressure mất trí nhớ sau restart | Vượt ngưỡng tối đa một batch | Suy ra queue từ workspace |
 | OPS-03 | P3 | CONFIRMED | — | Chưa có quy trình migrate/rollback trong pipeline | Deploy rủi ro | expand → migrate → contract |
 | OPS-04 | P3 | CONFIRMED | `apps/api/src/modules/auth/auth.config.ts:124` | Rate limit lưu trong RAM | Sai khi scale ngang | Store Valkey |
-| TEST-01 | P3 | CONFIRMED | `packages/db/test/outbox-relay.spec.ts`, `packages/db/test/partitions.spec.ts` | Test tích hợp không chạy lại được trên DB đã dùng: DB tạm sau 1 tuần → 7 ca đỏ (`app.outbox_pending_orgs` thấy org của lần chạy trước; ca 9c giả định partition tháng sau chưa có); DB mới tinh → 669/669 xanh | README hướng dẫn chạy trên DB dev dùng lại → dev thấy đỏ giả, dễ bỏ qua đỏ thật | Test tự dọn/lọc theo org của chính nó; ca 9c chọn tháng chưa tồn tại |
+| TEST-01 | P3 | CONFIRMED, **đã sửa (`test/db-rerunnable-integration`)** | `packages/db/test/outbox-relay.spec.ts`, `packages/db/test/partitions.spec.ts`, `packages/db/test/workspaces.spec.ts` | Test tích hợp không chạy lại được trên DB đã dùng: DB tạm sau 1 tuần → 7 ca đỏ (`app.outbox_pending_orgs` thấy org của lần chạy trước; ca 9c giả định partition tháng sau chưa có); DB mới tinh → 669/669 xanh | README hướng dẫn chạy trên DB dev dùng lại → dev thấy đỏ giả, dễ bỏ qua đỏ thật | Test tự dọn/lọc theo org của chính nó; ca 9c chọn tháng chưa tồn tại |
 | E-02 (cũ) | P3 | CONFIRMED | `packages/db/src/outbox-store.ts:390` | `failOutboxEvent` không kiểm `attempts` | Relay cũ có thể fail claim của relay mới | Giống `inbound-store` |
 | AR-11, AR-12, DB-07, DB-08, SEC-06, SEC-07, OPS-05, OPS-06, PERF-02, B-03 (cũ) | INFO | CONFIRMED | — | Cờ `app.fsm` do app tự bật được; org rơi về org khác âm thầm; giá Zalo tạm trong migration; `users` không RLS; stack trace trong log; chưa có Dependabot/branch protection; checklist lỗi thời; shutdown tốt; `MAX()+1`; support đọc nội dung tin | Theo dõi | — |
 
@@ -175,8 +195,8 @@ Sắp theo mức độ. "Cũ" = đã có trong `docs/reviews`, em kiểm lại �
 |---|---|
 | P0 | 0 |
 | P1 | 6 (3 là lỗi bảo mật trong code, 3 là phần chưa xây) |
-| P2 | 8 |
-| P3 | 16 |
+| P2 | 6 |
+| P3 | 18 |
 | INFO | 10 |
 
 ---
@@ -202,7 +222,7 @@ Sắp theo mức độ. "Cũ" = đã có trong `docs/reviews`, em kiểm lại �
 - Dò user qua thời gian đăng nhập: chênh ~5 ms, cùng thông điệp.
 - Argon2id, khóa tài khoản, TOTP không có "nhớ thiết bị".
 - RLS ENABLE + FORCE trên 18 bảng.
-- 9 hàm `SECURITY DEFINER` đã khóa `search_path`.
+- 8 hàm `SECURITY DEFINER` đã khóa `search_path` *(đính chính 19/10: trước ghi nhầm 9)*.
 - Chuỗi cung ứng CI: quyền đọc, action ghim SHA, lockfile có `integrity`, audit 0.
 
 **Cần xác minh thêm:**
@@ -314,7 +334,7 @@ AR-06 (gom SQL auth về `packages/db`), AR-07 (config fail-fast cho API), AR-08
 
 - **Rủi ro lớn nhất?**
   1. Truy cập sau khi bị thu hồi quyền, kèm vượt 2FA (DB-01).
-  2. Credential lọt vào log (SEC-01 + C-02).
+  2. Email và tham số truy vấn lọt vào log khi DB lỗi (SEC-01).
   3. Brute-force đăng nhập phụ thuộc topology proxy (SEC-02).
   4. Về tổng thể: phần lớn sản phẩm chưa được xây, nên rủi ro tích hợp còn ở phía trước.
 
@@ -326,7 +346,7 @@ AR-06 (gom SQL auth về `packages/db`), AR-07 (config fail-fast cho API), AR-08
 
 - **Ba việc giá trị cao nhất cần làm trước:**
   1. **Sửa DB-01** (user bị xóa + 2FA fail-closed), có test.
-  2. **Sửa SEC-01 cùng băm token phiên (C-02)**, có test kiểm log.
+  2. **Sửa SEC-01**, có test kiểm log.
   3. **Đặt khung bảo mật ở rìa API trước endpoint nghiệp vụ đầu tiên:** SEC-03 + AR-04 + AR-03 + chốt N112 cho SEC-02.
 
 Em không chấm điểm tổng thể vì chưa có bộ tiêu chí được thống nhất.
