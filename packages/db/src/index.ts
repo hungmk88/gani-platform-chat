@@ -1,5 +1,6 @@
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
+export * from './conversation-read.js';
 export * from './conversation-store.js';
 export * from './cursor.js';
 export * from './inbound-store.js';
