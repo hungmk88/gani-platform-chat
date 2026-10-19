@@ -6,6 +6,9 @@ import type { AdapterFactory, DBAdapter, DBTransactionAdapter, Where } from 'bet
 // know the marker and would treat them as still valid. Consuming a one-time token is a claim: UPDATE ... WHERE id AND marker IS NULL,
 // so of two requests for the same token PostgreSQL lets exactly one update the row. Other models pass through. It relies on the
 // adapter interface and the internals of better-auth: re-run the integration tests on every upgrade.
+// A soft-deleted person (users.deleted_at, review DB-01) does not exist for Better Auth: reads of `user` leave them out, so signing in
+// finds no one, and a session read with its user joined (getSession) is dropped when that user is deleted. A where clause cannot reach
+// the joined row, so that one is filtered after the read.
 
 const MARKER = { session: 'revokedAt', verification: 'usedAt' } as const;
 const markerOf = (model: string): string | undefined =>
@@ -13,8 +16,14 @@ const markerOf = (model: string): string | undefined =>
 const unmarked = (field: string): Where => ({ field, value: null, operator: 'eq' });
 
 const live = (model: string, where: Where[] | undefined): Where[] | undefined => {
-  const field = markerOf(model);
+  const field = model === 'user' ? 'deletedAt' : markerOf(model);
   return field === undefined ? where : [...(where ?? []), unmarked(field)];
+};
+
+/** A row read with its user joined (`join: { user: true }`) whose user is soft-deleted. */
+const ofDeletedUser = (row: unknown): boolean => {
+  const user = (row as { user?: { deletedAt?: unknown } } | null)?.user;
+  return user?.deletedAt !== undefined && user.deletedAt !== null;
 };
 
 function wrap<O extends BetterAuthOptions>(
@@ -32,9 +41,17 @@ function wrap<O extends BetterAuthOptions>(
   };
   return {
     ...inner,
-    findOne: (data) =>
-      inner.findOne({ ...data, where: live(data.model, data.where) ?? data.where }),
-    findMany: (data) => inner.findMany({ ...data, where: live(data.model, data.where) }),
+    findOne: async <T>(data: Parameters<DBTransactionAdapter<O>['findOne']>[0]) => {
+      const row = await inner.findOne<T>({
+        ...data,
+        where: live(data.model, data.where) ?? data.where,
+      });
+      return ofDeletedUser(row) ? null : row;
+    },
+    findMany: async <T>(data: Parameters<DBTransactionAdapter<O>['findMany']>[0]) => {
+      const rows = await inner.findMany<T>({ ...data, where: live(data.model, data.where) });
+      return rows.filter((row) => !ofDeletedUser(row));
+    },
     count: (data) => inner.count({ ...data, where: live(data.model, data.where) }),
     delete: async (data) => {
       const field = markerOf(data.model);

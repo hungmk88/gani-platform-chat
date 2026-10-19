@@ -49,6 +49,9 @@
     ['offline', 'Offline'],
   ];
   let presence = null;
+  let presenceShell = null;
+  // Trạng thái agent khớp với khung đang xem (U20-4, Q-U20-4, Q-U20-5).
+  const SHELL_PRESENCE = { auto_offline: 'offline', busy_30: 'busy' };
 
   const params = new URLSearchParams(location.search);
 
@@ -172,14 +175,33 @@
     items.push(['tickets', 'Ticket', null, true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', null]);
-    if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt', null]);
+    if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
     return items;
   }
+
+  /* Trang mặc định theo vai trò (apps/admin/CLAUDE.md). href = null khi màn đó chưa có trong prototype. */
+  const HOME = {
+    owner: ['Tổng quan (#16)', null],
+    admin: ['Tổng quan (#16)', null],
+    manager: ['Tổng quan (#16)', null],
+    sales: ['Hộp thư', 'inbox.html'],
+    support: ['Hộp thư', 'inbox.html'],
+    marketing: ['Tổng quan (#16)', null],
+    viewer: ['Tổng quan (#16)', null],
+    platform_operator: ['Platform (#30)', null],
+  };
+  Proto.home = () => {
+    const [label, page] = HOME[Proto.role()];
+    return { label, href: page ? `${page}?role=${Proto.role()}` : null };
+  };
 
   /* Thanh trên cùng: đổi workspace, trạng thái agent (Online / Bận / Offline, U20-4), menu cá nhân. */
   function topbar() {
     const shellState = Proto.get('shell', 'normal');
-    if (presence === null || shellState === 'auto_offline') presence = shellState === 'auto_offline' ? 'offline' : shellState === 'busy_30' ? 'busy' : 'online';
+    if (shellState !== presenceShell) {
+      presence = SHELL_PRESENCE[shellState] || 'online';
+      presenceShell = shellState;
+    }
     const isPlatform = Proto.role() === 'platform_operator';
     return h(
       'header',
@@ -344,6 +366,15 @@
     document.addEventListener('keydown', onKey);
     (box.querySelector('[autofocus]') || box.querySelector('button, input, select, textarea'))?.focus();
     return close;
+  };
+
+  /* Mật khẩu ≥ 12 ký tự, có chữ và số (Phụ lục C v3 dòng 7, 8): trả về các điều kiện còn thiếu. */
+  Proto.passwordProblems = (value) => {
+    const out = [];
+    if (value.length < 12) out.push('ít nhất 12 ký tự');
+    if (!/[A-Za-zÀ-ỹ]/.test(value)) out.push('có chữ');
+    if (!/\d/.test(value)) out.push('có số');
+    return out;
   };
 
   /* Gõ phím tắt chỉ khi con trỏ không ở ô nhập (§4.7). */
