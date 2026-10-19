@@ -3,7 +3,8 @@ import type { createDbPool } from '@gani/db';
 // The rule that Owner, Admin and platform operators use a second factor (ADR-003, N86, N89). Better Auth cannot enforce a rule by role,
 // so it is enforced here and the gate is placed by the code that serves each route: /switch-org uses it, and the gate at the edge of
 // the HTTP server (two-factor.gate.ts, N93) uses it for every route of the application (the checklist is in N89).
-type Pool = ReturnType<typeof createDbPool>;
+// Only `query` is used, so the pool may be the guarded one of safeQueryPool (review SEC-01).
+type Pool = Pick<ReturnType<typeof createDbPool>, 'query'>;
 
 export const TWO_FACTOR_SETUP_REQUIRED = {
   code: 'TWO_FACTOR_SETUP_REQUIRED',

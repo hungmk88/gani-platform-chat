@@ -8,7 +8,8 @@ import { mustSetUpTwoFactor, TWO_FACTOR_SETUP_REQUIRED } from './two-factor.js';
 // POST /switch-org: the person acts in another organisation they belong to (N85). A session has one active organisation, so
 // switching is a NEW session with active_org_id set and the old one revoked, both in one transaction. The person comes from the
 // authenticated session, never from the request; the organisation comes from the body and must be an active membership.
-type Pool = ReturnType<typeof createDbPool>;
+// Only `query` is used, so the pool may be the guarded one of safeQueryPool (review SEC-01).
+type Pool = Pick<ReturnType<typeof createDbPool>, 'query'>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MEMBER = `SELECT 1 FROM app.memberships_for_user($1) WHERE org_id = $2 AND status = 'active'`;
 
