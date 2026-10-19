@@ -210,7 +210,7 @@ describe('setupApp', () => {
       .join('; ');
     const blocked = await fetch(`${url}/api/auth/get-session`, { headers: { cookie } });
     expect(blocked.status).toBe(403);
-    expect(await blocked.json()).toMatchObject({ code: 'TWO_FACTOR_SETUP_REQUIRED' });
+    expect(await blocked.json()).toMatchObject({ code: 'two_factor_setup_required' });
     expect((await json(url, '/v1/test/context', {}, cookie)).status).toBe(403);
     const status = await fetch(`${url}/v1/ME/security-status`, { headers: { cookie } });
     expect(status.status).toBe(200);
@@ -257,21 +257,21 @@ describe('the edge of the HTTP server (AR-03, AR-04, SEC-03)', () => {
     );
     const notFound = await fetch(`${url}/nope`);
     expect(notFound.headers.get('content-type')).toBe(PROBLEM_CONTENT_TYPE);
-    expect(await notFound.json()).toMatchObject({ status: 404, code: 'NOT_FOUND' });
+    expect(await notFound.json()).toMatchObject({ status: 404, code: 'not_found' });
     const malformed = await fetch(`${url}/v1/echo`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
       body: '{"not json',
     });
     expect(malformed.status).toBe(400);
-    expect(await malformed.json()).toMatchObject({ status: 400, code: 'BAD_REQUEST' });
+    expect(await malformed.json()).toMatchObject({ status: 400, code: 'validation_failed' });
     const missing = await json(url, '/v1/test/missing', {}, cookie);
     expect(missing.status).toBe(404);
     expect(await missing.json()).toMatchObject({ status: 404, code: 'not_found' });
     const boom = await json(url, '/v1/test/boom', {}, cookie);
     expect(boom.status).toBe(500);
     const text = await boom.text();
-    expect(JSON.parse(text)).toMatchObject({ status: 500, code: 'INTERNAL_ERROR' });
+    expect(JSON.parse(text)).toMatchObject({ status: 500, code: 'internal_error' });
     expect(JSON.parse(text)).toHaveProperty('traceId');
     for (const secret of [EMAIL, 'Failed query']) expect(text).not.toContain(secret);
   });

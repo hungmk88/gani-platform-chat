@@ -6,7 +6,7 @@ import type { createDbPool } from '@gani/db';
 type Pool = ReturnType<typeof createDbPool>;
 
 export const TWO_FACTOR_SETUP_REQUIRED = {
-  code: 'TWO_FACTOR_SETUP_REQUIRED',
+  code: 'two_factor_setup_required',
   message: 'Two-factor authentication must be set up first',
 } as const;
 

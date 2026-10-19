@@ -194,7 +194,7 @@ describe('the tenant middleware over HTTP', () => {
     const res = await call(null);
     expect(res.status).toBe(401);
     expect(res.headers.get('content-type')).toBe('application/problem+json');
-    expect(await res.json()).toMatchObject({ code: 'UNAUTHENTICATED', status: 401 });
+    expect(await res.json()).toMatchObject({ code: 'unauthorized', status: 401 });
   });
 
   it('keeps 50 interleaved requests of two people in two organisations apart', async () => {
@@ -228,14 +228,14 @@ describe('the tenant middleware over HTTP', () => {
     expect(await activeOf('one')).toEqual([null]);
   });
 
-  it('is 403 ORG_NOT_SELECTED with several organisations and none chosen, and NO_ORGANISATION with none', async () => {
+  it('is 403 org_not_selected with several organisations and none chosen, and no_organisation with none', async () => {
     const several = await call(await login('multi'));
     expect(several.status).toBe(403);
     expect(several.headers.get('content-type')).toBe('application/problem+json');
-    expect(await several.json()).toMatchObject({ code: 'ORG_NOT_SELECTED' });
+    expect(await several.json()).toMatchObject({ code: 'org_not_selected' });
     const none = await call(await login('none'));
     expect(none.status).toBe(403);
-    expect(await none.json()).toMatchObject({ code: 'NO_ORGANISATION' });
+    expect(await none.json()).toMatchObject({ code: 'no_organisation' });
   });
 
   it('uses the organisation the session has chosen', async () => {
@@ -262,7 +262,7 @@ describe('the tenant middleware over HTTP', () => {
     ]);
     const res = await call(left);
     expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ code: 'NO_ORGANISATION' });
+    expect(await res.json()).toMatchObject({ code: 'no_organisation' });
   });
 
   it('never takes the organisation from the query, a header or the body', async () => {
