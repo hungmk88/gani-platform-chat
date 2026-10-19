@@ -31,18 +31,18 @@ function seed() {
   return [
     {
       id: 'c1', name: 'Nguyễn Văn An', company: 'Quán Phở Hà Nội', state: 'HUMAN_WAITING_Q', assignee: null,
-      sla: 12, unread: 2, tags: [{ label: 'Hỏi giá', ai: true }], phone: '0903124567', lead: 'Bước 3',
+      sla: 12, unread: 2, tags: [{ label: 'Hỏi giá', ai: true }], phone: '0900000001', lead: 'Bước 3',
       messages: [
         { kind: 'customer', text: 'Chào shop, bên mình có bánh phở khô loại sỉ không?', at: '09:02' },
         { kind: 'bot', text: 'Dạ có ạ. Anh/chị cho em xin số điện thoại để nhân viên báo giá nhé.', at: '09:02' },
-        { kind: 'customer', text: '0903124567', at: '09:03' },
+        { kind: 'customer', text: '0900000001', at: '09:03' },
         { kind: 'customer', text: 'Mình cần báo giá trong hôm nay nhé', at: '09:04' },
         { kind: 'system', text: 'Bot chuyển cho nhân viên — lý do: khách hỏi giá sỉ', at: '09:04' },
       ],
     },
     {
       id: 'c2', name: 'Trần Thị Bình', company: 'Đại lý Bình Minh', state: 'HUMAN_ACTIVE', assignee: ME,
-      sla: 45, unread: 0, tags: [{ label: 'Đặt hàng', ai: false }], phone: '0912888123', lead: null,
+      sla: 45, unread: 0, tags: [{ label: 'Đặt hàng', ai: false }], phone: '0900000002', lead: null,
       messages: [
         { kind: 'customer', text: 'Tuần sau giao giúp chị như đơn cũ nhé', at: '08:40' },
         { kind: 'mine', text: 'Dạ em ghi nhận, em kiểm tra lịch giao và báo chị ngay.', at: '08:42', status: 'Kênh đã nhận' },
@@ -56,12 +56,12 @@ function seed() {
     },
     {
       id: 'c4', name: 'Lê Minh', company: 'Nhà hàng Sen', state: 'PENDING_CUSTOMER', assignee: ME,
-      sla: null, unread: 0, tags: [], phone: '0987000111', lead: 'Bước 2',
+      sla: null, unread: 0, tags: [], phone: '0900000003', lead: 'Bước 2',
       messages: [{ kind: 'mine', text: 'Em đã gửi báo giá, anh xem giúp em nhé.', at: 'Hôm qua', status: 'Kênh đã nhận' }],
     },
     {
       id: 'c5', name: 'Phạm Hoa', company: '', state: 'HUMAN_WAITING_Q', assignee: null,
-      sla: -6, unread: 3, tags: [], phone: '0938555222', lead: null,
+      sla: -6, unread: 3, tags: [], phone: '0900000004', lead: null,
       messages: [
         { kind: 'customer', text: XSS_2, at: '08:50' },
         { kind: 'customer', text: XSS_1, at: '08:51' },
@@ -70,12 +70,12 @@ function seed() {
     },
     {
       id: 'c6', name: 'Công ty TNHH Minh Phát', company: 'Minh Phát', state: 'HOLD', assignee: null,
-      sla: null, unread: 1, tags: [], phone: '0283777888', lead: null,
+      sla: null, unread: 1, tags: [], phone: '0280000002', lead: null,
       messages: [{ kind: 'customer', text: 'Gọi lại cho tôi sáng mai', at: '21:15' }, { kind: 'bot', text: 'Ngoài giờ làm việc. Chúng tôi đã nhận lời nhắn và sẽ gọi lại lúc 8:00.', at: '21:15' }],
     },
     {
       id: 'c7', name: 'Đỗ Quang', company: '', state: 'CLOSED', assignee: ME,
-      sla: null, unread: 0, tags: [], phone: '0909111222', lead: null,
+      sla: null, unread: 0, tags: [], phone: '0900000005', lead: null,
       messages: [{ kind: 'system', text: 'Đã đóng — kết quả: Đã xong', at: 'Thứ Hai' }],
     },
   ];
