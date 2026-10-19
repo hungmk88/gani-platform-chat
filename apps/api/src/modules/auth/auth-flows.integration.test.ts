@@ -166,6 +166,65 @@ describe('the account lock', () => {
   });
 });
 
+describe('POST /switch-org', () => {
+  const live = async (userId: string) =>
+    (
+      await admin.query<{ org: string | null }>(
+        'SELECT active_org_id AS org FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at',
+        [userId],
+      )
+    ).rows.map((r) => r.org);
+  const total = async (userId: string) =>
+    Number(
+      (
+        await admin.query<{ n: string }>('SELECT count(*) AS n FROM sessions WHERE user_id = $1', [
+          userId,
+        ])
+      ).rows[0]?.n,
+    );
+
+  it('moves to an organisation the person belongs to: a new session with it, the old one revoked, the old cookie dead', async () => {
+    const u = await newUser();
+    const [a, b] = [await newOrg(u.id, 'active'), await newOrg(u.id, 'active')];
+    const first = cookieOf(await signIn(u.email));
+    const res = await post('/switch-org', { orgId: a }, first);
+    expect(res.status).toBe(200);
+    expect(await live(u.id)).toEqual([a]);
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: first }) })).toBeNull();
+    const second = cookieOf(res);
+    expect(
+      (await auth.api.getSession({ headers: new Headers({ cookie: second }) }))?.session,
+    ).toMatchObject({ activeOrgId: a });
+    expect((await post('/switch-org', { orgId: a }, second)).status).toBe(200);
+    expect(await total(u.id)).toBe(2);
+    expect((await post('/switch-org', { orgId: b }, second)).status).toBe(200);
+    expect(await live(u.id)).toEqual([b]);
+  });
+
+  it('refuses an organisation that is suspended, not theirs or malformed, and leaves the session as it was', async () => {
+    const u = await newUser();
+    const [suspended, stranger] = [await newOrg(u.id, 'suspended'), await newOrg(u.id)];
+    const cookie = cookieOf(await signIn(u.email));
+    expect((await post('/switch-org', { orgId: suspended }, cookie)).status).toBe(404);
+    expect((await post('/switch-org', { orgId: stranger }, cookie)).status).toBe(404);
+    expect((await post('/switch-org', { orgId: 'not-a-uuid' }, cookie)).status).toBe(400);
+    expect(await live(u.id)).toEqual([null]);
+    expect(await total(u.id)).toBe(1);
+  });
+
+  it('lets only one of two parallel switches from the same session win', async () => {
+    const u = await newUser();
+    const [a, b] = [await newOrg(u.id, 'active'), await newOrg(u.id, 'active')];
+    const cookie = cookieOf(await signIn(u.email));
+    const results = await Promise.all([
+      post('/switch-org', { orgId: a }, cookie),
+      post('/switch-org', { orgId: b }, cookie),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
+    expect(await live(u.id)).toHaveLength(1);
+  });
+});
+
 // Review SEC-01: Better Auth on a pool that may read none of its tables (app_role), so every query fails with 42501. Nothing printed while
 // it fails may hold the email, the session token or the parameters of a query.
 describe('a failing auth database', () => {
@@ -228,64 +287,5 @@ describe('a failing auth database', () => {
     expect([null, 'threw']).toContain(outcome);
     for (const secret of [token, decodeURIComponent(token), 'Failed query', 'params'])
       expect(printed).not.toContain(secret);
-  });
-});
-
-describe('POST /switch-org', () => {
-  const live = async (userId: string) =>
-    (
-      await admin.query<{ org: string | null }>(
-        'SELECT active_org_id AS org FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at',
-        [userId],
-      )
-    ).rows.map((r) => r.org);
-  const total = async (userId: string) =>
-    Number(
-      (
-        await admin.query<{ n: string }>('SELECT count(*) AS n FROM sessions WHERE user_id = $1', [
-          userId,
-        ])
-      ).rows[0]?.n,
-    );
-
-  it('moves to an organisation the person belongs to: a new session with it, the old one revoked, the old cookie dead', async () => {
-    const u = await newUser();
-    const [a, b] = [await newOrg(u.id, 'active'), await newOrg(u.id, 'active')];
-    const first = cookieOf(await signIn(u.email));
-    const res = await post('/switch-org', { orgId: a }, first);
-    expect(res.status).toBe(200);
-    expect(await live(u.id)).toEqual([a]);
-    expect(await auth.api.getSession({ headers: new Headers({ cookie: first }) })).toBeNull();
-    const second = cookieOf(res);
-    expect(
-      (await auth.api.getSession({ headers: new Headers({ cookie: second }) }))?.session,
-    ).toMatchObject({ activeOrgId: a });
-    expect((await post('/switch-org', { orgId: a }, second)).status).toBe(200);
-    expect(await total(u.id)).toBe(2);
-    expect((await post('/switch-org', { orgId: b }, second)).status).toBe(200);
-    expect(await live(u.id)).toEqual([b]);
-  });
-
-  it('refuses an organisation that is suspended, not theirs or malformed, and leaves the session as it was', async () => {
-    const u = await newUser();
-    const [suspended, stranger] = [await newOrg(u.id, 'suspended'), await newOrg(u.id)];
-    const cookie = cookieOf(await signIn(u.email));
-    expect((await post('/switch-org', { orgId: suspended }, cookie)).status).toBe(404);
-    expect((await post('/switch-org', { orgId: stranger }, cookie)).status).toBe(404);
-    expect((await post('/switch-org', { orgId: 'not-a-uuid' }, cookie)).status).toBe(400);
-    expect(await live(u.id)).toEqual([null]);
-    expect(await total(u.id)).toBe(1);
-  });
-
-  it('lets only one of two parallel switches from the same session win', async () => {
-    const u = await newUser();
-    const [a, b] = [await newOrg(u.id, 'active'), await newOrg(u.id, 'active')];
-    const cookie = cookieOf(await signIn(u.email));
-    const results = await Promise.all([
-      post('/switch-org', { orgId: a }, cookie),
-      post('/switch-org', { orgId: b }, cookie),
-    ]);
-    expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
-    expect(await live(u.id)).toHaveLength(1);
   });
 });

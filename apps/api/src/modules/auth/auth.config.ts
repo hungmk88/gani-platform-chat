@@ -1,6 +1,5 @@
 import { authSchema, createAuthDb, type createDbPool } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
-import { Logger } from '@nestjs/common';
 import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
 import type { AdapterFactory } from 'better-auth/adapters';
@@ -15,6 +14,7 @@ import {
   MIN_PASSWORD_LENGTH,
   verifyPassword,
 } from './password.js';
+import { authLogger, logAuthMessage } from './auth-logger.js';
 import { revokingAdapter } from './revoking-adapter.js';
 import { safeErrorsAdapter, safeQueryPool, storeErrorCode } from './safe-errors-adapter.js';
 import { MAX_SESSION_MS, sessionCreateBefore } from './session-hooks.js';
@@ -49,17 +49,6 @@ const SIGN_IN = '/sign-in/email';
 const IP_ADDRESS_HEADERS: string[] = ['x-forwarded-for'];
 
 type Database = AdapterFactory<BetterAuthOptions>;
-
-const authLogger = new Logger('BetterAuth');
-// Review SEC-01: a message of the library is kept, its arguments (an error object, a request body) never are, and a message that
-// carries a query is replaced. The errors themselves are already cleaned by safeErrorsAdapter; this is the second net.
-const QUERY_TEXT = /failed query|params:|\bselect\b|\binsert\b|\bupdate\b/i;
-export function logAuthMessage(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
-  const text = QUERY_TEXT.test(message) ? 'database error' : message;
-  if (level === 'error') authLogger.error(text);
-  else if (level === 'warn') authLogger.warn(text);
-  else authLogger.log(text);
-}
 
 /** `lockout` and `plugins` need the database (createAuth); without them buildAuthOptions is the pure part, which the unit tests use. */
 export function buildAuthOptions(

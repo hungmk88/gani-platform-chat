@@ -5,7 +5,7 @@ import { APIError } from 'better-auth/api';
 import type { DBAdapter } from 'better-auth/adapters';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { logAuthMessage } from './auth.config.js';
+import { logAuthMessage } from './auth-logger.js';
 import {
   AuthStoreError,
   cleanStoreError,
