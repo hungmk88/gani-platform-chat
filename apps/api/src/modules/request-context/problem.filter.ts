@@ -51,7 +51,16 @@ interface Named {
   readonly message?: unknown;
 }
 
+/** An answer kept for an Idempotency-Key (a 4xx), given back as it was when the same request is sent again (N134). */
+export class StoredProblem extends Error {
+  constructor(readonly problem: Problem) {
+    super('the answer kept for this Idempotency-Key');
+    this.name = 'StoredProblem';
+  }
+}
+
 export function toProblem(exception: unknown, traceId: string): Problem {
+  if (exception instanceof StoredProblem) return exception.problem;
   if (exception instanceof HttpException) {
     const status = exception.getStatus();
     return problem(status, codeOfStatus(status), undefined, status >= 500 ? traceId : undefined);
