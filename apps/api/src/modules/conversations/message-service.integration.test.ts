@@ -71,7 +71,7 @@ async function pendingCustomer(workspace = WA): Promise<string> {
 async function closedConversation(closedAt: Date): Promise<string> {
   const id = randomUUID();
   await admin.query(
-    "INSERT INTO conversations (id, org_id, workspace_id, state, closed_at, outcome) VALUES ($1, $2, $3, 'CLOSED', $4, 'won')",
+    "INSERT INTO conversations (id, org_id, workspace_id, state, closed_at, outcome) VALUES ($1, $2, $3, 'CLOSED', $4, 'resolved')",
     [id, A, WA, closedAt],
   );
   return id;

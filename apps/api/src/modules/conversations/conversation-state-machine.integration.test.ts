@@ -393,7 +393,7 @@ describe('the life of a conversation, event by event', () => {
       { actor: { kind: 'customer' }, traceId: 't4' },
     );
     await step(
-      { type: 'close', now: new Date(), outcome: 'won' },
+      { type: 'close', now: new Date(), outcome: 'resolved' },
       { ...by(agent, 5), expectedVersion: 4 },
     );
     const events = await eventsOf(id);
@@ -414,7 +414,7 @@ describe('the life of a conversation, event by event', () => {
       ['state_changed', 'PENDING_CUSTOMER', 'HUMAN_ACTIVE', 4, 'customer', 'T10'],
       ['state_changed', 'HUMAN_ACTIVE', 'CLOSED', 5, 'agent', 'T13'],
     ]);
-    expect(events[5]).toMatchObject({ outcome: 'won', trace_id: 'trace-5', actor_id: agent });
+    expect(events[5]).toMatchObject({ outcome: 'resolved', trace_id: 'trace-5', actor_id: agent });
     expect(events[1]).toMatchObject({ actor_id: null, from_hold: false, to_hold: false });
     const outbox = await outboxOf(id);
     expect(outbox.map((e) => [e.event_type, e.aggregate_version])).toEqual([
@@ -433,7 +433,7 @@ describe('the life of a conversation, event by event', () => {
       state: 'CLOSED',
       version: 5,
       assigned_user_id: null,
-      outcome: 'won',
+      outcome: 'resolved',
       after_hours_hold: false,
       closed_at: expect.any(Date) as Date,
     });
