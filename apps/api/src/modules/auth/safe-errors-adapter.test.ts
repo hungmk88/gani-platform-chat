@@ -116,6 +116,18 @@ describe('safeErrorsAdapter', () => {
     const api = APIError.from('UNAUTHORIZED', { code: 'SESSION_CHANGED', message: 'x' });
     await expect(adapter.transaction(() => Promise.reject(api))).rejects.toBe(api);
   });
+
+  it('cleans an error thrown before a promise is returned, as a rejected promise', async () => {
+    const inner = {
+      findOne: vi.fn(() => {
+        throw drizzleError();
+      }),
+    };
+    const adapter = safeErrorsAdapter(() => inner as unknown as DBAdapter)({});
+    const error = await rejection(adapter.findOne({ model: 'session', where: [] }));
+    expect(error).toBeInstanceOf(AuthStoreError);
+    expect(printable(error)).not.toContain(SECRET_TOKEN);
+  });
 });
 
 describe('safeQueryPool', () => {
@@ -129,6 +141,12 @@ describe('safeQueryPool', () => {
     expect(error).toBeInstanceOf(AuthStoreError);
     expect(printable(error)).not.toContain(SECRET_EMAIL);
     expect(await pool.query('SELECT 1', [])).toEqual({ rows: [{ ok: true }] });
+    const throwing = safeQueryPool({
+      query: () => {
+        throw drizzleError();
+      },
+    });
+    expect(await rejection(throwing.query('SELECT 1', []))).toBeInstanceOf(AuthStoreError);
   });
 });
 

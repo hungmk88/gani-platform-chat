@@ -37,6 +37,15 @@ export function cleanStoreError(error: unknown): unknown {
   return new AuthStoreError(storeErrorCode(error));
 }
 
+/** Runs `run` and cleans its failure, whether it rejects or throws before it returns a promise. */
+function cleaned<T>(run: () => T | PromiseLike<T>): Promise<T> {
+  return Promise.resolve()
+    .then(run)
+    .catch((error: unknown) => {
+      throw cleanStoreError(error);
+    });
+}
+
 function guard<A extends object>(adapter: A): A {
   const wrapped: Record<string, unknown> = { ...(adapter as Record<string, unknown>) };
   for (const [key, value] of Object.entries(adapter)) {
@@ -45,15 +54,8 @@ function guard<A extends object>(adapter: A): A {
     wrapped[key] =
       key === 'transaction'
         ? (callback: (trx: object) => Promise<unknown>) =>
-            Promise.resolve(method.call(adapter, (trx: object) => callback(guard(trx)))).catch(
-              (error: unknown) => {
-                throw cleanStoreError(error);
-              },
-            )
-        : (...args: unknown[]) =>
-            Promise.resolve(method.apply(adapter, args)).catch((error: unknown) => {
-              throw cleanStoreError(error);
-            });
+            cleaned(() => method.call(adapter, (trx: object) => callback(guard(trx))))
+        : (...args: unknown[]) => cleaned(() => method.apply(adapter, args));
   }
   return wrapped as A;
 }
@@ -65,14 +67,14 @@ export function safeErrorsAdapter<Options extends BetterAuthOptions>(
   return (options) => guard<DBAdapter<Options>>(factory(options));
 }
 
-/** The pool our own auth code queries directly (lockout, 2FA rule, /switch-org), reduced to `query`, the one method it uses. */
+/**
+ * The pool our own auth code queries directly inside Better Auth's requests (lockout, /switch-org and the 2FA rule it checks), reduced
+ * to `query`, the one method it uses. The 2FA gate asks the same rule on AuthService's pool, which is not wrapped: it logs only a code.
+ */
 export type QueryPool = Pick<ReturnType<typeof createDbPool>, 'query'>;
 
 /** The same guard for that pool: a failed query throws a code-only AuthStoreError. Only the (text, values) form is used. */
 export function safeQueryPool(pool: QueryPool): QueryPool {
-  const query = (text: string, values?: unknown[]) =>
-    pool.query(text, values).catch((error: unknown) => {
-      throw cleanStoreError(error);
-    });
+  const query = (text: string, values?: unknown[]) => cleaned(() => pool.query(text, values));
   return { query: query as QueryPool['query'] };
 }
