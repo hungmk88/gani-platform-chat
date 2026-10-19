@@ -90,6 +90,13 @@ export function buildAuthOptions(
       revokeSessionsOnPasswordReset: true,
       password: { hash: hashPassword, verify: verifyPassword },
     },
+    // deletedAt is a column of ours: the revoking adapter filters soft-deleted people out on it (review DB-01), so Better Auth must know
+    // the field to accept it in a where clause and to read it with a joined user. Never written by the library, never returned.
+    user: {
+      additionalFields: {
+        deletedAt: { type: 'date', required: false, input: false, returned: false },
+      },
+    },
     // 12 hours, never extended: expires_at cannot be updated by auth_role. revokedAt and activeOrgId are columns of ours that the
     // revoking adapter and the session switch need Better Auth to know.
     session: {
