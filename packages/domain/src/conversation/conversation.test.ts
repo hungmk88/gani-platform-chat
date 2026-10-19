@@ -9,11 +9,11 @@ const closed: ConversationSnapshot = {
   afterHoursHold: false,
   assignedUserId: null,
   closedAt: new Date('2026-10-01T00:00:00Z'),
-  outcome: 'won',
+  outcome: 'resolved',
 };
 
 describe('the vocabulary matches the database', () => {
-  // The same lists as the CHECKs of migrations 202610031830 and 202610061100.
+  // The same lists as the CHECKs of migrations 202610031830 and 202610191300 (N130).
   it('has the five states and the four outcomes', () => {
     expect(CONVERSATION_STATES).toEqual([
       'BOT_ACTIVE',
@@ -22,7 +22,7 @@ describe('the vocabulary matches the database', () => {
       'PENDING_CUSTOMER',
       'CLOSED',
     ]);
-    expect(CONVERSATION_OUTCOMES).toEqual(['won', 'lost', 'resolved', 'resolved_by_bot']);
+    expect(CONVERSATION_OUTCOMES).toEqual(['resolved', 'no_response', 'spam', 'resolved_by_bot']);
   });
 
   it('reopens within 72 hours (F5)', () => {
@@ -41,7 +41,11 @@ describe('snapshotViolations mirrors the CHECKs of the conversations table', () 
     ['HUMAN_ACTIVE with nobody assigned', { state: 'HUMAN_ACTIVE' }, 1],
     ['a person assigned to BOT_ACTIVE', { assignedUserId: 'u' }, 1],
     ['CLOSED without closed_at and outcome', { state: 'CLOSED' }, 2],
-    ['closed_at and outcome on an open conversation', { closedAt: new Date(0), outcome: 'won' }, 2],
+    [
+      'closed_at and outcome on an open conversation',
+      { closedAt: new Date(0), outcome: 'resolved' },
+      2,
+    ],
     ['a person assigned to CLOSED', { ...closed, assignedUserId: 'u' }, 1],
   ])('finds %s', (_name, over, count) => {
     expect(snapshotViolations({ ...INITIAL_SNAPSHOT, ...over })).toHaveLength(count);

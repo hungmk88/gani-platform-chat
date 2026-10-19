@@ -60,7 +60,7 @@ Cột do FSM sở hữu: `state`, `version`, `assigned_user_id`, `after_hours_ho
 
 1. `after_hours_hold = false OR state = 'BOT_ACTIVE'`
 2. `state IN ('HUMAN_ACTIVE','PENDING_CUSTOMER') ⇒ assigned_user_id IS NOT NULL`; `state IN ('BOT_ACTIVE','HUMAN_WAITING_Q','CLOSED') ⇒ assigned_user_id IS NULL` (nếu F3 bị bác thì bỏ `HUMAN_WAITING_Q` khỏi vế này)
-3. `state = 'CLOSED' ⇔ closed_at IS NOT NULL ⇔ outcome IS NOT NULL` (hai chiều; mở lại T14 xóa cả hai); `outcome IN ('won','lost','resolved','resolved_by_bot')`
+3. `state = 'CLOSED' ⇔ closed_at IS NOT NULL ⇔ outcome IS NOT NULL` (hai chiều; mở lại T14 xóa cả hai); `outcome IN ('resolved','no_response','spam','resolved_by_bot')` (N130, migration `202610191300`)
 4. `(org_id, assigned_user_id)` tham chiếu `org_members` (khóa ngoại kép), `ON DELETE RESTRICT`
 
 Dữ liệu không đạt bất biến bị DB từ chối ngay cả khi mã FSM sai.
@@ -114,7 +114,7 @@ PK `(id, occurred_at)`, partition tháng bằng `app.create_log_partitions` (nh�
 | F1 | `HUMAN_WAITING_Q`: khách nhắn thì bot trả lời hay im? F1 bước 3 chỉ nói im ở `HUMAN_ACTIVE`/`PENDING_CUSTOMER`; T07 lại nói "bot nhận lời nhắn" | Im lặng ở `HUMAN_WAITING_Q` (khách đã được báo chờ người) | Cố vấn |
 | F2 | `reassign` (Manager) ở `HUMAN_WAITING_Q` | **Đã chốt 06/10: được**, chuyển thẳng `HUMAN_ACTIVE` + `assigned` (T21); không dùng cho `BOT_ACTIVE` + hold (dùng claim) | Xong |
 | F3 | Dọn `assigned_user_id` khi về hàng chờ/bot | **Đã chốt 06/10: có**, `CHECK` hai chiều (§3.2) | Xong |
-| F4 | Giá trị `outcome` | **Đã chốt 06/10:** `won, lost, resolved, resolved_by_bot` + `CHECK` | Xong |
+| F4 | Giá trị `outcome` | **Đã chốt 06/10:** `won, lost, resolved, resolved_by_bot` + `CHECK`. **Thay bằng N130 (19/10/2026, theo Brief v1.0 P14):** `resolved, no_response, spam, resolved_by_bot`; Thắng/Thua thuộc lead | Xong |
 | F5 | Mốc 72h | **Đã chốt 06/10:** từ `closed_at` | Xong |
 | F6 | Mã lỗi chuyển trạng thái sai | **Đã chốt 06/10:** `409 invalid_transition` (khác `version_conflict`); còn cập nhật bảng mã lỗi P9 của Brief | Cập nhật P9 |
 | F7 | `conversation_events` là **O** (P8) còn `conversations` là **O+W**: người không có workspace đó vẫn đọc được event của hội thoại ở workspace khác trong cùng org | **Đã chốt 06/10:** giữ **O** theo Brief (không thêm `workspace_id`) **và** thêm test bắt buộc "workspace A không thấy event của workspace B". Để test đạt, policy `conversation_events_app` thêm `EXISTS (SELECT 1 FROM conversations c WHERE c.org_id = conversation_events.org_id AND c.id = conversation_events.conversation_id)`: RLS của `conversations` lọc theo workspace nên event chỉ thấy khi hội thoại thấy (cả `USING` và `WITH CHECK`). Cách này là đề xuất của em, chờ xác nhận ở dàn ý PR1 | Xác nhận cách |
