@@ -14,6 +14,7 @@ const TENANT_TABLES = [
   'audit_logs',
   'platform_access_logs',
   'api_keys',
+  'idempotency_keys',
   'inbound_event_keys',
   'inbound_events',
   'channel_accounts',
@@ -53,6 +54,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ('${channelAccount}', '${org}', '${workspace}', 'zalo_oa', 'oa-${org}', 'OA', 'app-seed', decode('${randomBytes(32).toString('hex')}', 'hex'));
     INSERT INTO inbound_events (id, org_id, workspace_id, channel_account_id, platform_message_id, event_type, payload) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${channelAccount}', 'm-seed', 'user_send_text', '{"seed": true}');
     INSERT INTO inbound_event_keys (org_id, channel_account_id, platform_message_id) VALUES ('${org}', '${channelAccount}', 'm-seed');
+    INSERT INTO idempotency_keys (org_id, user_id, key, method, path, request_hash) VALUES ('${org}', '${user}', 'seed', 'POST', '/v1/seed', repeat('0', 64));
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');
