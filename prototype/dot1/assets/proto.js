@@ -172,7 +172,7 @@
     if (Proto.can('inbox.view')) items.push(['inbox', 'Hộp thư', 'inbox.html']);
     items.push(['customers', 'Khách hàng', 'customer.html']);
     items.push(['leads', 'Lead', 'leads.html', true]);
-    items.push(['tickets', 'Ticket', null, true]);
+    if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', null]);
     if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
