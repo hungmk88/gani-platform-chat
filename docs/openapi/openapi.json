@@ -1,0 +1,185 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Gani Platform API",
+    "version": "0.1.0",
+    "description": "Brief Backend & Core v1.0, P9. Session cookie of Better Auth (/api/auth/*); the organisation and workspaces come from the session, never from a request. Errors are RFC 9457 with a snake_case `code` (N132)."
+  },
+  "components": {
+    "schemas": {
+      "SecurityStatus": {
+        "type": "object",
+        "properties": {
+          "twoFactorEnabled": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "mustSetUp": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "twoFactorEnabled",
+          "required",
+          "mustSetUp"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "about:blank"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "description": "RFC 9457 problem details; `code` is the stable word (Brief P9)."
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Liveness: the process is up (touches no dependency).",
+        "tags": [
+          "platform"
+        ],
+        "responses": {
+          "200": {
+            "description": "Alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "summary": "Readiness: both databases answer. No reason is given when they do not.",
+        "tags": [
+          "platform"
+        ],
+        "responses": {
+          "200": {
+            "description": "Ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/security-status": {
+      "get": {
+        "summary": "Whether a second factor is required of the signed-in person, on, and must be set up now (N89).",
+        "tags": [
+          "me"
+        ],
+        "responses": {
+          "200": {
+            "description": "The 2FA status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}
