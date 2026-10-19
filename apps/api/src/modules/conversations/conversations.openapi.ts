@@ -1,14 +1,16 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-import { EDGE_ERRORS, problemResponse } from '../../openapi/schemas.js';
+import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
+  ClaimConflictSchema,
   ConversationIdSchema,
   ConversationListQuerySchema,
   ConversationPageSchema,
   ConversationSchema,
   MessageListQuerySchema,
   MessagePageSchema,
+  VersionBodySchema,
 } from './conversations.schemas.js';
 
 /** The paths of conversations.controller.ts in the OpenAPI document (Brief P18), from the same Zod schemas the controller validates with. */
@@ -53,6 +55,52 @@ export function registerConversations(registry: OpenAPIRegistry): void {
       200: { description: 'A page.', ...json(MessagePageSchema) },
       404: problemResponse('not_found'),
       ...errors,
+    },
+  });
+
+  const action = {
+    tags: ['conversations'],
+    responses: {
+      200: { description: 'The conversation after the action.', ...json(ConversationSchema) },
+      400: problemResponse('validation_failed: the id, the body or the Idempotency-Key header.'),
+      403: problemResponse(
+        'forbidden: the role may not do this, or not on a conversation the person does not hold.',
+      ),
+      404: problemResponse('not_found'),
+      409: problemResponse(
+        'version_conflict (reload and try again), invalid_transition (not from this state), idempotency_in_progress.',
+      ),
+      422: problemResponse('idempotency_key_reused: the key was sent with another request.'),
+      401: EDGE_ERRORS[401],
+      503: EDGE_ERRORS[503],
+    },
+  };
+  registry.registerPath({
+    ...action,
+    method: 'post',
+    path: '/v1/conversations/{id}/claim',
+    summary:
+      'Claim a conversation of the queue or held out of hours (T05, T06). Exactly one of many claims at once wins.',
+    request: { ...byId, headers: IdempotencyHeadersSchema },
+    responses: {
+      ...action.responses,
+      409: {
+        description:
+          'conversation_already_claimed with assignedUserId (who holds it); invalid_transition; idempotency_in_progress.',
+        content: { 'application/problem+json': { schema: ClaimConflictSchema } },
+      },
+    },
+  });
+  registry.registerPath({
+    ...action,
+    method: 'post',
+    path: '/v1/conversations/{id}/wait-customer',
+    summary:
+      'Wait for the customer’s answer (T09). Sales and support: only a conversation they hold.',
+    request: {
+      ...byId,
+      headers: IdempotencyHeadersSchema,
+      body: { content: { 'application/json': { schema: VersionBodySchema } } },
     },
   });
 }

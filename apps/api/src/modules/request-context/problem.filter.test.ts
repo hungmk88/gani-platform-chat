@@ -2,7 +2,11 @@ import { InvalidTransitionError } from '@gani/domain';
 import { Logger, MethodNotAllowedException, NotFoundException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ConversationNotFoundError, VersionConflictError } from '../conversations/errors.js';
+import {
+  ConversationAlreadyClaimedError,
+  ConversationNotFoundError,
+  VersionConflictError,
+} from '../conversations/errors.js';
 import { codeOfStatus, ProblemFilter, StoredProblem, toProblem } from './problem.filter.js';
 import { problem } from './problem.js';
 import { runWithRequestContext } from './request-context.js';
@@ -59,6 +63,26 @@ describe('toProblem (AR-03)', () => {
   it('gives back the problem kept for an Idempotency-Key as it is, with its own traceId (N134)', () => {
     const kept = problem(409, 'conversation_already_claimed', 'Taken.', 'first-trace');
     expect(toProblem(new StoredProblem(kept), TRACE)).toBe(kept);
+  });
+
+  it('adds the extension members an error of ours declares to a 4xx only, ids and numbers only (PRR-05)', () => {
+    const extra = { assignedUserId: 'u1', n: 2, Bad: 1, 'a-b': 1, list: [1], nested: { a: 1 } };
+    const of = (status: number) => ({
+      status,
+      code: 'taken',
+      message: 'Taken.',
+      problemExtensions: extra,
+    });
+    expect(toProblem(of(409), TRACE)).toEqual({
+      ...problem(409, 'taken', 'Taken.', TRACE),
+      assignedUserId: 'u1',
+      n: 2,
+    });
+    expect(toProblem(of(503), TRACE)).toEqual(problem(503, 'taken', undefined, TRACE));
+    expect(toProblem(new ConversationAlreadyClaimedError(null), TRACE)).toMatchObject({
+      status: 409,
+      assignedUserId: null,
+    });
   });
 });
 

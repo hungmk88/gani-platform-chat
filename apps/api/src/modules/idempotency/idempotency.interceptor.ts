@@ -14,14 +14,15 @@ import { catchError, from, mergeMap, of, type Observable } from 'rxjs';
 import { ValidationFailedError } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { StoredProblem, toProblem } from '../request-context/problem.filter.js';
-import { problem, type Problem } from '../request-context/problem.js';
+import { extensionsOf, problem, type Problem } from '../request-context/problem.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import { IdempotencyInProgressError, IdempotencyKeyReusedError } from './idempotency.errors.js';
 import { requestHash } from './request-hash.js';
 
 const KEY = /^[!-~]{1,255}$/;
 // jsonb keeps no key order: the problem is built again, so its members come in their usual order.
-const kept = (p: Problem): Problem => problem(p.status, p.code, p.detail, p.traceId);
+const kept = (p: Problem): Problem =>
+  problem(p.status, p.code, p.detail, p.traceId, extensionsOf(p));
 
 /**
  * Idempotency-Key on a POST that creates or changes data (Brief P9, N134). The key is claimed in a short transaction of its own,

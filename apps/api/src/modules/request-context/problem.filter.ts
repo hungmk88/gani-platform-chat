@@ -9,7 +9,7 @@ import {
   type ExceptionFilter,
 } from '@nestjs/common';
 
-import { problem, sendProblem, type Problem } from './problem.js';
+import { problem, sendProblem, type Problem, type ProblemExtensions } from './problem.js';
 import { requestTraceId } from './request-context.js';
 
 // Review AR-03: one error contract for every route of Nest (RFC 9457, apps/api/CLAUDE.md). The middleware and the gate already answer
@@ -49,6 +49,19 @@ interface Named {
   readonly code?: unknown;
   readonly status?: unknown;
   readonly message?: unknown;
+  /** What an error of ours adds to its 4xx body (RFC 9457 §3.2): ids and numbers only (errors.ts says which). */
+  readonly problemExtensions?: unknown;
+}
+
+const EXTENSION = /^[a-z][A-Za-z0-9]{0,63}$/;
+function extensionsOfError(value: unknown): ProblemExtensions {
+  if (typeof value !== 'object' || value === null) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (e): e is [string, string | number | null] =>
+        EXTENSION.test(e[0]) && (e[1] === null || ['string', 'number'].includes(typeof e[1])),
+    ),
+  );
 }
 
 /** An answer kept for an Idempotency-Key (a 4xx), given back as it was when the same request is sent again (N134). */
@@ -69,7 +82,8 @@ export function toProblem(exception: unknown, traceId: string): Problem {
   const code = typeof e.code === 'string' && CODE.test(e.code) ? e.code : undefined;
   const detail = typeof e.message === 'string' ? e.message : undefined;
   if (code && typeof e.status === 'number' && e.status >= 400 && e.status <= 599) {
-    return problem(e.status, code, e.status < 500 ? detail : undefined, traceId);
+    const extra = e.status < 500 ? extensionsOfError(e.problemExtensions) : {};
+    return problem(e.status, code, e.status < 500 ? detail : undefined, traceId, extra);
   }
   if (code === 'invalid_transition') return problem(409, code, detail, traceId);
   // ADR-004, N58: a write RLS refused (42501, WITH CHECK) aimed at another tenant's row: as for a read, it does not exist (404). The
