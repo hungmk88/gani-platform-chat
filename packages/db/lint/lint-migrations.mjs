@@ -28,6 +28,30 @@ const NO_CASCADE_TARGETS = new Set(['organizations', 'workspaces']);
 // The runner wraps every file in one transaction; a statement that ends or restarts it can apply a file half way.
 const TXN_CONTROL = /^(?:BEGIN|START\s+TRANSACTION|COMMIT|END|ROLLBACK|ABORT)\b/i;
 
+// Review DB-03: a file whose leading comments hold this line runs outside a transaction (for CREATE INDEX CONCURRENTLY). PostgreSQL
+// runs several statements sent at once as one implicit transaction, so such a file must hold exactly one statement (MIG-NOTXN).
+const NO_TXN_DIRECTIVE = /^\s*--\s*migrate:no-transaction\s*$/i;
+
+/** True when the leading comment lines of the file (before any SQL) carry `-- migrate:no-transaction`. */
+export function isNoTransaction(raw) {
+  for (const line of raw.split('\n')) {
+    if (NO_TXN_DIRECTIVE.test(line)) return true;
+    if (line.trim() !== '' && !/^\s*--/.test(line)) return false;
+  }
+  return false;
+}
+
+function checkNoTransaction(raw, stmts) {
+  if (!isNoTransaction(raw) || stmts.length === 1) return [];
+  return [
+    {
+      rule: 'MIG-NOTXN',
+      line: 1,
+      message: 'a migrate:no-transaction file must hold exactly one statement',
+    },
+  ];
+}
+
 const NAME_RE = /^(\d{12})_([a-z]+)_([a-z0-9]+(?:_[a-z0-9]+)*)\.sql$/;
 const IDENT = String.raw`(?:"?[\w]+"?\.)?"?[\w]+"?`;
 
@@ -259,6 +283,7 @@ export function lintMigrations(dir) {
       ...checkRollback(raw),
       ...checkTables(stmts, orgTables, tableWarnings),
       ...checkStatements(stmts, masked),
+      ...checkNoTransaction(raw, stmts),
     ];
     errors.push(...all.map((f) => ({ file, ...f })));
     warnings.push(...tableWarnings.map((f) => ({ file, ...f })));

@@ -212,6 +212,109 @@ describe('migration runner', () => {
     });
   });
 
+  // Review DB-03: CREATE INDEX CONCURRENTLY outside a transaction, and a lock_timeout with retries for the other files.
+  describe('locks', () => {
+    const INDEX = '209901010001_create_probe_index.sql';
+    const ALTER = '209901010002_alter_probe.sql';
+    const indexSql =
+      '-- rollback: drop index zz_probe_idx\n-- migrate:no-transaction\nCREATE INDEX CONCURRENTLY zz_probe_idx ON public.zz_probe (id);\n';
+    const alterSql = '-- rollback: drop column x\nALTER TABLE public.zz_probe ADD COLUMN x int;\n';
+    const recorded = () =>
+      withClient('migration', async (c) =>
+        (await c.query<{ id: string }>(`SELECT id FROM ${TABLE} ORDER BY id`)).rows.map(
+          (r) => r.id,
+        ),
+      );
+    /** Another session that holds ACCESS EXCLUSIVE on zz_probe until `release()`. */
+    async function holdTable() {
+      const holder = new pg.Client({ connectionString: url('migration') });
+      await holder.connect();
+      await holder.query('BEGIN');
+      await holder.query('LOCK TABLE public.zz_probe IN ACCESS EXCLUSIVE MODE');
+      return {
+        release: async () => {
+          await holder.query('ROLLBACK');
+          await holder.end();
+        },
+      };
+    }
+
+    it('applies a no-transaction file outside a transaction: CREATE INDEX CONCURRENTLY builds a valid index', async () => {
+      const spy = vi.spyOn(pg.Client.prototype, 'query');
+      expect(await run(tempDir({ [GOOD]: goodSql, [INDEX]: indexSql }))).toEqual([GOOD, INDEX]);
+      const sent = spy.mock.calls.map(([first]) => (typeof first === 'string' ? first : ''));
+      // One BEGIN for the transactional file only.
+      expect(sent.filter((q) => q === 'BEGIN')).toHaveLength(1);
+      await withClient('migration', async (c) => {
+        const { rows } = await c.query<{ valid: boolean }>(
+          "SELECT indisvalid AS valid FROM pg_index WHERE indexrelid = 'public.zz_probe_idx'::regclass",
+        );
+        expect(rows).toEqual([{ valid: true }]);
+      });
+      expect(await recorded()).toEqual([GOOD, INDEX]);
+    });
+
+    it('sets lock_timeout right after BEGIN of a transactional file', async () => {
+      const spy = vi.spyOn(pg.Client.prototype, 'query');
+      await migrate({
+        connectionString: url('migration'),
+        dir: tempDir({ [GOOD]: goodSql }),
+        table: TABLE,
+        lockTimeoutMs: 1234,
+      });
+      const sent = spy.mock.calls.map(([first]) => (typeof first === 'string' ? first : ''));
+      expect(sent[sent.indexOf('BEGIN') + 1]).toBe('SET LOCAL lock_timeout = 1234');
+    });
+
+    it('rolls a file that cannot get its lock back, tries again, and gives up with 55P03 after the last attempt', async () => {
+      await run(tempDir({ [GOOD]: goodSql }));
+      const dir = dirs[dirs.length - 1] as string;
+      writeFileSync(join(dir, ALTER), alterSql);
+      const held = await holdTable();
+      try {
+        const started = Date.now();
+        const error: unknown = await migrate({
+          connectionString: url('migration'),
+          dir,
+          table: TABLE,
+          lockTimeoutMs: 200,
+          attempts: 2,
+          retryDelayMs: 50,
+        }).then(
+          () => undefined,
+          (e: unknown) => e,
+        );
+        expect(String(error)).toMatch(/lock not available after 2 attempt/);
+        expect((error as { cause?: { code?: string } }).cause?.code).toBe('55P03');
+        expect(Date.now() - started).toBeLessThan(5_000);
+      } finally {
+        await held.release();
+      }
+      expect(await recorded()).toEqual([GOOD]);
+    });
+
+    it('succeeds on a later attempt once the lock is free', async () => {
+      await run(tempDir({ [GOOD]: goodSql }));
+      const dir = dirs[dirs.length - 1] as string;
+      writeFileSync(join(dir, ALTER), alterSql);
+      const held = await holdTable();
+      const freed = new Promise<void>((resolve) => {
+        setTimeout(() => void held.release().then(resolve), 300);
+      });
+      const applied = await migrate({
+        connectionString: url('migration'),
+        dir,
+        table: TABLE,
+        lockTimeoutMs: 200,
+        attempts: 3,
+        retryDelayMs: 300,
+      });
+      await freed;
+      expect(applied).toEqual([ALTER]);
+      expect(await recorded()).toEqual([GOOD, ALTER]);
+    });
+  });
+
   it('refuses a tracking table name that is not a plain identifier', async () => {
     await expect(
       migrate({ connectionString: url('migration'), table: 'x; DROP TABLE y' }),
