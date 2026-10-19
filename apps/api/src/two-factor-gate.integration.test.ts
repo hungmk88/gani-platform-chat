@@ -251,7 +251,7 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     ] as const) {
       const res = await raw(cookie, path, method);
       expect(res.status, path).toBe(401);
-      expect(res.json, path).toMatchObject({ code: 'UNAUTHENTICATED' });
+      expect(res.json, path).toMatchObject({ code: 'unauthorized' });
     }
     expect((await raw(cookie, '/api/auth/list-sessions')).status).not.toBe(200);
   });
