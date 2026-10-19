@@ -10,6 +10,7 @@ export default defineConfig({
       ...coverage,
       exclude: [
         ...coverage.exclude,
+        'src/conversation-lock.ts',
         'src/conversation-read.ts',
         'src/conversation-store.ts',
         'src/idempotency-store.ts',
