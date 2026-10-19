@@ -40,4 +40,26 @@ describe('WorkerMetrics', () => {
     m.passEnded(false);
     expect(m.healthy(1000)).toBe(true);
   });
+
+  it('adds the state of the outbox to a scrape, and says 0 instead of failing when it cannot be read', async () => {
+    const totals = { pending: 4, oldestPendingAgeSeconds: 31.5, deadLetter: 1 };
+    const read = (await new WorkerMetrics(Date.now, () => Promise.resolve(totals)).scrape()).split(
+      '\n',
+    );
+    expect(read).toEqual(
+      expect.arrayContaining([
+        'outbox_stats_up 1',
+        'outbox_pending 4',
+        'outbox_oldest_pending_age_seconds 31.5',
+        'outbox_dead_letter 1',
+      ]),
+    );
+    const down = new WorkerMetrics(Date.now, () =>
+      Promise.reject(new Error('postgres://x:secret@db')),
+    );
+    const text = await down.scrape();
+    expect(text).toContain('\noutbox_stats_up 0\n');
+    expect(text).not.toMatch(/outbox_pending |secret/);
+    expect(await new WorkerMetrics().scrape()).toBe(new WorkerMetrics().render());
+  });
 });

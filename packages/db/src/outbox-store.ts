@@ -56,6 +56,27 @@ export async function pendingOrgs(
   return rows.map((r) => r.org_id);
 }
 
+/** The state of the outbox for the monitoring (outbox spec §7, N118): totals over every organisation that is not deleted. */
+export interface OutboxStats {
+  readonly pending: number;
+  /** How long the oldest `pending` event has waited since it was written; 0 when there is none. */
+  readonly oldestPendingAgeSeconds: number;
+  readonly deadLetter: number;
+}
+
+/** Asked outside any tenant, through `app.outbox_stats` (SECURITY DEFINER, three numbers and nothing else). */
+export async function outboxStats(pool: pg.Pool): Promise<OutboxStats> {
+  const { rows } = await pool.query<{ pending: string; age: number; dead: string }>(
+    'SELECT pending, oldest_pending_age_seconds AS age, dead_letter AS dead FROM app.outbox_stats()',
+  );
+  const [row] = rows;
+  return {
+    pending: Number(row?.pending ?? 0),
+    oldestPendingAgeSeconds: row?.age ?? 0,
+    deadLetter: Number(row?.dead ?? 0),
+  };
+}
+
 /**
  * Takes up to `limit` due events of the tenant's organisation, oldest first, and marks them `claimed` (`attempts + 1`). `FOR UPDATE
  * SKIP LOCKED` hands two relays that ask at once disjoint batches instead of the same one.

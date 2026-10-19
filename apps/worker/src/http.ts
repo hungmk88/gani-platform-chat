@@ -36,7 +36,10 @@ export function startHttp(options: {
       return;
     }
     if (path === '/metrics') {
-      res.writeHead(200, { 'content-type': METRICS_TYPE }).end(metrics.render());
+      // scrape() does not reject: a database that does not answer is reported in the body (outbox_stats_up 0).
+      void metrics
+        .scrape()
+        .then((text) => res.writeHead(200, { 'content-type': METRICS_TYPE }).end(text));
       return;
     }
     const ok = metrics.healthy(healthMaxAgeMs);

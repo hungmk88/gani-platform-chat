@@ -6,7 +6,7 @@ import { createLogger } from './logger.js';
 import { createDbPartitionStore } from './maintenance/db-store.js';
 import { WorkerMetrics } from './metrics.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
-import { createDbRelayStore } from './relay/db-store.js';
+import { createDbOutboxStats, createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
 
 // The entry point: it reads the settings, builds the real ports and ties the signals to the shutdown. Nothing here is logic worth a
@@ -26,7 +26,12 @@ function configOrExit(): ReturnType<typeof readConfig> {
 }
 
 const config = configOrExit();
-const metrics = new WorkerMetrics();
+// The pool connects on its first query: making it before the HTTP endpoints only lets /metrics read the outbox through it.
+const pool = createDbPool(config.databaseUrl, {
+  max: config.outbox.orgParallel + 2,
+  onError: (error) => log.error('db_pool_error', { error: error.name }),
+});
+const metrics = new WorkerMetrics(Date.now, createDbOutboxStats({ pool }));
 // The probes come first: a worker that cannot serve them (a port in use) does not start at all.
 let http: WorkerHttp;
 try {
@@ -36,10 +41,6 @@ try {
   process.exit(1);
 }
 log.info('worker_http_listening', { port: http.port });
-const pool = createDbPool(config.databaseUrl, {
-  max: config.outbox.orgParallel + 2,
-  onError: (error) => log.error('db_pool_error', { error: error.name }),
-});
 const worker = startWorker({
   store: createDbRelayStore({ pool }),
   queue: createBullmqPublisher(config.redisUrl, log),
