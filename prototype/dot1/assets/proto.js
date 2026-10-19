@@ -179,10 +179,20 @@
     return items;
   }
 
-  /* Trang chính của vai trò = mục đầu tiên có màn trong menu; null nếu màn đó ngoài phạm vi prototype. */
-  Proto.homeHref = () => {
-    const first = navItems().find(([, , href]) => href);
-    return first ? `${first[2]}?role=${Proto.role()}` : null;
+  /* Trang mặc định theo vai trò (apps/admin/CLAUDE.md). href = null khi màn đó chưa có trong prototype. */
+  const HOME = {
+    owner: ['Tổng quan (#16)', null],
+    admin: ['Tổng quan (#16)', null],
+    manager: ['Tổng quan (#16)', null],
+    sales: ['Hộp thư', 'inbox.html'],
+    support: ['Hộp thư', 'inbox.html'],
+    marketing: ['Tổng quan (#16)', null],
+    viewer: ['Tổng quan (#16)', null],
+    platform_operator: ['Platform (#30)', null],
+  };
+  Proto.home = () => {
+    const [label, page] = HOME[Proto.role()];
+    return { label, href: page ? `${page}?role=${Proto.role()}` : null };
   };
 
   /* Thanh trên cùng: đổi workspace, trạng thái agent (Online / Bận / Offline, U20-4), menu cá nhân. */
