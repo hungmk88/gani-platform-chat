@@ -97,8 +97,23 @@ describe.each(PARENTS)('%s partitions', (parent) => {
         admin.query<{ n: number }>('SELECT app.create_log_partitions($1::regclass, 3) AS n', [
           `public.${parent}`,
         ]);
+      // What the call has to make: the DEFAULT partition and this month plus 3 more, named as app.create_log_partitions names them,
+      // minus those that exist already. Not a fixed 1: a database migrated in an earlier month, or one the partition job has run on,
+      // already has some (review TEST-01).
+      const { rows } = await admin.query<{ missing: number }>(
+        `SELECT count(*) FILTER (WHERE to_regclass(name) IS NULL)::int AS missing FROM (
+           SELECT format('public.%I', $1 || '_default') AS name
+           UNION ALL
+           SELECT format('public.%I', $1 || to_char(date_trunc('month', now() AT TIME ZONE 'UTC') + make_interval(months => i), '"_y"YYYY"m"MM'))
+           FROM generate_series(0, 3) AS i) AS wanted`,
+        [parent],
+      );
+      const missing = rows[0]?.missing;
       const [first, again] = [await make(), await make()];
-      expect([first.rows[0]?.n, again.rows[0]?.n]).toEqual([1, 0]);
+      expect([first.rows[0]?.n, again.rows[0]?.n]).toEqual([missing, 0]);
+      expect((await children(parent)).filter((c) => MONTHLY.test(c)).length).toBeGreaterThanOrEqual(
+        4,
+      );
       for (const child of await children(parent)) await expectSecure(parent, child);
     } finally {
       await admin.query('ROLLBACK').catch(() => undefined);
