@@ -258,6 +258,34 @@
       </section>
 
       <section>
+        <h2>1e. Màn S5 — Audit log (#28) và Platform (#30), nộp 04/01</h2>
+        <p class="muted">
+          Không phụ thuộc spec M8. Audit log: Owner, Admin. Platform: chỉ platform operator, bản tối thiểu 3 tab.
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="audit.html?role=admin">Audit log (#28)</a></h3>
+            <ul>
+              <li><a href="audit.html?role=admin">Thao tác quản trị (A9)</a></li>
+              <li><a href="audit.html?role=admin&tab=access">Truy cập của platform (A8)</a></li>
+              <li><a href="audit.html?role=admin&state=loading">Đang tải</a> · <a href="audit.html?role=admin&state=empty">Trống</a> · <a href="audit.html?role=admin&state=error">Lỗi</a> · <a href="audit.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="audit.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="platform.html?role=platform_operator">Platform (#30)</a></h3>
+            <ul>
+              <li><a href="platform.html?role=platform_operator">Sức khỏe công ty (A7)</a></li>
+              <li><a href="platform.html?role=platform_operator&tab=access">Mở phiên truy cập có lý do (A8)</a> → dải phiên ở khung app</li>
+              <li><a href="platform.html?role=platform_operator&tab=policies">Chính sách kênh (B3): thêm phiên bản</a></li>
+              <li><a href="platform.html?role=platform_operator&state=loading">Đang tải</a> · <a href="platform.html?role=platform_operator&state=empty">Trống</a> · <a href="platform.html?role=platform_operator&state=error">Lỗi</a></li>
+              <li><a href="platform.html?role=owner">Owner: không có quyền</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
         <h2>2. Token (CĐT đã duyệt)</h2>
         <table class="plain" style="margin-top: var(--sp-3)">
           <thead>
@@ -324,6 +352,8 @@
             <tr><td>#5 Hồ sơ cá nhân</td><td>A5, C11 (U20-1/2, Q-U20-1/2/3)</td><td>Endpoint lưu tên/ảnh (<code>PATCH /v1/me</code>)</td></tr>
             <tr><td>Trang hệ thống (#31)</td><td>—</td><td>—</td></tr>
             <tr><td>#14 Ticket · #15 Chi tiết ticket</td><td>I1 (ticket theo loại), I2 (nhận diện khách qua SĐT đã đăng ký), I3 (chuyên viên phụ trách, SLA)</td><td>Q8 (loại, SLA của The Smile); U27 (trạng thái, endpoint chi tiết + lịch sử)</td></tr>
+            <tr><td>#28 Audit log</td><td>A8 (truy cập của platform), A9 (thao tác quản trị), A17</td><td>U28 (định nghĩa A17; endpoint xem phiên truy cập của công ty)</td></tr>
+            <tr><td>#30 Platform</td><td>A7 (sức khỏe công ty), A8 (phiên truy cập có lý do, 60 phút), B3 (chính sách kênh)</td><td>Chi phí AI theo công ty (E5); giá trị chính sách chờ CĐT xác nhận</td></tr>
             <tr><td>#24 Kênh · #25 Cấu hình Zalo OA</td><td>B1, B2 (trạng thái token, làm mới), B3 (chính sách gửi, chỉ xem)</td><td>Z2, Z4, Q6 (tài liệu Zalo); endpoint quản lý kênh chưa có trong P9</td></tr>
           </tbody>
         </table>

@@ -165,7 +165,7 @@
   function navItems() {
     const items = [];
     if (Proto.role() === 'platform_operator') {
-      items.push(['platform', 'Platform', null]);
+      items.push(['platform', 'Platform', 'platform.html']);
       if (Proto.get('shell', 'normal') === 'platform_session') items.push(['customers', 'Khách hàng (trong phiên)', 'customer.html']);
       return items;
     }
@@ -175,7 +175,10 @@
     if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', null]);
-    if (['owner', 'admin'].includes(Proto.role())) items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
+    if (['owner', 'admin'].includes(Proto.role())) {
+      items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
+      items.push(['audit', 'Audit log', 'audit.html', true]);
+    }
     return items;
   }
 
@@ -188,7 +191,7 @@
     support: ['Hộp thư', 'inbox.html'],
     marketing: ['Tổng quan (#16)', null],
     viewer: ['Tổng quan (#16)', null],
-    platform_operator: ['Platform (#30)', null],
+    platform_operator: ['Platform (#30)', 'platform.html'],
   };
   Proto.home = () => {
     const [label, page] = HOME[Proto.role()];
