@@ -4,14 +4,6 @@ const { h } = Proto;
 
 const NEEDS_2FA = ['owner', 'admin', 'platform_operator'];
 
-function passwordProblems(value) {
-  const out = [];
-  if (value.length < 12) out.push('ít nhất 12 ký tự');
-  if (!/[A-Za-zÀ-ỹ]/.test(value)) out.push('có chữ');
-  if (!/\d/.test(value)) out.push('có số');
-  return out;
-}
-
 function acceptForm() {
   const pass = h('input', { id: 'p1', class: 'input', type: 'password', autocomplete: 'new-password' });
   const again = h('input', { id: 'p2', class: 'input', type: 'password', autocomplete: 'new-password' });
@@ -21,7 +13,7 @@ function acceptForm() {
     class: 'stack',
     onsubmit: (e) => {
       e.preventDefault();
-      const problems = passwordProblems(pass.value);
+      const problems = Proto.passwordProblems(pass.value);
       if (problems.length) { err.textContent = `Mật khẩu cần ${problems.join(', ')}.`; pass.classList.add('invalid'); return; }
       if (pass.value !== again.value) { err.textContent = 'Hai lần nhập mật khẩu chưa khớp.'; again.classList.add('invalid'); return; }
       err.textContent = '';
@@ -53,8 +45,9 @@ function body() {
 }
 
 Proto.mountBare({
-  states: [['normal', 'Bình thường'], ['expired', 'Link hết hạn (7 ngày)'], ['invalid', 'Link không hợp lệ / sai email'], ['used', 'Link đã dùng (N31)'], ['timeout', 'Quá thời gian đặt mật khẩu']],
+  states: [['normal', 'Bình thường'], ['expired', 'Link hết hạn (7 ngày)'], ['invalid', 'Link không hợp lệ / sai email'], ['used', 'Link đã dùng (N31)'], ['timeout', 'Quá thời gian đặt mật khẩu'], ['aioff', 'AI tắt — Không áp dụng']],
   render: () => h('main', { class: 'card stack auth-card' },
     h('div', { class: 'banner info', style: 'border-radius:var(--r-input)' }, 'Phụ thuộc PR7: duyệt bố cục; chi tiết duyệt lại khi PR7 xong.'),
+    Proto.noAiNote(),
     body()),
 });

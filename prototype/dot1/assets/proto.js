@@ -358,6 +358,15 @@
     return close;
   };
 
+  /* Mật khẩu ≥ 12 ký tự, có chữ và số (Phụ lục C v3 dòng 7, 8): trả về các điều kiện còn thiếu. */
+  Proto.passwordProblems = (value) => {
+    const out = [];
+    if (value.length < 12) out.push('ít nhất 12 ký tự');
+    if (!/[A-Za-zÀ-ỹ]/.test(value)) out.push('có chữ');
+    if (!/\d/.test(value)) out.push('có số');
+    return out;
+  };
+
   /* Gõ phím tắt chỉ khi con trỏ không ở ô nhập (§4.7). */
   Proto.inTextField = (event) => event.target.closest('input, textarea, select, [contenteditable]');
 

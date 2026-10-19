@@ -1,4 +1,4 @@
-/* global Proto, setTimeout */
+/* global Proto, setTimeout, document */
 /* Pipeline lead (Brief UI §6.3; U6: Thắng/Thua tách khỏi 6 bước). Dữ liệu là mẫu. */
 const { h } = Proto;
 
@@ -19,6 +19,8 @@ function makeLeads(many) {
 let leads = makeLeads(false);
 let seededFor = 'normal';
 const view = { tab: 'open', owner: 'all' };
+let openId = null; // #13 Chi tiết lead (drawer, `/leads/[id]`)
+let lastState = null;
 
 function canMove(lead) {
   if (!Proto.can('lead.change')) return false;
@@ -73,11 +75,11 @@ function card(lead) {
   const movable = canMove(lead);
   const busy = lead.busy || (Proto.state() === 'saving' && lead.id === 'l2');
   return h('article', {
-    class: 'lead-card stack', draggable: String(movable && !busy), 'aria-busy': String(Boolean(busy)), 'aria-disabled': String(!movable),
+    class: 'lead-card stack', draggable: String(movable && !busy), 'aria-busy': String(Boolean(busy)), 'data-movable': String(movable),
     title: movable ? 'Kéo để đổi bước' : 'Chỉ người phụ trách đổi bước',
     ondragstart: (e) => e.dataTransfer.setData('text/plain', lead.id),
   },
-  h('div', { class: 'spread' }, h('strong', {}, lead.company), busy ? h('span', { class: 'row small muted' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), 'Đang lưu…') : null),
+  h('div', { class: 'spread' }, h('button', { class: 'btn link lead-open', 'aria-label': `Xem chi tiết ${lead.company}`, onclick: () => { openId = lead.id; Proto.render(); } }, h('strong', {}, lead.company)), busy ? h('span', { class: 'row small muted' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), 'Đang lưu…') : null),
   h('span', { class: 'small' }, `${lead.contact} · ${lead.owner}`),
   h('span', { class: 'small muted' }, `Liên hệ cuối ${lead.last} · ${lead.days} ngày ở bước này`),
   h('a', { class: 'small', href: `inbox.html?role=${Proto.role()}` }, `Nguồn: ${lead.source} · hội thoại gốc`),
@@ -137,6 +139,51 @@ function filters() {
     h('label', { class: 'row small' }, 'Đến', h('input', { class: 'input', type: 'date' })));
 }
 
+/* #13 Chi tiết lead: drawer bên phải (danh-sach-man-M11 #13; G1, G2, G3). Quyền theo Phụ lục B: Sales chỉ lead của mình. */
+function history(lead) {
+  const out = [['Tạo lead', `từ ${lead.source}`, '02/10']];
+  const idx = STAGES.indexOf(lead.stage);
+  for (let i = 1; i <= idx; i += 1) out.push([`Chuyển ${STAGES[i - 1]} → ${STAGES[i]}`, lead.owner, `0${Math.min(i + 2, 9)}/10`]);
+  if (lead.status === 'won') out.push(['Đánh dấu Thắng', lead.owner, lead.last]);
+  if (lead.status === 'lost') out.push([`Đánh dấu Thua — ${lead.reason}`, lead.owner, lead.last]);
+  return out;
+}
+
+function drawer() {
+  const s = Proto.state();
+  const lead = leads.find((l) => l.id === openId);
+  if (!lead) return null;
+  const close = () => { openId = null; Proto.render(); };
+  let content;
+  if (s === 'drawer_loading') content = Proto.loading(6);
+  else if (s === 'drawer_error') content = Proto.error('Không tải được chi tiết lead.');
+  else {
+    const movable = canMove(lead) && lead.status === 'open';
+    content = h('div', { class: 'stack' },
+      h('dl', { class: 'kv' },
+        h('dt', {}, 'Người liên hệ'), h('dd', {}, lead.contact),
+        h('dt', {}, 'Phụ trách'), h('dd', {}, lead.owner),
+        h('dt', {}, 'Bước'), h('dd', {}, lead.stage, ' ', h('span', { class: 'pending-spec' }, 'tên tạm')),
+        h('dt', {}, 'Trạng thái'), h('dd', {}, lead.status === 'won' ? 'Thắng' : lead.status === 'lost' ? `Thua — ${lead.reason}` : 'Đang mở'),
+        h('dt', {}, 'Nguồn'), h('dd', {}, lead.source),
+        h('dt', {}, 'Ở bước này'), h('dd', {}, `${lead.days} ngày`)),
+      h('div', { class: 'row' },
+        h('a', { class: 'btn', href: `customer.html?role=${Proto.role()}` }, 'Hồ sơ khách'),
+        h('a', { class: 'btn', href: `inbox.html?role=${Proto.role()}` }, 'Hội thoại gốc')),
+      movable
+        ? h('label', { class: 'field' }, 'Chuyển tới',
+          h('select', { class: 'input', disabled: lead.busy, onchange: (e) => requestMove(lead, e.target.value) },
+            STAGES.map((st) => h('option', { value: st, selected: st === lead.stage }, st)), h('option', { value: 'won' }, 'Thắng'), h('option', { value: 'lost' }, 'Thua…')))
+        : h('p', { class: 'small muted' }, Proto.can('lead.change') ? 'Chỉ người phụ trách đổi được bước của lead này.' : 'Vai trò của bạn chỉ xem lead.'),
+      lead.busy ? h('p', { class: 'row small muted' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), 'Đang lưu…') : null,
+      h('h3', {}, 'Lịch sử'),
+      h('ol', { class: 'stack small', style: 'margin:0;padding-left:var(--sp-4)' }, history(lead).map(([what, who, at]) => h('li', {}, `${at} · ${what} · ${who}`))));
+  }
+  return h('aside', { class: 'lead-drawer stack', role: 'dialog', 'aria-label': `Chi tiết lead ${lead.company}` },
+    h('div', { class: 'spread' }, h('h2', {}, lead.company), h('button', { class: 'btn', onclick: close, 'aria-label': 'Đóng chi tiết lead' }, 'Đóng')),
+    content);
+}
+
 function body() {
   const s = Proto.state();
   if (s === 'loading') return h('div', { class: 'board' }, STAGES.map(() => h('div', { class: 'column', style: 'padding:var(--sp-3)' }, Proto.loading(5))));
@@ -145,18 +192,23 @@ function body() {
   return h('div', {}, filters(), board());
 }
 
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId && !document.querySelector('.overlay')) { openId = null; Proto.render(); } });
+
 Proto.mount({
   page: 'leads',
-  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['many', 'Cột nhiều thẻ'], ['saving', 'Đang lưu'], ['save_error', 'Lưu lỗi khi kéo']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['many', 'Cột nhiều thẻ'], ['saving', 'Đang lưu'], ['save_error', 'Lưu lỗi khi kéo'], ['drawer', 'Chi tiết lead (#13)'], ['drawer_loading', 'Chi tiết lead — đang tải'], ['drawer_error', 'Chi tiết lead — lỗi']],
   variants: [{ label: 'Thắng/Thua', name: 'terminal', options: [['A', 'A — bộ lọc'], ['B', 'B — cột phụ']] }],
   render: () => {
     const wantMany = Proto.state() === 'many' ? 'many' : 'normal';
     if (wantMany !== seededFor) { leads = makeLeads(wantMany === 'many'); seededFor = wantMany; }
+    const s = Proto.state();
+    if (s !== lastState) { openId = s.startsWith('drawer') ? 'l0' : null; lastState = s; }
     return h('div', { class: 'main' },
       h('div', { class: 'page-head' },
         h('div', {}, h('h1', {}, 'Pipeline lead'), h('p', { class: 'small muted' }, '6 bước dùng tên tạm "Bước 1–6", chờ O1. Thắng/Thua là trạng thái kết thúc riêng.')),
         Proto.can('lead.change') ? h('button', { class: 'btn primary', onclick: () => Proto.toast('Mở form tạo lead.') }, 'Tạo lead') : h('span', { class: 'badge outline' }, 'Chỉ xem')),
       Proto.noAiNote(),
-      h('div', { class: 'page-body' }, body()));
+      h('div', { class: 'page-body' }, body()),
+      drawer());
   },
 });

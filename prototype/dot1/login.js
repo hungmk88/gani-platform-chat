@@ -33,12 +33,13 @@ function form() {
   h('div', { class: 'field' }, h('label', { for: 'pass' }, 'Mật khẩu'), pass),
   error,
   submit,
-  h('a', { class: 'btn link', href: '#', onclick: (e) => { e.preventDefault(); Proto.toast('Quên mật khẩu (#3) phụ thuộc PR7 — chưa làm ở đợt sớm này.'); } }, 'Quên mật khẩu?'));
+  h('a', { class: 'btn link', href: `reset.html?role=${Proto.role()}` }, 'Quên mật khẩu?'));
 }
 
 Proto.mountBare({
-  states: [['normal', 'Bình thường'], ['loading', 'Đang đăng nhập'], ['error', 'Sai email hoặc mật khẩu'], ['locked', 'Khóa 30 phút (5 lần sai)']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang đăng nhập'], ['error', 'Sai email hoặc mật khẩu'], ['locked', 'Khóa 30 phút (5 lần sai)'], ['aioff', 'AI tắt — Không áp dụng']],
   render: () => h('main', { class: 'card stack auth-card' },
+    Proto.noAiNote(),
     h('h1', {}, 'Đăng nhập'),
     h('p', { class: 'muted' }, 'Nền tảng chat — dùng chung cho 5 công ty.'),
     form(),

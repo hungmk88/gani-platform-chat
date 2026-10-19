@@ -107,7 +107,15 @@ function stateBadge(c) {
   const cls = c.state === 'HUMAN_WAITING_Q' ? 'warn' : c.state === 'CLOSED' ? '' : c.state === 'HUMAN_ACTIVE' ? 'ok' : 'outline';
   return h('span', { class: `badge ${cls}` }, STATE_LABEL[c.state]);
 }
+/* SLA tạm dừng (Phụ lục C v3 dòng 1): khi chờ khách trả lời, hoặc ngoài giờ làm việc (giờ làm việc chờ Q7). */
+function slaPaused(c) {
+  if (c.state === 'PENDING_CUSTOMER') return 'chờ khách';
+  if (Proto.state() === 'after_hours' && c.sla !== null) return 'ngoài giờ';
+  return null;
+}
 function slaBadge(c) {
+  const paused = slaPaused(c);
+  if (paused) return h('span', { class: 'badge outline', title: 'SLA không chạy trong lúc này' }, `SLA tạm dừng · ${paused}`);
   if (c.sla === null) return null;
   if (c.sla < 0) return h('span', { class: 'badge error', title: 'Quá hạn SLA' }, `Quá ${-c.sla} phút`);
   return h('span', { class: `badge ${c.sla < 15 ? 'error' : 'ok'}`, title: 'Còn lại trước hạn SLA' }, `Còn ${c.sla} phút`);
@@ -124,8 +132,8 @@ function visibleConvs() {
     if (f.state !== 'all' && c.state !== f.state) return false;
     if (f.who === 'mine' && c.assignee !== ME) return false;
     if (f.who === 'none' && c.assignee !== null) return false;
-    if (f.sla === 'soon' && !(c.sla !== null && c.sla >= 0 && c.sla < 15)) return false;
-    if (f.sla === 'over' && !(c.sla !== null && c.sla < 0)) return false;
+    if (f.sla === 'soon' && (slaPaused(c) || !(c.sla !== null && c.sla >= 0 && c.sla < 15))) return false;
+    if (f.sla === 'over' && (slaPaused(c) || !(c.sla !== null && c.sla < 0))) return false;
     if (f.q && !`${c.name} ${c.phone || ''}`.toLowerCase().includes(f.q.toLowerCase())) return false;
     return true;
   });
@@ -483,13 +491,16 @@ function shortcuts() {
 
 Proto.mount({
   page: 'inbox',
-  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['api_closed', 'Hết khung gửi Zalo'], ['paid_only', 'Ngoài khung miễn phí'], ['send_failed', 'Tin gửi lỗi'], ['claimed', 'Đã được người khác nhận'], ['overload', 'Vượt giới hạn tải']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['api_closed', 'Hết khung gửi Zalo'], ['paid_only', 'Ngoài khung miễn phí'], ['send_failed', 'Tin gửi lỗi'], ['after_hours', 'Ngoài giờ — SLA tạm dừng'], ['claimed', 'Đã được người khác nhận'], ['overload', 'Vượt giới hạn tải']],
   variants: [
     { label: 'Chuyển', name: 'transfer', options: [['A', 'A (2 thao tác)'], ['B', 'B (3 thao tác)']] },
     { label: 'O7 đã xem/thu hồi/trích dẫn', name: 'o7', options: [['yes', 'Kênh hỗ trợ'], ['no', 'Không hỗ trợ']] },
   ],
   render: () => {
     if (!Proto.can('inbox.view')) return Proto.noAccess('Hộp thư (Viewer: Owner bật được cho từng người)', 'customer.html');
-    return h('div', { class: 'main', style: 'flex:1;overflow:hidden' }, Proto.aiOffBanner('Admin tắt bằng feature flag'), h('div', { class: 'inbox' }, leftColumn(), middleColumn(), rightColumn()));
+    const afterHours = Proto.state() === 'after_hours'
+      ? h('div', { class: 'banner info', role: 'status' }, 'Ngoài giờ làm việc: SLA tạm dừng, chạy lại khi vào giờ. ', h('span', { class: 'pending-spec' }, 'giờ làm việc chờ Q7'))
+      : null;
+    return h('div', { class: 'main', style: 'flex:1;overflow:hidden' }, Proto.aiOffBanner('Admin tắt bằng feature flag'), afterHours, h('div', { class: 'inbox' }, leftColumn(), middleColumn(), rightColumn()));
   },
 });
