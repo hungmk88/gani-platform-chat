@@ -28,6 +28,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@asteasolutions/zod-to-openapi':
+        specifier: 9.1.0
+        version: 9.1.0(zod@4.6.5)
       '@gani/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -55,6 +58,9 @@ importers:
       rxjs:
         specifier: 7.8.2
         version: 7.8.2
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@gani/config':
         specifier: workspace:*
@@ -76,10 +82,10 @@ importers:
         version: 6.0.3
       unplugin-swc:
         specifier: 2.0.0
-        version: 2.0.0(@swc/core@1.16.13)(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5))
+        version: 2.0.0(@swc/core@1.16.13)(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
       vitest:
         specifier: 5.0.3
-        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5))
+        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
 
   apps/widget: {}
 
@@ -112,7 +118,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 5.0.3
-        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5))
+        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
 
   packages/ai-core: {}
 
@@ -165,7 +171,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 5.0.3
-        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5))
+        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
 
   packages/domain:
     devDependencies:
@@ -183,13 +189,18 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 5.0.3
-        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5))
+        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
 
   packages/testing: {}
 
   packages/ui: {}
 
 packages:
+
+  '@asteasolutions/zod-to-openapi@9.1.0':
+    resolution: {integrity: sha512-pLMeRgRYS7/vZIgAAkOe2P6+XGTifR1MT9pqDoxZ11EmcJJ+DPmdPqLN8ZZF4U8R9KHCCQCS9c2wtuE8wSrfkw==}
+    peerDependencies:
+      zod: ^4.0.0
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -1655,6 +1666,9 @@ packages:
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
+  openapi3-ts@4.6.2:
+    resolution: {integrity: sha512-gyyil3DweqhXiEhTqtAs9wwRLfWHmetwhI4kmM5Rn0d6gtmK863Ki7qqbQnp9+Wwlqoe3B1LFWj7kMp5ctE4rQ==}
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -2107,6 +2121,11 @@ packages:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
 
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
@@ -2115,6 +2134,11 @@ packages:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
 snapshots:
+
+  '@asteasolutions/zod-to-openapi@9.1.0(zod@4.6.5)':
+    dependencies:
+      openapi3-ts: 4.6.2
+      zod: 4.6.5
 
   '@babel/helper-string-parser@7.29.7': {}
 
@@ -2676,7 +2700,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5))
+      vitest: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.2': {}
 
@@ -2684,14 +2708,14 @@ snapshots:
     dependencies:
       '@vitest/istanbul-lib-coverage': 1.0.2
 
-  '@vitest/mocker@5.0.3(vite@8.3.2(@types/node@22.20.5))':
+  '@vitest/mocker@5.0.3(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.3
       estree-walker: 3.0.3
       magic-string: 1.4.2
     optionalDependencies:
-      vite: 8.3.2(@types/node@22.20.5)
+      vite: 8.3.2(@types/node@22.20.5)(yaml@2.9.1)
 
   '@vitest/spy@5.0.3': {}
 
@@ -2747,7 +2771,7 @@ snapshots:
     optionalDependencies:
       drizzle-orm: 0.45.3(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.1)
       pg: 8.23.1
-      vitest: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5))
+      vitest: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
@@ -3308,6 +3332,10 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
+  openapi3-ts@4.6.2:
+    dependencies:
+      yaml: 2.9.1
+
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -3617,12 +3645,12 @@ snapshots:
 
   unpipe@1.0.0: {}
 
-  unplugin-swc@2.0.0(@swc/core@1.16.13)(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5)):
+  unplugin-swc@2.0.0(@swc/core@1.16.13)(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1)):
     dependencies:
       '@rollup/pluginutils': 5.4.0
       '@swc/core': 1.16.13
       load-tsconfig: 0.2.5
-      unplugin: 3.4.0(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5))
+      unplugin: 3.4.0(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@farmfe/core'
       - '@rsbuild/core'
@@ -3635,14 +3663,14 @@ snapshots:
       - vite
       - webpack
 
-  unplugin@3.4.0(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5)):
+  unplugin@3.4.0(rolldown@1.2.12)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1)):
     dependencies:
       '@jridgewell/remapping': 2.3.5
       picomatch: 4.0.7
       webpack-virtual-modules: 0.6.2
     optionalDependencies:
       rolldown: 1.2.12
-      vite: 8.3.2(@types/node@22.20.5)
+      vite: 8.3.2(@types/node@22.20.5)(yaml@2.9.1)
 
   uri-js@4.4.1:
     dependencies:
@@ -3650,7 +3678,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@8.3.2(@types/node@22.20.5):
+  vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -3660,11 +3688,12 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.20.5
       fsevents: 2.3.3
+      yaml: 2.9.1
 
-  vitest@5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)):
+  vitest@5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.3(vite@8.3.2(@types/node@22.20.5))
+      '@vitest/mocker': 5.0.3(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
       chai: 6.3.0
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -3675,7 +3704,7 @@ snapshots:
       tinybench: 6.2.0
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
-      vite: 8.3.2(@types/node@22.20.5)
+      vite: 8.3.2(@types/node@22.20.5)(yaml@2.9.1)
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@types/node': 22.20.5
@@ -3696,6 +3725,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   xtend@4.0.2: {}
+
+  yaml@2.9.1: {}
 
   yocto-queue@0.1.0: {}
 
