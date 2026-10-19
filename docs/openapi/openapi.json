@@ -129,9 +129,9 @@
               "null"
             ],
             "enum": [
-              "won",
-              "lost",
               "resolved",
+              "no_response",
+              "spam",
               "resolved_by_bot",
               null
             ]
