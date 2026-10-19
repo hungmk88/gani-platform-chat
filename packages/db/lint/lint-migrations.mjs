@@ -42,14 +42,27 @@ export function isNoTransaction(raw) {
 }
 
 function checkNoTransaction(raw, stmts) {
-  if (!isNoTransaction(raw) || stmts.length === 1) return [];
-  return [
-    {
-      rule: 'MIG-NOTXN',
-      line: 1,
-      message: 'a migrate:no-transaction file must hold exactly one statement',
-    },
-  ];
+  if (!isNoTransaction(raw)) return [];
+  if (stmts.length !== 1)
+    return [
+      {
+        rule: 'MIG-NOTXN',
+        line: 1,
+        message: 'a migrate:no-transaction file must hold exactly one statement',
+      },
+    ];
+  // A CONCURRENTLY build cut short leaves an INVALID index of the same name: IF NOT EXISTS would then skip it on the next run, and the
+  // runner would record a file whose index does not work.
+  if (/\bIF\s+NOT\s+EXISTS\b/i.test(stmts[0].text))
+    return [
+      {
+        rule: 'MIG-NOTXN',
+        line: stmts[0].line,
+        message:
+          'a migrate:no-transaction file must not use IF NOT EXISTS (it would skip an INVALID index left by a failed run)',
+      },
+    ];
+  return [];
 }
 
 const NAME_RE = /^(\d{12})_([a-z]+)_([a-z0-9]+(?:_[a-z0-9]+)*)\.sql$/;

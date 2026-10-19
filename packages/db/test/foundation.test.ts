@@ -254,6 +254,23 @@ describe('migration runner', () => {
       expect(await recorded()).toEqual([GOOD, INDEX]);
     });
 
+    it('records no no-transaction file while an INVALID index exists, and names it', async () => {
+      await run(tempDir({ [GOOD]: goodSql }));
+      // A unique build over duplicates fails half way and leaves its index INVALID, as a cut-short CONCURRENTLY build does.
+      await withClient('migration', async (c) => {
+        await c.query('INSERT INTO public.zz_probe VALUES (1), (1)');
+        await c
+          .query('CREATE UNIQUE INDEX CONCURRENTLY zz_probe_broken ON public.zz_probe (id)')
+          .catch(() => undefined);
+      });
+      const dir = dirs[dirs.length - 1] as string;
+      writeFileSync(join(dir, INDEX), indexSql);
+      await expect(run(dir)).rejects.toThrow(
+        /INVALID index\(es\) exist: zz_probe_broken; nothing was recorded/,
+      );
+      expect(await recorded()).toEqual([GOOD]);
+    });
+
     it('sets lock_timeout right after BEGIN of a transactional file', async () => {
       const spy = vi.spyOn(pg.Client.prototype, 'query');
       await migrate({

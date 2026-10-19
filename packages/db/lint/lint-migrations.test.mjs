@@ -193,6 +193,15 @@ describe('MIG-NOTXN (review DB-03)', () => {
     assert.deepEqual(rules(found(NOTXN)), ['MIG-NOTXN']);
   });
 
+  it('reports IF NOT EXISTS in a no-transaction file, but not inside a string', () => {
+    const ifNot = 'CREATE INDEX CONCURRENTLY IF NOT EXISTS orders_org_idx ON orders (org_id);\n';
+    assert.deepEqual(rules(found(NOTXN + ifNot)), ['MIG-NOTXN']);
+    assert.deepEqual(rules(found(ifNot)), []);
+    const commented =
+      "CREATE INDEX CONCURRENTLY orders_org_idx ON orders (org_id) WHERE note <> 'if not exists';\n";
+    assert.deepEqual(rules(found(NOTXN + commented)), []);
+  });
+
   it('reads the directive only in the leading comments, not after SQL or inside a string or a body', () => {
     assert.equal(isNoTransaction(ROLLBACK + '\n' + NOTXN + INDEX), true);
     assert.equal(isNoTransaction(ROLLBACK + INDEX + NOTXN), false);

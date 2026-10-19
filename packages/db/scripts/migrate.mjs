@@ -96,6 +96,17 @@ export async function migrate({
             { cause: error },
           );
         }
+        // A file is recorded only when no index is left INVALID (by this run or a failed earlier one): MIG-NOTXN already forbids the
+        // IF NOT EXISTS that would skip one, this catches whatever else gets past. A CONCURRENTLY build running in another session at
+        // this moment also shows as INVALID: the runner then stops, and running it again later is enough.
+        const invalid = await client.query(
+          "SELECT indexrelid::regclass::text AS name FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE NOT i.indisvalid AND n.nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1",
+        );
+        if (invalid.rowCount > 0)
+          throw new Error(
+            `migration ${id} (no-transaction) ran, but INVALID index(es) exist: ${invalid.rows.map((r) => r.name).join(', ')}; ` +
+              'nothing was recorded: DROP INDEX CONCURRENTLY them, run again.',
+          );
         await record(id, sql);
         applied.push(id);
         continue;
