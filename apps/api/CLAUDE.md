@@ -27,6 +27,7 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - Cursor pagination, không offset.
 - Idempotency-Key cho POST tạo dữ liệu.
 - Webhook vào: verify → ghi `inbound_events` → trả 200 < 100ms → worker xử lý.
+- CSRF (N136): request dưới `/v1` không phải GET/HEAD/OPTIONS mà có cookie phải có `Origin` = `BETTER_AUTH_URL` (`same-origin.ts`), sai → 403. Test gửi POST `/v1` có cookie thì phải kèm header `origin`.
 
 ## Kiểm chứng
 
