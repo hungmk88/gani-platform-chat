@@ -60,7 +60,7 @@ describe('the invariants of the state machine columns (spec §3)', () => {
       { state: 'HUMAN_WAITING_Q' },
       { state: 'HUMAN_ACTIVE', assigned: member() },
       { state: 'PENDING_CUSTOMER', assigned: member() },
-      ...['won', 'lost', 'resolved', 'resolved_by_bot'].map((outcome) => ({
+      ...['resolved', 'no_response', 'spam', 'resolved_by_bot'].map((outcome) => ({
         state: 'CLOSED',
         closedAt: NOW,
         outcome,
@@ -73,7 +73,7 @@ describe('the invariants of the state machine columns (spec §3)', () => {
     ['a hold outside BOT_ACTIVE', () => ({ state: 'HUMAN_WAITING_Q', hold: true })],
     [
       'a hold on a closed conversation',
-      () => ({ state: 'CLOSED', closedAt: NOW, outcome: 'won', hold: true }),
+      () => ({ state: 'CLOSED', closedAt: NOW, outcome: 'resolved', hold: true }),
     ],
     ['HUMAN_ACTIVE with nobody assigned', () => ({ state: 'HUMAN_ACTIVE' })],
     ['PENDING_CUSTOMER with nobody assigned', () => ({ state: 'PENDING_CUSTOMER' })],
@@ -84,16 +84,19 @@ describe('the invariants of the state machine columns (spec §3)', () => {
     ],
     [
       'a person assigned to CLOSED',
-      () => ({ state: 'CLOSED', assigned: member(), closedAt: NOW, outcome: 'won' }),
+      () => ({ state: 'CLOSED', assigned: member(), closedAt: NOW, outcome: 'resolved' }),
     ],
-    ['CLOSED without closed_at', () => ({ state: 'CLOSED', outcome: 'won' })],
+    ['CLOSED without closed_at', () => ({ state: 'CLOSED', outcome: 'resolved' })],
     ['CLOSED without an outcome', () => ({ state: 'CLOSED', closedAt: NOW })],
     ['closed_at on an open conversation', () => ({ closedAt: NOW })],
-    ['an outcome on an open conversation', () => ({ outcome: 'won' })],
+    ['an outcome on an open conversation', () => ({ outcome: 'resolved' })],
     [
       'an outcome outside the four values',
       () => ({ state: 'CLOSED', closedAt: NOW, outcome: 'abandoned' }),
     ],
+    // N130: won and lost belong to the lead since Brief v1.0, not to the conversation.
+    ['the outcome won', () => ({ state: 'CLOSED', closedAt: NOW, outcome: 'won' })],
+    ['the outcome lost', () => ({ state: 'CLOSED', closedAt: NOW, outcome: 'lost' })],
   ])('refuses %s (23514)', async (_name, over) => {
     expect(await sqlState(put(over()))).toBe('23514');
   });

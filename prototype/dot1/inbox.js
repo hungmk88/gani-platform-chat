@@ -31,18 +31,18 @@ function seed() {
   return [
     {
       id: 'c1', name: 'Nguyễn Văn An', company: 'Quán Phở Hà Nội', state: 'HUMAN_WAITING_Q', assignee: null,
-      sla: 12, unread: 2, tags: [{ label: 'Hỏi giá', ai: true }], phone: '0903124567', lead: 'Bước 3',
+      sla: 12, unread: 2, tags: [{ label: 'Hỏi giá', ai: true }], phone: '0900000001', lead: 'Bước 3',
       messages: [
         { kind: 'customer', text: 'Chào shop, bên mình có bánh phở khô loại sỉ không?', at: '09:02' },
         { kind: 'bot', text: 'Dạ có ạ. Anh/chị cho em xin số điện thoại để nhân viên báo giá nhé.', at: '09:02' },
-        { kind: 'customer', text: '0903124567', at: '09:03' },
+        { kind: 'customer', text: '0900000001', at: '09:03' },
         { kind: 'customer', text: 'Mình cần báo giá trong hôm nay nhé', at: '09:04' },
         { kind: 'system', text: 'Bot chuyển cho nhân viên — lý do: khách hỏi giá sỉ', at: '09:04' },
       ],
     },
     {
       id: 'c2', name: 'Trần Thị Bình', company: 'Đại lý Bình Minh', state: 'HUMAN_ACTIVE', assignee: ME,
-      sla: 45, unread: 0, tags: [{ label: 'Đặt hàng', ai: false }], phone: '0912888123', lead: null,
+      sla: 45, unread: 0, tags: [{ label: 'Đặt hàng', ai: false }], phone: '0900000002', lead: null,
       messages: [
         { kind: 'customer', text: 'Tuần sau giao giúp chị như đơn cũ nhé', at: '08:40' },
         { kind: 'mine', text: 'Dạ em ghi nhận, em kiểm tra lịch giao và báo chị ngay.', at: '08:42', status: 'Kênh đã nhận' },
@@ -56,12 +56,12 @@ function seed() {
     },
     {
       id: 'c4', name: 'Lê Minh', company: 'Nhà hàng Sen', state: 'PENDING_CUSTOMER', assignee: ME,
-      sla: null, unread: 0, tags: [], phone: '0987000111', lead: 'Bước 2',
+      sla: null, unread: 0, tags: [], phone: '0900000003', lead: 'Bước 2',
       messages: [{ kind: 'mine', text: 'Em đã gửi báo giá, anh xem giúp em nhé.', at: 'Hôm qua', status: 'Kênh đã nhận' }],
     },
     {
       id: 'c5', name: 'Phạm Hoa', company: '', state: 'HUMAN_WAITING_Q', assignee: null,
-      sla: -6, unread: 3, tags: [], phone: '0938555222', lead: null,
+      sla: -6, unread: 3, tags: [], phone: '0900000004', lead: null,
       messages: [
         { kind: 'customer', text: XSS_2, at: '08:50' },
         { kind: 'customer', text: XSS_1, at: '08:51' },
@@ -70,12 +70,12 @@ function seed() {
     },
     {
       id: 'c6', name: 'Công ty TNHH Minh Phát', company: 'Minh Phát', state: 'HOLD', assignee: null,
-      sla: null, unread: 1, tags: [], phone: '0283777888', lead: null,
+      sla: null, unread: 1, tags: [], phone: '0280000002', lead: null,
       messages: [{ kind: 'customer', text: 'Gọi lại cho tôi sáng mai', at: '21:15' }, { kind: 'bot', text: 'Ngoài giờ làm việc. Chúng tôi đã nhận lời nhắn và sẽ gọi lại lúc 8:00.', at: '21:15' }],
     },
     {
       id: 'c7', name: 'Đỗ Quang', company: '', state: 'CLOSED', assignee: ME,
-      sla: null, unread: 0, tags: [], phone: '0909111222', lead: null,
+      sla: null, unread: 0, tags: [], phone: '0900000005', lead: null,
       messages: [{ kind: 'system', text: 'Đã đóng — kết quả: Đã xong', at: 'Thứ Hai' }],
     },
   ];
@@ -107,7 +107,15 @@ function stateBadge(c) {
   const cls = c.state === 'HUMAN_WAITING_Q' ? 'warn' : c.state === 'CLOSED' ? '' : c.state === 'HUMAN_ACTIVE' ? 'ok' : 'outline';
   return h('span', { class: `badge ${cls}` }, STATE_LABEL[c.state]);
 }
+/* SLA tạm dừng (Phụ lục C v3 dòng 1): khi chờ khách trả lời, hoặc ngoài giờ làm việc (giờ làm việc chờ Q7). */
+function slaPaused(c) {
+  if (c.state === 'PENDING_CUSTOMER') return 'chờ khách';
+  if (Proto.state() === 'after_hours' && c.sla !== null) return 'ngoài giờ';
+  return null;
+}
 function slaBadge(c) {
+  const paused = slaPaused(c);
+  if (paused) return h('span', { class: 'badge outline', title: 'SLA không chạy trong lúc này' }, `SLA tạm dừng · ${paused}`);
   if (c.sla === null) return null;
   if (c.sla < 0) return h('span', { class: 'badge error', title: 'Quá hạn SLA' }, `Quá ${-c.sla} phút`);
   return h('span', { class: `badge ${c.sla < 15 ? 'error' : 'ok'}`, title: 'Còn lại trước hạn SLA' }, `Còn ${c.sla} phút`);
@@ -124,8 +132,8 @@ function visibleConvs() {
     if (f.state !== 'all' && c.state !== f.state) return false;
     if (f.who === 'mine' && c.assignee !== ME) return false;
     if (f.who === 'none' && c.assignee !== null) return false;
-    if (f.sla === 'soon' && !(c.sla !== null && c.sla >= 0 && c.sla < 15)) return false;
-    if (f.sla === 'over' && !(c.sla !== null && c.sla < 0)) return false;
+    if (f.sla === 'soon' && (slaPaused(c) || !(c.sla !== null && c.sla >= 0 && c.sla < 15))) return false;
+    if (f.sla === 'over' && (slaPaused(c) || !(c.sla !== null && c.sla < 0))) return false;
     if (f.q && !`${c.name} ${c.phone || ''}`.toLowerCase().includes(f.q.toLowerCase())) return false;
     return true;
   });
@@ -483,13 +491,16 @@ function shortcuts() {
 
 Proto.mount({
   page: 'inbox',
-  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['api_closed', 'Hết khung gửi Zalo'], ['paid_only', 'Ngoài khung miễn phí'], ['send_failed', 'Tin gửi lỗi'], ['claimed', 'Đã được người khác nhận'], ['overload', 'Vượt giới hạn tải']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['api_closed', 'Hết khung gửi Zalo'], ['paid_only', 'Ngoài khung miễn phí'], ['send_failed', 'Tin gửi lỗi'], ['after_hours', 'Ngoài giờ — SLA tạm dừng'], ['claimed', 'Đã được người khác nhận'], ['overload', 'Vượt giới hạn tải']],
   variants: [
     { label: 'Chuyển', name: 'transfer', options: [['A', 'A (2 thao tác)'], ['B', 'B (3 thao tác)']] },
     { label: 'O7 đã xem/thu hồi/trích dẫn', name: 'o7', options: [['yes', 'Kênh hỗ trợ'], ['no', 'Không hỗ trợ']] },
   ],
   render: () => {
     if (!Proto.can('inbox.view')) return Proto.noAccess('Hộp thư (Viewer: Owner bật được cho từng người)', 'customer.html');
-    return h('div', { class: 'main', style: 'flex:1;overflow:hidden' }, Proto.aiOffBanner('Admin tắt bằng feature flag'), h('div', { class: 'inbox' }, leftColumn(), middleColumn(), rightColumn()));
+    const afterHours = Proto.state() === 'after_hours'
+      ? h('div', { class: 'banner info', role: 'status' }, 'Ngoài giờ làm việc: SLA tạm dừng, chạy lại khi vào giờ. ', h('span', { class: 'pending-spec' }, 'giờ làm việc chờ Q7'))
+      : null;
+    return h('div', { class: 'main', style: 'flex:1;overflow:hidden' }, Proto.aiOffBanner('Admin tắt bằng feature flag'), afterHours, h('div', { class: 'inbox' }, leftColumn(), middleColumn(), rightColumn()));
   },
 });

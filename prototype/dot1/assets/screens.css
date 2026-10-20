@@ -327,7 +327,7 @@
   cursor: progress;
   opacity: 0.6;
 }
-.lead-card[aria-disabled='true'] {
+.lead-card[data-movable='false'] {
   cursor: default;
 }
 .drop-bar {
@@ -396,4 +396,42 @@
   gap: var(--sp-2);
   max-height: 360px;
   overflow: auto;
+}
+
+/* #13 Chi tiết lead: drawer bên phải trong vùng app (dưới thanh prototype), không chặn bảng phía sau */
+.app:has(.lead-drawer) {
+  position: relative;
+}
+.lead-drawer {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(400px, 100%);
+  overflow: auto;
+  padding: var(--sp-5);
+  background: var(--surface);
+  border-left: 1px solid var(--border-strong);
+}
+.lead-open {
+  padding: 0;
+  text-align: left;
+  color: inherit;
+}
+
+/* #16 Tổng quan: ô chỉ số */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-4);
+}
+.tile-value {
+  font-size: var(--fs-20);
+}
+.tile-value.error {
+  color: var(--error-text);
+}
+.tile-value.warn {
+  color: var(--warn-text);
 }
