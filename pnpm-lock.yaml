@@ -31,6 +31,9 @@ importers:
       '@asteasolutions/zod-to-openapi':
         specifier: 9.1.0
         version: 9.1.0(zod@4.6.5)
+      '@gani/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
       '@gani/conversations':
         specifier: workspace:*
         version: link:../../packages/conversations
