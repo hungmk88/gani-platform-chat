@@ -143,7 +143,8 @@ function filterSelect(label, key, options) {
 }
 function leftColumn() {
   const s = Proto.state();
-  const whoOptions = [['all', Proto.isManagerUp() ? 'Tất cả' : 'Của tôi + chưa ai nhận + team'], ['mine', 'Của tôi'], ['none', 'Chưa ai nhận'], ['team', 'Team của tôi']];
+  // Sales/Support: backend tạm chỉ trả "của tôi + chưa ai nhận"; phần team chờ routing S4 (N133).
+  const whoOptions = [['all', Proto.isManagerUp() ? 'Tất cả' : 'Của tôi + chưa ai nhận + team (team chờ N133)'], ['mine', 'Của tôi'], ['none', 'Chưa ai nhận'], ['team', 'Team của tôi (chờ N133)']];
   const active = db.convs.filter((c) => c.assignee === ME && c.state === 'HUMAN_ACTIVE').length + (s === 'overload' ? 4 : 3);
   const pending = db.convs.filter((c) => c.assignee === ME && c.state === 'PENDING_CUSTOMER').length + 2;
   let list;
