@@ -31,7 +31,7 @@ const row = (over: Partial<ConversationRow> = {}): ConversationRow => ({
 });
 const pending = () => row({ state: 'PENDING_CUSTOMER', assignedUserId: U1 });
 const closedAgo = (ms: number) =>
-  row({ state: 'CLOSED', closedAt: new Date(NOW.getTime() - ms), outcome: 'won' });
+  row({ state: 'CLOSED', closedAt: new Date(NOW.getTime() - ms), outcome: 'resolved' });
 
 // prettier-ignore
 function fake(initial: ConversationRow | null) {
@@ -373,7 +373,11 @@ describe('MessageService.receiveCustomerMessage', () => {
   });
 
   it('uses the clock of the moment when no time is given: a conversation closed an hour ago reopens', async () => {
-    const closed = row({ state: 'CLOSED', closedAt: new Date(Date.now() - HOUR), outcome: 'won' });
+    const closed = row({
+      state: 'CLOSED',
+      closedAt: new Date(Date.now() - HOUR),
+      outcome: 'resolved',
+    });
     const { service } = fake(closed);
     const result = await service.receiveCustomerMessage(TX, { ...received(), agentOnline: false });
     expect(result.outcome).toMatchObject({ kind: 'changed', transition: 'T14' });

@@ -28,7 +28,7 @@ Middleware bắt tay của namespace `/agent`, đúng thứ tự:
 
 1. `Origin` thuộc danh sách, không thì từ chối.
 2. `SessionResolver.resolve(socket.request)` → không có phiên → `unauthorized`.
-3. `mustSetUpTwoFactor(session.userId)` → `TWO_FACTOR_SETUP_REQUIRED` (cùng mã với cổng HTTP).
+3. `mustSetUpTwoFactor(session.userId)` → `two_factor_setup_required` (cùng mã với cổng HTTP, N132).
 4. Chọn org: **cùng hàm** với middleware tenant (tách hàm chọn org khỏi `tenant-context.middleware.ts` rồi cả hai gọi; không chép, như bài học `TWO_FACTOR_SETUP_ROUTES`): `activeOrgId` → một org active duy nhất → `ORG_NOT_SELECTED` → `NO_ORGANISATION`.
 5. `readMemberContext` trong `withTenant` → `role`, `workspaceIds`.
 6. Đóng băng `socket.data.ctx = { orgId, workspaceIds, userId, role, sessionId }` (cùng hình `RequestContext`).
@@ -133,7 +133,7 @@ Postgres + Valkey, chạy trên CI (N16).
 
 | # | Ca | Đạt khi |
 |---|---|---|
-| N1 | Bắt tay | không cookie → `unauthorized`; **chủ org chưa thiết lập 2FA → `TWO_FACTOR_SETUP_REQUIRED`** (chứng minh cổng Express không phủ socket); không org → `NO_ORGANISATION`; `Origin` lạ → từ chối |
+| N1 | Bắt tay | không cookie → `unauthorized`; **chủ org chưa thiết lập 2FA → `two_factor_setup_required`** (chứng minh cổng Express không phủ socket); không org → `NO_ORGANISATION`; `Origin` lạ → từ chối |
 | N2 | Cô lập phòng | hai client ở workspace A và B (và hai org): phát 20 sự kiện mỗi bên → **0** gói chéo |
 | N3 | `subscribe` | hội thoại workspace khác → `not_found`, không phân biệt được với id bịa |
 | N4 | `sequence_number` | 50 tin đồng thời cùng hội thoại → đúng `1..50`, không trùng, không lỗ; người đọc thăm dò không thấy lỗ; rollback không để lỗ; tin về trễ (giờ gửi cũ) nhận số cao hơn và vẫn được `resume` trả về |

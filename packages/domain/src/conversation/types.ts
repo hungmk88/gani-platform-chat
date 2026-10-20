@@ -9,7 +9,14 @@ export const CONVERSATION_STATES = [
 ] as const;
 export type ConversationState = (typeof CONVERSATION_STATES)[number];
 
-export const CONVERSATION_OUTCOMES = ['won', 'lost', 'resolved', 'resolved_by_bot'] as const;
+// Brief v1.0 P14 (N130): a person closes with resolved, no_response or spam; the bot with resolved_by_bot (T04). Won and lost belong
+// to the lead, not to the conversation.
+export const CONVERSATION_OUTCOMES = [
+  'resolved',
+  'no_response',
+  'spam',
+  'resolved_by_bot',
+] as const;
 export type ConversationOutcome = (typeof CONVERSATION_OUTCOMES)[number];
 
 /** What the state machine owns of a conversation: the columns the guard trigger protects (N96). */

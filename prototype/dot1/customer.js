@@ -9,8 +9,8 @@ const customer = {
   owner: 'Hà Linh',
   identities: [
     { channel: 'Zalo OA', value: 'UID 4471…', level: 'verified' },
-    { channel: 'SĐT', value: '0903124567', level: 'unverified', phone: true },
-    { channel: 'SĐT', value: '0283999111', level: 'sales_confirmed', phone: true },
+    { channel: 'SĐT', value: '0900000001', level: 'unverified', phone: true },
+    { channel: 'SĐT', value: '0280000001', level: 'sales_confirmed', phone: true },
   ],
   custom: [['Loại hình', 'Quán ăn'], ['Khu vực giao', 'TP.HCM']],
   tags: ['Khách sỉ', 'Hỏi giá'],
@@ -23,7 +23,7 @@ const customer = {
   notes: [{ by: 'Trần Thu', text: 'Khách ưu tiên giao buổi sáng.', at: '03/10' }],
   humanOnly: false,
 };
-const other = { name: 'An Nguyễn', company: 'Phở Hà Nội Q.3', phone: '0903124567', owner: 'Vũ Nam', tags: ['Khách mới'] };
+const other = { name: 'An Nguyễn', company: 'Phở Hà Nội Q.3', phone: '0900000001', owner: 'Vũ Nam', tags: ['Khách mới'] };
 const LEVEL = { verified: ['ok', 'Đã xác thực'], unverified: ['outline', 'Chưa xác thực'], sales_confirmed: ['ok', 'Sales xác nhận'] };
 let tab = 'conversations';
 
