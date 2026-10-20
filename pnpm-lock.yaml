@@ -31,6 +31,9 @@ importers:
       '@asteasolutions/zod-to-openapi':
         specifier: 9.1.0
         version: 9.1.0(zod@4.6.5)
+      '@gani/conversations':
+        specifier: workspace:*
+        version: link:../../packages/conversations
       '@gani/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -141,6 +144,31 @@ importers:
       typescript-eslint:
         specifier: 8.71.0
         version: 8.71.0(eslint@10.11.0)(typescript@6.0.3)
+
+  packages/conversations:
+    dependencies:
+      '@gani/db':
+        specifier: workspace:*
+        version: link:../db
+      '@gani/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@gani/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 22.20.5
+        version: 22.20.5
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@types/node@22.20.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@22.20.5)(yaml@2.9.1))
 
   packages/db:
     dependencies:

@@ -8,6 +8,12 @@ import {
 } from '@gani/db';
 import { uuidv7, type ConversationEvent } from '@gani/domain';
 import {
+  ConversationNotFoundError,
+  ConversationStateMachine,
+  InvalidAssigneeError,
+  VersionConflictError,
+} from '@gani/conversations';
+import {
   Body,
   Controller,
   ForbiddenException,
@@ -21,14 +27,12 @@ import { ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
-import { ConversationStateMachine } from './conversation-state-machine.js';
 import {
   AssigneeBodySchema,
   CloseBodySchema,
   ConversationIdSchema,
   VersionBodySchema,
 } from './conversations.schemas.js';
-import { ConversationNotFoundError, InvalidAssigneeError, VersionConflictError } from './errors.js';
 import { actionScope, canSee, mayAct, type ConversationAction } from './permissions.js';
 
 const IdPipe = new ZodPipe(ConversationIdSchema);

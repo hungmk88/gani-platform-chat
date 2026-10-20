@@ -10,7 +10,6 @@ import {
   type TenantTx,
 } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
-import { Logger } from '@nestjs/common';
 
 import { ConversationStateMachine, type TransitionOutcome } from './conversation-state-machine.js';
 import { ConversationNotFoundError, InvalidMessageError } from './errors.js';
@@ -20,6 +19,10 @@ import { OutboxWriter, messageCreatedOutboxEvent } from './outbox-writer.js';
 export const messageStore = { loadConversation, insertMessage, insertOutboxEvent };
 /** The functions of the stores the message service writes through; a test passes a fake. */
 export type MessageStore = typeof messageStore;
+/** A line of ids and numbers only (rule 5): never a part of a message. */
+export interface WarningLogger {
+  warn(line: string): void;
+}
 
 export interface AppendMessageInput {
   readonly conversationId: string;
@@ -62,12 +65,12 @@ function check(input: AppendMessageInput): void {
  * (a claim, then the agent's first reply) without a deadlock (40P01). `receiveCustomerMessage` stores the message first.
  */
 export class MessageService {
-  private readonly logger = new Logger(MessageService.name);
-
   constructor(
     private readonly fsm: ConversationStateMachine,
     private readonly store: MessageStore = messageStore,
     private readonly outbox: OutboxWriter = new OutboxWriter(store),
+    /** Where the warnings about a platform's clock go: the API passes Nest's Logger, the worker its JSON logger. */
+    private readonly logger: WarningLogger = console,
   ) {}
 
   /**

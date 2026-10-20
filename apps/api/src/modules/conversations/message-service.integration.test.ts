@@ -2,12 +2,16 @@ import { randomUUID } from 'node:crypto';
 
 import { createDbPool, type TenantContext } from '@gani/db';
 import { snapshotViolations, type ConversationState } from '@gani/domain';
+import {
+  ConversationAlreadyClaimedError,
+  ConversationNotFoundError,
+  ConversationStateMachine,
+  conversationStore,
+  MessageService,
+} from '@gani/conversations';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { DatabaseService } from '../database/database.service.js';
-import { ConversationStateMachine, conversationStore } from './conversation-state-machine.js';
-import { ConversationAlreadyClaimedError, ConversationNotFoundError } from './errors.js';
-import { MessageService } from './message-service.js';
 
 // PR4b-2 (N96, N107) on PostgreSQL with the real stores and the pool of app_role: a customer message and the state change it causes are
 // one transaction (rollback), the numbers and the state hold under 20 messages and some claims at once (no deadlock, G8), and the
