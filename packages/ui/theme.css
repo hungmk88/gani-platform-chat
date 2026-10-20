@@ -1,0 +1,58 @@
+/* Tailwind 4 chỉ dùng token của tokens.css. Mỗi nhóm mặc định của Tailwind bị xóa (`initial`) rồi khai lại từ token,
+   nên `bg-red-500`, `text-sm`, `rounded-lg`, `p-5` không sinh ra CSS. Giá trị tùy ý (`text-[13px]`) do luật lint chặn.
+   Dùng trong apps/admin: `@import 'tailwindcss'; @import '@gani/ui/theme.css';` */
+@import './tokens.css';
+
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-on: var(--accent-on);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-text: var(--ok-text);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-text: var(--warn-text);
+  --color-error-bg: var(--error-bg);
+  --color-error-text: var(--error-text);
+  --color-note: var(--color-note);
+  --color-note-text: var(--color-note-text);
+  --color-overlay: var(--overlay);
+
+  --text-*: initial;
+  --text-12: var(--fs-12);
+  --text-14: var(--fs-14);
+  --text-16: var(--fs-16);
+  --text-20: var(--fs-20);
+
+  /* Không có bội số tự do (`p-5`, `p-0.5`): chỉ 8 bước của lưới 4/8. */
+  --spacing: initial;
+  --spacing-*: initial;
+  --spacing-0: 0;
+  --spacing-1: var(--sp-1);
+  --spacing-2: var(--sp-2);
+  --spacing-3: var(--sp-3);
+  --spacing-4: var(--sp-4);
+  --spacing-5: var(--sp-5);
+  --spacing-6: var(--sp-6);
+  --spacing-7: var(--sp-7);
+  --spacing-8: var(--sp-8);
+
+  --radius-*: initial;
+  --radius-input: var(--r-input);
+  --radius-card: var(--r-card);
+  --radius-dialog: var(--r-dialog);
+
+  --shadow-*: initial;
+  --shadow-dialog: var(--shadow-dialog);
+
+  --font-*: initial;
+  --font-sans: var(--font);
+
+  --default-transition-duration: var(--motion);
+}
