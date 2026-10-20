@@ -67,3 +67,13 @@ Trang mặc định sau đăng nhập:
 - Admin tải nội dung chính < 2,5 giây; mở khung hội thoại P95 < 500ms; danh sách 500+ hội thoại ảo hóa.
 - 4 thao tác chính (nhận, trả lời, chuyển, đóng) ≤ 2 click hoặc 1 phím tắt.
 - Tương phản WCAG 2.1 AA trên 100% màn.
+
+## Chạy (F2)
+
+- Next.js 16 (App Router) + React 19 + Tailwind 4 (`@gani/ui/theme.css`, chỉ class theo token). Font Inter tự host (`@fontsource-variable/inter`).
+- `pnpm --filter @gani/admin dev` → cổng 3001. `/api/auth/*` và `/v1/*` được chuyển tiếp sang `API_ORIGIN` (mặc định `http://localhost:3000`):
+  admin và API chung một địa chỉ gốc (`BETTER_AUTH_URL`, N136), production do reverse proxy làm.
+- `next build` hỏng ("reading 'useContext'") nếu `NODE_ENV=development` đặt sẵn trong môi trường: bỏ biến đó khi build. CI không đặt.
+- `typecheck` = `next typegen && tsc --noEmit` (`next-env.d.ts` do Next sinh, không commit).
+- Import trong app không có đuôi `.js` (bundler), khác `apps/api`.
+
