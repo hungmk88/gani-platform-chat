@@ -26,7 +26,8 @@ export interface RelayDeps {
   readonly settings: WorkerConfig['outbox'];
 }
 
-async function forEachLimited<T>(
+/** Runs `fn` over the items, at most `limit` at a time. */
+export async function forEachLimited<T>(
   items: readonly T[],
   limit: number,
   fn: (item: T) => Promise<void>,
