@@ -39,7 +39,7 @@
       <div class="banner warn" style="border-radius: var(--r-card)">
         PROTOTYPE — không phải sản phẩm. Dữ liệu và tên người là giả. Không kết nối máy chủ.
       </div>
-      <h1>Prototype HTML — Đợt 1: 4 màn chính, khung app, 3 màn auth</h1>
+      <h1>Prototype HTML — Đợt 1: 4 màn chính, khung app, 5 màn auth</h1>
       <p class="muted">
         Theo dàn ý đã duyệt (<code>docs/ui/prototype-outline-dot1.md</code>). Mở file này bằng trình duyệt, không cần cài
         đặt. Thanh đen trên cùng mỗi màn dùng để đổi <strong>trạng thái</strong>, <strong>vai trò</strong>,
@@ -64,6 +64,8 @@
               <li><a href="inbox.html?role=sales&state=send_failed">Tin gửi lỗi (gửi một tin để xem)</a></li>
               <li><a href="inbox.html?role=sales&state=claimed">"Đã được [tên] nhận" (bấm Nhận)</a></li>
               <li><a href="inbox.html?role=sales&state=overload">Vượt giới hạn tải 5/5</a></li>
+              <li><a href="inbox.html?role=sales&state=after_hours">SLA tạm dừng — ngoài giờ</a> · chờ khách: hội thoại "Lê Minh"</li>
+              <li><a href="inbox.html?role=sales">Mẫu có biến chưa điền</a>: gõ <span class="kbd">/</span>, chọn mẫu Hotline</li>
               <li><a href="inbox.html?role=sales&transfer=A">Chuyển — biến thể A</a></li>
               <li><a href="inbox.html?role=sales&transfer=B">Chuyển — biến thể B</a></li>
               <li><a href="inbox.html?role=sales&o7=no">O7: kênh không hỗ trợ đã xem/thu hồi</a></li>
@@ -100,6 +102,8 @@
               <li><a href="leads.html?role=sales&state=saving">Đang lưu</a></li>
               <li><a href="leads.html?role=sales&state=save_error">Lưu lỗi khi kéo (kéo một thẻ)</a></li>
               <li><a href="leads.html?role=support">Support: chỉ xem</a></li>
+              <li><a href="leads.html?role=sales&state=drawer">Chi tiết lead #13 (drawer)</a> · <a href="leads.html?role=sales&state=drawer_loading">đang tải</a> · <a href="leads.html?role=sales&state=drawer_error">lỗi</a></li>
+              <li><a href="leads.html?role=support&state=drawer">Chi tiết lead — Support chỉ xem</a></li>
             </ul>
             <p class="small muted">Lý do Thua: kéo thẻ vào "Thua" hoặc chọn "Thua…" ở ô Chuyển tới.</p>
           </div>
@@ -122,10 +126,11 @@
       </section>
 
       <section>
-        <h2>1b. Khung app và 3 màn auth (đợt sớm — Q-U20 đã chốt)</h2>
+        <h2>1b. Khung app và 5 màn auth (Q-U20 đã chốt)</h2>
         <p class="muted">
-          Theo spec M8 bản nháp 3 và Phụ lục C v3 dòng 0, 5, 8, 9. Vẽ thẳng theo quyết định Q-U20, không có biến thể. Phần
-          còn lại (#2, #3) chờ spec cuối 30/10 và PR7.
+          Theo spec M8 bản nháp 3 và Phụ lục C v3 dòng 0, 5–9. Vẽ thẳng theo quyết định Q-U20, không có biến thể. #3 và #4
+          phụ thuộc PR7: duyệt bố cục, chi tiết duyệt lại khi PR7 xong. Màn auth và trang hệ thống không có AI và không có
+          danh sách: trạng thái Trống "Không áp dụng"; trạng thái AI tắt ghi "Không áp dụng AI".
         </p>
         <div class="grid" style="margin-top: var(--sp-3)">
           <div class="card">
@@ -149,6 +154,31 @@
               <li><a href="login.html?role=sales&state=loading">Đang đăng nhập</a></li>
               <li><a href="login.html?role=sales&state=error">Lỗi chung</a></li>
               <li><a href="login.html?role=sales&state=locked">Khóa 30 phút sau 5 lần sai</a></li>
+              <li><a href="login.html?role=sales&state=aioff">AI tắt — Không áp dụng</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="twofa.html?role=admin">Xác thực 2 lớp (#2)</a></h3>
+            <ul>
+              <li><a href="twofa.html?role=admin">Nhập mã 6 số</a></li>
+              <li><a href="twofa.html?role=admin&state=loading">Đang kiểm tra</a></li>
+              <li><a href="twofa.html?role=admin&state=wrong">Mã sai</a></li>
+              <li><a href="twofa.html?role=admin&state=locked">Khóa 30 phút sau 5 lần sai</a></li>
+              <li><a href="twofa.html?role=admin&state=backup">Dùng mã dự phòng (thử k7m2-q9xp 2 lần)</a></li>
+              <li><a href="twofa.html?role=owner&state=enroll_required">Bắt buộc cài 2FA lần đầu (Owner)</a></li>
+              <li><a href="twofa.html?role=admin&state=reset_by_admin">Cài lại sau khi Admin đặt lại</a></li>
+              <li><a href="twofa.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+            </ul>
+            <p class="small muted">Không phụ thuộc PR7 (Phụ lục C v3 dòng 6).</p>
+          </div>
+          <div class="card">
+            <h3><a href="reset.html?role=sales">Quên / đặt lại mật khẩu (#3) — phụ thuộc PR7</a></h3>
+            <ul>
+              <li><a href="reset.html?role=sales">Xin link (nhập email)</a></li>
+              <li><a href="reset.html?role=sales&state=sent">Đã gửi — cùng một câu dù email có hay không</a></li>
+              <li><a href="reset.html?role=sales&state=set">Đặt mật khẩu mới</a> · <a href="reset.html?role=sales&state=weak">không đủ mạnh</a></li>
+              <li><a href="reset.html?role=sales&state=done">Thành công</a> · <a href="reset.html?role=sales&state=expired">link hết hạn / đã dùng</a></li>
+              <li><a href="reset.html?role=sales&state=aioff">AI tắt — Không áp dụng</a></li>
             </ul>
           </div>
           <div class="card">
@@ -160,6 +190,7 @@
               <li><a href="invite.html?role=sales&state=invalid">Link không hợp lệ</a></li>
               <li><a href="invite.html?role=sales&state=used">Link đã dùng (N31)</a></li>
               <li><a href="invite.html?role=sales&state=timeout">Quá thời gian → gửi link qua email</a></li>
+              <li><a href="invite.html?role=sales&state=aioff">AI tắt — Không áp dụng</a></li>
             </ul>
           </div>
           <div class="card">
@@ -171,6 +202,112 @@
               <li><a href="me.html?role=sales&tab=security&state=tfa_on">Bảo mật — 2FA đã bật (không có nút tắt)</a></li>
               <li><a href="me.html?role=sales&tab=notify">Thông báo (mặc định tắt)</a></li>
               <li><a href="me.html?role=sales&state=loading">Đang tải</a> · <a href="me.html?role=sales&state=error">Lỗi</a> · <a href="me.html?role=sales&state=aioff">AI tắt</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>1c. Màn S3 — Kênh (#24) và Cấu hình Zalo OA (#25), nộp 07/12</h2>
+        <p class="muted">
+          Theo <code>docs/specs/zalo-channel-spec.md</code> và <code>channel-policy-spec.md</code> (đã duyệt 07/10). Chỉ
+          Owner, Admin. Phần chờ tài liệu Zalo (Z2, Z4, Q6) có nhãn nét đứt.
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="channels.html?role=admin">Kênh (#24)</a></h3>
+            <ul>
+              <li><a href="channels.html?role=admin">Bình thường</a></li>
+              <li><a href="channels.html?role=admin&state=loading">Đang tải</a> · <a href="channels.html?role=admin&state=empty">Trống</a> · <a href="channels.html?role=admin&state=error">Lỗi</a></li>
+              <li><a href="channels.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="channels.html?role=admin&state=token_expiring">Token sắp hết hạn</a> · <a href="channels.html?role=admin&state=disconnected">Mất kết nối</a></li>
+              <li><a href="channels.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="channels.html?role=admin&screen=detail">Cấu hình Zalo OA (#25)</a></h3>
+            <ul>
+              <li><a href="channels.html?role=admin&screen=detail">Bình thường (làm mới token, chép webhook URL)</a></li>
+              <li><a href="channels.html?role=admin&screen=detail&state=token_expiring">Token sắp hết hạn</a></li>
+              <li><a href="channels.html?role=admin&screen=detail&state=disconnected">Mất kết nối — Kết nối lại</a></li>
+              <li><a href="channels.html?role=admin&screen=detail&state=loading">Đang tải</a> · <a href="channels.html?role=admin&screen=detail&state=error">Lỗi</a> · <a href="channels.html?role=admin&screen=detail&state=empty">Không tồn tại</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>1d. Màn S4 — Ticket (#14) và Chi tiết ticket (#15), nộp 21/12</h2>
+        <p class="muted">
+          Mã I1, I2, I3 (không nằm trong spec M8). Loại ticket và SLA là giá trị tạm, chờ The Smile (Q8); tập trạng thái
+          ticket chờ Backend (U27).
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="tickets.html?role=support">Ticket (#14, #15)</a></h3>
+            <ul>
+              <li><a href="tickets.html?role=support">Danh sách — Support</a></li>
+              <li><a href="tickets.html?role=support&state=loading">Đang tải</a> · <a href="tickets.html?role=support&state=empty">Trống</a> · <a href="tickets.html?role=support&state=error">Lỗi</a> · <a href="tickets.html?role=support&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="tickets.html?role=support&state=drawer">Chi tiết ticket #15</a> · <a href="tickets.html?role=support&state=drawer_loading">đang tải</a> · <a href="tickets.html?role=support&state=drawer_error">lỗi</a></li>
+              <li><a href="tickets.html?role=sales&state=drawer">Sales: chỉ tạo, không xử lý</a></li>
+              <li><a href="tickets.html?role=marketing">Marketing: không dùng</a></li>
+            </ul>
+            <p class="small muted">Ticket chưa giao: bấm "Nhận xử lý". Ticket "Chờ khách": SLA tạm dừng.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>1e. Màn S5 — Audit log (#28) và Platform (#30), nộp 04/01</h2>
+        <p class="muted">
+          Không phụ thuộc spec M8. Audit log: Owner, Admin. Platform: chỉ platform operator, bản tối thiểu 3 tab.
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="audit.html?role=admin">Audit log (#28)</a></h3>
+            <ul>
+              <li><a href="audit.html?role=admin">Thao tác quản trị (A9)</a></li>
+              <li><a href="audit.html?role=admin&tab=access">Truy cập của platform (A8)</a></li>
+              <li><a href="audit.html?role=admin&state=loading">Đang tải</a> · <a href="audit.html?role=admin&state=empty">Trống</a> · <a href="audit.html?role=admin&state=error">Lỗi</a> · <a href="audit.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="audit.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="platform.html?role=platform_operator">Platform (#30)</a></h3>
+            <ul>
+              <li><a href="platform.html?role=platform_operator">Sức khỏe công ty (A7)</a></li>
+              <li><a href="platform.html?role=platform_operator&tab=access">Mở phiên truy cập có lý do (A8)</a> → dải phiên ở khung app</li>
+              <li><a href="platform.html?role=platform_operator&tab=policies">Chính sách kênh (B3): thêm phiên bản</a></li>
+              <li><a href="platform.html?role=platform_operator&state=loading">Đang tải</a> · <a href="platform.html?role=platform_operator&state=empty">Trống</a> · <a href="platform.html?role=platform_operator&state=error">Lỗi</a></li>
+              <li><a href="platform.html?role=owner">Owner: không có quyền</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>1f. Màn S5 — Tổng quan (#16) và Tự chủ &amp; feature flag (#27), nộp 04/01</h2>
+        <p class="muted">
+          Số liệu là mẫu; danh sách chỉ số Đợt 1, định nghĩa mức L3–L5 và danh sách cờ chờ Backend (U29).
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="overview.html?role=manager">Tổng quan (#16)</a></h3>
+            <ul>
+              <li><a href="overview.html?role=manager">Manager: số workspace + theo nhân viên</a></li>
+              <li><a href="overview.html?role=sales">Sales: chỉ số của mình</a></li>
+              <li><a href="overview.html?role=manager&state=aioff">AI tắt (Manager thấy dải báo)</a></li>
+              <li><a href="overview.html?role=manager&state=loading">Đang tải</a> · <a href="overview.html?role=manager&state=empty">Trống</a> · <a href="overview.html?role=manager&state=error">Lỗi</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="autonomy.html?role=owner">Tự chủ &amp; feature flag (#27)</a></h3>
+            <ul>
+              <li><a href="autonomy.html?role=owner">Owner: L0, nâng mức khóa ở Đợt 1</a></li>
+              <li><a href="autonomy.html?role=admin">Admin: tắt cờ, không nâng mức</a></li>
+              <li><a href="autonomy.html?role=owner&state=aioff">AI tắt (cờ ai.internal đang tắt)</a></li>
+              <li><a href="autonomy.html?role=owner&state=loading">Đang tải</a> · <a href="autonomy.html?role=owner&state=error">Lỗi</a></li>
+              <li><a href="autonomy.html?role=manager">Manager: không có quyền</a></li>
             </ul>
           </div>
         </div>
@@ -233,8 +370,21 @@
           <tbody>
             <tr><td>Hộp thư</td><td>B3, C1, C2, C3, C4, C5, C6, C7, C8, C10, C11, C20, E1, L1, J1–J6 (cột phải), G1 và I1 (tạo lead/ticket)</td><td>M8 (C7 quản lý mẫu, C8, C9, C10), Q7, O7</td></tr>
             <tr><td>Hồ sơ khách</td><td>J1, J2, J3, J4, J6, G1, I1, I2, C6, §12 nhãn xác thực, §28 cờ</td><td>M8 (J1, J4), O2 (loại ticket)</td></tr>
-            <tr><td>Pipeline lead</td><td>G1, G2, G3</td><td>O1 (tên 6 bước, lý do Thua)</td></tr>
+            <tr><td>Pipeline lead + Chi tiết lead (#13)</td><td>G1, G2, G3</td><td>O1 (tên 6 bước, lý do Thua)</td></tr>
             <tr><td>Trình dựng bot</td><td>D1 (form), D2, D3, D4, D6, D15</td><td>M8 + Q7 (giờ làm việc, D4)</td></tr>
+            <tr><td>Khung app</td><td>A5 (đổi workspace); trạng thái agent (U20-4, Q-U20-4, Q-U20-5); dải AI tắt; dải phiên truy cập platform</td><td>Spec M8 bản cuối 30/10</td></tr>
+            <tr><td>#1 Đăng nhập</td><td>A5</td><td>—</td></tr>
+            <tr><td>#2 Xác thực 2 lớp</td><td>A5 (Q-U20-2: 10 mã dự phòng)</td><td>Khóa khi đang khóa TOTP có chặn mã dự phòng không (Backend)</td></tr>
+            <tr><td>#3 Quên / đặt lại mật khẩu</td><td>A5</td><td>PR7 (N84)</td></tr>
+            <tr><td>#4 Nhận lời mời</td><td>A3, A5 (N31, U1: 7 ngày)</td><td>PR7</td></tr>
+            <tr><td>#5 Hồ sơ cá nhân</td><td>A5, C11 (U20-1/2, Q-U20-1/2/3)</td><td>Endpoint lưu tên/ảnh (<code>PATCH /v1/me</code>)</td></tr>
+            <tr><td>Trang hệ thống (#31)</td><td>—</td><td>—</td></tr>
+            <tr><td>#14 Ticket · #15 Chi tiết ticket</td><td>I1 (ticket theo loại), I2 (nhận diện khách qua SĐT đã đăng ký), I3 (chuyên viên phụ trách, SLA)</td><td>Q8 (loại, SLA của The Smile); U27 (trạng thái, endpoint chi tiết + lịch sử)</td></tr>
+            <tr><td>#28 Audit log</td><td>A8 (truy cập của platform), A9 (thao tác quản trị), A17</td><td>U28 (định nghĩa A17; endpoint xem phiên truy cập của công ty)</td></tr>
+            <tr><td>#30 Platform</td><td>A7 (sức khỏe công ty), A8 (phiên truy cập có lý do, 60 phút), B3 (chính sách kênh)</td><td>Chi phí AI theo công ty (E5); giá trị chính sách chờ CĐT xác nhận</td></tr>
+            <tr><td>#16 Tổng quan</td><td>A7 (bảng điều khiển theo workspace), P4 (tình trạng hệ thống, cảnh báo)</td><td>U29 (chỉ số Đợt 1, nguồn dữ liệu)</td></tr>
+            <tr><td>#27 Tự chủ &amp; feature flag</td><td>A13 (mức tự chủ L0–L5, cờ theo workspace)</td><td>U29 (định nghĩa L3–L5, danh sách cờ)</td></tr>
+            <tr><td>#24 Kênh · #25 Cấu hình Zalo OA</td><td>B1, B2 (trạng thái token, làm mới), B3 (chính sách gửi, chỉ xem)</td><td>Z2, Z4, Q6 (tài liệu Zalo); endpoint quản lý kênh chưa có trong P9</td></tr>
           </tbody>
         </table>
         <p class="small muted" style="margin-top: var(--sp-2)">

@@ -7,7 +7,7 @@ import { after, describe, it } from 'node:test';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 
-import { lintMigrations, mask, run } from './lint-migrations.mjs';
+import { isNoTransaction, lintMigrations, mask, run } from './lint-migrations.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'lint-migrations-'));
 after(() => rmSync(root, { recursive: true, force: true }));
@@ -176,6 +176,38 @@ describe('MIG-TXN', () => {
       'CREATE FUNCTION f() RETURNS int LANGUAGE sql BEGIN ATOMIC SELECT 1; SELECT 2; END;\nSELECT 3;';
     assert.deepEqual(rules(found(sql)), []);
     assert.deepEqual(rules(found(sql + '\nCOMMIT;')), ['MIG-TXN']);
+  });
+});
+
+describe('MIG-NOTXN (review DB-03)', () => {
+  const NOTXN = '-- migrate:no-transaction\n';
+  const INDEX = 'CREATE INDEX CONCURRENTLY orders_org_idx ON orders (org_id);\n';
+  const found = (sql) => lint({ [OK_NAME]: ROLLBACK + sql });
+
+  it('accepts a no-transaction file that holds exactly one statement', () => {
+    assert.deepEqual(rules(found(NOTXN + INDEX)), []);
+  });
+
+  it('reports a no-transaction file with two statements, or with none', () => {
+    assert.deepEqual(rules(found(NOTXN + INDEX + 'SELECT 1;\n')), ['MIG-NOTXN']);
+    assert.deepEqual(rules(found(NOTXN)), ['MIG-NOTXN']);
+  });
+
+  it('reports IF NOT EXISTS in a no-transaction file, but not inside a string', () => {
+    const ifNot = 'CREATE INDEX CONCURRENTLY IF NOT EXISTS orders_org_idx ON orders (org_id);\n';
+    assert.deepEqual(rules(found(NOTXN + ifNot)), ['MIG-NOTXN']);
+    assert.deepEqual(rules(found(ifNot)), []);
+    const commented =
+      "CREATE INDEX CONCURRENTLY orders_org_idx ON orders (org_id) WHERE note <> 'if not exists';\n";
+    assert.deepEqual(rules(found(NOTXN + commented)), []);
+  });
+
+  it('reads the directive only in the leading comments, not after SQL or inside a string or a body', () => {
+    assert.equal(isNoTransaction(ROLLBACK + '\n' + NOTXN + INDEX), true);
+    assert.equal(isNoTransaction(ROLLBACK + INDEX + NOTXN), false);
+    assert.equal(isNoTransaction(ROLLBACK + "SELECT '\n-- migrate:no-transaction\n';"), false);
+    assert.equal(isNoTransaction(ROLLBACK + '-- migrate: no-transaction later\n' + INDEX), false);
+    assert.deepEqual(rules(found(INDEX + 'SELECT 1;\n')), []);
   });
 });
 
