@@ -20,6 +20,17 @@ export const ProblemSchema = z
 
 export const UuidSchema = z.uuid().meta({ id: 'Uuid', description: 'UUIDv7.' });
 
+/** The header every route with @Idempotent() requires (P9, N134): the same key and request within 24 hours gets the first answer. */
+export const IdempotencyHeadersSchema = z.object({
+  'Idempotency-Key': z
+    .string()
+    .regex(/^[!-~]{1,255}$/)
+    .meta({
+      description:
+        'A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.',
+    }),
+});
+
 /** `?cursor=<opaque>&limit=50` (max 100) → `{ data, nextCursor }`; no offset (P9). */
 export const CursorQuerySchema = z.object({
   cursor: z.string().min(1).max(512).optional(),

@@ -25,6 +25,8 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/conversations',
       '/v1/conversations/{id}',
       '/v1/conversations/{id}/messages',
+      '/v1/conversations/{id}/claim',
+      '/v1/conversations/{id}/wait-customer',
     ]);
   });
 });
