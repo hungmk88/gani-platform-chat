@@ -7,6 +7,7 @@ import {
   completeIdempotent,
   createDbPool,
   failIdempotent,
+  purgeIdempotencyKeys,
   withTenant,
   type IdempotencyRequest,
 } from '../src/index.js';
@@ -121,5 +122,45 @@ describe('beginIdempotent and completeIdempotent', () => {
     expect(await sqlState(insert('in_progress', 200))).toBe('23514');
     expect(await sqlState(insert('done', null))).toBe('23514');
     expect(await sqlState(insert('in_progress', null, 'has space'))).toBe('23514');
+  });
+});
+
+describe('purgeIdempotencyKeys (app.purge_idempotency_keys)', () => {
+  it('removes the keys older than 24 hours of every organisation, in batches, and keeps the others', async () => {
+    const [oldA, oldB, fresh] = [uuidv7(), uuidv7(), uuidv7()];
+    await begin(req(oldA));
+    await begin(req(oldB, { userId: users.get(B) as string }), B);
+    await begin(req(fresh));
+    for (const key of [oldA, oldB]) await age(key, 'created_at', '25 hours');
+    await age(fresh, 'created_at', '23 hours');
+    let removed = 0;
+    for (
+      let n = await purgeIdempotencyKeys(pool, 24, 1);
+      n > 0;
+      n = await purgeIdempotencyKeys(pool, 24, 1)
+    ) {
+      expect(n).toBe(1);
+      removed += n;
+    }
+    expect(removed).toBeGreaterThanOrEqual(2);
+    const { rows } = await admin.query('SELECT key FROM idempotency_keys WHERE key = ANY($1)', [
+      [oldA, oldB, fresh],
+    ]);
+    expect(rows).toEqual([{ key: fresh }]);
+  });
+
+  it('refuses less than 24 hours and a batch outside 1..10000 (22023), and is not for support_role', async () => {
+    for (const [hours, limit] of [
+      [23, 10],
+      [24, 0],
+      [24, 10_001],
+    ] as const)
+      expect(await sqlState(purgeIdempotencyKeys(pool, hours, limit)), `${hours} ${limit}`).toBe(
+        '22023',
+      );
+    const { rows } = await admin.query<{ ok: boolean }>(
+      `SELECT has_function_privilege('support_role', 'app.purge_idempotency_keys(integer, integer)', 'EXECUTE') AS ok`,
+    );
+    expect(rows).toEqual([{ ok: false }]);
   });
 });
