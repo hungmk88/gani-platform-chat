@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 
+import { lockConversation } from './conversation-lock.js';
 import { conversations } from './schema/conversations.js';
 import { messages } from './schema/messages.js';
 import { currentTenantContext } from './tenant-context.js';
@@ -9,10 +10,9 @@ import type { TenantTx } from './tenant-tx.js';
 // change it causes and the outbox row are one transaction. The organisation comes from the tenant context (CLAUDE.md rule 1).
 // This file never logs, and no error it raises carries the body of a message.
 //
-// LOCK ORDER (N107): a path that writes a message and also changes the conversation takes the advisory lock of the conversation FIRST,
-// before any UPDATE of its `conversations` row. `insertMessage` takes it, then updates the row; the state machine updates the row
-// after. A path that changed the row first and appended afterwards could wait on a writer that already holds the lock and wants the row:
-// a deadlock (40P01).
+// LOCK ORDER (N107, review AR-05): every write that changes a conversation takes its lock (lockConversation) FIRST, before any UPDATE
+// of its `conversations` row. `insertMessage` takes it, then updates the row; `applyTransition` takes it too, so a transition and a
+// message can come in either order in one transaction without a deadlock (40P01). See conversation-lock.ts.
 
 export type MessageSenderKind = 'customer' | 'agent' | 'bot' | 'system';
 export type MessageKind = 'text' | 'image' | 'file' | 'sticker' | 'postback' | 'system';
@@ -80,7 +80,7 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
   // `now()` is the start of this transaction, the same value in every statement below.
   const asked = sql`${message.platformSentAt?.toISOString() ?? null}::timestamptz`;
   const floor = sql`now() - make_interval(days => ${PLATFORM_TIME_FLOOR_DAYS}::int)`;
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${message.conversationId}::text))`);
+  await lockConversation(tx, message.conversationId);
   const [next] = await tx
     .select({ value: sql<string>`coalesce(max(${messages.sequenceNumber}), 0) + 1` })
     .from(messages)

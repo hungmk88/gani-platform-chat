@@ -29,10 +29,10 @@ describe('requiresTwoFactor and mustSetUpTwoFactor', () => {
     expect(await mustSetUpTwoFactor(no.pool, 'u1')).toBe(false);
   });
 
-  it('say "not required" for a person who is not there or was deleted', async () => {
+  it('fail closed for a person who is not there or was deleted: the gate blocks them (review DB-01)', async () => {
     const { pool } = fake([]);
     expect(await requiresTwoFactor(pool, 'gone')).toBe(false);
-    expect(await mustSetUpTwoFactor(pool, 'gone')).toBe(false);
+    expect(await mustSetUpTwoFactor(pool, 'gone')).toBe(true);
   });
 });
 

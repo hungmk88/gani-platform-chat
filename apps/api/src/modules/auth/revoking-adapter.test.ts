@@ -6,6 +6,7 @@ import { revokingAdapter } from './revoking-adapter.js';
 const AT = new Date('2026-10-05T12:00:00Z');
 const LIVE: Where = { field: 'revokedAt', value: null, operator: 'eq' };
 const USED: Where = { field: 'usedAt', value: null, operator: 'eq' };
+const NOT_DELETED: Where = { field: 'deletedAt', value: null, operator: 'eq' };
 const token: Where = { field: 'token', value: 't' };
 
 /** A recording stand-in for the adapter that drizzleAdapter() would return. */
@@ -75,11 +76,52 @@ describe('revokingAdapter: a session is revoked, never deleted', () => {
   });
 });
 
+describe('revokingAdapter: a soft-deleted person does not exist (review DB-01)', () => {
+  const email: Where = { field: 'email', value: 'a@example.test' };
+  const joined = (deletedAt: Date | null) => ({
+    id: 's',
+    token: 't',
+    user: { id: 'u', deletedAt },
+  });
+
+  it('leaves out deleted people when reading users (findOne, findMany, count)', async () => {
+    const { inner, adapter } = fake();
+    await adapter.findOne({ model: 'user', where: [email] });
+    await adapter.findMany({ model: 'user' });
+    await adapter.count({ model: 'user', where: [email] });
+    expect(inner.findOne).toHaveBeenCalledWith({ model: 'user', where: [email, NOT_DELETED] });
+    expect(inner.findMany).toHaveBeenCalledWith({ model: 'user', where: [NOT_DELETED] });
+    expect(inner.count).toHaveBeenCalledWith({ model: 'user', where: [email, NOT_DELETED] });
+  });
+
+  it('drops a session read with its user joined when that user is deleted, and keeps it otherwise', async () => {
+    const { inner, adapter } = fake();
+    const read = { model: 'session', where: [token], join: { user: true as const } };
+    inner.findOne.mockResolvedValueOnce(joined(AT) as never);
+    expect(await adapter.findOne(read)).toBeNull();
+    inner.findOne.mockResolvedValueOnce(joined(null) as never);
+    expect(await adapter.findOne(read)).toEqual(joined(null));
+    inner.findMany.mockResolvedValueOnce([joined(AT), joined(null)] as never);
+    expect(await adapter.findMany({ model: 'session', join: { user: true } })).toEqual([
+      joined(null),
+    ]);
+  });
+
+  it('applies inside a transaction too', async () => {
+    const { adapter, inner } = fake();
+    inner.findOne.mockResolvedValueOnce(joined(AT) as never);
+    expect(
+      await adapter.transaction((trx) =>
+        trx.findOne({ model: 'session', where: [token], join: { user: true } }),
+      ),
+    ).toBeNull();
+  });
+});
+
 describe('revokingAdapter: every other model is untouched', () => {
   it('passes reads, writes and deletes of models with no marker straight through', async () => {
     const { inner, adapter } = fake();
     const where = [token];
-    await adapter.findOne({ model: 'user', where });
     await adapter.findMany({ model: 'account', where });
     await adapter.count({ model: 'account' });
     await adapter.delete({ model: 'account', where });
@@ -87,7 +129,6 @@ describe('revokingAdapter: every other model is untouched', () => {
     await adapter.consumeOne({ model: 'account', where });
     await adapter.create({ model: 'session', data: { token: 't' } });
     await adapter.update({ model: 'session', where, update: { updatedAt: AT } });
-    expect(inner.findOne).toHaveBeenCalledWith({ model: 'user', where });
     expect(inner.findMany).toHaveBeenCalledWith({ model: 'account', where });
     expect(inner.count).toHaveBeenCalledWith({ model: 'account', where: undefined });
     expect(inner.delete).toHaveBeenCalledWith({ model: 'account', where });

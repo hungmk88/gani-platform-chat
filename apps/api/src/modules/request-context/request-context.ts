@@ -13,6 +13,8 @@ export interface RequestContext {
   readonly role: OrgRole;
   readonly workspaceIds: readonly string[];
   readonly resolvedAt: Date;
+  /** Made by the tenant middleware for this request: every problem+json of the request and every log line about it carry it (N132). */
+  readonly traceId: string;
 }
 
 /** `currentRequestContext()` outside a request that has one: a bug in the wiring, never an answer for a user (no default). */
@@ -29,6 +31,11 @@ const storage = new AsyncLocalStorage<RequestContext>();
 export function runWithRequestContext<T>(ctx: RequestContext, fn: () => T): T {
   const frozen = Object.freeze({ ...ctx, workspaceIds: Object.freeze([...ctx.workspaceIds]) });
   return storage.run(frozen, fn);
+}
+
+/** The traceId of the request in progress, or undefined outside one (a route before the tenant middleware, such as a 404 of the router). */
+export function requestTraceId(): string | undefined {
+  return storage.getStore()?.traceId;
 }
 
 export function currentRequestContext(): RequestContext {

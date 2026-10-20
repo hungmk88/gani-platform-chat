@@ -35,7 +35,7 @@ const pathOf = (req: Req): string =>
  * tenant's row gets a 404 from the handler when row-level security returns nothing (S2), not from this middleware.
  *
  * Organisation: the one the session has chosen, if the person is still an active member; otherwise the only active one; several is
- * 403 ORG_NOT_SELECTED and none is 403 NO_ORGANISATION. "Not a member" (a null answer) is a 403; a database that fails is a 503 with
+ * 403 org_not_selected and none is 403 no_organisation. "Not a member" (a null answer) is a 403; a database that fails is a 503 with
  * no cause in the body: the two must never look alike. `next()` runs inside the context, so everything after sees it.
  */
 export function createTenantContextMiddleware(deps: TenantMiddlewareDeps) {
@@ -48,11 +48,17 @@ export function createTenantContextMiddleware(deps: TenantMiddlewareDeps) {
     } catch (error) {
       logger.warn(`tenant context failed (${cause(error)}) trace=${traceId}`);
       const detail = 'The service cannot answer right now. Try again.';
-      return sendProblem(res, problem(503, 'SERVICE_UNAVAILABLE', detail, traceId));
+      return sendProblem(res, problem(503, 'service_unavailable', detail, traceId));
     }
     if ('refusal' in decided) return sendProblem(res, decided.refusal);
     const { session, orgId, member } = decided;
-    const ctx = { userId: session.userId, orgId, ...member, resolvedAt: session.resolvedAt };
+    const ctx = {
+      userId: session.userId,
+      orgId,
+      ...member,
+      resolvedAt: session.resolvedAt,
+      traceId,
+    };
     runWithRequestContext(ctx, () => runWithTenantContext(ctx, () => next()));
   };
 }
@@ -68,7 +74,7 @@ async function decide(deps: TenantMiddlewareDeps, req: Req, traceId: string): Pr
     refusal: problem(status, code, detail, traceId),
   });
   const session = await deps.sessions.resolve(req);
-  if (!session) return refuse(401, 'UNAUTHENTICATED', 'Sign in first.');
+  if (!session) return refuse(401, 'unauthorized', 'Sign in first.');
   if (session.activeOrgId) {
     const member = await deps.member(session.activeOrgId, session.userId);
     if (member) return { session, orgId: session.activeOrgId, member };
@@ -76,9 +82,9 @@ async function decide(deps: TenantMiddlewareDeps, req: Req, traceId: string): Pr
   const orgs = await deps.organisations(session.userId);
   const [only, ...others] = orgs;
   if (only === undefined)
-    return refuse(403, 'NO_ORGANISATION', 'You are not a member of any organisation.');
-  if (others.length > 0) return refuse(403, 'ORG_NOT_SELECTED', 'Choose an organisation first.');
+    return refuse(403, 'no_organisation', 'You are not a member of any organisation.');
+  if (others.length > 0) return refuse(403, 'org_not_selected', 'Choose an organisation first.');
   const member = await deps.member(only, session.userId);
-  if (!member) return refuse(403, 'NO_ORGANISATION', 'You are not a member of any organisation.');
+  if (!member) return refuse(403, 'no_organisation', 'You are not a member of any organisation.');
   return { session, orgId: only, member };
 }
