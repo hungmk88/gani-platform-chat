@@ -61,6 +61,16 @@ describe('create and transition', () => {
     expect(events).toMatchObject([{ conversationId: id, eventType: 'created', fromState: null, toState: 'BOT_ACTIVE', toHold: false, versionAfter: 0, detail: { transition: 'T01' } }]);
   });
 
+  it('creates the conversation of a person of a channel account with both, and one without a channel with neither', async () => {
+    const channel = { channelAccountId: 'ca-1', externalUserId: 'zalo-user-1' };
+    const withChannel = fake(null);
+    await withChannel.machine.create(TX, { workspaceId: 'w-1', channel, ...OPTS });
+    expect([...withChannel.rows.values()][0]).toMatchObject({ channel });
+    const without = fake(null);
+    await without.machine.create(TX, { workspaceId: 'w-1', ...OPTS });
+    expect([...without.rows.values()][0]?.['channel' as keyof ConversationRow]).toBeUndefined();
+  });
+
   it('changes the row, raises the version, writes one event with no PII and returns the effects', async () => {
     const { machine, rows, events } = fake(row());
     const out = await machine.transition(TX, ID, say({ type: 'needs_human', inHours: true }), { actor: { kind: 'bot' }, traceId: 't' });

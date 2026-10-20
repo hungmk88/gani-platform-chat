@@ -34,6 +34,9 @@ export interface ConversationFsmColumns {
 export interface NewConversation extends ConversationFsmColumns {
   readonly id: string;
   readonly workspaceId: string;
+  /** The channel account and the person of that channel (inbound spec §3, I2). Written here only: app_role cannot UPDATE them. */
+  readonly channel?:
+    { readonly channelAccountId: string; readonly externalUserId: string } | undefined;
 }
 
 export interface TransitionWrite {
@@ -85,9 +88,10 @@ export async function insertConversation(
   tx: TenantTx,
   input: NewConversation,
 ): Promise<ConversationRow> {
+  const { channel, ...fields } = input;
   const [row] = await tx
     .insert(conversations)
-    .values({ ...input, orgId: currentTenantContext().orgId })
+    .values({ ...fields, ...channel, orgId: currentTenantContext().orgId })
     .returning(columns);
   if (!row) throw new Error('conversation insert returned no row');
   return row;
