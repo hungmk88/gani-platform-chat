@@ -9,6 +9,13 @@ const PAGES = {
   error: ['Đã có lỗi.', 'Không phải do bạn. Thử lại sau ít phút; nếu còn lỗi, gửi mã bên dưới cho Admin.', 'Thử lại'],
 };
 
+/* Về trang mặc định của vai trò (apps/admin/CLAUDE.md), không cố định Hộp thư. */
+function homeAction(label) {
+  const home = Proto.home();
+  if (home.href) return h('a', { class: 'btn primary', href: home.href }, label);
+  return h('button', { class: 'btn primary', onclick: () => Proto.toast(`Trang mặc định của vai trò này: ${home.label} — màn này chưa có trong prototype.`) }, label);
+}
+
 Proto.mount({
   page: 'system',
   states: [['403', '403 — Không có quyền'], ['404', '404 — Không tìm thấy'], ['maintenance', 'Bảo trì'], ['error', 'Lỗi chung']],
@@ -18,6 +25,6 @@ Proto.mount({
       h('h1', {}, title),
       h('p', { class: 'muted' }, text),
       Proto.get('state', '403') === 'error' ? h('p', { class: 'trace muted' }, 'Mã: 7f3a9c1e-…') : null,
-      h('a', { class: 'btn primary', href: `inbox.html?role=${Proto.role()}` }, action)));
+      homeAction(action)));
   },
 });

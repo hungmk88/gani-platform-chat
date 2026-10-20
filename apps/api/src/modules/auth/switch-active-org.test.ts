@@ -124,11 +124,11 @@ describe('POST /switch-org', () => {
     expect(await read(cookie)).not.toBeNull();
   });
 
-  it('answers 403 TWO_FACTOR_SETUP_REQUIRED to a person who must set up a second factor, before looking at anything else', async () => {
+  it('answers 403 two_factor_setup_required to a person who must set up a second factor, before looking at anything else', async () => {
     const { db, post, query } = await world(true);
     const res = await post(A);
     expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ code: 'TWO_FACTOR_SETUP_REQUIRED' });
+    expect(await res.json()).toMatchObject({ code: 'two_factor_setup_required' });
     expect((await post('not-a-uuid')).status).toBe(403);
     expect(query).toHaveBeenCalledTimes(2);
     expect(query).not.toHaveBeenCalledWith(

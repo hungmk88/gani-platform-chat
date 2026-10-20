@@ -98,7 +98,7 @@ describe('two-factor gate', () => {
     for (const path of OPEN) expect((await get(path)).status, path).toBe(200);
   });
 
-  it('refuses every other path with 403 TWO_FACTOR_SETUP_REQUIRED as RFC 9457', async () => {
+  it('refuses every other path with 403 two_factor_setup_required as RFC 9457', async () => {
     const get = await start({});
     for (const path of CLOSED) {
       const answer = await get(path);
@@ -108,7 +108,7 @@ describe('two-factor gate', () => {
         type: 'about:blank',
         title: 'Forbidden',
         status: 403,
-        code: 'TWO_FACTOR_SETUP_REQUIRED',
+        code: 'two_factor_setup_required',
         detail: expect.any(String) as string,
         traceId: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       });
@@ -164,7 +164,7 @@ describe('two-factor gate', () => {
       const answer = await get('/api/auth/two-factor/enable');
       expect(answer.status).toBe(503);
       expect(answer.type).toBe(PROBLEM_CONTENT_TYPE);
-      expect(JSON.parse(answer.body)).toMatchObject({ code: 'SERVICE_UNAVAILABLE', status: 503 });
+      expect(JSON.parse(answer.body)).toMatchObject({ code: 'service_unavailable', status: 503 });
       expect(answer.body).not.toMatch(/hunter2|db-7|refused/);
     }
   });

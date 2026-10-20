@@ -25,14 +25,16 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - REST `/v1`, lỗi RFC 9457 (`application/problem+json`).
 - `org_id` không bao giờ nhận từ client.
 - Cursor pagination, không offset.
-- Idempotency-Key cho POST tạo dữ liệu.
+- Idempotency-Key cho POST tạo dữ liệu: gắn `@Idempotent()` (`modules/idempotency`, N134). Thiếu khóa → 400; cùng khóa khác request → 422 `idempotency_key_reused`; đang chạy → 409 `idempotency_in_progress`; 2xx/4xx được trả lại 24 giờ, 5xx thì không.
 - Webhook vào: verify → ghi `inbound_events` → trả 200 < 100ms → worker xử lý.
+- CSRF (N136): request dưới `/v1` không phải GET/HEAD/OPTIONS mà có cookie phải có `Origin` = `BETTER_AUTH_URL` (`same-origin.ts`), sai → 403. Test gửi POST `/v1` có cookie thì phải kèm header `origin`.
 
 ## Kiểm chứng
 
 - `claim-race.spec`: 50 agent claim cùng lúc → đúng 1 thắng.
 - `tenant-isolation.spec`, `workspace-isolation.spec` sinh từ OpenAPI.
-- Mọi endpoint mới phải có OpenAPI cập nhật trong cùng PR.
+- Mọi endpoint mới phải có OpenAPI cập nhật trong cùng PR. OpenAPI **sinh từ Zod** (`@asteasolutions/zod-to-openapi`, quyết định 19/10/2026): schema Zod của endpoint vừa để kiểm request (`ZodPipe`, sai → 400 `validation_failed`, chỉ nêu tên trường) vừa để mô tả. Đăng ký path trong `src/openapi/document.ts` (hàm `register…` của module), rồi `pnpm --filter @gani/api build && pnpm --filter @gani/api openapi` và commit `docs/openapi/openapi.json`; `document.test.ts` đỏ khi file lệch với mã.
+- Mã lỗi `code` dạng snake_case theo bảng P9 (N132).
 
 ## Cấm
 

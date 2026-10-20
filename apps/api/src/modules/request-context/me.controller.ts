@@ -29,6 +29,6 @@ export class MeController {
     if (status) return status;
     res.statusCode = 401;
     res.setHeader('content-type', PROBLEM_CONTENT_TYPE);
-    return problem(401, 'UNAUTHENTICATED', 'Sign in first.');
+    return problem(401, 'unauthorized', 'Sign in first.');
   }
 }

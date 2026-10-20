@@ -48,6 +48,26 @@ const IP_ADDRESS_HEADERS: string[] = ['x-forwarded-for'];
 
 type Database = AdapterFactory<BetterAuthOptions>;
 
+const omitToken = (object: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(object).filter(([key]) => key !== 'token'));
+
+/**
+ * Review SEC-03: the session token is the cookie's business (HttpOnly, signed), not JavaScript's. A body that holds it (sign-in, the 2FA
+ * steps: `token`; get-session: `session.token`) is answered without it; `undefined` leaves the answer as it is. /list-sessions keeps its
+ * tokens (an array, untouched): /revoke-session needs them.
+ */
+export function withoutSessionToken(returned: unknown): Record<string, unknown> | undefined {
+  if (typeof returned !== 'object' || returned === null || Array.isArray(returned))
+    return undefined;
+  if (isAPIError(returned) || returned instanceof Response) return undefined;
+  const body = returned as Record<string, unknown>;
+  const session = body['session'];
+  const nested = typeof session === 'object' && session !== null && 'token' in session;
+  if (!('token' in body) && !nested) return undefined;
+  const rest = omitToken(body);
+  return nested ? { ...rest, session: omitToken(session) } : rest;
+}
+
 /** `lockout` and `plugins` need the database (createAuth); without them buildAuthOptions is the pure part, which the unit tests use. */
 export function buildAuthOptions(
   env: AuthEnv,
@@ -69,6 +89,13 @@ export function buildAuthOptions(
       maxPasswordLength: MAX_PASSWORD_LENGTH,
       revokeSessionsOnPasswordReset: true,
       password: { hash: hashPassword, verify: verifyPassword },
+    },
+    // deletedAt is a column of ours: the revoking adapter filters soft-deleted people out on it (review DB-01), so Better Auth must know
+    // the field to accept it in a where clause and to read it with a joined user. Never written by the library, never returned.
+    user: {
+      additionalFields: {
+        deletedAt: { type: 'date', required: false, input: false, returned: false },
+      },
     },
     // 12 hours, never extended: expires_at cannot be updated by auth_role. revokedAt and activeOrgId are columns of ours that the
     // revoking adapter and the session switch need Better Auth to know.
@@ -99,11 +126,15 @@ export function buildAuthOptions(
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
-        if (ctx.path !== SIGN_IN || !extras.lockout) return;
         const returned = ctx.context.returned;
-        if (isAPIError(returned)) {
-          if (returned.body?.code === WRONG_CREDENTIALS.code) await extras.lockout.failed(ctx.body);
-        } else if (ctx.context.newSession) await extras.lockout.succeeded(ctx.body);
+        if (ctx.path === SIGN_IN && extras.lockout) {
+          if (isAPIError(returned)) {
+            if (returned.body?.code === WRONG_CREDENTIALS.code)
+              await extras.lockout.failed(ctx.body);
+          } else if (ctx.context.newSession) await extras.lockout.succeeded(ctx.body);
+        }
+        // Only over HTTP: our own server code (getSession of the SessionResolver) keeps the whole answer.
+        return ctx.request ? withoutSessionToken(returned) : undefined;
       }),
     },
     plugins: [
