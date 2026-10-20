@@ -85,7 +85,7 @@ describe('tenant context middleware', () => {
       type: 'about:blank',
       title: 'Unauthorized',
       status: 401,
-      code: 'UNAUTHENTICATED',
+      code: 'unauthorized',
       detail: expect.any(String) as string,
       traceId: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
     });
@@ -100,6 +100,8 @@ describe('tenant context middleware', () => {
       tenant: { orgId: string; workspaceIds: string[] };
     };
     expect(body.request).toMatchObject({ userId: ME, orgId: ORG_A, role: 'sales' });
+    // The traceId the error filter answers with (N132): made by the server, never taken from the request.
+    expect((body.request as { traceId?: unknown }).traceId).toMatch(/^[0-9a-f-]{36}$/);
     expect(body.request.workspaceIds).toEqual(sales.workspaceIds);
     expect(body.tenant).toEqual({ orgId: ORG_A, workspaceIds: sales.workspaceIds });
     expect(member).toHaveBeenCalledWith(ORG_A, ME);
@@ -128,7 +130,7 @@ describe('tenant context middleware', () => {
       expect(member).toHaveBeenCalledWith(ORG_B, ME);
     });
 
-    it('is 403 ORG_NOT_SELECTED with several', async () => {
+    it('is 403 org_not_selected with several', async () => {
       const get = await start({ ...noOrg, organisations: () => Promise.resolve([ORG_A, ORG_B]) });
       const res = await get('/v1/x');
       expect(res.status).toBe(403);
@@ -137,15 +139,15 @@ describe('tenant context middleware', () => {
         type: 'about:blank',
         title: 'Forbidden',
         status: 403,
-        code: 'ORG_NOT_SELECTED',
+        code: 'org_not_selected',
         detail: expect.any(String) as string,
         traceId: expect.any(String) as string,
       });
     });
 
-    it('is 403 NO_ORGANISATION with none, also when the only one is lost between the two questions', async () => {
+    it('is 403 no_organisation with none, also when the only one is lost between the two questions', async () => {
       const none = await start({ ...noOrg, organisations: () => Promise.resolve([]) });
-      expect(await (await none('/v1/x')).json()).toMatchObject({ code: 'NO_ORGANISATION' });
+      expect(await (await none('/v1/x')).json()).toMatchObject({ code: 'no_organisation' });
       const raced = await start({
         ...noOrg,
         organisations: () => Promise.resolve([ORG_A]),
@@ -153,7 +155,7 @@ describe('tenant context middleware', () => {
       });
       const res = await raced('/v1/x');
       expect(res.status).toBe(403);
-      expect(await res.json()).toMatchObject({ code: 'NO_ORGANISATION' });
+      expect(await res.json()).toMatchObject({ code: 'no_organisation' });
     });
   });
 
@@ -169,7 +171,7 @@ describe('tenant context middleware', () => {
       member: () => Promise.resolve(null),
       organisations: () => Promise.resolve([ORG_A, ORG_B]),
     });
-    expect(await (await get('/v1/x')).json()).toMatchObject({ code: 'ORG_NOT_SELECTED' });
+    expect(await (await get('/v1/x')).json()).toMatchObject({ code: 'org_not_selected' });
   });
 
   it('is 503 without the cause when a dependency fails, and 403 only for "not a member"', async () => {
@@ -188,7 +190,7 @@ describe('tenant context middleware', () => {
       const text = await res.text();
       expect(res.status).toBe(503);
       expect(res.headers.get('content-type')).toBe(PROBLEM_CONTENT_TYPE);
-      expect(JSON.parse(text)).toMatchObject({ code: 'SERVICE_UNAVAILABLE', status: 503 });
+      expect(JSON.parse(text)).toMatchObject({ code: 'service_unavailable', status: 503 });
       expect(text).not.toMatch(/hunter2|db-7|refused/);
     }
   });

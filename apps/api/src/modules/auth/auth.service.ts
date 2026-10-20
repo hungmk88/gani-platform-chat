@@ -18,8 +18,11 @@ export class AuthService implements OnApplicationShutdown {
   private readonly pool: DbPool;
   private closed = false;
   readonly auth: AuthInstance;
+  /** BETTER_AUTH_URL: the one origin a change under /v1 may come from (N136). */
+  readonly origin: string;
 
   constructor(env: AuthEnv, url: string, create: typeof createDbPool = createDbPool) {
+    this.origin = env.baseURL;
     this.pool = create(url, {
       onError: (error) => this.logger.warn(`auth pool error (${errorCode(error)})`),
     });

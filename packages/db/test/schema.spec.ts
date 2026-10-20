@@ -21,6 +21,7 @@ const tables: PgTable[] = [
   db.featureFlagsOverrides,
   db.agentSettings,
   db.conversations,
+  db.idempotencyKeys,
   db.sessions,
   db.accounts,
   db.verifications,

@@ -18,6 +18,7 @@ const ctxOf = (userId: string, workspaceIds: string[] = []): RequestContext => (
   role: 'sales',
   workspaceIds,
   resolvedAt: new Date(),
+  traceId: 'trace-test',
 });
 
 describe('currentRequestContext', () => {

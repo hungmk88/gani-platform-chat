@@ -96,7 +96,7 @@ const raw = (cookie: string, path: string, method = 'GET') =>
     });
     req.on('error', fail).end(method === 'POST' ? '{}' : undefined);
   });
-const CODE = 'TWO_FACTOR_SETUP_REQUIRED';
+const CODE = 'two_factor_setup_required';
 
 beforeAll(async () => {
   need('DATABASE_URL_APP');
@@ -116,6 +116,7 @@ beforeAll(async () => {
   await person('ownerYes', 'owner');
   await person('viewer', 'viewer');
   await person('nobody', null);
+  await person('ownerGone', 'owner');
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: [ProtectedController],
@@ -201,7 +202,7 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     }
     const anonymous = await raw('', '/v1/me/security-status');
     expect(anonymous.status).toBe(401);
-    expect(anonymous.json).toMatchObject({ code: 'UNAUTHENTICATED' });
+    expect(anonymous.json).toMatchObject({ code: 'unauthorized' });
   });
 
   describe('whitelist paths', () => {
@@ -234,9 +235,30 @@ describe('the 2FA gate over HTTP (N89 (c))', () => {
     });
   });
 
+  it('turns away an owner without a second factor who was soft-deleted after signing in: 401, never through (review DB-01)', async () => {
+    const cookie = await login('ownerGone');
+    expect((await raw(cookie, '/v1/test/protected', 'POST')).status).toBe(403);
+    await admin.query('UPDATE users SET deleted_at = now() WHERE id = $1', [
+      people['ownerGone']?.id,
+    ]);
+    // Undo the revocation the database makes for a deleted person (DB side of DB-01): the session must fail on its own.
+    await admin.query('UPDATE sessions SET revoked_at = NULL WHERE user_id = $1', [
+      people['ownerGone']?.id,
+    ]);
+    for (const [path, method] of [
+      ['/v1/test/protected', 'POST'],
+      ['/v1/me/security-status', 'GET'],
+    ] as const) {
+      const res = await raw(cookie, path, method);
+      expect(res.status, path).toBe(401);
+      expect(res.json, path).toMatchObject({ code: 'unauthorized' });
+    }
+    expect((await raw(cookie, '/api/auth/list-sessions')).status).not.toBe(200);
+  });
+
   it('a person with no organisation is turned away by the tenant middleware, not by the gate', async () => {
     const res = await raw(await login('nobody'), '/v1/test/protected', 'POST');
     expect(res.status).toBe(403);
-    expect(res.json).toMatchObject({ code: 'NO_ORGANISATION' });
+    expect(res.json).toMatchObject({ code: 'no_organisation' });
   });
 });

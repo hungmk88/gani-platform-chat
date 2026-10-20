@@ -176,7 +176,7 @@ describe('the rule that Owner, Admin and platform operators use a second factor'
     const org = await joinOrg(u.id, 'owner');
     const refused = await switchTo(u.email, org);
     expect(refused.status).toBe(403);
-    expect(await refused.json()).toMatchObject({ code: 'TWO_FACTOR_SETUP_REQUIRED' });
+    expect(await refused.json()).toMatchObject({ code: 'two_factor_setup_required' });
     expect(await live(u.id)).toBe(1);
     const secret = (await enrol(u.email)).secret;
     const step = await code(await signIn(u.email), totp(secret));
