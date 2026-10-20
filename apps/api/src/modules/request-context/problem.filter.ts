@@ -72,6 +72,11 @@ export function toProblem(exception: unknown, traceId: string): Problem {
     return problem(e.status, code, e.status < 500 ? detail : undefined, traceId);
   }
   if (code === 'invalid_transition') return problem(409, code, detail, traceId);
+  // ADR-004, N58: a write RLS refused (42501, WITH CHECK) aimed at another tenant's row: as for a read, it does not exist (404). The
+  // driver's error is the cause of Drizzle's. TN001 (no tenant context) stays a 500: a bug, never the client's doing.
+  const cause = (e as { cause?: { code?: unknown } }).cause;
+  if (e.code === '42501' || cause?.code === '42501')
+    return problem(404, 'not_found', undefined, traceId);
   return problem(500, 'internal_error', 'Something went wrong. Try again.', traceId);
 }
 
