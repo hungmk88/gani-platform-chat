@@ -126,6 +126,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@eslint/css':
+        specifier: 2.0.1
+        version: 2.0.1
       '@eslint/js':
         specifier: 10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.7.0))
@@ -195,6 +198,9 @@ importers:
 
   packages/ui:
     devDependencies:
+      '@eslint/css':
+        specifier: 2.0.1
+        version: 2.0.1
       '@gani/config':
         specifier: workspace:*
         version: link:../config
@@ -207,6 +213,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 5.0.3
         version: 5.0.3(vitest@5.0.3)
+      eslint:
+        specifier: 10.11.0
+        version: 10.11.0(jiti@2.7.0)
       postcss:
         specifier: 8.5.31
         version: 8.5.31
@@ -360,6 +369,14 @@ packages:
 
   '@eslint/core@1.2.1':
     resolution: {integrity: sha512-MwcE1P+AZ4C6DWlpin/OmOA54mmIZ/+xZuJiQd4SyB29oAJjN30UW9wkKNptW2ctp4cEsvhlLY/CsQ1uoHDloQ==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@eslint/css-tree@4.1.2':
+    resolution: {integrity: sha512-rVcxLmwSkEL3aWS3vAgsTRrQHoYE1b0XcgDtKHDJ92XOkyUpcbS/g0tUJKhvCtlEhYzgKBWsgDd+Z/aPhd166w==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@eslint/css@2.0.1':
+    resolution: {integrity: sha512-1qIQFzuFeTaHF3ewzsj/HUDC9RTDwfBHGWdFvpmOG0R/Tb3Mt+17yltbE10/LK+oglS1fP9+tiG5UzMvWgQY9g==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
   '@eslint/js@10.0.1':
@@ -1779,6 +1796,9 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
+  mdn-data@2.37.2:
+    resolution: {integrity: sha512-rz9YOBGItdSbe7HcSArUbhiAv4SB/4DKRYg96CSFS2CcIYMbUvBtZlzA1NCbk2AdgbmYwMqwNblLpR441lLeiQ==}
+
   media-typer@0.3.0:
     resolution: {integrity: sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==}
     engines: {node: '>= 0.6'}
@@ -2458,6 +2478,17 @@ snapshots:
   '@eslint/core@1.2.1':
     dependencies:
       '@types/json-schema': 7.0.15
+
+  '@eslint/css-tree@4.1.2':
+    dependencies:
+      mdn-data: 2.37.2
+      source-map-js: 1.2.2
+
+  '@eslint/css@2.0.1':
+    dependencies:
+      '@eslint/core': 1.2.1
+      '@eslint/css-tree': 4.1.2
+      '@eslint/plugin-kit': 0.7.3
 
   '@eslint/js@10.0.1(eslint@10.11.0(jiti@2.7.0))':
     optionalDependencies:
@@ -3597,6 +3628,8 @@ snapshots:
       source-map-js: 1.2.2
 
   math-intrinsics@1.1.0: {}
+
+  mdn-data@2.37.2: {}
 
   media-typer@0.3.0: {}
 

@@ -19,10 +19,12 @@
     "test": "vitest run --coverage"
   },
   "devDependencies": {
+    "@eslint/css": "2.0.1",
     "@gani/config": "workspace:*",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "22.20.5",
     "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.11.0",
     "postcss": "8.5.31",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",

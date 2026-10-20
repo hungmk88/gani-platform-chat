@@ -10,9 +10,14 @@
     "./vitest": {
       "types": "./vitest.base.d.mts",
       "default": "./vitest.base.mjs"
+    },
+    "./ui-lint": {
+      "types": "./ui-lint.d.mts",
+      "default": "./ui-lint.mjs"
     }
   },
   "dependencies": {
+    "@eslint/css": "2.0.1",
     "@eslint/js": "10.0.1",
     "eslint-config-prettier": "10.1.8",
     "typescript-eslint": "8.71.0"
