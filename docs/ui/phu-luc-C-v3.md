@@ -24,7 +24,7 @@ Vendor nộp wireframe dạng prototype bấm được (Figma hoặc tương đ�
 | 7 | Quên / đặt lại mật khẩu (#3) — **phụ thuộc PR7** | Form email xin link; form đặt mật khẩu mới; xác nhận thành công | Đã gửi: **"Nếu email có trong hệ thống, link đã được gửi"** (cùng một câu dù email có hay không); link hết hạn hoặc đã dùng; mật khẩu không đủ mạnh (≥ 12 ký tự, có chữ và số) | **23/11/2026** — duyệt bố cục; chi tiết duyệt lại khi PR7 xong |
 | 8 | Nhận lời mời (#4) — **phụ thuộc PR7** | Thông báo vai trò và workspace được mời; form đặt mật khẩu ngay trên trang; bước cài 2FA nếu vai trò bắt buộc | Link hết hạn; link đã dùng ("Đã chấp nhận, kiểm tra email để đặt mật khẩu" — N31); quá thời gian đặt mật khẩu trên trang → gửi link qua email | **23/11/2026** — duyệt bố cục; chi tiết duyệt lại khi PR7 xong |
 | 9 | Hồ sơ cá nhân (#5) | 3 tab: Thông tin (tên, ảnh, mật khẩu), Bảo mật (2FA, phiên), Thông báo (trình duyệt, âm thanh) | 2FA đã bật / chưa bật — **không có nút tắt**; danh sách phiên chỉ có thời điểm tạo + hạn, không IP, không thiết bị (U20-1, U20-2); phiên đang dùng có nhãn **"Phiên này"**, các phiên khác có nút đăng xuất (Q-U20-3) | **23/11/2026** |
-| 10 | Widget (Đợt 2) | Thu gọn, lời chào, form trước khi chat (có dòng thông báo dữ liệu), hội thoại, đánh giá; bản mobile và desktop; 2 thương hiệu mẫu | Ngoài giờ, mất mạng, có/không câu công bố AI | **01/03/2027** |
+| 10 | Widget (Đợt 2) | Thu gọn, lời chào, form trước khi chat (có dòng thông báo dữ liệu), hội thoại, đánh giá; bản mobile và desktop; 2 thương hiệu mẫu | Ngoài giờ, mất mạng; câu công bố AI **luôn hiện khi bot dùng AI**, chỉ không hiện khi bot chạy theo luật, không dùng AI (U24, CEO 19/10/2026) | **01/03/2027** |
 
 ### Yêu cầu kèm mỗi wireframe
 

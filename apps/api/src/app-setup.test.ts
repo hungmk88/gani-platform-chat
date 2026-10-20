@@ -17,8 +17,10 @@ import { loadAuthEnv } from './modules/auth/auth.env.js';
 import { AuthService } from './modules/auth/auth.service.js';
 import { hashPassword } from './modules/auth/password.js';
 import { revokingAdapter } from './modules/auth/revoking-adapter.js';
+import { ConversationNotFoundError } from './modules/conversations/errors.js';
 import { DatabaseService } from './modules/database/database.service.js';
 import { PROBLEM_CONTENT_TYPE } from './modules/request-context/problem.js';
+import { SECURITY_HEADERS } from './modules/request-context/security-headers.js';
 import { currentRequestContext } from './modules/request-context/request-context.js';
 
 // The order the application is put together in (N90), on real Nest and real Better Auth with the in-memory adapter and stub databases.
@@ -27,6 +29,17 @@ class EchoController {
   @Post('echo')
   echo(@Body() body: unknown) {
     return { body };
+  }
+
+  // AR-03: an error of ours with a status, and one nobody planned for whose message must not reach the client.
+  @Post('test/missing')
+  missing(): never {
+    throw new ConversationNotFoundError();
+  }
+
+  @Post('test/boom')
+  boom(): never {
+    throw new Error(`Failed query: select 1 params: ${EMAIL}`);
   }
 
   // What the tenant middleware made for this request, read after Nest's router and body parser have run.
@@ -104,6 +117,7 @@ async function start(mustSetUp = false): Promise<string> {
     .overrideProvider(AuthService)
     .useValue({
       auth,
+      origin: base,
       ping: () => Promise.resolve(true),
       activeOrganisationIds: () => Promise.resolve([ORG]),
       mustSetUpTwoFactor: () => Promise.resolve(mustSetUp),
@@ -181,6 +195,23 @@ describe('setupApp', () => {
     expect(answer.ctx).toMatchObject({ orgId: ORG, role: 'sales', workspaceIds: [WORKSPACE] });
   });
 
+  it('refuses a change under /v1 that carries the session cookie from another origin (CSRF, N136)', async () => {
+    const url = await start();
+    const signedIn = await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW });
+    const cookie = signedIn.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    const forged = await fetch(`${url}/v1/test/context`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example.test', cookie },
+      body: '{}',
+    });
+    expect(forged.status).toBe(403);
+    expect(await forged.json()).toMatchObject({ code: 'forbidden' });
+    expect((await fetch(`${url}/v1/me/security-status`, { headers: { cookie } })).status).toBe(200);
+  });
+
   it('leaves /api/auth and /healthz outside the tenant middleware', async () => {
     const url = await start();
     expect((await fetch(`${url}/api/auth/ok`)).status).toBe(200);
@@ -197,7 +228,7 @@ describe('setupApp', () => {
       .join('; ');
     const blocked = await fetch(`${url}/api/auth/get-session`, { headers: { cookie } });
     expect(blocked.status).toBe(403);
-    expect(await blocked.json()).toMatchObject({ code: 'TWO_FACTOR_SETUP_REQUIRED' });
+    expect(await blocked.json()).toMatchObject({ code: 'two_factor_setup_required' });
     expect((await json(url, '/v1/test/context', {}, cookie)).status).toBe(403);
     const status = await fetch(`${url}/v1/ME/security-status`, { headers: { cookie } });
     expect(status.status).toBe(200);
@@ -210,5 +241,75 @@ describe('setupApp', () => {
     expect(anonymous.status).toBe(401);
     // Express adds the charset to the type the controller set.
     expect(anonymous.headers.get('content-type')).toContain(PROBLEM_CONTENT_TYPE);
+  });
+});
+
+const cookieOf = (res: Response) =>
+  res.headers
+    .getSetCookie()
+    .map((c) => c.split(';')[0])
+    .join('; ');
+
+describe('the edge of the HTTP server (AR-03, AR-04, SEC-03)', () => {
+  it('sends the security headers on every kind of answer, and no X-Powered-By', async () => {
+    const url = await start();
+    const answers = [
+      await fetch(`${url}/healthz`),
+      await fetch(`${url}/api/auth/ok`),
+      await json(url, '/v1/echo', {}),
+      await fetch(`${url}/nope`),
+    ];
+    expect(answers.map((r) => r.status)).toEqual([200, 200, 401, 404]);
+    for (const res of answers) {
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+        expect(res.headers.get(name), `${res.url} ${name}`).toBe(value);
+      }
+      expect(res.headers.get('x-powered-by'), res.url).toBeNull();
+    }
+  });
+
+  it('answers every error as RFC 9457: an unknown route, a malformed body, an error of ours, one nobody planned for', async () => {
+    const url = await start();
+    const cookie = cookieOf(
+      await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW }),
+    );
+    const notFound = await fetch(`${url}/nope`);
+    expect(notFound.headers.get('content-type')).toBe(PROBLEM_CONTENT_TYPE);
+    expect(await notFound.json()).toMatchObject({ status: 404, code: 'not_found' });
+    const malformed = await fetch(`${url}/v1/echo`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: '{"not json',
+    });
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toMatchObject({ status: 400, code: 'validation_failed' });
+    const missing = await json(url, '/v1/test/missing', {}, cookie);
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toMatchObject({ status: 404, code: 'not_found' });
+    const boom = await json(url, '/v1/test/boom', {}, cookie);
+    expect(boom.status).toBe(500);
+    const text = await boom.text();
+    expect(JSON.parse(text)).toMatchObject({ status: 500, code: 'internal_error' });
+    expect(JSON.parse(text)).toHaveProperty('traceId');
+    for (const secret of [EMAIL, 'Failed query']) expect(text).not.toContain(secret);
+  });
+
+  it('keeps the session token out of the JSON of sign-in and get-session; the cookie still works', async () => {
+    const url = await start();
+    const signedIn = await json(url, '/api/auth/sign-in/email', { email: EMAIL, password: PW });
+    expect(signedIn.status).toBe(200);
+    const body = (await signedIn.json()) as Record<string, unknown>;
+    expect(body).not.toHaveProperty('token');
+    expect(body).toHaveProperty('user');
+    const read = await fetch(`${url}/api/auth/get-session`, {
+      headers: { cookie: cookieOf(signedIn) },
+    });
+    const session = (await read.json()) as {
+      session: Record<string, unknown>;
+      user: { email: string };
+    };
+    expect(session.user.email).toBe(EMAIL);
+    expect(session.session).toHaveProperty('id');
+    expect(session.session).not.toHaveProperty('token');
   });
 });

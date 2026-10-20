@@ -35,13 +35,13 @@ const snap = (
 const held = (state: 'HUMAN_ACTIVE' | 'PENDING_CUSTOMER', user = U1) =>
   snap(state, { assignedUserId: user });
 const [QUEUE_S, HOLD_S] = [snap('HUMAN_WAITING_Q'), snap('BOT_ACTIVE', { afterHoursHold: true })];
-const closedS = (outcome: 'won' | 'lost' | 'resolved' | 'resolved_by_bot') =>
+const closedS = (outcome: 'resolved' | 'no_response' | 'spam' | 'resolved_by_bot') =>
   snap('CLOSED', { closedAt: WITHIN, outcome });
 
 // prettier-ignore
 const SNAPSHOTS: Record<string, ConversationSnapshot | null> = {
   new: null, bot: snap('BOT_ACTIVE'), botHold: HOLD_S, waiting: QUEUE_S, active: held('HUMAN_ACTIVE'), pending: held('PENDING_CUSTOMER'),
-  closed: snap('CLOSED', { closedAt: CLOSED_AT, outcome: 'won' }),
+  closed: snap('CLOSED', { closedAt: CLOSED_AT, outcome: 'resolved' }),
 };
 const msg = (agentOnline: boolean, now: Date): ConversationEvent => ({
   type: 'customer_message',
@@ -56,7 +56,7 @@ const EVENTS: Record<string, ConversationEvent> = {
   resolved: { type: 'bot_resolved', now: WITHIN }, claim: { type: 'claim', userId: U2 },
   releaseIn: { type: 'release_after_hours', inHours: true }, releaseOut: { type: 'release_after_hours', inHours: false },
   waits: { type: 'agent_waits_customer' }, back: { type: 'hand_back_to_bot' },
-  closeWon: { type: 'close', now: WITHIN, outcome: 'won' }, closeLost: { type: 'close', now: WITHIN, outcome: 'lost' },
+  closeNoResponse: { type: 'close', now: WITHIN, outcome: 'no_response' }, closeSpam: { type: 'close', now: WITHIN, outcome: 'spam' },
   closeResolved: { type: 'close', now: WITHIN, outcome: 'resolved' },
   transfer: { type: 'transfer', toUserId: U2 }, reassign: { type: 'reassign', toUserId: U2 },
   logoutIn: { type: 'agent_logout', inHours: true }, logoutOut: { type: 'agent_logout', inHours: false },
@@ -98,7 +98,7 @@ const QUEUE: ConversationEffect[] = [...CHANGED, 'conversation.handoff_requested
 const CLAIMED: ConversationEffect[] = [...CHANGED, 'conversation.assigned'];
 const STAYS: NoChangeReason = 'customer_message_keeps_state';
 const AWAY: NoChangeReason = 'agent_away_while_pending';
-const closedBy = (o: 'won' | 'lost' | 'resolved') =>
+const closedBy = (o: 'resolved' | 'no_response' | 'spam') =>
   to('T13', closedS(o), 'state_changed', CHANGED);
 const MSGS = ['msgOnWithin', 'msgOffWithin', 'msgOnBeyond', 'msgOffBeyond'];
 
@@ -118,8 +118,8 @@ const ORACLE: [string, string[], Expect | NoChangeReason][] = [
   ['pending', ['msgOnWithin', 'msgOnBeyond'], to('T10', held('HUMAN_ACTIVE'), 'state_changed', CHANGED)],
   ['pending', ['msgOffWithin', 'msgOffBeyond'], to('T11', QUEUE_S, 'state_changed', CHANGED)],
   ['active', ['back'], to('T12', snap('BOT_ACTIVE'), 'state_changed', CHANGED)],
-  ['active', ['closeWon'], closedBy('won')], ['pending', ['closeWon'], closedBy('won')],
-  ['active', ['closeLost'], closedBy('lost')], ['pending', ['closeLost'], closedBy('lost')],
+  ['active', ['closeNoResponse'], closedBy('no_response')], ['pending', ['closeNoResponse'], closedBy('no_response')],
+  ['active', ['closeSpam'], closedBy('spam')], ['pending', ['closeSpam'], closedBy('spam')],
   ['active', ['closeResolved'], closedBy('resolved')], ['pending', ['closeResolved'], closedBy('resolved')],
   ['closed', ['msgOnWithin', 'msgOffWithin'], to('T14', snap('BOT_ACTIVE'), 'reopened', CHANGED)],
   ['active', ['transfer'], to('T15', held('HUMAN_ACTIVE', U2), 'transferred', ['agent.transferred'])],
