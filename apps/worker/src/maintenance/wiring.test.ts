@@ -54,6 +54,7 @@ describe('the worker with the partition maintenance', () => {
         return [];
       },
       purgeKeys: () => Promise.resolve(0),
+      purgeIdempotencyKeys: () => Promise.resolve(0),
       defaultRows: () => Promise.resolve([]),
     };
     const running = worker(order, store);
@@ -75,6 +76,7 @@ describe('the worker with the partition maintenance', () => {
     const store: PartitionStore = {
       ensure: (months) => (ensured.push(months), Promise.resolve([])),
       purgeKeys: () => Promise.resolve(0),
+      purgeIdempotencyKeys: () => Promise.resolve(0),
       defaultRows: () => Promise.resolve([]),
     };
     const withJob = worker(order, store);

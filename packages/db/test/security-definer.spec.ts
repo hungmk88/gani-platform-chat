@@ -13,6 +13,7 @@ const ADR_004 = [
   'app.memberships_for_user',
   'app.outbox_pending_orgs',
   'app.outbox_stats',
+  'app.purge_idempotency_keys',
   'app.purge_inbound_event_keys',
   'app.support_access_ok',
 ];

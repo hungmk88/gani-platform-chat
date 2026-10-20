@@ -48,7 +48,7 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 - `app.lookup_invite()`, `app.accept_invite()`: **chưa tạo**, chờ PR7 (`rls-spec-M01.md` §3.6, §3.7).
 - View `app.org_users` (chạy bằng quyền owner, cùng mức rủi ro): đã tạo.
 
-**Đã thêm sau S1** (19/10/2026: 9 hàm `SECURITY DEFINER` có trong migration; hai hàm đầu ở trên, bảy hàm dưới đây; xác nhận của cố vấn cho từng hàm chưa ghi nhận trong repo, review G-01):
+**Đã thêm sau S1** (20/10/2026: 10 hàm `SECURITY DEFINER` có trong migration; hai hàm đầu ở trên, tám hàm dưới đây; xác nhận của cố vấn cho từng hàm chưa ghi nhận trong repo, review G-01):
 
 | Hàm | Migration | N |
 |---|---|---|
@@ -59,8 +59,9 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 | `app.ensure_log_partitions` | `202610121500` | N110 |
 | `app.log_default_partition_rows` | `202610131000` | N110 |
 | `app.outbox_stats` | `202610191200` | N118 |
+| `app.purge_idempotency_keys` | `202610201200` | N134 |
 
-`packages/db/test/security-definer.spec.ts` so tập hàm thật (9 hàm, 19/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
+`packages/db/test/security-definer.spec.ts` so tập hàm thật (10 hàm, 20/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 
