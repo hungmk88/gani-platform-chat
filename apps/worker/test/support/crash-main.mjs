@@ -8,9 +8,11 @@
 // (config, pool, store, publisher, startWorker) must change them too (apps/worker/CLAUDE.md).
 import process from 'node:process';
 
+import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool } from '@gani/db';
 
 import { readConfig } from '../../dist/config.js';
+import { createDbInboundStore } from '../../dist/inbound/db-store.js';
 import { createLogger } from '../../dist/logger.js';
 import { createDbPartitionStore } from '../../dist/maintenance/db-store.js';
 import { createBullmqPublisher } from '../../dist/queue/bullmq-publisher.js';
@@ -25,7 +27,13 @@ if (crashAt !== 'before_publish' && crashAt !== 'after_publish') {
 
 const log = createLogger(); // same as main.ts
 const config = readConfig(process.env); // same as main.ts
-const pool = createDbPool(config.databaseUrl, { max: config.outbox.orgParallel + 2 }); // same as main.ts
+const pool = createDbPool(config.databaseUrl, {
+  max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
+}); // same as main.ts
+const fsm = new ConversationStateMachine(); // same as main.ts
+const messages = new MessageService(fsm, undefined, undefined, {
+  warn: (line) => log.warn('message_clock_skew', { line }),
+}); // same as main.ts
 const publisher = createBullmqPublisher(config.redisUrl, log); // same as main.ts
 
 /** Kills this process and never goes on: the code after the kill must not run, whatever the scheduler does. */
@@ -53,5 +61,9 @@ startWorker({
   log,
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
+  inbound: {
+    store: createDbInboundStore({ pool, services: { fsm, messages } }),
+    settings: config.inbound,
+  },
 }); // same as main.ts
 log.info('worker_started');

@@ -1,4 +1,5 @@
 import type { WorkerConfig } from './config.js';
+import { InboundProcessor, type InboundStore } from './inbound/inbound-processor.js';
 import type { Logger } from './logger.js';
 import { PartitionMaintenanceJob, type PartitionStore } from './maintenance/partition-job.js';
 import { OutboxRelay, type QueuePublisher, type RelayStore } from './relay/outbox-relay.js';
@@ -11,14 +12,16 @@ export interface WorkerDeps {
   readonly settings: WorkerConfig['outbox'];
   /** The partition maintenance (PM-2b): absent, it is not run (the tests of the relay do not need it). */
   readonly maintenance?: PartitionStore;
+  /** The processing of stored webhooks (inbound spec §2–3): absent, it is not run (the tests of the relay do not need it). */
+  readonly inbound?: { readonly store: InboundStore; readonly settings: WorkerConfig['inbound'] };
 }
 
 export interface RunningWorker {
-  /** Stops the relay, then closes the queue, then the pool. True when all three went well; the second call gives the first answer. */
+  /** Stops the loops, then closes the queue, then the pool. True when every step went well; the second call gives the first answer. */
   shutdown(): Promise<boolean>;
 }
 
-/** Starts the relay. The order of the shutdown matters: the relay uses the queue and the pool, so they close after it, not before. */
+/** Starts the relay (and the inbound processor and the partition job when given). The order of the shutdown matters: the relay uses the queue and the pool, so they close after it, not before. */
 export function startWorker(deps: WorkerDeps): RunningWorker {
   const { store, queue, pool, log, settings } = deps;
   const relay = new OutboxRelay({ store, queue, log, settings });
@@ -27,6 +30,10 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
     ? new PartitionMaintenanceJob({ store: deps.maintenance, log })
     : null;
   job?.start();
+  const inbound = deps.inbound
+    ? new InboundProcessor({ ...deps.inbound, log, shutdownMs: settings.shutdownMs })
+    : null;
+  inbound?.start();
 
   // A step that fails or hangs is logged and does not stop the next one; `pool.end()` waits for a connection a late pass still holds.
   // `relay.stop()` has its own deadline (and its own warning), so only the other two are timed here.
@@ -59,11 +66,13 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
     shutdown() {
       shutdown ??= (async () => {
         const stopped = await step('relay', () => relay.stop(), false);
+        // Like the relay, the processor has its own deadline; it uses the pool, so it ends before the pool closes.
+        const drained = inbound ? await step('inbound', () => inbound.stop(), false) : true;
         // The job uses the pool too: it ends before the queue and the pool close.
         const maintained = job ? await step('partition_job', () => job.stop()) : true;
         const closed = await step('queue', () => queue.close());
         const ended = await step('pool', () => pool.end());
-        return stopped && maintained && closed && ended;
+        return stopped && drained && maintained && closed && ended;
       })();
       return shutdown;
     },

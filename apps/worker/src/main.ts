@@ -1,6 +1,8 @@
+import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool } from '@gani/db';
 
 import { ConfigError, readConfig } from './config.js';
+import { createDbInboundStore } from './inbound/db-store.js';
 import { createLogger } from './logger.js';
 import { createDbPartitionStore } from './maintenance/db-store.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
@@ -25,8 +27,13 @@ function configOrExit(): ReturnType<typeof readConfig> {
 
 const config = configOrExit();
 const pool = createDbPool(config.databaseUrl, {
-  max: config.outbox.orgParallel + 2,
+  max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
+});
+// The same state machine and message service as the API (N138); the warnings of the message service carry ids only.
+const fsm = new ConversationStateMachine();
+const messages = new MessageService(fsm, undefined, undefined, {
+  warn: (line) => log.warn('message_clock_skew', { line }),
 });
 const worker = startWorker({
   store: createDbRelayStore({ pool }),
@@ -35,6 +42,10 @@ const worker = startWorker({
   log,
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
+  inbound: {
+    store: createDbInboundStore({ pool, services: { fsm, messages } }),
+    settings: config.inbound,
+  },
 });
 log.info('worker_started');
 
