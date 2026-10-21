@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#14, #15, #16, #19, #21, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#14, #15, #16, #19, #20, #21, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -19,6 +19,7 @@ const STATES = {
   'overview.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'autonomy.html': ['normal', 'loading', 'error', 'aioff'],
   'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
+  'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'workspace.html': ['normal', 'loading', 'error', 'aioff'],
   'workspace.html?tab=sla&x=1': ['normal'],
   'workspace.html?tab=allocation&x=1': ['normal'],
@@ -154,6 +155,31 @@ check((await p.locator('#inv-role option', { hasText: 'Owner' }).count()) === 1,
 await p.close();
 p = await open('members.html?role=manager');
 check((await p.textContent('main')).includes('không dùng Thành viên'), '#19: Manager không có quyền');
+await p.close();
+
+// #20 Team
+p = await open('teams.html?role=admin');
+check((await p.locator('tbody tr').count()) === 3 && (await p.locator('.badge', { hasText: 'Mặc định' }).count()) === 1, '#20: 3 team, 1 mặc định');
+await p.locator('.btn.primary', { hasText: 'Tạo team' }).click();
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('Nhập tên team'), '#20: tạo team cần tên');
+await p.fill('#team-name', 'sales b2b');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('đã có team tên này'), '#20: tên team không trùng');
+await p.keyboard.press('Escape');
+await p.getByRole('button', { name: 'Xóa Sales B2B' }).click();
+check((await p.textContent('.dialog')).includes('team mặc định') && (await p.textContent('.dialog')).includes('chuyển kênh'), '#20: xóa team mặc định có kênh bị chặn, nêu 2 lý do');
+await p.keyboard.press('Escape');
+await p.getByRole('button', { name: 'Thành viên của Sales miền Nam' }).click();
+check((await p.textContent('.dialog')).includes('cũng ở Sales B2B'), '#20: một người ở nhiều team');
+await p.keyboard.press('Escape');
+await shot(p, 'teams', true);
+await p.close();
+p = await open('teams.html?role=manager');
+check((await p.locator('tbody tr').count()) === 1 && (await p.locator('.btn.primary').count()) === 0, '#20: Manager chỉ xem team của mình');
+await p.close();
+p = await open('teams.html?role=sales');
+check((await p.textContent('main')).includes('không dùng Team'), '#20: Sales không có quyền');
 await p.close();
 
 // #21 Workspace
