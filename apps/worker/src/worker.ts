@@ -21,6 +21,8 @@ export interface WorkerDeps {
     readonly source: QueueSource;
     readonly handlers: EventHandlers;
     readonly settings: WorkerConfig['events'];
+    /** What the handlers send through (the realtime emitter, V8b): closed once the consumer has stopped. */
+    readonly emitter?: { close(): Promise<void> };
   };
   /** What the relay counts, for `/metrics` and `/healthz` (OPS-02). */
   readonly metrics?: RelayMetrics;
@@ -89,11 +91,13 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
         const drained = inbound ? await step('inbound', () => inbound.stop(), false) : true;
         // After the loops that feed the queues; it waits for the jobs running and has its own deadline too.
         const consumed = consumer ? await step('events', () => consumer.stop(), false) : true;
+        const emitter = deps.events?.emitter;
+        const silent = emitter ? await step('emitter', () => emitter.close()) : true;
         // The job uses the pool too: it ends before the queue and the pool close.
         const maintained = job ? await step('partition_job', () => job.stop()) : true;
         const closed = await step('queue', () => queue.close());
         const ended = await step('pool', () => pool.end());
-        return stopped && served && drained && consumed && maintained && closed && ended;
+        return stopped && served && drained && consumed && silent && maintained && closed && ended;
       })();
       return shutdown;
     },

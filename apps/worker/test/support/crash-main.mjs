@@ -9,10 +9,10 @@
 import process from 'node:process';
 
 import { ConversationStateMachine, MessageService } from '@gani/conversations';
-import { createDbPool } from '@gani/db';
+import { createDbPool, withTenant } from '@gani/db';
 
 import { readConfig } from '../../dist/config.js';
-import { loggingHandlers } from '../../dist/consumer/handlers.js';
+import { realtimeHandlers } from '../../dist/consumer/realtime-handlers.js';
 import { createDbInboundStore } from '../../dist/inbound/db-store.js';
 import { startHttp } from '../../dist/http.js';
 import { createLogger } from '../../dist/logger.js';
@@ -20,6 +20,7 @@ import { createDbPartitionStore } from '../../dist/maintenance/db-store.js';
 import { WorkerMetrics } from '../../dist/metrics.js';
 import { createBullmqPublisher } from '../../dist/queue/bullmq-publisher.js';
 import { createBullmqSource } from '../../dist/queue/bullmq-source.js';
+import { createAgentEmitter } from '../../dist/queue/socket-emitter.js';
 import { createDbOutboxStats, createDbRelayStore } from '../../dist/relay/db-store.js';
 import { startWorker } from '../../dist/worker.js';
 
@@ -32,7 +33,7 @@ if (crashAt !== 'before_publish' && crashAt !== 'after_publish') {
 const log = createLogger(); // same as main.ts
 const config = readConfig(process.env); // same as main.ts
 const pool = createDbPool(config.databaseUrl, {
-  max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
+  max: config.outbox.orgParallel + config.inbound.orgParallel + config.events.concurrency + 2,
 }); // same as main.ts
 const fsm = new ConversationStateMachine(); // same as main.ts
 const messages = new MessageService(fsm, undefined, undefined, {
@@ -61,6 +62,8 @@ const queue = {
   },
 };
 
+// The packets of realtime (V8b): only with the consumer, whose handlers send them.
+const emitter = config.events.enabled ? createAgentEmitter(config.redisUrl, log) : null; // same as main.ts
 startWorker({
   store: createDbRelayStore({ pool }),
   queue,
@@ -72,11 +75,16 @@ startWorker({
     store: createDbInboundStore({ pool, services: { fsm, messages } }),
     settings: config.inbound,
   },
-  ...(config.events.enabled && {
+  ...(emitter && {
     events: {
       source: createBullmqSource(config.redisUrl, log, config.events.concurrency),
-      handlers: loggingHandlers(log),
+      handlers: realtimeHandlers({
+        emitter,
+        read: (tenant, fn) => withTenant(pool, tenant, fn),
+        log,
+      }),
       settings: config.events,
+      emitter,
     },
   }),
   metrics,

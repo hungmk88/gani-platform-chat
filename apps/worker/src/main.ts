@@ -1,8 +1,8 @@
 import { ConversationStateMachine, MessageService } from '@gani/conversations';
-import { createDbPool } from '@gani/db';
+import { createDbPool, withTenant } from '@gani/db';
 
 import { ConfigError, readConfig } from './config.js';
-import { loggingHandlers } from './consumer/handlers.js';
+import { realtimeHandlers } from './consumer/realtime-handlers.js';
 import { createDbInboundStore } from './inbound/db-store.js';
 import { startHttp, type WorkerHttp } from './http.js';
 import { createLogger } from './logger.js';
@@ -10,6 +10,7 @@ import { createDbPartitionStore } from './maintenance/db-store.js';
 import { WorkerMetrics } from './metrics.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
 import { createBullmqSource } from './queue/bullmq-source.js';
+import { createAgentEmitter } from './queue/socket-emitter.js';
 import { createDbOutboxStats, createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
 
@@ -32,7 +33,7 @@ function configOrExit(): ReturnType<typeof readConfig> {
 const config = configOrExit();
 // The pool connects on its first query: making it before the HTTP endpoints only lets /metrics read the outbox through it.
 const pool = createDbPool(config.databaseUrl, {
-  max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
+  max: config.outbox.orgParallel + config.inbound.orgParallel + config.events.concurrency + 2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
 });
 // The same state machine and message service as the API (N138); the warnings of the message service carry ids only.
@@ -50,6 +51,8 @@ try {
   process.exit(1);
 }
 log.info('worker_http_listening', { port: http.port });
+// The packets of realtime (V8b): only with the consumer, whose handlers send them.
+const emitter = config.events.enabled ? createAgentEmitter(config.redisUrl, log) : null;
 const worker = startWorker({
   store: createDbRelayStore({ pool }),
   queue: createBullmqPublisher(config.redisUrl, log),
@@ -61,11 +64,16 @@ const worker = startWorker({
     store: createDbInboundStore({ pool, services: { fsm, messages } }),
     settings: config.inbound,
   },
-  ...(config.events.enabled && {
+  ...(emitter && {
     events: {
       source: createBullmqSource(config.redisUrl, log, config.events.concurrency),
-      handlers: loggingHandlers(log),
+      handlers: realtimeHandlers({
+        emitter,
+        read: (tenant, fn) => withTenant(pool, tenant, fn),
+        log,
+      }),
       settings: config.events,
+      emitter,
     },
   }),
   metrics,
