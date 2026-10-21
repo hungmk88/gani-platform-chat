@@ -44,7 +44,7 @@ for (const role of ['owner', 'sales', 'platform_operator'] as const satisfies re
   });
 }
 
-test('without GET /v1/me (U32) the shell shows the error page with the trace', async ({ page }) => {
+test('when GET /v1/me fails the shell shows the error page with the trace', async ({ page }) => {
   await signIn(page, NO_ME);
   await expect(page.getByRole('heading', { name: 'Đã có lỗi.' })).toBeVisible();
   await expect(page.getByText(`Mã: ${NO_ME_TRACE}`)).toBeVisible();

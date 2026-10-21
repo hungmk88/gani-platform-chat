@@ -11,7 +11,7 @@ import { Shell } from '../../src/shell';
 import { SystemPage } from '../../src/system-page';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  // Who is signed in and whether 2FA must be set up first (security-status exists today), then who they are (U32).
+  // Who is signed in and whether 2FA must be set up first (security-status exists today), then who they are (`GET /v1/me`).
   const status = await getSecurityStatus();
   if (status.kind === 'signed_out') redirect('/login');
   if (status.kind === 'must_set_up') redirect('/two-factor/setup');

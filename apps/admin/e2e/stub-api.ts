@@ -8,14 +8,15 @@
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
-import { ROLES } from '../src/nav';
+import type { Me } from '../src/me';
+import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
 export const accountOf = (who: string) => `${who}@e2e.test`;
 
-/** Signs in, then `GET /v1/me` is not served (U32): the shell shows the error page with this trace. */
+/** Signs in, then `GET /v1/me` answers 404 (an API without the route): the shell shows the error page with this trace. */
 export const NO_ME = accountOf('no-me');
 export const NO_ME_TRACE = 'trace-e2e-no-me';
 /** Sign-in answers 429 (rate limit) or 503 (API down), whatever the password. */
@@ -145,8 +146,8 @@ function open(email: string): string {
   return setCookie(SESSION, id);
 }
 
-/** The person of `GET /v1/me` (src/me.ts), from the part of the email before `+` or `@`: a role of src/nav.ts. */
-function meOf(email: string) {
+/** The person of `GET /v1/me` (schema `Me`, src/me.ts), from the part of the email before `+` or `@`: a role of src/nav.ts. */
+function meOf(email: string): Me | null {
   const role = email.split('@')[0]?.split('+')[0] ?? '';
   if (!(ROLES as readonly string[]).includes(role)) return null;
   const operator = role === 'platform_operator';
@@ -154,7 +155,9 @@ function meOf(email: string) {
     id: `user-${role}`,
     name: `Người thử ${role}`,
     isPlatformOperator: operator,
-    org: operator ? null : { id: 'org-e2e', name: 'Công ty thử', role },
+    org: operator
+      ? null
+      : { id: 'org-e2e', name: 'Công ty thử', role: role as Exclude<Role, 'platform_operator'> },
     workspaces: operator ? [] : [{ id: 'ws-e2e', name: 'Workspace thử' }],
   };
 }
