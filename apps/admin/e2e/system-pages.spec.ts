@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 import { expectAccessible } from './axe';
-import { accountOf, GOOD } from './stub-api';
+import { signIn } from './sign-in';
+import { accountOf } from './stub-api';
 
 // The system pages (Phụ lục C v3 dòng 0): one sentence, one action, and axe.
 for (const [path, title, action] of [
@@ -17,10 +18,7 @@ for (const [path, title, action] of [
 }
 
 test('an unknown path of a signed-in person is the 404 inside the frame', async ({ page }) => {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(accountOf('manager'));
-  await page.getByLabel('Mật khẩu').fill(GOOD);
-  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await signIn(page, accountOf('manager'));
   await expect(page).toHaveURL('/overview');
   const res = await page.goto('/khong-co-trang-nay');
   expect(res?.status()).toBe(404);
