@@ -1,7 +1,8 @@
 // A stand-in for the API (Better Auth on /api/auth, /v1) for the end-to-end tests only: the admin under test is the real build,
 // started by Playwright; this answers what it asks, in the shapes of Better Auth and of src/auth.ts, src/me.ts. Never deployed.
 // Each email is one case: `<role>@e2e.test` signs straight in, `<role>+2fa@` asks for a code, `<role>+setup@` must set up 2FA,
-// `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status.
+// `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
+// `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list.
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -20,6 +21,33 @@ export const THROTTLED = accountOf('throttled');
 export const DOWN = accountOf('down');
 /** `<role>+status-down@`: signs in, then `GET /v1/me/security-status` answers 503 with this trace. */
 export const STATUS_DOWN_TRACE = 'trace-e2e-status-down';
+/** `<role>+inbox-empty@`: no conversation; `<role>+inbox-down@`: GET /v1/conversations answers 500 with this trace. */
+export const INBOX_DOWN_TRACE = 'trace-e2e-inbox-down';
+/** The page size of the stub's conversation list, small so that "Tải thêm" is tested. */
+export const STUB_PAGE = 3;
+
+// The conversations of every workspace of the stub: who may see which is the rule of apps/api permissions.ts (canSee).
+const conversation = (n: number, state: string, assignedUserId: string | null, hold = false) => ({
+  id: `0190a000-0000-7000-8000-00000000000${n}`,
+  workspaceId: 'ws-e2e',
+  state,
+  afterHoursHold: hold,
+  assignedUserId,
+  version: 1,
+  outcome: state === 'CLOSED' ? 'resolved' : null,
+  closedAt: state === 'CLOSED' ? '2026-10-21T03:00:00Z' : null,
+  lastMessageAt: `2026-10-21T0${n}:05:00Z`,
+  lastCustomerMessageAt: null,
+  createdAt: '2026-10-20T00:00:00Z',
+});
+export const CONVERSATIONS = [
+  conversation(1, 'HUMAN_WAITING_Q', null),
+  conversation(2, 'HUMAN_ACTIVE', 'user-sales'),
+  conversation(3, 'PENDING_CUSTOMER', 'user-sales'),
+  conversation(4, 'HUMAN_ACTIVE', 'user-manager'),
+  conversation(5, 'HUMAN_WAITING_Q', null, true),
+  conversation(6, 'CLOSED', 'user-sales'),
+];
 
 /** The codes of the authenticator app: the right one, a wrong one, and one that locks the account (5 wrong in a row). */
 export const TOTP = { good: '123456', wrong: '000000', locking: '999999' } as const;
@@ -159,6 +187,28 @@ async function route(req: IncomingMessage, res: ServerResponse) {
       return problem(res, 503, 'internal_error', STATUS_DOWN_TRACE);
     const { twoFactorEnabled, mustSetUp } = session;
     return send(res, 200, { twoFactorEnabled, required: mustSetUp, mustSetUp });
+  }
+  if (req.method === 'GET' && path === '/v1/conversations') {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    if (session.email.includes('+inbox-down@'))
+      return problem(res, 500, 'internal_error', INBOX_DOWN_TRACE);
+    const q = new URL(req.url ?? '/', 'http://stub').searchParams;
+    const me = meOf(session.email);
+    const role = me?.org?.role ?? '';
+    const all = ['owner', 'admin', 'manager'].includes(role);
+    const seen = session.email.includes('+inbox-empty@')
+      ? []
+      : CONVERSATIONS.filter(
+          (c) =>
+            (all || c.assignedUserId === null || c.assignedUserId === me?.id) &&
+            (q.get('assignee') !== 'me' || c.assignedUserId === me?.id) &&
+            (q.get('assignee') !== 'none' || c.assignedUserId === null) &&
+            (!q.get('state') || c.state === q.get('state')) &&
+            (q.get('hold') !== 'true' || c.afterHoursHold),
+        );
+    const from = Number(q.get('cursor') ?? 0);
+    const next = from + STUB_PAGE < seen.length ? String(from + STUB_PAGE) : null;
+    return send(res, 200, { data: seen.slice(from, from + STUB_PAGE), nextCursor: next });
   }
   if (req.method === 'GET' && path === '/v1/me') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');

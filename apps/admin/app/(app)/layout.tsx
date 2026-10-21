@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 
 import { roleOf } from '../../src/me';
 import { getMe, getSecurityStatus } from '../../src/me.server';
+import { scopeId, type Scope } from '../../src/query/keys';
+import { QueryProvider } from '../../src/query/provider';
 import { Shell } from '../../src/shell';
 import { SystemPage } from '../../src/system-page';
 
@@ -18,9 +20,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (result.kind === 'error') return <SystemPage kind="error" traceId={result.traceId} />;
   const role = roleOf(result.me);
   if (!role) return <SystemPage kind="forbidden" />;
+  const scope: Scope = { orgId: result.me.org?.id ?? null, workspaceId: null };
   return (
-    <Shell me={result.me} role={role}>
-      {children}
-    </Shell>
+    <QueryProvider key={scopeId(scope)} scope={scope}>
+      <Shell me={result.me} role={role}>
+        {children}
+      </Shell>
+    </QueryProvider>
   );
 }
