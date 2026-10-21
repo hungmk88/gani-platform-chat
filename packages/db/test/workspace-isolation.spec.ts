@@ -78,7 +78,8 @@ describe('case 5: workspace isolation of conversations', () => {
     expect(foreign.rowCount).toBe(0);
   });
 
-  it('with {WA} an UPDATE that moves a row from WA to WB is refused by WITH CHECK (42501)', async () => {
+  // Since 202610201300 app_role may not UPDATE workspace_id at all (DB-05), so the grant refuses it first; WITH CHECK stays behind it.
+  it('with {WA} an UPDATE that moves a row from WA to WB is refused (42501)', async () => {
     const move = () =>
       app.query('UPDATE conversations SET workspace_id = $1 WHERE id = $2', [WB, CA]);
     expect(await sqlState(asApp([WA], move))).toBe('42501');
