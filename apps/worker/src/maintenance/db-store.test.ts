@@ -11,6 +11,7 @@ function setup() {
       Promise.resolve([{ parent: 'audit_logs', created: 1, blockedMonths: [] }]),
     ),
     purgeInboundEventKeys: vi.fn(() => Promise.resolve(7)),
+    purgeIdempotencyKeys: vi.fn(() => Promise.resolve(4)),
     defaultPartitionRows: vi.fn(() => Promise.resolve([{ parent: 'messages', rowsCapped: 2 }])),
   };
   return { pool, fns, store: createDbPartitionStore({ pool, fns }) };
@@ -29,6 +30,8 @@ describe('createDbPartitionStore', () => {
     const { pool, fns, store } = setup();
     expect(await store.purgeKeys(35, 10_000)).toBe(7);
     expect(fns.purgeInboundEventKeys).toHaveBeenCalledWith(pool, 35, 10_000);
+    expect(await store.purgeIdempotencyKeys(24, 10_000)).toBe(4);
+    expect(fns.purgeIdempotencyKeys).toHaveBeenCalledWith(pool, 24, 10_000);
   });
 
   it('reads the DEFAULT rows with the pool, and nothing else', async () => {
@@ -39,6 +42,11 @@ describe('createDbPartitionStore', () => {
 
   it('is built on the real functions when none are given', () => {
     const store = createDbPartitionStore({ pool: {} as unknown as DbPool });
-    expect(Object.keys(store).sort()).toEqual(['defaultRows', 'ensure', 'purgeKeys']);
+    expect(Object.keys(store).sort()).toEqual([
+      'defaultRows',
+      'ensure',
+      'purgeIdempotencyKeys',
+      'purgeKeys',
+    ]);
   });
 });
