@@ -3,13 +3,16 @@ import type { Server as HttpServer } from 'node:http';
 import { Injectable, Logger, type BeforeApplicationShutdown } from '@nestjs/common';
 import { Server, type DefaultEventsMap, type Namespace } from 'socket.io';
 
-import { registerAgentEvents, type AgentEventDeps } from './agent-events.js';
+import type { SessionResolver } from '../request-context/session-resolver.js';
+
 import {
   createAgentHandshake,
   HandshakeRefusedError,
   type AgentContext,
   type HandshakeDeps,
 } from './handshake.js';
+import { registerAgentEvents, type AgentEventDeps } from './agent-events.js';
+import { watchSession } from './revalidate.js';
 import { roomsFor, userRoom } from './rooms.js';
 
 /** Spec §1: the client sends acks and small arguments only. */
@@ -41,7 +44,10 @@ export class RealtimeService implements BeforeApplicationShutdown {
   attach(
     httpServer: HttpServer,
     deps: Omit<HandshakeDeps, 'connections' | 'maxPerUser' | 'log'> & {
+      /** The session looked up past the per-request cache, for the periodic check (spec §6). */
+      readonly freshSessions: Pick<SessionResolver, 'resolveFresh'>;
       readonly withTenant: AgentEventDeps['withTenant'];
+      readonly revalidateMs: number;
     },
   ): AgentNamespace {
     if (this.io) throw new Error('the realtime server is already attached');
@@ -62,12 +68,13 @@ export class RealtimeService implements BeforeApplicationShutdown {
     );
     agent.on('connection', (socket) => {
       void socket.join(roomsFor(socket.data.ctx));
-      // The periodic check of the session (spec §6) comes in V7c-3; until then the handshake's check stands.
-      registerAgentEvents(socket, {
-        withTenant: deps.withTenant,
-        ensureFresh: () => Promise.resolve(true),
+      const ensureFresh = watchSession(socket, {
+        ...deps,
+        sessions: { resolve: (req) => deps.freshSessions.resolveFresh(req) },
+        periodMs: deps.revalidateMs,
         log: this.logger,
       });
+      registerAgentEvents(socket, { withTenant: deps.withTenant, ensureFresh, log: this.logger });
     });
     return agent;
   }
