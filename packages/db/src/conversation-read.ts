@@ -218,3 +218,19 @@ export async function listMessagesAfter(
     maxSequence: top?.max ?? 0,
   };
 }
+
+/**
+ * One message as the realtime emitter sends it to the room of its conversation (realtime spec §3), read under RLS when it is sent:
+ * the outbox carries its ids only. `null` when it does not exist or RLS hides it.
+ */
+export async function loadMessageView(
+  tx: TenantTx,
+  id: string,
+): Promise<(MessageView & { readonly conversationId: string }) | null> {
+  const [row] = await tx
+    .select({ ...MESSAGE_COLUMNS, conversationId: messages.conversationId })
+    .from(messages)
+    .where(eq(messages.id, assertUuid(id, 'messageId')))
+    .limit(1);
+  return row ?? null;
+}

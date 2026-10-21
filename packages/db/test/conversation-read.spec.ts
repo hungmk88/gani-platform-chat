@@ -8,6 +8,7 @@ import {
   listConversations,
   listMessages,
   listMessagesAfter,
+  loadMessageView,
   loadConversationView,
   withTenant,
   type ConversationListQuery,
@@ -225,5 +226,27 @@ describe('listMessagesAfter', () => {
     await expect(
       inA([W1], (tx) => listMessagesAfter(tx, 'x', { after: 0, limit: 1 })),
     ).rejects.toThrow();
+  });
+});
+
+describe('loadMessageView', () => {
+  it('gives one message with its conversation, and null for an unknown id or another workspace (RLS)', async () => {
+    const c = await conversation();
+    const id = uuidv7();
+    await admin.query(
+      `INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, 1, 'customer', 'text', 'xin chào')`,
+      [id, A, W1, c],
+    );
+    expect(await inA([W1], (tx) => loadMessageView(tx, id))).toMatchObject({
+      id,
+      conversationId: c,
+      sequenceNumber: 1,
+      senderKind: 'customer',
+      kind: 'text',
+      body: 'xin chào',
+    });
+    expect(await inA([W1], (tx) => loadMessageView(tx, uuidv7()))).toBeNull();
+    expect(await inA([W2], (tx) => loadMessageView(tx, id))).toBeNull();
+    await expect(inA([W1], (tx) => loadMessageView(tx, 'x'))).rejects.toThrow();
   });
 });
