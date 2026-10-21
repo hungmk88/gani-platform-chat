@@ -30,6 +30,9 @@ describe('the HTTP endpoints of the worker process', () => {
     expect(value(text, 'outbox_relay_passes_total')).toBeGreaterThan(0);
     expect(value(text, 'outbox_publish_failures_total')).toBe(0);
     expect(text).not.toContain(org);
+    // The state of the outbox, read from the database at the scrape (N118); other tests may have left events of their own.
+    expect(value(text, 'outbox_stats_up')).toBe(1);
+    expect(value(text, 'outbox_pending')).toBeGreaterThanOrEqual(0);
 
     worker.signal('SIGTERM');
     expect(await worker.waitExit(12_000)).toEqual({ code: 0, signal: null });
