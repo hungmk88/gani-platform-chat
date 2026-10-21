@@ -2,7 +2,8 @@
 // started by Playwright; this answers what it asks, in the shapes of Better Auth and of src/auth.ts, src/me.ts. Never deployed.
 // Each email is one case: `<role>@e2e.test` signs straight in, `<role>+2fa@` asks for a code, `<role>+setup@` must set up 2FA,
 // `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
-// `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list.
+// `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
+// `+stale@` gets version_conflict on every other action.
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -84,10 +85,13 @@ export const BACKUP_CODES = Array.from({ length: 10 }, (_, i) => `e2e-backup-${i
 const SESSION = 'e2e_session';
 const PENDING = 'e2e_two_factor'; // Better Auth's cookie between the password and the code
 
+type StubConversation = (typeof CONVERSATIONS)[number];
 interface Session {
   readonly email: string;
   mustSetUp: boolean;
   twoFactorEnabled: boolean;
+  /** This session's own copy, so an action of one test never shows in another. */
+  readonly conversations: StubConversation[];
 }
 const sessions = new Map<string, Session>();
 const pending = new Map<string, string>(); // pending id → email
@@ -129,7 +133,12 @@ const setCookie = (name: string, value: string) =>
 function open(email: string): string {
   const id = randomUUID();
   const kind = email.split('@')[0]?.split('+')[1];
-  sessions.set(id, { email, mustSetUp: kind === 'setup', twoFactorEnabled: kind === '2fa' });
+  sessions.set(id, {
+    email,
+    mustSetUp: kind === 'setup',
+    twoFactorEnabled: kind === '2fa',
+    conversations: structuredClone(CONVERSATIONS),
+  });
   return setCookie(SESSION, id);
 }
 
@@ -225,7 +234,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const all = ['owner', 'admin', 'manager'].includes(role);
     const seen = session.email.includes('+inbox-empty@')
       ? []
-      : CONVERSATIONS.filter(
+      : session.conversations.filter(
           (c) =>
             (all || c.assignedUserId === null || c.assignedUserId === me?.id) &&
             (q.get('assignee') !== 'me' || c.assignedUserId === me?.id) &&
@@ -242,15 +251,58 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
     const me = meOf(session.email);
     const all = ['owner', 'admin', 'manager'].includes(me?.org?.role ?? '');
-    const c = CONVERSATIONS.find((x) => x.id === one[1]);
+    const c = session.conversations.find((x) => x.id === one[1]);
     // Not there and not visible are the same 404 (P9).
     if (!c || !(all || c.assignedUserId === null || c.assignedUserId === me?.id))
       return problem(res, 404, 'not_found', 'trace-e2e-404');
     if (!one[2]) return send(res, 200, c);
-    const own = c === CONVERSATIONS[1] ? [...MESSAGES].reverse() : [];
+    const own = c.id === CONVERSATIONS[1]?.id ? [...MESSAGES].reverse() : [];
     const from = Number(new URL(req.url ?? '/', 'http://stub').searchParams.get('cursor') ?? 0);
     const next = from + STUB_PAGE < own.length ? String(from + STUB_PAGE) : null;
     return send(res, 200, { data: own.slice(from, from + STUB_PAGE), nextCursor: next });
+  }
+  // The actions of the Inbox (P9, P14): Idempotency-Key required, the version read, the FSM's from-states.
+  const act = /^\/v1\/conversations\/([^/]+)\/(claim|wait-customer|close)$/.exec(path ?? '');
+  if (req.method === 'POST' && act) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    if (!req.headers['idempotency-key'])
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    const body = await json(req);
+    const me = meOf(session.email);
+    const c = session.conversations.find((x) => x.id === act[1]);
+    if (!c || !me) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (act[2] === 'claim') {
+      if (session.email.includes('+claimed@') || c.state !== 'HUMAN_WAITING_Q') {
+        Object.assign(c, {
+          state: 'HUMAN_ACTIVE',
+          assignedUserId: 'user-manager',
+          version: c.version + 1,
+        });
+        res.writeHead(409, { 'content-type': 'application/problem+json' });
+        return res.end(
+          JSON.stringify({
+            status: 409,
+            code: 'conversation_already_claimed',
+            traceId: 'trace-e2e-claimed',
+            assignedUserId: 'user-manager',
+          }),
+        );
+      }
+      Object.assign(c, { state: 'HUMAN_ACTIVE', assignedUserId: me.id, version: c.version + 1 });
+      return send(res, 200, c);
+    }
+    if (body['version'] !== c.version || session.email.includes('+stale@'))
+      return problem(res, 409, 'version_conflict', 'trace-e2e-version');
+    if (act[2] === 'wait-customer')
+      Object.assign(c, { state: 'PENDING_CUSTOMER', version: c.version + 1 });
+    else
+      Object.assign(c, {
+        state: 'CLOSED',
+        outcome: body['outcome'],
+        assignedUserId: null,
+        version: c.version + 1,
+      });
+    return send(res, 200, c);
   }
   if (req.method === 'GET' && path === '/v1/me') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');

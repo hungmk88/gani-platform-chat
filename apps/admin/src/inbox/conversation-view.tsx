@@ -4,7 +4,9 @@ import Link from 'next/link';
 
 import type { components } from '../api/schema';
 import { useApiPages, useApiQuery } from '../query/provider';
+import type { Role } from '../nav';
 import { RetryAction } from '../retry-button';
+import { ConversationActions } from './conversation-actions';
 import { HOLD_LABEL, holderOf, STATE_LABEL } from './list';
 import { inReadingOrder, KIND_LABEL, messagesPath, senderOf } from './messages';
 
@@ -32,7 +34,7 @@ function Failure({
 }
 
 /** The middle column of the Inbox (#6, I1b): the conversation and its messages, read only. What a customer sent is plain text. */
-export function ConversationView({ id, meId }: { id: string; meId: string }) {
+export function ConversationView({ id, role, meId }: { id: string; role: Role; meId: string }) {
   const conversation = useApiQuery<Conversation>(
     ['conversation', id],
     `/v1/conversations/${encodeURIComponent(id)}`,
@@ -79,6 +81,7 @@ export function ConversationView({ id, meId }: { id: string; meId: string }) {
         </h2>
         <span className="text-12 text-text-muted">Phụ trách: {holderOf(c, meId)}</span>
       </header>
+      <ConversationActions c={c} role={role} meId={meId} />
       {messages.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
           Đang tải tin nhắn…
