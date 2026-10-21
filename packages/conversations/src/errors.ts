@@ -44,6 +44,26 @@ export class VersionConflictError extends Error {
   }
 }
 
+/**
+ * The channel may not carry this message now (channel-policy-spec §3, P9): outside the free window, past the free messages, paid only
+ * (blocked in M1.3, C3), or no policy at all. Nothing was written and the channel was not called (C-N4).
+ */
+export class ChannelWindowClosedError extends Error {
+  readonly status = 422;
+  readonly code = 'channel_window_closed';
+  constructor(
+    readonly windowState: 'paid_only' | 'api_closed',
+    readonly reason: string,
+  ) {
+    super('the channel window is closed');
+    this.name = 'ChannelWindowClosedError';
+  }
+  /** Added to the 422 body by ProblemFilter: what the client shows instead of the composer (Phụ lục #13). */
+  get problemExtensions() {
+    return { windowState: this.windowState, reason: this.reason };
+  }
+}
+
 /** A system event lost the race three times: not an answer for a user, the job that raised it is retried (N96). */
 export class ConversationContendedError extends Error {
   readonly code = 'conversation_contended';
