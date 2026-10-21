@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WorkerConfig } from '../config.js';
 import type { LogFields, Logger } from '../logger.js';
+import { WorkerMetrics } from '../metrics.js';
 import { backoffSeconds } from './job.js';
 import { OutboxRelay, type QueuePublisher, type RelayStore } from './outbox-relay.js';
 
@@ -79,8 +80,11 @@ function harness(events: ClaimedOutboxEvent[], settings: Partial<Settings> = {})
       return { duplicates: q.duplicates };
     },
   };
-  const relay = new OutboxRelay({ store: w.store, queue, log, settings: { ...SETTINGS, ...settings } });
-  return { ...w, q, logs, relay, seen: (message: string) => logs.filter((l) => l.message === message) };
+  const metrics = new WorkerMetrics();
+  const relay = new OutboxRelay({ store: w.store, queue, log, settings: { ...SETTINGS, ...settings }, metrics });
+  // The value of one series of /metrics (OPS-02).
+  const count = (name: string) => Number(new RegExp(`^${name} (\\S+)$`, 'm').exec(metrics.render())?.[1]);
+  return { ...w, q, logs, relay, count, seen: (message: string) => logs.filter((l) => l.message === message) };
 }
 
 describe('one pass of the relay', () => {
@@ -123,6 +127,10 @@ describe('one pass of the relay', () => {
       },
     ]);
     expect(JSON.stringify(h.logs)).not.toContain('10.0.0.9');
+    expect([
+      h.count('outbox_publish_failures_total'),
+      h.count('outbox_dead_lettered_total'),
+    ]).toEqual([5, 1]);
   });
 
   it('goes on with the other organisations when one fails', async () => {
@@ -185,6 +193,7 @@ describe('backpressure', () => {
     h.q.waiting.set('q.events.ws.ws-1', 4);
     await h.relay.tick();
     expect(h.status('a2')).toBe('published');
+    expect(h.count('outbox_queue_full_total')).toBe(1);
   });
 });
 
@@ -212,6 +221,7 @@ describe('a queue that cannot be asked', () => {
       ['warn', { orgId: 'A', queue: 'q.events.ws.ws-1', code: 'E_QUEUE_DOWN' }],
       ['warn', { orgId: 'B', queue: 'q.events.ws.ws-2', code: 'E_QUEUE_DOWN' }],
     ]);
+    expect(h.count('outbox_queue_full_total')).toBe(2);
     h.q.waitingFail = null;
     await h.relay.tick();
     expect([h.status('a2'), h.status('b2')]).toEqual(['published', 'published']);
@@ -274,6 +284,9 @@ describe('the loop and the shutdown', () => {
     expect(orgs).toHaveBeenCalledTimes(2);
     expect(h.status('e1')).toBe('published');
     await h.relay.stop();
+    // A failed pass still ends a pass: the loop is alive, only the database is not.
+    expect(h.count('outbox_relay_failed_passes_total')).toBe(1);
+    expect(h.count('outbox_relay_passes_total')).toBeGreaterThanOrEqual(2);
   });
 
   it('cannot be started twice, and stopping a relay that never started is clean', async () => {

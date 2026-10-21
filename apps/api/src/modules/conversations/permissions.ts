@@ -32,3 +32,53 @@ export function canSee(
   if (scope === 'none') return false;
   return conversation.assignedUserId === null || conversation.assignedUserId === userId;
 }
+
+// Who may act on a conversation (Phụ lục B rows 13, 15–17; "Chờ khách" is the holder's, like closing). `any`: whoever holds it;
+// `own`: only while the person holds it themselves; `none`: 403. Transfer for sales and support also needs a shared team (E2).
+export type ConversationAction = 'claim' | 'wait_customer' | 'transfer' | 'assign' | 'close';
+export type ActionScope = 'any' | 'own' | 'none';
+
+const LEAD: Readonly<Record<ConversationAction, ActionScope>> = {
+  claim: 'any',
+  wait_customer: 'any',
+  transfer: 'any',
+  assign: 'any',
+  close: 'any',
+};
+const AGENT: Readonly<Record<ConversationAction, ActionScope>> = {
+  claim: 'any',
+  wait_customer: 'own',
+  transfer: 'own',
+  assign: 'none',
+  close: 'own',
+};
+const NOTHING: Readonly<Record<ConversationAction, ActionScope>> = {
+  claim: 'none',
+  wait_customer: 'none',
+  transfer: 'none',
+  assign: 'none',
+  close: 'none',
+};
+const ACTIONS: Readonly<Record<OrgRole, Readonly<Record<ConversationAction, ActionScope>>>> = {
+  owner: LEAD,
+  admin: LEAD,
+  manager: LEAD,
+  sales: AGENT,
+  support: AGENT,
+  marketing: NOTHING,
+  viewer: NOTHING,
+};
+
+export const actionScope = (role: OrgRole, action: ConversationAction): ActionScope =>
+  ACTIONS[role][action];
+
+/** May this person do `action` on this conversation as it is now? `own` is decided on who holds it, never on who asks. */
+export function mayAct(
+  role: OrgRole,
+  userId: string,
+  action: ConversationAction,
+  conversation: { readonly assignedUserId: string | null },
+): boolean {
+  const scope = actionScope(role, action);
+  return scope === 'any' || (scope === 'own' && conversation.assignedUserId === userId);
+}
