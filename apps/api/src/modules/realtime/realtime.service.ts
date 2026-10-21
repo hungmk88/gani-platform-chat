@@ -3,6 +3,7 @@ import type { Server as HttpServer } from 'node:http';
 import { Injectable, Logger, type BeforeApplicationShutdown } from '@nestjs/common';
 import { Server, type DefaultEventsMap, type Namespace } from 'socket.io';
 
+import { registerAgentEvents, type AgentEventDeps } from './agent-events.js';
 import {
   createAgentHandshake,
   HandshakeRefusedError,
@@ -39,7 +40,9 @@ export class RealtimeService implements BeforeApplicationShutdown {
 
   attach(
     httpServer: HttpServer,
-    deps: Omit<HandshakeDeps, 'connections' | 'maxPerUser' | 'log'>,
+    deps: Omit<HandshakeDeps, 'connections' | 'maxPerUser' | 'log'> & {
+      readonly withTenant: AgentEventDeps['withTenant'];
+    },
   ): AgentNamespace {
     if (this.io) throw new Error('the realtime server is already attached');
     const io: AgentServer = (this.io = new Server(httpServer, {
@@ -59,11 +62,17 @@ export class RealtimeService implements BeforeApplicationShutdown {
     );
     agent.on('connection', (socket) => {
       void socket.join(roomsFor(socket.data.ctx));
+      // The periodic check of the session (spec §6) comes in V7c-3; until then the handshake's check stands.
+      registerAgentEvents(socket, {
+        withTenant: deps.withTenant,
+        ensureFresh: () => Promise.resolve(true),
+        log: this.logger,
+      });
     });
     return agent;
   }
 
-  /** The namespace, for the handlers of V7c and for the tests; null before `attach`. */
+  /** The namespace, for the tests; null before `attach`. */
   get agent(): AgentNamespace | null {
     return this.io?.of('/agent') ?? null;
   }
