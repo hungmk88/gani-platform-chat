@@ -1,8 +1,8 @@
 // A stand-in for the API (Better Auth on /api/auth, /v1) for the end-to-end tests only: the admin under test is the real build,
 // started by Playwright; this answers what it asks, in the shapes of Better Auth and of src/auth.ts, src/me.ts. Never deployed.
 // Each email is one case: `<role>@e2e.test` signs straight in, `<role>+2fa@` asks for a code, `<role>+setup@` must set up 2FA,
-// `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93). Every sign-in opens its own session, as Better Auth's
-// cookie does, so tests that run side by side never share state.
+// `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status.
+// Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
@@ -18,6 +18,8 @@ export const NO_ME_TRACE = 'trace-e2e-no-me';
 /** Sign-in answers 429 (rate limit) or 503 (API down), whatever the password. */
 export const THROTTLED = accountOf('throttled');
 export const DOWN = accountOf('down');
+/** `<role>+status-down@`: signs in, then `GET /v1/me/security-status` answers 503 with this trace. */
+export const STATUS_DOWN_TRACE = 'trace-e2e-status-down';
 
 /** The codes of the authenticator app: the right one, a wrong one, and one that locks the account (5 wrong in a row). */
 export const TOTP = { good: '123456', wrong: '000000', locking: '999999' } as const;
@@ -153,6 +155,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
 
   if (req.method === 'GET' && path === '/v1/me/security-status') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    if (session.email.includes('+status-down@'))
+      return problem(res, 503, 'internal_error', STATUS_DOWN_TRACE);
     const { twoFactorEnabled, mustSetUp } = session;
     return send(res, 200, { twoFactorEnabled, required: mustSetUp, mustSetUp });
   }

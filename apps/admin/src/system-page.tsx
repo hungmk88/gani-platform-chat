@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { RetryButton } from './retry-button';
+
 // The four system pages of the admin (Phụ lục C v3 dòng 0), with the words of prototype/dot1/system.js: one sentence, one action.
 const PAGES = {
   forbidden: [
@@ -36,11 +38,18 @@ export function SystemPage({
         <p className="text-12 text-text-muted">Mã: {traceId}</p>
       ) : null}
       <div>
-        {action ?? (
-          <Link className="inline-block rounded-input bg-accent px-4 py-2 text-accent-on" href="/">
-            Về trang chính
-          </Link>
-        )}
+        {action ??
+          (kind === 'error' ? (
+            // An error of the frame comes back on "/" too: going home would loop, so the one action is to ask again.
+            <RetryButton />
+          ) : (
+            <Link
+              className="inline-block rounded-input bg-accent px-4 py-2 text-accent-on"
+              href="/"
+            >
+              Về trang chính
+            </Link>
+          ))}
       </div>
     </main>
   );
