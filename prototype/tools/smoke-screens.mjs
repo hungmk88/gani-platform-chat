@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#14, #15, #16, #19, #20, #21, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#14, #15, #16, #19, #20, #21, #22, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -20,6 +20,7 @@ const STATES = {
   'autonomy.html': ['normal', 'loading', 'error', 'aioff'],
   'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
+  'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'workspace.html': ['normal', 'loading', 'error', 'aioff'],
   'workspace.html?tab=sla&x=1': ['normal'],
   'workspace.html?tab=allocation&x=1': ['normal'],
@@ -180,6 +181,44 @@ check((await p.locator('tbody tr').count()) === 1 && (await p.locator('.btn.prim
 await p.close();
 p = await open('teams.html?role=sales');
 check((await p.textContent('main')).includes('không dùng Team'), '#20: Sales không có quyền');
+await p.close();
+
+// #22 Mẫu trả lời nhanh
+p = await open('quick-replies.html?role=manager');
+check((await p.locator('tbody tr').first().textContent()).includes('/chao-hoi'), '#22: sắp theo số lần dùng');
+await p.fill('#qr-search', 'liên hệ');
+await p.press('#qr-search', 'Enter');
+check((await p.locator('tbody tr').count()) === 1, '#22: tìm theo tag');
+await p.locator('.btn.primary', { hasText: 'Tạo mẫu' }).click();
+await p.fill('#qr-key', 'Chào Hỏi');
+await p.fill('#qr-text', 'x');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('chữ thường không dấu'), '#22: tên ngắn đúng dạng');
+await p.fill('#qr-key', 'chao-hoi');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('Đã có mẫu /chao-hoi'), '#22: tên ngắn không trùng');
+await p.fill('#qr-key', 'gui-lai');
+await p.fill('#qr-text', 'Dạ {{ten_khach}}, gọi {{gia_ban}} ');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('{{gia_ban}}'), '#22: biến lạ bị chặn');
+await p.fill('#qr-text', 'Dạ ');
+await p.locator('.dialog button', { hasText: 'SĐT công ty' }).click();
+check((await p.textContent('.dialog .preview')).includes('SĐT công ty: người gửi điền') && (await p.inputValue('#qr-text')).includes('{{sdt_cong_ty}}'), '#22: chèn biến, xem trước có ô trống');
+await p.locator('.dialog .btn.primary').click();
+await p.waitForSelector('.toast');
+check((await p.textContent('.toast')).includes('Dùng được ngay trong Hộp thư'), '#22: lưu mẫu');
+await shot(p, 'quick-replies', true);
+await p.close();
+p = await open('quick-replies.html?role=admin&state=save_error');
+await p.locator('.btn.primary', { hasText: 'Tạo mẫu' }).click();
+await p.fill('#qr-key', 'moi');
+await p.fill('#qr-text', 'Chào {{ten_khach}}');
+await p.locator('.dialog .btn.primary').click();
+await p.waitForSelector('.dialog .trace');
+check((await p.textContent('.dialog [role=alert]')).includes('Không lưu được mẫu.'), '#22: lỗi khi lưu có mã và Thử lại');
+await p.close();
+p = await open('quick-replies.html?role=sales');
+check((await p.textContent('main')).includes('không dùng Mẫu trả lời nhanh'), '#22: Sales không có quyền');
 await p.close();
 
 // #21 Workspace
