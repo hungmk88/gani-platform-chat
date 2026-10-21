@@ -178,6 +178,7 @@
     if (Proto.role() === 'manager') {
       items.push(['teams', 'Cài đặt › Team (chỉ xem)', 'teams.html']);
       items.push(['quick-replies', 'Cài đặt › Mẫu trả lời nhanh', 'quick-replies.html']);
+      items.push(['customer-data', 'Cài đặt › Dữ liệu khách (Tag)', 'customer-data.html']);
       items.push(['workspace', 'Cài đặt › Workspace (chỉ xem)', 'workspace.html']);
     }
     if (['owner', 'admin'].includes(Proto.role())) {
@@ -185,6 +186,7 @@
       items.push(['members', 'Cài đặt › Thành viên', 'members.html', true]);
       items.push(['teams', 'Cài đặt › Team', 'teams.html', true]);
       items.push(['quick-replies', 'Cài đặt › Mẫu trả lời nhanh', 'quick-replies.html', true]);
+      items.push(['customer-data', 'Cài đặt › Dữ liệu khách', 'customer-data.html', true]);
       items.push(['workspace', 'Cài đặt › Workspace', 'workspace.html', true]);
       items.push(['audit', 'Audit log', 'audit.html', true]);
       items.push(['autonomy', 'Tự chủ & feature flag', 'autonomy.html', true]);
