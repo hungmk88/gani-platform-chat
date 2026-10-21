@@ -1,16 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { TOO_MANY_REQUESTS, UNAVAILABLE, WRONG_CREDENTIALS } from '../src/auth';
 import { homeFor, type Role } from '../src/nav';
 import { expectAccessible } from './axe';
+import { signIn } from './sign-in';
 import { accountOf, DOWN, GOOD, NO_ME, NO_ME_TRACE, THROTTLED } from './stub-api';
-
-async function signIn(page: Page, email: string, password = GOOD) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Mật khẩu').fill(password);
-  await page.getByRole('button', { name: 'Đăng nhập' }).click();
-}
 
 test('the sign-in page passes axe', async ({ page }) => {
   await page.goto('/login');
