@@ -139,6 +139,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in person, the organisation they act in and its workspaces they belong to (U32, N145). Ask security-status first. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description `org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description two_factor_setup_required: the second factor must be set up first (N93). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: a database did not answer. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversations": {
         parameters: {
             query?: never;
@@ -1044,6 +1107,28 @@ export interface components {
             /** Format: uuid */
             traceId?: string;
         };
+        Me: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+            isPlatformOperator: boolean;
+            org: components["schemas"]["MeOrg"];
+            workspaces: components["schemas"]["MeWorkspace"][];
+        };
+        /**
+         * Format: uuid
+         * @description UUIDv7.
+         */
+        Uuid: string;
+        MeOrg: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "manager" | "sales" | "support" | "marketing" | "viewer";
+        } | null;
+        MeWorkspace: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+        };
         ConversationPage: {
             data: components["schemas"]["Conversation"][];
             nextCursor: string | null;
@@ -1067,11 +1152,6 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
-        /**
-         * Format: uuid
-         * @description UUIDv7.
-         */
-        Uuid: string;
         MessagePage: {
             data: components["schemas"]["Message"][];
             nextCursor: string | null;

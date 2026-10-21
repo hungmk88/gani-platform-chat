@@ -24,3 +24,12 @@ export const rawCssSelectors = [
   `Function[name=/^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)$/i]`,
   `Dimension[unit=/^(px|pt|em|rem)$/i]`,
 ].map((selector) => ({ selector, message }));
+
+// Brief UI §2.6 and T2: what a customer sent, and anything else on screen, is plain text. React escapes text; these are the ways
+// around it, refused everywhere in apps/admin (tests included: a test that needs one is testing the wrong thing).
+const htmlMessage = 'Chỉ hiển thị chữ thuần (Brief UI §2.6, T2): không render HTML.';
+export const rawHtmlSelectors = [
+  "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+  'AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]',
+  "CallExpression[callee.property.name='insertAdjacentHTML']",
+].map((selector) => ({ selector, message: htmlMessage }));

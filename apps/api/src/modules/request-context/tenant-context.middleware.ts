@@ -14,9 +14,10 @@ import { problem, sendProblem } from './problem.js';
 import { runWithRequestContext } from './request-context.js';
 import type { ResolvedSession, SessionResolver } from './session-resolver.js';
 
-// The one route under /v1 that works without an organisation: the client asks it what to do next (2FA set-up, 6d-3). Compared as
-// an exact lower-case path, so any other spelling of it is NOT exempt and goes through the middleware (fails closed).
-const EXEMPT_PATH = '/v1/me/security-status';
+// The routes under /v1 that work without an organisation: what to do next (2FA set-up, 6d-3) and who is signed in (U32, which
+// answers `org: null` itself). Compared as exact lower-case paths, so any other spelling is NOT exempt and goes through the
+// middleware (fails closed).
+const EXEMPT_PATHS = new Set(['/v1/me/security-status', '/v1/me']);
 
 export interface TenantMiddlewareDeps extends OrganisationSources {
   sessions: Pick<SessionResolver, 'resolve'>;
@@ -40,7 +41,7 @@ const pathOf = (req: Req): string =>
  */
 export function createTenantContextMiddleware(deps: TenantMiddlewareDeps) {
   return async (req: Req, res: ServerResponse, next: Next): Promise<void> => {
-    if (pathOf(req) === EXEMPT_PATH) return next();
+    if (EXEMPT_PATHS.has(pathOf(req))) return next();
     const traceId = randomUUID();
     let decided: Decision;
     try {

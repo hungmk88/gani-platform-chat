@@ -4,7 +4,7 @@ import type { ApiError } from '../api/errors';
 
 export interface Scope {
   readonly orgId: string | null;
-  /** The workspace being worked in; null until the workspace switcher exists (U32 has no current workspace yet). */
+  /** The workspace being worked in; null until the workspace switcher exists (`GET /v1/me` lists workspaces, has no current one). */
   readonly workspaceId: string | null;
 }
 

@@ -8,15 +8,15 @@
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
-import { Server } from 'socket.io';
-
-import { ROLES } from '../src/nav';
+import type { Me } from '../src/me';
+import { ROLES, type Role } from '../src/nav';
+import { attachAgent, type Agent } from './stub-agent';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
 export const accountOf = (who: string) => `${who}@e2e.test`;
 
-/** Signs in, then `GET /v1/me` is not served (U32): the shell shows the error page with this trace. */
+/** Signs in, then `GET /v1/me` answers 404 (an API without the route): the shell shows the error page with this trace. */
 export const NO_ME = accountOf('no-me');
 export const NO_ME_TRACE = 'trace-e2e-no-me';
 /** Sign-in answers 429 (rate limit) or 503 (API down), whatever the password. */
@@ -146,8 +146,8 @@ function open(email: string): string {
   return setCookie(SESSION, id);
 }
 
-/** The person of `GET /v1/me` (src/me.ts), from the part of the email before `+` or `@`: a role of src/nav.ts. */
-function meOf(email: string) {
+/** The person of `GET /v1/me` (schema `Me`, src/me.ts), from the part of the email before `+` or `@`: a role of src/nav.ts. */
+function meOf(email: string): Me | null {
   const role = email.split('@')[0]?.split('+')[0] ?? '';
   if (!(ROLES as readonly string[]).includes(role)) return null;
   const operator = role === 'platform_operator';
@@ -155,7 +155,9 @@ function meOf(email: string) {
     id: `user-${role}`,
     name: `Người thử ${role}`,
     isPlatformOperator: operator,
-    org: operator ? null : { id: 'org-e2e', name: 'Công ty thử', role },
+    org: operator
+      ? null
+      : { id: 'org-e2e', name: 'Công ty thử', role: role as Exclude<Role, 'platform_operator'> },
     workspaces: operator ? [] : [{ id: 'ws-e2e', name: 'Workspace thử' }],
   };
 }
@@ -313,7 +315,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const body = await json(req);
     const sid = String(body['sid']);
     const s = sessions.get(sid);
-    if (s) lever(path.slice(7), sid, s, body);
+    if (s) agent?.lever(path.slice(7), sid, body);
     return send(res, 200, { ok: true });
   }
   if (req.method === 'GET' && path === '/v1/me') {
@@ -327,148 +329,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   return problem(res, 404, 'not_found', 'trace-e2e-404');
 }
 
-// A stand-in for Socket.IO /agent (realtime spec §2–5): the handshake checks Origin and the session cookie like the API, the
-// rooms are made from the session (named per session here, so tests running side by side never hear each other).
-let agent: ReturnType<Server['of']> | null = null;
-const room = (sid: string, what: string) => `${sid}:${what}`;
-const envelope = (type: string, version: number, data: object) => ({
-  eventId: randomUUID(),
-  type,
-  aggregateVersion: version,
-  data,
-});
-
-function lever(name: string, sid: string, s: Session, body: Record<string, unknown>) {
-  const c = s.conversations.find((x) => x.id === body['conversationId']);
-  if (name === 'message' && c) {
-    const n = Math.max(...s.messages.map((m) => m.sequenceNumber)) + 1;
-    const m = {
-      ...s.messages[0]!,
-      id: `0190b000-0000-7000-8000-0000000001${n}`,
-      sequenceNumber: n,
-      body: String(body['body']),
-      platformSentAt: null,
-      createdAt: new Date().toISOString(),
-    };
-    s.messages.push(m);
-    const { id, ...rest } = m;
-    agent
-      ?.to(room(sid, `conv:${c.id}`))
-      .emit(
-        'message.created',
-        envelope('message.created', c.version, { conversationId: c.id, messageId: id, ...rest }),
-      );
-    agent?.to(room(sid, 'ws')).emit(
-      'message.created',
-      envelope('message.created', c.version, {
-        conversationId: c.id,
-        sequenceNumber: n,
-        senderKind: m.senderKind,
-        createdAt: m.createdAt,
-      }),
-    );
-  }
-  if (name === 'state' && c) {
-    Object.assign(c, { state: body['to'], version: c.version + 1 });
-    const data = {
-      conversationId: c.id,
-      to: c.state,
-      hold: c.afterHoursHold,
-      version: c.version,
-      assignedUserId: c.assignedUserId,
-    };
-    agent
-      ?.to([room(sid, `conv:${c.id}`), room(sid, 'ws')])
-      .emit('conversation.state_changed', envelope('conversation.state_changed', c.version, data));
-  }
-  // Closes the transport, as a lost network does: the client reconnects by itself (a server disconnect would not).
-  if (name === 'drop')
-    for (const socket of agent?.sockets.values() ?? [])
-      if (socket.rooms.has(room(sid, 'ws'))) socket.conn.close();
-  if (name === 'end') {
-    agent
-      ?.to(room(sid, 'ws'))
-      .emit('session.ended', { code: 'unauthorized', traceId: 'trace-e2e-ended' });
-    sessions.delete(sid);
-  }
-}
-
-function attachAgent(server: ReturnType<typeof createServer>) {
-  agent = new Server(server, { transports: ['websocket'] }).of('/agent');
-  agent.use((socket, next) => {
-    const sid = /(?:^|; )e2e_session=([^;]+)/.exec(socket.request.headers.cookie ?? '')?.[1];
-    if (socket.request.headers.origin !== 'http://localhost:3001')
-      return next(new Error('forbidden_origin'));
-    if (!sid || !sessions.has(sid)) return next(new Error('unauthorized'));
-    socket.data = { sid };
-    next();
-  });
-  agent.on('connection', (socket) => {
-    const { sid } = socket.data as { sid: string };
-    void socket.join(room(sid, 'ws'));
-    const visible = (id: unknown) => sessions.get(sid)?.conversations.find((c) => c.id === id);
-    socket.on(
-      'conversation.subscribe',
-      ({ conversationId }: { conversationId: string }, ack: (a: object) => void) => {
-        if (!visible(conversationId)) return ack({ ok: false, code: 'not_found' });
-        void socket.join(room(sid, `conv:${conversationId}`));
-        ack({ ok: true });
-      },
-    );
-    socket.on(
-      'conversation.unsubscribe',
-      ({ conversationId }: { conversationId: string }, ack: (a: object) => void) => {
-        void socket.leave(room(sid, `conv:${conversationId}`));
-        ack({ ok: true });
-      },
-    );
-    socket.on(
-      'resume',
-      (
-        {
-          conversationId,
-          lastSequenceNumber,
-        }: { conversationId: string; lastSequenceNumber: number },
-        ack: (a: object) => void,
-      ) => {
-        const c = visible(conversationId);
-        if (!c) return ack({ ok: false, code: 'not_found' });
-        void socket.join(room(sid, `conv:${conversationId}`));
-        const own = c.id === CONVERSATIONS[1]?.id ? (sessions.get(sid)?.messages ?? []) : [];
-        const messages = own
-          .filter((m) => m.sequenceNumber > lastSequenceNumber)
-          .map(({ id, ...m }) => ({ messageId: id, ...m }));
-        ack({
-          ok: true,
-          conversation: {
-            id: c.id,
-            state: c.state,
-            hold: c.afterHoursHold,
-            version: c.version,
-            assignedUserId: c.assignedUserId,
-          },
-          messages,
-          hasMore: false,
-          resync: false,
-        });
-      },
-    );
-  });
-}
+let agent: Agent | null = null;
 
 /** Playwright `globalSetup`: starts the stub before the tests and returns the teardown that stops it. */
 export default async function start(): Promise<() => Promise<void>> {
   const server = createServer((req, res) => {
     route(req, res).catch(() => problem(res, 500, 'internal_error', 'trace-e2e-500'));
   });
-  attachAgent(server);
+  agent = attachAgent(server, sessions, CONVERSATIONS[1]!.id);
   await new Promise<void>((ok, fail) => {
     server.once('error', fail); // EADDRINUSE: the real API is running on this port; stop it first (apps/admin/CLAUDE.md)
     server.listen(STUB_PORT, ok);
   });
   return () =>
     new Promise<void>((ok) => {
-      void agent?.server.close();
+      agent?.close();
       server.close(() => ok());
     });
 }

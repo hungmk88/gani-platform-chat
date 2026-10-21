@@ -6,7 +6,7 @@ import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
-import { rawCssSelectors, rawStyleSelectors } from './ui-lint.mjs';
+import { rawCssSelectors, rawHtmlSelectors, rawStyleSelectors } from './ui-lint.mjs';
 
 // Brief P6/P22: cấm `any` trong packages/* và apps/api/src/modules/*.
 const strictAnyFiles = [
@@ -109,11 +109,22 @@ export default defineConfig(
     ],
     rules: { 'no-restricted-syntax': ['error', ...conversationWrites] },
   },
-  // apps/admin/CLAUDE.md "Cấm": colours and sizes only from packages/ui tokens (ui-lint.mjs).
+  // apps/admin/CLAUDE.md "Cấm": colours and sizes only from packages/ui tokens (ui-lint.mjs); plain text only, never raw HTML (T2).
   {
     files: ['apps/admin/**/*.{ts,tsx,mts,cts}'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
-    rules: { 'no-restricted-syntax': ['error', ...conversationWrites, ...rawStyleSelectors] },
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...conversationWrites,
+        ...rawStyleSelectors,
+        ...rawHtmlSelectors,
+      ],
+    },
+  },
+  {
+    files: ['apps/admin/**/*.test.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['error', ...rawHtmlSelectors] },
   },
   // The rules of hooks for the admin. @next/eslint-plugin-next is left out: its fast-glob pulls braces 3.0.3, which fails the
   // high-severity audit (GHSA-vfj7-8cjw-p6xm, no patched version).
