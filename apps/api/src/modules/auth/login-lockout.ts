@@ -4,7 +4,8 @@ import { hashPassword } from './password.js';
 
 // Lock after 5 wrong passwords for 30 minutes, per account (ADR-003, N85). The counters are users.failed_login_count and
 // users.locked_until, which auth_role may update; the rule runs in two hooks of /sign-in/email (wired in auth.config.ts).
-type Pool = ReturnType<typeof createDbPool>;
+// Only `query` is used, so the pool may be the guarded one of safeQueryPool (review SEC-01).
+type Pool = Pick<ReturnType<typeof createDbPool>, 'query'>;
 export const MAX_FAILED_LOGINS = 5;
 export const LOCK_MINUTES = 30;
 /** What the library answers for a wrong password. A locked account must answer exactly this, even for the right password. */
