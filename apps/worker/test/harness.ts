@@ -241,6 +241,8 @@ export function workerEnv(extra: Readonly<Record<string, string>> = {}): Record<
     OUTBOX_POLL_MS: '100',
     OUTBOX_LEASE_S: '5',
     OUTBOX_SHUTDOWN_MS: '5000',
+    // A free port each time: K2 and K3 start a worker right after another one.
+    WORKER_HTTP_PORT: '0',
     ...extra,
   };
 }

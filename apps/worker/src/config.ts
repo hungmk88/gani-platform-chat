@@ -25,6 +25,13 @@ export interface WorkerConfig {
     readonly orgsPerTick: number;
     readonly orgParallel: number;
   };
+  /** The worker's own HTTP endpoints (`/healthz`, `/metrics`), for the probes and the monitoring (review OPS-02). */
+  readonly http: {
+    /** 0: a free port the system picks (the tests); the port is logged in `worker_http_listening`. */
+    readonly port: number;
+    /** `/healthz` answers 503 when the relay has not ended a pass for this long: its loop is stuck. */
+    readonly healthMaxAgeMs: number;
+  };
 }
 
 /** Lists every wrong variable at once, by name only: a URL carries a password and is never echoed. */
@@ -75,6 +82,11 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       // 1..1000 is what app.inbound_pending_orgs accepts (22023 otherwise).
       orgsPerTick: whole('INBOUND_ORGS_PER_TICK', 50, 1, 1_000),
       orgParallel: whole('INBOUND_ORG_PARALLEL', 2, 1, 32),
+    },
+    http: {
+      port: whole('WORKER_HTTP_PORT', 9464, 0, 65_535),
+      // A pass is short, but one over many organisations with Valkey down waits 5 s for each: 120 s leaves room for that.
+      healthMaxAgeMs: whole('WORKER_HEALTH_MAX_AGE_S', 120, 10, 3_600) * 1000,
     },
   };
   if (problems.length > 0) throw new ConfigError(problems);

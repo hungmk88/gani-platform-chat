@@ -23,6 +23,7 @@ describe('readConfig', () => {
       databaseUrl: URLS.DATABASE_URL_APP, redisUrl: URLS.REDIS_URL,
       outbox: { pollMs: 500, leaseSeconds: 60, batchSize: 100, maxAttempts: 5, orgsPerTick: 50, orgParallel: 4, shutdownMs: 10_000, queueMaxWaiting: 10_000 },
       inbound: { pollMs: 500, leaseSeconds: 60, batchSize: 10, maxAttempts: 5, orgsPerTick: 50, orgParallel: 2 },
+      http: { port: 9464, healthMaxAgeMs: 120_000 },
     });
   });
 
@@ -32,6 +33,11 @@ describe('readConfig', () => {
     expect(readConfig(env).outbox).toEqual({ pollMs: 250, leaseSeconds: 30, batchSize: 10, maxAttempts: 3, orgsPerTick: 7, orgParallel: 2, shutdownMs: 5000, queueMaxWaiting: 300 });
     const inbound = { ...URLS, INBOUND_POLL_MS: '100', INBOUND_LEASE_S: '20', INBOUND_BATCH: '3', INBOUND_MAX_ATTEMPTS: '2', INBOUND_ORGS_PER_TICK: '9', INBOUND_ORG_PARALLEL: '6' };
     expect(readConfig(inbound).inbound).toEqual({ pollMs: 100, leaseSeconds: 20, batchSize: 3, maxAttempts: 2, orgsPerTick: 9, orgParallel: 6 });
+  });
+
+  it('reads the HTTP settings, and takes port 0 (a free port)', () => {
+    const env = { ...URLS, WORKER_HTTP_PORT: '0', WORKER_HEALTH_MAX_AGE_S: '30' };
+    expect(readConfig(env).http).toEqual({ port: 0, healthMaxAgeMs: 30_000 });
   });
 
   it('treats an empty variable as not set', () => {
@@ -51,6 +57,7 @@ describe('readConfig', () => {
     ['OUTBOX_POLL_MS', '10'], ['OUTBOX_POLL_MS', '999999'], ['OUTBOX_LEASE_S', '0'], ['OUTBOX_BATCH', '1001'], ['OUTBOX_MAX_ATTEMPTS', '0'], ['OUTBOX_ORGS_PER_TICK', '1001'],
     ['OUTBOX_ORG_PARALLEL', '33'], ['OUTBOX_SHUTDOWN_MS', '10'], ['OUTBOX_BATCH', '1.5'], ['OUTBOX_BATCH', 'ten'], ['OUTBOX_BATCH', '-1'], ['OUTBOX_QUEUE_MAX_WAITING', '0'],
     ['INBOUND_POLL_MS', '10'], ['INBOUND_LEASE_S', '0'], ['INBOUND_BATCH', '1001'], ['INBOUND_MAX_ATTEMPTS', '21'], ['INBOUND_ORGS_PER_TICK', '0'], ['INBOUND_ORG_PARALLEL', '33'],
+    ['WORKER_HTTP_PORT', '65536'], ['WORKER_HEALTH_MAX_AGE_S', '5'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);
