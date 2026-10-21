@@ -51,3 +51,10 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - Ứng dụng tạo bằng `bodyParser: false` rồi gọi `setupApp` (`src/app-setup.ts`): trước hết là cổng 2FA (`two-factor.gate.ts`, N93: người phải thiết lập 2FA mà chưa xong chỉ đi được vài route, mọi đường khác 403), rồi Better Auth gắn ở `/api/auth/*` **trước khi Nest khởi tạo router** (gắn sau thì Nest trả `404`, đã đo), rồi mới tới parser JSON của Nest, để thư viện tự đọc body của nó (khuyến cáo của thư viện). `main.ts` và mọi test phục vụ ứng dụng đều dùng `setupApp`.
 - `@gani/db` và `@gani/domain` được build ra `dist/` (`exports` trỏ `dist`; domain từ N108, trước đó API build xanh mà `node dist/main.js` không chạy được): chạy `pnpm build` trước `pnpm lint` và `pnpm --filter @gani/api typecheck`. `pnpm typecheck`/`pnpm test` (turbo) tự build trước.
 - `pnpm --filter @gani/api smoke` khởi động `dist/main.js` thật rồi hỏi `/healthz` (CI job `verify` chạy nó sau `pnpm build`): chạy sau khi đổi `exports` hay phụ thuộc của một gói workspace.
+
+## Realtime (Socket.IO `/agent`, realtime-spec, N94, N142)
+
+- `modules/realtime/`: `RealtimeService.attach(httpServer, deps)` gắn `socket.io` thẳng vào HTTP server, gọi trong `setupApp` (main và mọi test đều có). Chỉ WebSocket; namespace `/` từ chối.
+- **Express không chạy cho socket** (cổng 2FA, middleware tenant, same-origin): bắt tay (`handshake.ts`) tự làm lại theo thứ tự Origin → phiên → 2FA → `chooseOrganisation` (dùng chung với `/v1`) → member → `socket.data.ctx` (đóng băng). Lỗi qua `connect_error` với `data: { code, traceId }`, không nguyên nhân. Thêm bước kiểm mới cho HTTP thì xem có phải thêm vào bắt tay không.
+- Phòng (`rooms.ts`): `org:`, `user:`, và `ws:` chỉ cho vai trò đọc được hội thoại. Tên phòng chỉ dựng từ `ctx`, không từ client.
+- Test: `realtime-handshake.integration.test.ts` (client `socket.io-client` thật, cookie + `origin` trong `extraHeaders`).

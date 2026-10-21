@@ -6,6 +6,7 @@ import { toNodeHandler } from 'better-auth/node';
 import { AuthService } from './modules/auth/auth.service.js';
 import { DatabaseService } from './modules/database/database.service.js';
 import { createZaloWebhook } from './modules/hooks/zalo-webhook.js';
+import { RealtimeService } from './modules/realtime/realtime.service.js';
 import { ProblemFilter, parserErrors } from './modules/request-context/problem.filter.js';
 import { createSameOriginCheck } from './modules/request-context/same-origin.js';
 import { securityHeaders } from './modules/request-context/security-headers.js';
@@ -62,13 +63,21 @@ export function setupApp(app: NestExpressApplication): void {
   // A body the parser refuses (malformed, too large) is answered as problem+json, and so is every error Nest catches (AR-03).
   express.use(parserErrors);
   app.useGlobalFilters(new ProblemFilter());
+  const organisations = {
+    organisations: (userId: string) => authService.activeOrganisationIds(userId),
+    member: (orgId: string, userId: string) =>
+      database.withTenant({ orgId, workspaceIds: [] }, (tx) => readMemberContext(tx, userId)),
+  };
   express.use(
     '/v1',
-    createTenantContextMiddleware({
-      sessions: app.get(SessionResolver),
-      organisations: (userId) => authService.activeOrganisationIds(userId),
-      member: (orgId, userId) =>
-        database.withTenant({ orgId, workspaceIds: [] }, (tx) => readMemberContext(tx, userId)),
-    }),
+    createTenantContextMiddleware({ sessions: app.get(SessionResolver), ...organisations }),
   );
+  // Socket.IO answers /socket.io/ itself, below Express: none of the layers above run for it, so its handshake does their checks
+  // again with the same functions (realtime spec §2, N94).
+  app.get(RealtimeService).attach(app.getHttpServer(), {
+    origin: authService.origin,
+    sessions: app.get(SessionResolver),
+    mustSetUp: (userId) => authService.mustSetUpTwoFactor(userId),
+    ...organisations,
+  });
 }
