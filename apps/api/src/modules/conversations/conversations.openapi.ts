@@ -12,7 +12,10 @@ import {
   ConversationSchema,
   MessageListQuerySchema,
   MessagePageSchema,
+  MessageSchema,
+  SendMessageBodySchema,
   VersionBodySchema,
+  WindowClosedSchema,
 } from './conversations.schemas.js';
 
 /** The paths of conversations.controller.ts in the OpenAPI document (Brief P18), from the same Zod schemas the controller validates with. */
@@ -57,6 +60,37 @@ export function registerConversations(registry: OpenAPIRegistry): void {
       200: { description: 'A page.', ...json(MessagePageSchema) },
       404: problemResponse('not_found'),
       ...errors,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/conversations/{id}/messages',
+    summary:
+      'Answer the customer (N146): a text message of the agent, `pending` until the outbound worker sends it. Only while a person holds the conversation, and only inside the free window of the channel (channel-policy-spec §3). Sales and support: one they hold.',
+    tags: ['conversations'],
+    request: {
+      ...byId,
+      headers: IdempotencyHeadersSchema,
+      body: { content: { 'application/json': { schema: SendMessageBodySchema } } },
+    },
+    responses: {
+      201: { description: 'The message, with deliveryStatus pending.', ...json(MessageSchema) },
+      400: problemResponse('validation_failed: the id, the text or the Idempotency-Key header.'),
+      403: problemResponse(
+        'forbidden: the role may not answer, or not a conversation the person does not hold.',
+      ),
+      404: problemResponse('not_found'),
+      409: problemResponse(
+        'conversation_not_active (claim it first, or it is closed); idempotency_in_progress.',
+      ),
+      422: {
+        description:
+          'channel_window_closed with windowState and reason: nothing was written (C-N4); or idempotency_key_reused.',
+        content: { 'application/problem+json': { schema: WindowClosedSchema } },
+      },
+      401: EDGE_ERRORS[401],
+      503: EDGE_ERRORS[503],
     },
   });
 

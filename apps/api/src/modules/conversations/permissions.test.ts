@@ -37,18 +37,25 @@ describe('who sees which conversations (Phụ lục B rows 11–12, N133)', () =
   });
 });
 
-describe('who may act on a conversation (Phụ lục B rows 13, 15–17)', () => {
-  it('gives each of the seven roles its scope for the five actions', () => {
-    const actions: ConversationAction[] = ['claim', 'wait_customer', 'transfer', 'assign', 'close'];
+describe('who may act on a conversation (Phụ lục B rows 13–17)', () => {
+  it('gives each of the seven roles its scope for the six actions', () => {
+    const actions: ConversationAction[] = [
+      'claim',
+      'wait_customer',
+      'transfer',
+      'assign',
+      'close',
+      'send_message',
+    ];
     const row = (role: OrgRole) => actions.map((a) => actionScope(role, a)).join(' ');
     expect(Object.fromEntries(ROLES.map((r) => [r, row(r)]))).toEqual({
-      owner: 'any any any any any',
-      admin: 'any any any any any',
-      manager: 'any any any any any',
-      sales: 'any own own none own',
-      support: 'any own own none own',
-      marketing: 'none none none none none',
-      viewer: 'none none none none none',
+      owner: 'any any any any any any',
+      admin: 'any any any any any any',
+      manager: 'any any any any any any',
+      sales: 'any own own none own own',
+      support: 'any own own none own own',
+      marketing: 'none none none none none none',
+      viewer: 'none none none none none none',
     });
   });
 
@@ -62,5 +69,7 @@ describe('who may act on a conversation (Phụ lục B rows 13, 15–17)', () =>
     expect(on('support', 'claim')).toBe('true true true');
     expect(on('sales', 'assign')).toBe('false false false');
     expect(on('viewer', 'claim')).toBe('false false false');
+    expect(on('support', 'send_message')).toBe('true false false');
+    expect(on('admin', 'send_message')).toBe('true true true');
   });
 });

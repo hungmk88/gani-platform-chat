@@ -261,6 +261,18 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "deliveryStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "pending",
+              "sent",
+              "failed",
+              null
+            ]
           }
         },
         "required": [
@@ -273,6 +285,77 @@
           "platformSentAt",
           "createdAt"
         ]
+      },
+      "WindowClosedProblem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "about:blank"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "channel_window_closed"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "windowState": {
+            "type": "string",
+            "enum": [
+              "paid_only",
+              "api_closed"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "no_customer_message",
+              "no_free_window",
+              "window_expired",
+              "quota_exhausted",
+              "no_policy"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "windowState",
+          "reason"
+        ]
+      },
+      "SendMessageBody": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
       },
       "ClaimConflictProblem": {
         "type": "object",
@@ -794,6 +877,125 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Answer the customer (N146): a text message of the agent, `pending` until the outbound worker sends it. Only while a person holds the conversation, and only inside the free window of the channel (channel-policy-spec §3). Sales and support: one they hold.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The message, with deliveryStatus pending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, the text or the Idempotency-Key header.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: the role may not answer, or not a conversation the person does not hold.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conversation_not_active (claim it first, or it is closed); idempotency_in_progress.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "channel_window_closed with windowState and reason: nothing was written (C-N4); or idempotency_key_reused.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WindowClosedProblem"
                 }
               }
             }

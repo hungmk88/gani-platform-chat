@@ -64,6 +64,16 @@ export class ChannelWindowClosedError extends Error {
   }
 }
 
+/** Only a conversation a person holds (HUMAN_ACTIVE, PENDING_CUSTOMER) can be answered: claim it first, or it is closed (N146). */
+export class ConversationNotActiveError extends Error {
+  readonly status = 409;
+  readonly code = 'conversation_not_active';
+  constructor() {
+    super('the conversation is not held by a person');
+    this.name = 'ConversationNotActiveError';
+  }
+}
+
 /** A system event lost the race three times: not an answer for a user, the job that raised it is retried (N96). */
 export class ConversationContendedError extends Error {
   readonly code = 'conversation_contended';
