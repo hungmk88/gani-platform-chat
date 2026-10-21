@@ -1,8 +1,9 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { orgMembers } from '@gani/db';
 import { z } from 'zod';
 
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
-import { problemResponse as problem } from './schemas.js';
+import { problemResponse as problem, UuidSchema } from './schemas.js';
 
 // The contract the front end builds on (Brief P18): generated from the Zod schemas the API validates with, so the two cannot drift.
 // docs/openapi/openapi.json is this document as committed; document.test.ts fails when they differ (run `pnpm --filter @gani/api
@@ -54,6 +55,39 @@ function registerPlatform(registry: OpenAPIRegistry): void {
         },
       },
       401: problem('unauthorized: no valid session.'),
+    },
+  });
+  const named = z.object({ id: UuidSchema, name: z.string() });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/me',
+    summary:
+      'The signed-in person, the organisation they act in and its workspaces they belong to (U32, N145). Ask security-status first.',
+    tags: ['me'],
+    responses: {
+      200: {
+        description:
+          '`org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email.',
+        content: {
+          'application/json': {
+            schema: z
+              .object({
+                id: UuidSchema,
+                name: z.string(),
+                isPlatformOperator: z.boolean(),
+                org: named
+                  .extend({ role: z.enum(orgMembers.role.enumValues) })
+                  .nullable()
+                  .meta({ id: 'MeOrg' }),
+                workspaces: z.array(named.meta({ id: 'MeWorkspace' })),
+              })
+              .meta({ id: 'Me' }),
+          },
+        },
+      },
+      401: problem('unauthorized: no valid session.'),
+      403: problem('two_factor_setup_required: the second factor must be set up first (N93).'),
+      503: problem('service_unavailable: a database did not answer.'),
     },
   });
 }
