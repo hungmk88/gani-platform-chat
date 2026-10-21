@@ -14,6 +14,7 @@ export default defineConfig({
         'src/conversation-lock.ts',
         'src/conversation-read.ts',
         'src/conversation-store.ts',
+        'src/delivery-store.ts',
         'src/idempotency-store.ts',
         'src/inbound-store.ts',
         'src/message-store.ts',

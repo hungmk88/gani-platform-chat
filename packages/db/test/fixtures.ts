@@ -5,6 +5,7 @@ import type pg from 'pg';
 
 // Child tables first: cleanup deletes in this order, then the user and the organization.
 const TENANT_TABLES = [
+  'message_deliveries',
   'outbox_events',
   'conversation_events',
   'messages',
@@ -57,6 +58,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO idempotency_keys (org_id, user_id, key, method, path, request_hash) VALUES ('${org}', '${user}', 'seed', 'POST', '/v1/seed', repeat('0', 64));
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
+    INSERT INTO message_deliveries (id, org_id, workspace_id, conversation_id, message_id, channel_account_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', '${uuidv7()}', '${channelAccount}');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');
     INSERT INTO outbox_events (id, org_id, event_type, aggregate_type, aggregate_id, actor_kind, trace_id) VALUES ('${uuidv7()}', '${org}', 'conversation.created', 'conversation', '${conversation}', 'system', 'seed');
     INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);

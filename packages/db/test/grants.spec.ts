@@ -64,6 +64,14 @@ const APP_UPDATE: Record<string, string[]> = {
     'processed_at',
     'status',
   ],
+  message_deliveries: [
+    'attempts',
+    'last_error',
+    'platform_message_id',
+    'sent_at',
+    'status',
+    'updated_at',
+  ],
   org_members: [
     'deleted_at',
     'invite_expires_at',
