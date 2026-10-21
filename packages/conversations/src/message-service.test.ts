@@ -5,7 +5,6 @@ import type {
   NewOutboxEvent,
   TenantTx,
 } from '@gani/db';
-import { Logger } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConversationStateMachine, type ConversationStore } from './conversation-state-machine.js';
@@ -34,6 +33,7 @@ const closedAgo = (ms: number) =>
   row({ state: 'CLOSED', closedAt: new Date(NOW.getTime() - ms), outcome: 'resolved' });
 
 // prettier-ignore
+const logger = { warn: vi.fn<(line: string) => void>() };
 function fake(initial: ConversationRow | null) {
   const rows = new Map(initial ? [[ID, initial]] : []);
   const calls: string[] = [];
@@ -53,18 +53,39 @@ function fake(initial: ConversationRow | null) {
     applyTransition: (_tx, w) => {
       calls.push('apply');
       const r = rows.get(w.id);
-      if (!r || r.state !== w.from.state || r.afterHoursHold !== w.from.afterHoursHold) return Promise.resolve(null);
+      if (!r || r.state !== w.from.state || r.afterHoursHold !== w.from.afterHoursHold)
+        return Promise.resolve(null);
       const next = { ...r, ...w.next, version: r.version + 1 };
       return (rows.set(w.id, next), Promise.resolve(next));
     },
   };
   const store: MessageStore = {
     loadConversation: conversations.loadConversation,
-    insertMessage: (_tx, m) => (calls.push('insertMessage'), hooks.failInsert ? Promise.reject(new Error('stop')) : (messages.push(m), Promise.resolve({ id: m.id, sequenceNumber: messages.length, platformSentAtAheadSeconds: hooks.ahead, platformSentAtBehindSeconds: hooks.behind }))),
+    insertMessage: (_tx, m) => (
+      calls.push('insertMessage'),
+      hooks.failInsert
+        ? Promise.reject(new Error('stop'))
+        : (messages.push(m),
+          Promise.resolve({
+            id: m.id,
+            sequenceNumber: messages.length,
+            platformSentAtAheadSeconds: hooks.ahead,
+            platformSentAtBehindSeconds: hooks.behind,
+          }))
+    ),
     insertOutboxEvent: (_tx, e) => (calls.push('insertOutbox'), outbox.push(e), Promise.resolve()),
   };
   const fsm = new ConversationStateMachine(conversations);
-  return { fsm, service: new MessageService(fsm, store), rows, calls, events, outbox, messages, hooks };
+  return {
+    fsm,
+    service: new MessageService(fsm, store, undefined, logger),
+    rows,
+    calls,
+    events,
+    outbox,
+    messages,
+    hooks,
+  };
 }
 const append = (over: Partial<AppendMessageInput> = {}): AppendMessageInput => ({
   conversationId: ID,
@@ -206,7 +227,7 @@ describe('MessageService.append', () => {
     afterEach(() => vi.restoreAllMocks());
 
     it('warns with ids and the number of seconds, and nothing that was said, above five minutes', async () => {
-      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const warn = (logger.warn.mockClear(), logger.warn);
       const { service, hooks, messages } = fake(row({ workspaceId: 'w-9' }));
       hooks.ahead = 301;
       await service.append(TX, append({ body: 'a secret sentence', traceId: 'trace-7' }));
@@ -221,7 +242,7 @@ describe('MessageService.append', () => {
     it.each([null, 0.5, 300])(
       'says nothing when it was %s seconds ahead (up to the limit)',
       async (ahead) => {
-        const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        const warn = (logger.warn.mockClear(), logger.warn);
         const { service, hooks } = fake(row());
         hooks.ahead = ahead;
         await service.append(TX, append());
@@ -234,7 +255,7 @@ describe('MessageService.append', () => {
     afterEach(() => vi.restoreAllMocks());
 
     it('warns "clock skew backward" with ids and the number of seconds, and nothing that was said', async () => {
-      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const warn = (logger.warn.mockClear(), logger.warn);
       const { service, hooks, messages } = fake(row({ workspaceId: 'w-9' }));
       hooks.behind = 1_700_000_000;
       await service.append(TX, append({ body: 'a secret sentence', traceId: 'trace-8' }));
@@ -250,7 +271,7 @@ describe('MessageService.append', () => {
     });
 
     it('says nothing when the time was not past the floor, and both messages are told apart', async () => {
-      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const warn = (logger.warn.mockClear(), logger.warn);
       const quiet = fake(row());
       await quiet.service.append(TX, append());
       expect(warn).not.toHaveBeenCalled();

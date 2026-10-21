@@ -19,6 +19,8 @@ interface Options {
   readonly poolEnd?: () => Promise<void>;
   /** Hold the first pass of the relay until `release()`. */
   readonly hold?: boolean;
+  /** Give the worker HTTP endpoints, whose close is recorded. */
+  readonly http?: boolean;
 }
 
 // The relay is the real one over a store that can be held in the middle of a pass, so the order of the shutdown can be seen: the
@@ -66,7 +68,15 @@ function setup(options: Options = {}) {
     warn: (message, fields) => void logs.push(`${message} ${JSON.stringify(fields ?? {})}`),
     error: (message, fields) => void logs.push(`${message} ${JSON.stringify(fields ?? {})}`),
   };
-  const worker = startWorker({ store, queue, pool, log, settings });
+  const http = options.http
+    ? {
+        close: vi.fn(() => {
+          events.push(`http.close (relay in a pass: ${inPass})`);
+          return Promise.resolve();
+        }),
+      }
+    : undefined;
+  const worker = startWorker({ store, queue, pool, log, settings, ...(http ? { http } : {}) });
   return { worker, store, queue, pool, events, logs, release, inPass: () => inPass };
 }
 
@@ -86,6 +96,16 @@ describe('startWorker', () => {
     t.release();
     expect(await done).toBe(true);
     expect(t.events).toEqual(['queue.close (relay in a pass: 0)', 'pool.end (relay in a pass: 0)']);
+  });
+
+  it('closes the HTTP endpoints after the relay and before the queue and the pool (OPS-02)', async () => {
+    const t = setup({ hold: false, http: true });
+    expect(await t.worker.shutdown()).toBe(true);
+    expect(t.events).toEqual([
+      'http.close (relay in a pass: 0)',
+      'queue.close (relay in a pass: 0)',
+      'pool.end (relay in a pass: 0)',
+    ]);
   });
 
   it('goes on to the next step when one fails, says so without the message, and answers false', async () => {

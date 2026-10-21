@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "9.1.0",
+    "@gani/conversations": "workspace:*",
     "@gani/db": "workspace:*",
     "@gani/domain": "workspace:*",
     "@nestjs/common": "12.1.2",

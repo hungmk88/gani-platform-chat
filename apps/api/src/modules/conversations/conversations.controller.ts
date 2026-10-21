@@ -7,6 +7,7 @@ import {
   type TenantTx,
 } from '@gani/db';
 import { Controller, ForbiddenException, Get, Inject, Param, Query } from '@nestjs/common';
+import { ConversationNotFoundError } from '@gani/conversations';
 
 import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -17,7 +18,6 @@ import {
   MessageListQuerySchema,
   type ConversationListQuery,
 } from './conversations.schemas.js';
-import { ConversationNotFoundError } from './errors.js';
 import { canSee, readScope } from './permissions.js';
 
 /**
