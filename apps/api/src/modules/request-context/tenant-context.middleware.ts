@@ -5,6 +5,11 @@ import { runWithTenantContext, type MemberContext } from '@gani/db';
 import { Logger } from '@nestjs/common';
 
 import { errorCode } from '../database/database.service.js';
+import {
+  chooseOrganisation,
+  ORGANISATION_REFUSALS,
+  type OrganisationSources,
+} from './org-selection.js';
 import { problem, sendProblem } from './problem.js';
 import { runWithRequestContext } from './request-context.js';
 import type { ResolvedSession, SessionResolver } from './session-resolver.js';
@@ -13,12 +18,8 @@ import type { ResolvedSession, SessionResolver } from './session-resolver.js';
 // an exact lower-case path, so any other spelling of it is NOT exempt and goes through the middleware (fails closed).
 const EXEMPT_PATH = '/v1/me/security-status';
 
-export interface TenantMiddlewareDeps {
+export interface TenantMiddlewareDeps extends OrganisationSources {
   sessions: Pick<SessionResolver, 'resolve'>;
-  /** Organisations in which the person is an active member (auth pool: no tenant context exists yet). */
-  organisations(userId: string): Promise<readonly string[]>;
-  /** Role and workspaces in `orgId`, or `null` when the person is not an active member of it. Throws when the database fails. */
-  member(orgId: string, userId: string): Promise<MemberContext | null>;
 }
 
 type Req = IncomingMessage & { originalUrl?: string };
@@ -34,9 +35,8 @@ const pathOf = (req: Req): string =>
  * the request: a path, query, header or body that names another organisation changes nothing here, and a person reaching for another
  * tenant's row gets a 404 from the handler when row-level security returns nothing (S2), not from this middleware.
  *
- * Organisation: the one the session has chosen, if the person is still an active member; otherwise the only active one; several is
- * 403 org_not_selected and none is 403 no_organisation. "Not a member" (a null answer) is a 403; a database that fails is a 503 with
- * no cause in the body: the two must never look alike. `next()` runs inside the context, so everything after sees it.
+ * Organisation: `chooseOrganisation` (shared with the handshake of the socket); its refusals are 403s. "Not a member" (a null answer)
+ * is a 403; a database that fails is a 503 with no cause in the body: the two must never look alike. `next()` runs inside the context, so everything after sees it.
  */
 export function createTenantContextMiddleware(deps: TenantMiddlewareDeps) {
   return async (req: Req, res: ServerResponse, next: Next): Promise<void> => {
@@ -75,16 +75,8 @@ async function decide(deps: TenantMiddlewareDeps, req: Req, traceId: string): Pr
   });
   const session = await deps.sessions.resolve(req);
   if (!session) return refuse(401, 'unauthorized', 'Sign in first.');
-  if (session.activeOrgId) {
-    const member = await deps.member(session.activeOrgId, session.userId);
-    if (member) return { session, orgId: session.activeOrgId, member };
-  }
-  const orgs = await deps.organisations(session.userId);
-  const [only, ...others] = orgs;
-  if (only === undefined)
-    return refuse(403, 'no_organisation', 'You are not a member of any organisation.');
-  if (others.length > 0) return refuse(403, 'org_not_selected', 'Choose an organisation first.');
-  const member = await deps.member(only, session.userId);
-  if (!member) return refuse(403, 'no_organisation', 'You are not a member of any organisation.');
-  return { session, orgId: only, member };
+  const choice = await chooseOrganisation(deps, session);
+  if ('refused' in choice)
+    return refuse(403, choice.refused, ORGANISATION_REFUSALS[choice.refused]);
+  return { session, ...choice };
 }
