@@ -5,6 +5,10 @@ import type { Conversation } from './list';
 
 export type Action = 'claim' | 'wait_customer' | 'close';
 
+/** The roles that read conversations (Phụ lục B rows 11–12): the Inbox and its realtime connection are theirs only. */
+export const readsConversations = (role: Role) =>
+  ['owner', 'admin', 'manager', 'sales', 'support'].includes(role);
+
 const LEADS: readonly Role[] = ['owner', 'admin', 'manager'];
 const AGENTS: readonly Role[] = ['sales', 'support'];
 const HUMAN = new Set(['HUMAN_ACTIVE', 'PENDING_CUSTOMER']);
