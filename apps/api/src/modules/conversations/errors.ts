@@ -24,6 +24,16 @@ export class ConversationAlreadyClaimedError extends Error {
   }
 }
 
+/** Transfer or assign to someone who cannot hold it: one answer for every reason, so nobody learns who is a member (P9). */
+export class InvalidAssigneeError extends Error {
+  readonly status = 422;
+  readonly code = 'invalid_assignee';
+  constructor() {
+    super('This person cannot take the conversation.');
+    this.name = 'InvalidAssigneeError';
+  }
+}
+
 /** The client acted on a version that is no longer current: reload and try again. */
 export class VersionConflictError extends Error {
   readonly status = 409;

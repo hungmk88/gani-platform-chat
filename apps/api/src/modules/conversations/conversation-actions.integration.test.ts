@@ -11,9 +11,9 @@ import { setupApp } from '../../app-setup.js';
 import { AppModule } from '../../app.module.js';
 import { hashPassword } from '../auth/password.js';
 
-// POST /v1/conversations/{id}/claim and /wait-customer over HTTP with the real middleware, Better Auth, the Idempotency-Key
-// interceptor and PostgreSQL (RLS as app_role). Org A, workspace W1: a manager, two sales, marketing and 50 agents for the race;
-// a sales of W2 only; org B is a stranger.
+// POST /v1/conversations/{id}/claim, /wait-customer, /transfer, /assign and /close over HTTP with the real middleware, Better Auth, the Idempotency-Key
+// interceptor and PostgreSQL (RLS as app_role). Org A, workspace W1: a manager, three sales (sales and teammate share a team),
+// marketing and 50 agents for the race; a sales of W2 only; org B is a stranger.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -94,7 +94,7 @@ beforeAll(async () => {
   for (const org of [orgA, orgB]) await q('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [org, `t-${org}`, 'T']);
   for (const [ws, org] of [[W1, orgA], [W2, orgA], [WB, orgB]] as const)
     await q(`INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ($1, $2, $3, 'W', 'service')`, [ws, org, `w-${ws}`]);
-  for (const [key, org, role, ws] of [['manager', orgA, 'manager', W1], ['sales', orgA, 'sales', W1], ['colleague', orgA, 'sales', W1], ['marketing', orgA, 'marketing', W1], ['elsewhere', orgA, 'sales', W2], ['stranger', orgB, 'manager', WB]] as const)
+  for (const [key, org, role, ws] of [['manager', orgA, 'manager', W1], ['sales', orgA, 'sales', W1], ['colleague', orgA, 'sales', W1], ['teammate', orgA, 'sales', W1], ['marketing', orgA, 'marketing', W1], ['elsewhere', orgA, 'sales', W2], ['stranger', orgB, 'manager', WB]] as const)
     await person(key, org, role, ws, hash);
   for (const key of AGENTS) await person(key, orgA, key.endsWith('1') ? 'support' : 'sales', W1, hash);
   await conversation('race', 'HUMAN_WAITING_Q');
@@ -103,12 +103,19 @@ beforeAll(async () => {
   await conversation('mine', 'HUMAN_ACTIVE', { assigned: people['sales'] as string });
   await conversation('theirs', 'HUMAN_ACTIVE', { assigned: people['colleague'] as string });
   await conversation('otherOrg', 'HUMAN_WAITING_Q', { org: orgB, ws: WB });
+  await conversation('handed', 'HUMAN_ACTIVE', { assigned: people['sales'] as string });
+  await conversation('queued', 'HUMAN_WAITING_Q');
+  await conversation('done', 'PENDING_CUSTOMER', { assigned: people['sales'] as string });
+  const team = randomUUID();
+  await q(`INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ($1, $2, $3, 'T', $4)`, [team, orgA, W1, `t-${team}`]);
+  for (const key of ['sales', 'teammate'])
+    await q('INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ($1, $2, $3, $4)', [randomUUID(), orgA, team, people[key]]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const nest = (app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false }));
   setupApp(nest);
   await nest.listen(0, '127.0.0.1');
   url = await nest.getUrl();
-  const everyone = ['manager', 'sales', 'colleague', 'marketing', 'elsewhere', 'stranger', ...AGENTS];
+  const everyone = ['manager', 'sales', 'colleague', 'teammate', 'marketing', 'elsewhere', 'stranger', ...AGENTS];
   for (let n = 0; n < everyone.length; n += 10)
     await Promise.all(everyone.slice(n, n + 10).map(async (key) => (cookies[key] = await login(key))));
 }, 120_000);
@@ -120,7 +127,8 @@ afterAll(async () => {
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
     ['outbox_events WHERE org_id', orgs], ['conversation_events WHERE org_id', orgs], ['conversations WHERE org_id', orgs],
-    ['idempotency_keys WHERE org_id', orgs], ['sessions WHERE user_id', users], ['workspace_members WHERE org_id', orgs],
+    ['idempotency_keys WHERE org_id', orgs], ['audit_logs WHERE org_id', orgs], ['team_members WHERE org_id', orgs],
+    ['teams WHERE org_id', orgs], ['sessions WHERE user_id', users], ['workspace_members WHERE org_id', orgs],
     ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs], ['organizations WHERE id', orgs],
     ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
@@ -178,5 +186,53 @@ describe('POST /v1/conversations/{id}/wait-customer', () => {
     // Sales see the unclaimed, but waiting for the customer is the holder's (Phụ lục B): 403, not the 409 of the state.
     expect((await act('sales', `${c['bot']}/wait-customer`, { version: 0 })).body).toMatchObject({ status: 403, code: 'forbidden' });
     expect(await act('manager', `${c['theirs']}/wait-customer`, { version: 0 })).toMatchObject({ status: 200, body: { state: 'PENDING_CUSTOMER', assignedUserId: people['colleague'] } });
+  });
+});
+
+const audits = async (id: string) =>
+  (
+    await q(
+      'SELECT action, actor_user_id, detail FROM audit_logs WHERE target_id = $1 ORDER BY created_at',
+      [id],
+    )
+  ).rows as unknown[];
+
+// prettier-ignore
+describe('POST /v1/conversations/{id}/transfer and /assign', () => {
+  it('lets sales hand what they hold to someone of their team only, and audits it (Phụ lục B "Team", P9)', async () => {
+    const to = (who: string) => ({ version: 0, toUserId: people[who] as string });
+    expect((await act('sales', `${c['handed']}/transfer`, to('colleague'))).body).toMatchObject({ status: 403, code: 'forbidden' });
+    expect(await act('sales', `${c['handed']}/transfer`, to('teammate'))).toMatchObject({ status: 200, body: { state: 'HUMAN_ACTIVE', assignedUserId: people['teammate'], version: 1 } });
+    expect(await audits(c['handed'] as string)).toEqual([
+      { action: 'conversation.transferred', actor_user_id: people['sales'], detail: { fromUserId: people['sales'], toUserId: people['teammate'], version: 1 } },
+    ]);
+    expect((await act('sales', `${c['handed']}/transfer`, { version: 1, toUserId: people['sales'] })).status).toBe(404);
+  });
+
+  it('answers 422 invalid_assignee alike for whoever cannot hold it, and assign is for a manager only', async () => {
+    for (const who of ['marketing', 'elsewhere', 'stranger', 'teammate'])
+      expect((await act('manager', `${c['handed']}/transfer`, { version: 1, toUserId: people[who] })).body, who).toMatchObject({ status: 422, code: 'invalid_assignee' });
+    expect((await act('manager', `${c['handed']}/assign`, { version: 1, toUserId: randomUUID() })).body).toMatchObject({ code: 'invalid_assignee' });
+    expect((await act('sales', `${c['queued']}/assign`, { version: 0, toUserId: people['sales'] })).body).toMatchObject({ status: 403, code: 'forbidden' });
+    expect(await audits(c['handed'] as string)).toHaveLength(1);
+  });
+
+  it('lets a manager assign a conversation of the queue (T21) or held by someone (T16), audited', async () => {
+    expect(await act('manager', `${c['queued']}/assign`, { version: 0, toUserId: people['colleague'] })).toMatchObject({ status: 200, body: { state: 'HUMAN_ACTIVE', assignedUserId: people['colleague'] } });
+    expect(await act('manager', `${c['handed']}/assign`, { version: 1, toUserId: people['sales'] })).toMatchObject({ status: 200, body: { assignedUserId: people['sales'], version: 2 } });
+    expect((await audits(c['queued'] as string))[0]).toMatchObject({ action: 'conversation.reassigned', detail: { fromUserId: null, toUserId: people['colleague'] } });
+    expect((await act('manager', `${c['bot']}/assign`, { version: 0, toUserId: people['sales'] })).body).toMatchObject({ status: 409, code: 'invalid_transition' });
+  });
+});
+
+// prettier-ignore
+describe('POST /v1/conversations/{id}/close', () => {
+  it('closes with an outcome of the conversation, and refuses one of a lead or none (400)', async () => {
+    for (const body of [{ version: 0 }, { version: 0, outcome: 'won' }, { version: 0, outcome: 'resolved_by_bot' }])
+      expect((await act('sales', `${c['done']}/close`, body)).body, JSON.stringify(body)).toMatchObject({ status: 400, code: 'validation_failed' });
+    expect((await act('colleague', `${c['done']}/close`, { version: 0, outcome: 'spam' })).status).toBe(404);
+    expect(await act('sales', `${c['done']}/close`, { version: 0, outcome: 'no_response' })).toMatchObject({ status: 200, body: { state: 'CLOSED', outcome: 'no_response', assignedUserId: null } });
+    expect((await act('manager', `${c['done']}/close`, { version: 1, outcome: 'resolved' })).body).toMatchObject({ status: 409, code: 'invalid_transition' });
+    expect(await audits(c['done'] as string)).toEqual([]);
   });
 });

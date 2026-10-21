@@ -61,6 +61,21 @@ export const VersionBodySchema = z
   .strict()
   .meta({ id: 'VersionBody' });
 
+/** Transfer and assign: to whom. A member of the conversation's workspace who may hold conversations, or 422 invalid_assignee. */
+export const AssigneeBodySchema = z
+  .object({ version: z.number().int().min(0), toUserId: UuidSchema })
+  .strict()
+  .meta({ id: 'AssigneeBody' });
+
+/** Close (T13): the outcome is required (Brief P14); won or lost belong to the lead, not here. */
+export const CloseBodySchema = z
+  .object({
+    version: z.number().int().min(0),
+    outcome: z.enum(['resolved', 'no_response', 'spam']),
+  })
+  .strict()
+  .meta({ id: 'CloseBody' });
+
 /** 409 of a claim that lost: who holds the conversation now (PRR-05). */
 export const ClaimConflictSchema = ProblemSchema.extend({
   code: z.literal('conversation_already_claimed'),
