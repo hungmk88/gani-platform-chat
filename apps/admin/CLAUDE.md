@@ -103,3 +103,4 @@ Trang mặc định sau đăng nhập:
 - `/inbox` (I1a): cột danh sách. Bộ lọc nằm trên URL (`?assignee=me|none&state=…|hold`), trang theo cursor ("Tải thêm"). Vai trò đọc được: owner, admin, manager, sales, support (như `permissions.ts` của API); vai trò khác → trang 403.
 - Dòng chỉ hiện trường API có: trạng thái (nhãn lời thường), "Tôi" / "Người khác" / "Chưa ai nhận", giờ tin cuối (giờ Việt Nam). Tên khách, kênh, đoạn trích, tag, SLA chờ U30; không bịa dữ liệu (CEO chọn A, 21/10).
 - `assignedUserId` trong kiểu sinh mất `null` (OpenAPI mô tả `allOf[Uuid, string|null]`): hàm nhận nó tự khai `string | null`.
+- `/inbox/[id]` (I1b): danh sách bên trái, hội thoại bên phải (`inbox/layout.tsx` kiểm vai trò một lần). Tin xếp theo `platformSentAt` rồi `sequenceNumber` (P10); "Tải tin cũ hơn" theo cursor. Nội dung khách là chữ thuần (React escape, không HTML/markdown, T2 có E2E). Hội thoại không được xem và không tồn tại cùng một câu "Không tìm thấy" (404, P9).
