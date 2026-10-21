@@ -8,6 +8,7 @@ import { DatabaseService } from './modules/database/database.service.js';
 import { createZaloWebhook } from './modules/hooks/zalo-webhook.js';
 import { RealtimeService } from './modules/realtime/realtime.service.js';
 import { revalidatePeriodMs } from './modules/realtime/revalidate.js';
+import { realtimeAdapterPolicy } from './modules/realtime/valkey.js';
 import { ProblemFilter, parserErrors } from './modules/request-context/problem.filter.js';
 import { createSameOriginCheck } from './modules/request-context/same-origin.js';
 import { securityHeaders } from './modules/request-context/security-headers.js';
@@ -83,5 +84,6 @@ export function setupApp(app: NestExpressApplication): void {
     freshSessions: app.get(SessionResolver),
     withTenant: (ctx, fn) => database.withTenant(ctx, fn),
     revalidateMs: revalidatePeriodMs(process.env),
+    adapter: realtimeAdapterPolicy(process.env),
   });
 }

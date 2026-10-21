@@ -91,6 +91,11 @@ export default defineConfig(
   // The worker imports @gani/domain and @gani/conversations since they are built to dist (N108, N138); the ban of N61 is gone.
   // The integration tests of the worker use BullMQ and ioredis directly; they still may not touch the database client.
   { files: ['apps/worker/test/**'], rules: { 'no-restricted-imports': banImports(dbImports) } },
+  // The Valkey link of the API's Socket.IO (N144): the one file of apps/api that opens an ioredis connection.
+  {
+    files: ['apps/api/src/modules/realtime/valkey.ts'],
+    rules: { 'no-restricted-imports': banImports(dbImports) },
+  },
   // CLAUDE.md rule 4: only the state machine changes the state of a conversation, and it does so through conversation-store.ts.
   // Tests may write test data directly. The scan in packages/db/src/conversation-store-guard.test.ts is the second lock.
   {

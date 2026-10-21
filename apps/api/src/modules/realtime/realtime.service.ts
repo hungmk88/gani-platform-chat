@@ -14,6 +14,7 @@ import {
 import { registerAgentEvents, type AgentEventDeps } from './agent-events.js';
 import { watchSession } from './revalidate.js';
 import { roomsFor, userRoom } from './rooms.js';
+import { createValkeyLink, type AdapterPolicy, type ValkeyLink } from './valkey.js';
 
 /** Spec §1: the client sends acks and small arguments only. */
 export const SOCKET_MAX_BYTES = 64 * 1024;
@@ -40,6 +41,7 @@ export type AgentNamespace = Namespace<
 export class RealtimeService implements BeforeApplicationShutdown {
   private readonly logger = new Logger('Realtime');
   private io: AgentServer | null = null;
+  private valkey: ValkeyLink | null = null;
 
   attach(
     httpServer: HttpServer,
@@ -48,13 +50,21 @@ export class RealtimeService implements BeforeApplicationShutdown {
       readonly freshSessions: Pick<SessionResolver, 'resolveFresh'>;
       readonly withTenant: AgentEventDeps['withTenant'];
       readonly revalidateMs: number;
+      /** Valkey, so that the packets of the worker and of the other instances reach these sockets (N144). */
+      readonly adapter: AdapterPolicy;
     },
   ): AgentNamespace {
     if (this.io) throw new Error('the realtime server is already attached');
+    if ('url' in deps.adapter) this.valkey = createValkeyLink(deps.adapter.url, this.logger);
+    else
+      this.logger.warn(
+        'REDIS_URL is not set: realtime runs in memory, the worker cannot reach these sockets',
+      );
     const io: AgentServer = (this.io = new Server(httpServer, {
       transports: ['websocket'],
       maxHttpBufferSize: SOCKET_MAX_BYTES,
       serveClient: false,
+      ...(this.valkey ? { adapter: this.valkey.adapter } : {}),
     }));
     io.of('/').use((_socket, next) => next(new HandshakeRefusedError('unauthorized', '')));
     const agent = io.of('/agent');
@@ -84,9 +94,15 @@ export class RealtimeService implements BeforeApplicationShutdown {
     return this.io?.of('/agent') ?? null;
   }
 
-  /** Before Nest closes the HTTP server, which would otherwise wait for the open sockets. */
-  beforeApplicationShutdown(): void {
+  /** For /readyz: Valkey answers, when the server uses it; true on the in-memory adapter. */
+  ping(): Promise<boolean> {
+    return this.valkey ? this.valkey.ping() : Promise.resolve(true);
+  }
+
+  /** Before Nest closes the HTTP server, which would otherwise wait for the open sockets; then the connections to Valkey. */
+  async beforeApplicationShutdown(): Promise<void> {
     this.io?.disconnectSockets(true);
     this.io?.engine.close();
+    await this.valkey?.close();
   }
 }
