@@ -47,6 +47,11 @@ jobs:
       - run: pnpm test
       - run: pnpm format:check
       - run: pnpm --filter @gani/db lint:migrations
+      # The types of the admin are generated from the OpenAPI of the API: a change to one without the other fails here.
+      - name: Admin API types match docs/openapi/openapi.json
+        run: |
+          pnpm --filter @gani/admin gen:api
+          git diff --exit-code -- apps/admin/src/api/schema.d.ts
 
   # The admin as a person uses it: the built app in Chromium against apps/admin/e2e/stub-api.ts, axe-core on every screen
   # (apps/admin/CLAUDE.md "CI bắt buộc"). No database: the stub answers /api/auth and /v1.

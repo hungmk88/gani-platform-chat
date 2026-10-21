@@ -49,6 +49,7 @@ export default defineConfig(
       '**/.next/**',
       '**/.turbo/**',
       '**/coverage/**',
+      'apps/admin/src/api/schema.d.ts', // generated from docs/openapi/openapi.json
     ],
   },
   { files: code, extends: [js.configs.recommended] },
