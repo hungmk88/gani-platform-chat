@@ -1,6 +1,12 @@
 'use client';
 
-import { QueryCache, QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import { ApiFailure, getter } from './fetch';
@@ -37,4 +43,19 @@ export function useApiQuery<T>(parts: readonly unknown[], path: string) {
   const scope = useContext(ScopeContext);
   if (!scope) throw new Error('useApiQuery outside QueryProvider');
   return useQuery<T, ApiFailure>({ queryKey: scopeKey(scope, ...parts), queryFn: getter<T>(path) });
+}
+
+/** Pages of a cursor list (`{ data, nextCursor }`, P9): `pathOf(cursor)` is the GET of one page, `parts` its key in the scope. */
+export function useApiPages<T extends { readonly nextCursor: string | null }>(
+  parts: readonly unknown[],
+  pathOf: (cursor: string | null) => string,
+) {
+  const scope = useContext(ScopeContext);
+  if (!scope) throw new Error('useApiPages outside QueryProvider');
+  return useInfiniteQuery<T, ApiFailure, { pages: T[] }, readonly unknown[], string | null>({
+    queryKey: scopeKey(scope, ...parts),
+    queryFn: ({ pageParam, signal }) => getter<T>(pathOf(pageParam))({ signal }),
+    initialPageParam: null,
+    getNextPageParam: (last) => last.nextCursor,
+  });
 }
