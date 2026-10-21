@@ -82,7 +82,7 @@ Trang mặc định sau đăng nhập:
 ## E2E và axe (F4)
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
-- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500). Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
   API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` theo đề xuất U32 — Backend làm xong thì đối chiếu lại.
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
@@ -94,3 +94,12 @@ Trang mặc định sau đăng nhập:
   truyền `idempotencyKey` (một khóa cho một thao tác, giữ nguyên khi người dùng bấm lại); lỗi `wait` (429, `idempotency_in_progress`) tự thử lại một lần theo `Retry-After` ≤ 10 giây.
 - `src/api/errors.ts`: bảng mã lỗi P9 (+ mã API đang trả: `two_factor_setup_required`, `invalid_assignee`, `idempotency_*`, `forbidden_origin`), mỗi mã một câu và một hành động. Mã lạ → theo HTTP status.
 - Kiểu: `components['schemas'][...]` trong `src/api/schema.d.ts`, sinh bằng `pnpm --filter @gani/admin gen:api` từ `docs/openapi/openapi.json` (không sửa tay, không lint/format). Backend đổi OpenAPI thì chạy lại; CI đỏ nếu lệch.
+- Server state: `useApiQuery<T>(parts, path)` (`src/query/provider.tsx`), khóa luôn là `['org', orgId, 'ws', workspaceId, ...parts]` (`src/query/keys.ts`).
+  `QueryProvider` gắn `key={scopeId(scope)}` trong khung app: đổi công ty/workspace là cache mới; đăng xuất xóa cache. Lỗi `sign_in`/`set_up_2fa` của mọi query tự chuyển trang.
+  `workspaceId` đang `null` tới khi có bộ đổi workspace (U32 chưa có workspace hiện tại).
+
+## Hộp thư (#6)
+
+- `/inbox` (I1a): cột danh sách. Bộ lọc nằm trên URL (`?assignee=me|none&state=…|hold`), trang theo cursor ("Tải thêm"). Vai trò đọc được: owner, admin, manager, sales, support (như `permissions.ts` của API); vai trò khác → trang 403.
+- Dòng chỉ hiện trường API có: trạng thái (nhãn lời thường), "Tôi" / "Người khác" / "Chưa ai nhận", giờ tin cuối (giờ Việt Nam). Tên khách, kênh, đoạn trích, tag, SLA chờ U30; không bịa dữ liệu (CEO chọn A, 21/10).
+- `assignedUserId` trong kiểu sinh mất `null` (OpenAPI mô tả `allOf[Uuid, string|null]`): hàm nhận nó tự khai `string | null`.
