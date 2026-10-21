@@ -1,9 +1,8 @@
 import { Test } from '@nestjs/testing';
+import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { describe, expect, it } from 'vitest';
 
-import { ConversationStateMachine } from './conversation-state-machine.js';
 import { ConversationsModule } from './conversations.module.js';
-import { MessageService } from './message-service.js';
 
 describe('ConversationsModule', () => {
   it('provides one ConversationStateMachine that needs no connection', async () => {

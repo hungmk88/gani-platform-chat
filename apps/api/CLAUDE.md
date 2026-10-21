@@ -9,7 +9,7 @@
 
 ## FSM hội thoại (P14 Brief)
 
-- Chỉ `ConversationStateMachine` được đổi `conversations.state`.
+- Chỉ `ConversationStateMachine` được đổi `conversations.state`. Nó, `MessageService` và `OutboxWriter` nằm ở gói `@gani/conversations` (N138), dùng chung với worker.
 - Cấm `UPDATE conversations SET state = ...` trực tiếp — lint chặn.
 - Mọi transition ghi `conversation_events`.
 - Transition không có trong bảng P14 → lỗi.

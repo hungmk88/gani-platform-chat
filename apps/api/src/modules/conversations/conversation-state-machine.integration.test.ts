@@ -7,16 +7,17 @@ import {
   type TransitionWrite,
 } from '@gani/db';
 import { InvalidTransitionError, snapshotViolations, type ConversationState } from '@gani/domain';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-import { DatabaseService } from '../database/database.service.js';
 import {
+  ConversationAlreadyClaimedError,
+  ConversationNotFoundError,
   ConversationStateMachine,
   conversationStore,
   type ConversationStore,
   type TransitionOutcome,
-} from './conversation-state-machine.js';
-import { ConversationAlreadyClaimedError, ConversationNotFoundError } from './errors.js';
+} from '@gani/conversations';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { DatabaseService } from '../database/database.service.js';
 
 // M1.2 PR2c-3 (N96) on PostgreSQL with the real store and the pool of app_role: the claim race (CLAUDE.md: claim-race.spec), the
 // whole life of a conversation, atomicity and isolation. Needs a database, so it runs in the `db` job of CI and not on a dev machine.

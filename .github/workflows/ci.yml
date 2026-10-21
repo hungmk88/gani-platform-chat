@@ -125,8 +125,8 @@ jobs:
           export DATABASE_URL_AUTH="postgres://auth_role:${AUTH_ROLE_PASSWORD}@${base}"
           export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
           export DATABASE_URL_SUPPORT="postgres://support_test_login:${SUPPORT_TEST_LOGIN_PASSWORD}@${base}"
-          # The tests import @gani/domain, which exports its dist/: build it and @gani/db before anything runs (review A-01).
-          pnpm --filter "@gani/db..." build
+          # The tests import @gani/domain and @gani/conversations, which export their dist/: build them and @gani/db first (A-01, N138).
+          pnpm --filter "@gani/db..." --filter "@gani/conversations..." build
           pnpm --filter @gani/db migrate
           pnpm --filter @gani/db test:integration
           # Better Auth on the real adapter as auth_role (N79); reuses this job's PostgreSQL. Split it into its own job if it adds > 30 s.

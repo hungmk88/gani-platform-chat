@@ -1,12 +1,12 @@
 import { InvalidTransitionError } from '@gani/domain';
 import { Logger, MethodNotAllowedException, NotFoundException } from '@nestjs/common';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
 import {
   ConversationAlreadyClaimedError,
   ConversationNotFoundError,
   VersionConflictError,
-} from '../conversations/errors.js';
+} from '@gani/conversations';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { codeOfStatus, ProblemFilter, StoredProblem, toProblem } from './problem.filter.js';
 import { problem } from './problem.js';
 import { runWithRequestContext } from './request-context.js';
