@@ -94,3 +94,6 @@ Trang mặc định sau đăng nhập:
   truyền `idempotencyKey` (một khóa cho một thao tác, giữ nguyên khi người dùng bấm lại); lỗi `wait` (429, `idempotency_in_progress`) tự thử lại một lần theo `Retry-After` ≤ 10 giây.
 - `src/api/errors.ts`: bảng mã lỗi P9 (+ mã API đang trả: `two_factor_setup_required`, `invalid_assignee`, `idempotency_*`, `forbidden_origin`), mỗi mã một câu và một hành động. Mã lạ → theo HTTP status.
 - Kiểu: `components['schemas'][...]` trong `src/api/schema.d.ts`, sinh bằng `pnpm --filter @gani/admin gen:api` từ `docs/openapi/openapi.json` (không sửa tay, không lint/format). Backend đổi OpenAPI thì chạy lại; CI đỏ nếu lệch.
+- Server state: `useApiQuery<T>(parts, path)` (`src/query/provider.tsx`), khóa luôn là `['org', orgId, 'ws', workspaceId, ...parts]` (`src/query/keys.ts`).
+  `QueryProvider` gắn `key={scopeId(scope)}` trong khung app: đổi công ty/workspace là cache mới; đăng xuất xóa cache. Lỗi `sign_in`/`set_up_2fa` của mọi query tự chuyển trang.
+  `workspaceId` đang `null` tới khi có bộ đổi workspace (U32 chưa có workspace hiện tại).
