@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import '@gani/ui/theme.css';
+
+body {
+  line-height: 1.5;
+}

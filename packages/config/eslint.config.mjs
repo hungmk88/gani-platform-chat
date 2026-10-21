@@ -3,6 +3,7 @@ import css from '@eslint/css';
 import { resolve } from 'node:path';
 import { defineConfig } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 import { rawCssSelectors, rawStyleSelectors } from './ui-lint.mjs';
@@ -111,6 +112,12 @@ export default defineConfig(
     files: ['apps/admin/**/*.{ts,tsx,mts,cts}'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     rules: { 'no-restricted-syntax': ['error', ...conversationWrites, ...rawStyleSelectors] },
+  },
+  // The rules of hooks for the admin. @next/eslint-plugin-next is left out: its fast-glob pulls braces 3.0.3, which fails the
+  // high-severity audit (GHSA-vfj7-8cjw-p6xm, no patched version).
+  {
+    files: ['apps/admin/**/*.{ts,tsx,mts,cts}'],
+    extends: [reactHooks.configs.flat['recommended-latest']],
   },
   {
     files: ['apps/**/*.css'],
