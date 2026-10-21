@@ -2,7 +2,7 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createDbPool, readMemberContext, withTenant } from '../src/index.js';
+import { createDbPool, readMemberContext, readOrgSummary, withTenant } from '../src/index.js';
 import { url } from './db.js';
 
 // readMemberContext on app_role with RLS: one person in two organisations with different roles and workspaces, plus the cases
@@ -135,5 +135,25 @@ describe('readMemberContext', () => {
 
   it('fails loudly without a tenant context instead of answering empty', async () => {
     await expect(pool.query('SELECT 1 FROM org_members LIMIT 1')).rejects.toThrow();
+  });
+});
+
+describe('readOrgSummary', () => {
+  const summary = (org: string, ids: string[]) =>
+    withTenant(pool, { orgId: org, workspaceIds: ids }, (tx) => readOrgSummary(tx, ids));
+
+  it('names the organisation of the transaction and the live workspaces asked for', async () => {
+    expect(await summary(A, [A1, A2])).toEqual({
+      org: { id: A, name: 'T' },
+      workspaces: [A1, A2].sort().map((id) => ({ id, name: 'W' })),
+    });
+    expect(await summary(C, [])).toEqual({ org: { id: C, name: 'T' }, workspaces: [] });
+  });
+
+  it('leaves out a deleted workspace and one of another organisation (RLS)', async () => {
+    expect(await summary(A, [A1, ADEAD, B1])).toEqual({
+      org: { id: A, name: 'T' },
+      workspaces: [{ id: A1, name: 'W' }],
+    });
   });
 });

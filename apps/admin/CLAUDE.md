@@ -73,7 +73,8 @@ Trang mặc định sau đăng nhập:
 - Next.js 16 (App Router) + React 19 + Tailwind 4 (`@gani/ui/theme.css`, chỉ class theo token). Font Inter tự host (`@fontsource-variable/inter`).
 - `pnpm --filter @gani/admin dev` → cổng 3001. `/api/auth/*` và `/v1/*` được chuyển tiếp sang `API_ORIGIN` (mặc định `http://localhost:3000`):
   admin và API chung một địa chỉ gốc (`BETTER_AUTH_URL`, N136), production do reverse proxy làm.
-- Khung app lấy người dùng từ `GET /v1/me` (U32, Backend chưa có): chưa có thì hiện trang lỗi, không có vai trò giả trong mã.
+- Khung app lấy người dùng từ `GET /v1/me` (U32, N145; kiểu `Me` sinh từ OpenAPI, `src/me.ts`): lỗi thì hiện trang lỗi, không có vai trò giả trong mã.
+  `org: null` mà không phải platform operator (không thuộc công ty nào, hay thuộc nhiều công ty mà chưa chọn) → trang "không có quyền"; màn chọn công ty chờ danh sách công ty (N145 còn mở).
 - `next build` hỏng ("reading 'useContext'") nếu `NODE_ENV=development` đặt sẵn trong môi trường: bỏ biến đó khi build. CI không đặt.
 - `typecheck` = `next typegen && tsc --noEmit` (`next-env.d.ts` do Next sinh, không commit).
 - Import trong app không có đuôi `.js` (bundler), khác `apps/api`.
@@ -82,8 +83,8 @@ Trang mặc định sau đăng nhập:
 ## E2E và axe (F4)
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
-- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500). Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
-  API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` theo đề xuất U32 — Backend làm xong thì đối chiếu lại.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
+  API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
 - `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
@@ -96,10 +97,14 @@ Trang mặc định sau đăng nhập:
 - Kiểu: `components['schemas'][...]` trong `src/api/schema.d.ts`, sinh bằng `pnpm --filter @gani/admin gen:api` từ `docs/openapi/openapi.json` (không sửa tay, không lint/format). Backend đổi OpenAPI thì chạy lại; CI đỏ nếu lệch.
 - Server state: `useApiQuery<T>(parts, path)` (`src/query/provider.tsx`), khóa luôn là `['org', orgId, 'ws', workspaceId, ...parts]` (`src/query/keys.ts`).
   `QueryProvider` gắn `key={scopeId(scope)}` trong khung app: đổi công ty/workspace là cache mới; đăng xuất xóa cache. Lỗi `sign_in`/`set_up_2fa` của mọi query tự chuyển trang.
-  `workspaceId` đang `null` tới khi có bộ đổi workspace (U32 chưa có workspace hiện tại).
+  `workspaceId` đang `null` tới khi có bộ đổi workspace (`/v1/me` chỉ trả danh sách workspace, chưa có workspace hiện tại).
 
 ## Hộp thư (#6)
 
 - `/inbox` (I1a): cột danh sách. Bộ lọc nằm trên URL (`?assignee=me|none&state=…|hold`), trang theo cursor ("Tải thêm"). Vai trò đọc được: owner, admin, manager, sales, support (như `permissions.ts` của API); vai trò khác → trang 403.
 - Dòng chỉ hiện trường API có: trạng thái (nhãn lời thường), "Tôi" / "Người khác" / "Chưa ai nhận", giờ tin cuối (giờ Việt Nam). Tên khách, kênh, đoạn trích, tag, SLA chờ U30; không bịa dữ liệu (CEO chọn A, 21/10).
 - `assignedUserId` trong kiểu sinh mất `null` (OpenAPI mô tả `allOf[Uuid, string|null]`): hàm nhận nó tự khai `string | null`.
+- `/inbox/[id]` (I1b): danh sách bên trái, hội thoại bên phải (`inbox/layout.tsx` kiểm vai trò một lần). Tin xếp theo `platformSentAt` rồi `sequenceNumber` (P10); "Tải tin cũ hơn" theo cursor. Nội dung khách là chữ thuần (React escape, không HTML/markdown, T2 có E2E). Hội thoại không được xem và không tồn tại cùng một câu "Không tìm thấy" (404, P9).
+- Thao tác (I1c): Nhận (phím A), Chờ khách, Đóng (phím E, hộp thoại chọn kết quả). Nút chỉ hiện khi API cho phép (`src/inbox/actions.ts`, cùng luật `permissions.ts` + FSM P14); chờ máy chủ, khóa nút, mỗi lần bấm một `Idempotency-Key` mới. Nhận trượt (409 `conversation_already_claimed`): hiện người đang giữ theo `assignedUserId` của 409, không đọc lại hội thoại (sales/support không còn được xem).
+- Realtime (I1b-2): một kết nối Socket.IO `/agent` cho khung app (`src/realtime/realtime.tsx`), chỉ với vai trò đọc hội thoại; nằm trong `QueryProvider` nên đổi công ty/workspace hay đăng xuất là ngắt. `state_changed`/`assigned`/`message.created` sửa cache (`src/realtime/events.ts`: không thay bản mới bằng bản cũ). Hội thoại đang mở: `conversation.subscribe`, nối lại thì `resume` từ số tin lớn nhất (`use-conversation-realtime.ts`). Client chỉ gửi `conversationId`, không bao giờ tên phòng (T3, E2E). `session.ended` → `/login`.
+- `next start` **không** chuyển tiếp WebSocket (đã thử). Production: admin và API chung địa chỉ gốc sau reverse proxy, `REALTIME_ORIGIN` để trống. Dev/E2E: `REALTIME_ORIGIN=http://localhost:3000` (đọc lúc chạy, không cần build lại); cookie vẫn đi vì cùng tên máy, `Origin` vẫn là địa chỉ admin.

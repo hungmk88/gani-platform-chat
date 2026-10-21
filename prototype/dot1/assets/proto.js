@@ -175,8 +175,11 @@
     if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', 'overview.html']);
+    if (Proto.role() === 'manager') items.push(['workspace', 'Cài đặt › Workspace (chỉ xem)', 'workspace.html']);
     if (['owner', 'admin'].includes(Proto.role())) {
       items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);
+      items.push(['members', 'Cài đặt › Thành viên', 'members.html', true]);
+      items.push(['workspace', 'Cài đặt › Workspace', 'workspace.html', true]);
       items.push(['audit', 'Audit log', 'audit.html', true]);
       items.push(['autonomy', 'Tự chủ & feature flag', 'autonomy.html', true]);
     }

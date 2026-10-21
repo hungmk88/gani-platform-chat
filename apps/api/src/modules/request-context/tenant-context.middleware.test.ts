@@ -195,13 +195,15 @@ describe('tenant context middleware', () => {
     }
   });
 
-  describe('the route that works without an organisation', () => {
-    it('lets the exact path through with no session, in any letter case, with a query', async () => {
+  describe('the routes that work without an organisation', () => {
+    it('lets the exact paths through with no session, in any letter case, with a query', async () => {
       const get = await start({ sessions: { resolve: () => Promise.resolve(null) } });
       for (const path of [
         '/v1/me/security-status',
         '/V1/me/security-status',
         '/v1/ME/SECURITY-STATUS?a=1',
+        '/v1/me',
+        '/V1/ME?a=1',
       ]) {
         const res = await get(path);
         expect(res.status, path).toBe(200);
@@ -218,7 +220,11 @@ describe('tenant context middleware', () => {
         '/v1/me/security-status%2f',
         '/v1/me//security-status',
         '/v1/x/../me/security-status',
-        '/v1/me',
+        '/v1/me/',
+        '/v1/me/x',
+        '/v1/mex',
+        '/v1//me',
+        '/v1/x/../me',
       ]) {
         expect(await get.raw(path), path).toBe(401);
       }

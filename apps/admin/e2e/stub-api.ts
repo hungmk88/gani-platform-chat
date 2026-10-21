@@ -2,18 +2,21 @@
 // started by Playwright; this answers what it asks, in the shapes of Better Auth and of src/auth.ts, src/me.ts. Never deployed.
 // Each email is one case: `<role>@e2e.test` signs straight in, `<role>+2fa@` asks for a code, `<role>+setup@` must set up 2FA,
 // `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
-// `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list.
+// `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
+// `+stale@` gets version_conflict on every other action.
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
-import { ROLES } from '../src/nav';
+import type { Me } from '../src/me';
+import { ROLES, type Role } from '../src/nav';
+import { attachAgent, type Agent } from './stub-agent';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
 export const accountOf = (who: string) => `${who}@e2e.test`;
 
-/** Signs in, then `GET /v1/me` is not served (U32): the shell shows the error page with this trace. */
+/** Signs in, then `GET /v1/me` answers 404 (an API without the route): the shell shows the error page with this trace. */
 export const NO_ME = accountOf('no-me');
 export const NO_ME_TRACE = 'trace-e2e-no-me';
 /** Sign-in answers 429 (rate limit) or 503 (API down), whatever the password. */
@@ -40,6 +43,33 @@ const conversation = (n: number, state: string, assignedUserId: string | null, h
   lastCustomerMessageAt: null,
   createdAt: '2026-10-20T00:00:00Z',
 });
+/** A message a customer could send to break a page (T2): it must show as these characters and run nothing. */
+export const HOSTILE =
+  '<script>window.__xss = 1</script><img src=x onerror="window.__xss = 1">**đậm**';
+const message = (
+  n: number,
+  senderKind: string,
+  body: string,
+  platformSentAt: string | null,
+  senderUserId: string | null = null,
+) => ({
+  id: `0190b000-0000-7000-8000-00000000000${n}`,
+  sequenceNumber: n,
+  senderKind,
+  senderUserId,
+  kind: 'text',
+  body,
+  platformSentAt,
+  createdAt: `2026-10-21T02:0${n}:30Z`,
+});
+/** The messages of conversation #2 (sales holds it); #5 arrived late from Zalo and was sent before #4. */
+export const MESSAGES = [
+  message(1, 'customer', 'Chào shop, cho hỏi giá thùng 24 lon.', '2026-10-21T02:01:00Z'),
+  message(2, 'bot', 'Dạ em chuyển anh/chị cho nhân viên ạ.', '2026-10-21T02:02:00Z'),
+  message(3, 'agent', 'Dạ em chào anh, em gửi báo giá ngay.', null, 'user-sales'),
+  message(4, 'customer', HOSTILE, '2026-10-21T02:06:00Z'),
+  message(5, 'customer', 'Gửi lúc 02:05, tới sau.', '2026-10-21T02:05:00Z'),
+];
 export const CONVERSATIONS = [
   conversation(1, 'HUMAN_WAITING_Q', null),
   conversation(2, 'HUMAN_ACTIVE', 'user-sales'),
@@ -57,10 +87,14 @@ export const BACKUP_CODES = Array.from({ length: 10 }, (_, i) => `e2e-backup-${i
 const SESSION = 'e2e_session';
 const PENDING = 'e2e_two_factor'; // Better Auth's cookie between the password and the code
 
+type StubConversation = (typeof CONVERSATIONS)[number];
 interface Session {
   readonly email: string;
   mustSetUp: boolean;
   twoFactorEnabled: boolean;
+  /** This session's own copy, so an action of one test never shows in another. */
+  readonly conversations: StubConversation[];
+  readonly messages: (typeof MESSAGES)[number][];
 }
 const sessions = new Map<string, Session>();
 const pending = new Map<string, string>(); // pending id → email
@@ -102,12 +136,18 @@ const setCookie = (name: string, value: string) =>
 function open(email: string): string {
   const id = randomUUID();
   const kind = email.split('@')[0]?.split('+')[1];
-  sessions.set(id, { email, mustSetUp: kind === 'setup', twoFactorEnabled: kind === '2fa' });
+  sessions.set(id, {
+    email,
+    mustSetUp: kind === 'setup',
+    twoFactorEnabled: kind === '2fa',
+    conversations: structuredClone(CONVERSATIONS),
+    messages: structuredClone(MESSAGES),
+  });
   return setCookie(SESSION, id);
 }
 
-/** The person of `GET /v1/me` (src/me.ts), from the part of the email before `+` or `@`: a role of src/nav.ts. */
-function meOf(email: string) {
+/** The person of `GET /v1/me` (schema `Me`, src/me.ts), from the part of the email before `+` or `@`: a role of src/nav.ts. */
+function meOf(email: string): Me | null {
   const role = email.split('@')[0]?.split('+')[0] ?? '';
   if (!(ROLES as readonly string[]).includes(role)) return null;
   const operator = role === 'platform_operator';
@@ -115,7 +155,9 @@ function meOf(email: string) {
     id: `user-${role}`,
     name: `Người thử ${role}`,
     isPlatformOperator: operator,
-    org: operator ? null : { id: 'org-e2e', name: 'Công ty thử', role },
+    org: operator
+      ? null
+      : { id: 'org-e2e', name: 'Công ty thử', role: role as Exclude<Role, 'platform_operator'> },
     workspaces: operator ? [] : [{ id: 'ws-e2e', name: 'Workspace thử' }],
   };
 }
@@ -198,7 +240,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const all = ['owner', 'admin', 'manager'].includes(role);
     const seen = session.email.includes('+inbox-empty@')
       ? []
-      : CONVERSATIONS.filter(
+      : session.conversations.filter(
           (c) =>
             (all || c.assignedUserId === null || c.assignedUserId === me?.id) &&
             (q.get('assignee') !== 'me' || c.assignedUserId === me?.id) &&
@@ -209,6 +251,72 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const from = Number(q.get('cursor') ?? 0);
     const next = from + STUB_PAGE < seen.length ? String(from + STUB_PAGE) : null;
     return send(res, 200, { data: seen.slice(from, from + STUB_PAGE), nextCursor: next });
+  }
+  const one = /^\/v1\/conversations\/([^/]+)(\/messages)?$/.exec(path ?? '');
+  if (req.method === 'GET' && one) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const me = meOf(session.email);
+    const all = ['owner', 'admin', 'manager'].includes(me?.org?.role ?? '');
+    const c = session.conversations.find((x) => x.id === one[1]);
+    // Not there and not visible are the same 404 (P9).
+    if (!c || !(all || c.assignedUserId === null || c.assignedUserId === me?.id))
+      return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (!one[2]) return send(res, 200, c);
+    const own = c.id === CONVERSATIONS[1]?.id ? [...session.messages].reverse() : [];
+    const from = Number(new URL(req.url ?? '/', 'http://stub').searchParams.get('cursor') ?? 0);
+    const next = from + STUB_PAGE < own.length ? String(from + STUB_PAGE) : null;
+    return send(res, 200, { data: own.slice(from, from + STUB_PAGE), nextCursor: next });
+  }
+  // The actions of the Inbox (P9, P14): Idempotency-Key required, the version read, the FSM's from-states.
+  const act = /^\/v1\/conversations\/([^/]+)\/(claim|wait-customer|close)$/.exec(path ?? '');
+  if (req.method === 'POST' && act) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    if (!req.headers['idempotency-key'])
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    const body = await json(req);
+    const me = meOf(session.email);
+    const c = session.conversations.find((x) => x.id === act[1]);
+    if (!c || !me) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (act[2] === 'claim') {
+      if (session.email.includes('+claimed@') || c.state !== 'HUMAN_WAITING_Q') {
+        Object.assign(c, {
+          state: 'HUMAN_ACTIVE',
+          assignedUserId: 'user-manager',
+          version: c.version + 1,
+        });
+        res.writeHead(409, { 'content-type': 'application/problem+json' });
+        return res.end(
+          JSON.stringify({
+            status: 409,
+            code: 'conversation_already_claimed',
+            traceId: 'trace-e2e-claimed',
+            assignedUserId: 'user-manager',
+          }),
+        );
+      }
+      Object.assign(c, { state: 'HUMAN_ACTIVE', assignedUserId: me.id, version: c.version + 1 });
+      return send(res, 200, c);
+    }
+    if (body['version'] !== c.version || session.email.includes('+stale@'))
+      return problem(res, 409, 'version_conflict', 'trace-e2e-version');
+    if (act[2] === 'wait-customer')
+      Object.assign(c, { state: 'PENDING_CUSTOMER', version: c.version + 1 });
+    else
+      Object.assign(c, {
+        state: 'CLOSED',
+        outcome: body['outcome'],
+        assignedUserId: null,
+        version: c.version + 1,
+      });
+    return send(res, 200, c);
+  }
+  // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
+  if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
+    const body = await json(req);
+    const sid = String(body['sid']);
+    const s = sessions.get(sid);
+    if (s) agent?.lever(path.slice(7), sid, body);
+    return send(res, 200, { ok: true });
   }
   if (req.method === 'GET' && path === '/v1/me') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
@@ -221,14 +329,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   return problem(res, 404, 'not_found', 'trace-e2e-404');
 }
 
+let agent: Agent | null = null;
+
 /** Playwright `globalSetup`: starts the stub before the tests and returns the teardown that stops it. */
 export default async function start(): Promise<() => Promise<void>> {
   const server = createServer((req, res) => {
     route(req, res).catch(() => problem(res, 500, 'internal_error', 'trace-e2e-500'));
   });
+  agent = attachAgent(server, sessions, CONVERSATIONS[1]!.id);
   await new Promise<void>((ok, fail) => {
     server.once('error', fail); // EADDRINUSE: the real API is running on this port; stop it first (apps/admin/CLAUDE.md)
     server.listen(STUB_PORT, ok);
   });
-  return () => new Promise<void>((ok) => server.close(() => ok()));
+  return () =>
+    new Promise<void>((ok) => {
+      agent?.close();
+      server.close(() => ok());
+    });
 }

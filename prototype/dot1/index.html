@@ -209,6 +209,33 @@
       </section>
 
       <section>
+        <h2>1d. Màn S4 — Thành viên (#19) và Workspace (#21), nộp 21/12</h2>
+        <p class="muted">
+          Theo Phụ lục B (Mời thành viên, đổi vai trò), spec M8 §3.5 và §3.8 (Q-U20-1), endpoint-M8. Chỉ Owner, Admin. Admin
+          không nâng ai lên Owner; 2FA của Owner chỉ Owner khác đặt lại.
+        </p>
+        <div class="grid" style="margin-top: var(--sp-3)">
+          <div class="card">
+            <h3><a href="members.html?role=admin">Thành viên (#19)</a></h3>
+            <ul>
+              <li><a href="members.html?role=admin">Bình thường (mời, đổi vai trò, giới hạn tải, đặt lại 2FA)</a></li>
+              <li><a href="members.html?role=owner">Owner: được mời và sửa Owner</a></li>
+              <li><a href="members.html?role=admin&state=loading">Đang tải</a> · <a href="members.html?role=admin&state=empty">Trống</a> · <a href="members.html?role=admin&state=error">Lỗi</a></li>
+              <li><a href="members.html?role=admin&state=aioff">AI tắt — Không áp dụng</a> · <a href="members.html?role=admin&state=invite_expired">Lời mời hết hạn</a></li>
+              <li><a href="members.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="workspace.html?role=admin">Workspace (#21)</a></h3>
+            <ul>
+              <li><a href="workspace.html?role=admin&tab=info">Thông tin &amp; giờ làm việc</a> · <a href="workspace.html?role=admin&tab=sla">SLA &amp; ưu tiên</a> · <a href="workspace.html?role=admin&tab=allocation">Phân bổ</a></li>
+              <li><a href="workspace.html?role=manager">Manager: chỉ xem (chờ chốt với Phụ lục B)</a></li>
+              <li><a href="workspace.html?role=admin&state=loading">Đang tải</a> · <a href="workspace.html?role=admin&state=error">Lỗi</a> · <a href="workspace.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="workspace.html?role=sales">Sales: không có quyền</a></li>
+            </ul>
+          </div>
+        </div>
+
         <h2>1c. Màn S3 — Kênh (#24) và Cấu hình Zalo OA (#25), nộp 07/12</h2>
         <p class="muted">
           Theo <code>docs/specs/zalo-channel-spec.md</code> và <code>channel-policy-spec.md</code> (đã duyệt 07/10). Chỉ

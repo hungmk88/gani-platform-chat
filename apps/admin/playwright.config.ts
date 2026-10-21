@@ -15,5 +15,11 @@ export default defineConfig({
     ...(chromium ? { launchOptions: { executablePath: chromium } } : {}),
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: { command: 'pnpm start', url: 'http://localhost:3001/login', timeout: 60_000 },
+  // The browser reaches the stub's Socket.IO directly: `next start` does not forward a WebSocket upgrade (production: one origin).
+  webServer: {
+    command: 'pnpm start',
+    url: 'http://localhost:3001/login',
+    timeout: 60_000,
+    env: { REALTIME_ORIGIN: 'http://localhost:3000' },
+  },
 });

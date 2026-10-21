@@ -1,28 +1,29 @@
+import type { components } from './api/schema';
 import type { Role } from './nav';
 
 /**
- * Who is signed in: `GET /v1/me`, asked of Backend in U32 (shape proposed there, not served yet). Until it is, the shell shows the
- * error page; nothing here invents a person or a role.
+ * Who is signed in: `GET /v1/me` (U32, N145), typed from the OpenAPI of the API (`gen:api`). `org` is null for a person of no
+ * company, or of several with none chosen; a platform operator who is also a member gets both (N145), the shell picks (`roleOf`).
  */
-export interface Me {
-  readonly id: string;
-  readonly name: string;
-  readonly isPlatformOperator: boolean;
-  readonly org: {
-    readonly id: string;
-    readonly name: string;
-    readonly role: Exclude<Role, 'platform_operator'>;
-  } | null;
-  readonly workspaces: readonly { readonly id: string; readonly name: string }[];
-}
+export type Me = components['schemas']['Me'];
+type OrgRole = NonNullable<Me['org']>['role'];
+
+/** All the roles the API sends: one added to the OpenAPI fails the typecheck here, and in `roleOf` until `nav.ts` has it. */
+const ORG_ROLES: Record<OrgRole, true> = {
+  owner: true,
+  admin: true,
+  manager: true,
+  sales: true,
+  support: true,
+  marketing: true,
+  viewer: true,
+};
 
 export type MeResult =
   | { readonly kind: 'ok'; readonly me: Me }
   | { readonly kind: 'signed_out' }
   | { readonly kind: 'two_factor_setup' }
   | { readonly kind: 'error'; readonly status: number; readonly traceId: string | null };
-
-const ORG_ROLES = new Set(['owner', 'admin', 'manager', 'sales', 'support', 'marketing', 'viewer']);
 
 function isMe(v: unknown): v is Me {
   if (typeof v !== 'object' || v === null) return false;
@@ -34,7 +35,9 @@ function isMe(v: unknown): v is Me {
     typeof m['isPlatformOperator'] === 'boolean' &&
     Array.isArray(m['workspaces']) &&
     (org === null ||
-      (typeof org === 'object' && typeof org['role'] === 'string' && ORG_ROLES.has(org['role'])))
+      (typeof org === 'object' &&
+        typeof org['role'] === 'string' &&
+        Object.hasOwn(ORG_ROLES, org['role'])))
   );
 }
 
@@ -54,7 +57,7 @@ export async function readMe(res: Response): Promise<MeResult> {
   };
 }
 
-/** The role the menu is built for: a platform operator works outside any company (prototype, U32 asks Backend to confirm). */
+/** The role the menu is built for: a platform operator works outside any company, even one who is also a member (prototype, N145). */
 export function roleOf(me: Me): Role | null {
   if (me.isPlatformOperator) return 'platform_operator';
   return me.org?.role ?? null;
