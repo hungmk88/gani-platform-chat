@@ -53,6 +53,8 @@ const PAGES = [
   'teams.html?role=admin&state=empty',
   'quick-replies.html?role=manager',
   'quick-replies.html?role=admin&state=empty',
+  'customers.html?role=manager',
+  'customers.html?role=marketing&state=aioff',
   'customer-data.html?role=admin',
   'customer-data.html?role=admin&tab=tags',
   'customer-data.html?role=manager&state=aioff',
