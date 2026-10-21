@@ -1,9 +1,11 @@
 # Gani Platform Chat
 
 Nền tảng Chat & AI Chatbot đa tenant cho 5 công ty (Brief Backend & Core v1.0, 12/10/2026).
-**Trạng thái (13/10/2026):** M1.1 (nền, tenant, RLS, xác thực) và M1.2 (hội thoại, FSM, outbox, worker) đã xong;
-M1.3 (inbound) xong phần cơ sở dữ liệu và kho, còn webhook và bộ xử lý (PR6). Chưa có AI, giao diện (`admin`, `widget`)
-và kênh Zalo chạy thật. Tổng hợp rà soát mã: `docs/reviews/00-summary.md`.
+**Trạng thái (19/10/2026):** M1.1 (nền, tenant, RLS, xác thực) và M1.2 (hội thoại, FSM, outbox, worker) đã xong, trừ
+Terraform staging, webhook và Socket.IO; module hội thoại có mã nhưng chưa gắn vào API. M1.3 (inbound) xong phần cơ sở dữ liệu
+và kho. Chưa có AI, giao diện (`admin`, `widget`) và kênh Zalo chạy thật. Tiến độ và review mới nhất:
+`docs/reviews/I-progress-review-2026-10-19.md`; audit toàn bộ: `docs/reviews/H-full-codebase-audit.md`; rà soát M1.1–M1.3:
+`docs/reviews/00-summary.md`.
 
 ## Yêu cầu
 
