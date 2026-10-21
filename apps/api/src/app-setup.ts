@@ -1,9 +1,11 @@
-import { readMemberContext } from '@gani/db';
+import { SecretBox } from '@gani/channels';
+import { insertIfAbsent, readMemberContext } from '@gani/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { toNodeHandler } from 'better-auth/node';
 
 import { AuthService } from './modules/auth/auth.service.js';
 import { DatabaseService } from './modules/database/database.service.js';
+import { createZaloWebhook } from './modules/hooks/zalo-webhook.js';
 import { ProblemFilter, parserErrors } from './modules/request-context/problem.filter.js';
 import { createSameOriginCheck } from './modules/request-context/same-origin.js';
 import { securityHeaders } from './modules/request-context/security-headers.js';
@@ -18,6 +20,7 @@ type Mountable = {
   use(handler: ReturnType<typeof createTwoFactorGate>): unknown;
   use(path: string, handler: ReturnType<typeof createTenantContextMiddleware>): unknown;
   use(path: string, handler: ReturnType<typeof createSameOriginCheck>): unknown;
+  post(path: string, handler: ReturnType<typeof createZaloWebhook>): unknown;
 };
 
 /**
@@ -34,6 +37,17 @@ export function setupApp(app: NestExpressApplication): void {
   // Before anything answers (AR-04): the gate's 403, Better Auth and Nest all send the security headers, and no X-Powered-By.
   express.disable('x-powered-by');
   express.use(securityHeaders);
+  // The webhooks of the channels before any parser (the signature is over the raw bytes) and outside the session layers: the tenant
+  // comes from the channel account (zalo spec §3). It answers by itself; nothing after it runs for that path.
+  express.post(
+    '/v1/hooks/zalo/:channelAccountId',
+    createZaloWebhook({
+      account: (id) => database.channelAccountForWebhook(id),
+      secrets: app.get(SecretBox),
+      withTenant: (ctx, fn) => database.withTenant(ctx, fn),
+      insert: insertIfAbsent,
+    }),
+  );
   // A change under /v1 that carries the session cookie comes from the application's own origin, or is refused (CSRF, N136).
   express.use('/v1', createSameOriginCheck(authService.origin));
   // First of all, for /api/auth and /v1 alike (N93): nothing of Better Auth or of ours runs for a person who has to set up a second factor.

@@ -147,4 +147,30 @@ describe('startWorker', () => {
     expect(await t.worker.shutdown()).toBe(false);
     expect(t.logs).toContain('shutdown_step_late {"step":"pool"}');
   });
+
+  it('starts the event consumer when given, and closes its source before the queue and the pool', async () => {
+    const t = setup({ hold: false });
+    await t.worker.shutdown();
+    const events: string[] = [];
+    const source = {
+      queues: vi.fn(() => Promise.resolve([])),
+      subscribe: vi.fn(),
+      close: vi.fn(() => Promise.resolve(void events.push('source.close'))),
+    };
+    const worker = startWorker({
+      store: t.store,
+      queue: { ...t.queue, close: () => Promise.resolve(void events.push('queue.close')) },
+      pool: { end: () => Promise.resolve(void events.push('pool.end')) },
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+      settings: { ...settings, pollMs: 1000 },
+      events: {
+        source,
+        handlers: {},
+        settings: { enabled: true, discoveryMs: 1000, maxQueues: 1, concurrency: 1 },
+      },
+    });
+    await vi.waitFor(() => expect(source.queues).toHaveBeenCalled());
+    expect(await worker.shutdown()).toBe(true);
+    expect(events).toEqual(['source.close', 'queue.close', 'pool.end']);
+  });
 });

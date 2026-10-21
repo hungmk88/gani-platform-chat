@@ -8,14 +8,18 @@
 // (config, pool, store, publisher, startWorker) must change them too (apps/worker/CLAUDE.md).
 import process from 'node:process';
 
+import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool } from '@gani/db';
 
 import { readConfig } from '../../dist/config.js';
+import { loggingHandlers } from '../../dist/consumer/handlers.js';
+import { createDbInboundStore } from '../../dist/inbound/db-store.js';
 import { startHttp } from '../../dist/http.js';
 import { createLogger } from '../../dist/logger.js';
 import { createDbPartitionStore } from '../../dist/maintenance/db-store.js';
 import { WorkerMetrics } from '../../dist/metrics.js';
 import { createBullmqPublisher } from '../../dist/queue/bullmq-publisher.js';
+import { createBullmqSource } from '../../dist/queue/bullmq-source.js';
 import { createDbOutboxStats, createDbRelayStore } from '../../dist/relay/db-store.js';
 import { startWorker } from '../../dist/worker.js';
 
@@ -27,7 +31,13 @@ if (crashAt !== 'before_publish' && crashAt !== 'after_publish') {
 
 const log = createLogger(); // same as main.ts
 const config = readConfig(process.env); // same as main.ts
-const pool = createDbPool(config.databaseUrl, { max: config.outbox.orgParallel + 2 }); // same as main.ts
+const pool = createDbPool(config.databaseUrl, {
+  max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
+}); // same as main.ts
+const fsm = new ConversationStateMachine(); // same as main.ts
+const messages = new MessageService(fsm, undefined, undefined, {
+  warn: (line) => log.warn('message_clock_skew', { line }),
+}); // same as main.ts
 const metrics = new WorkerMetrics(Date.now, createDbOutboxStats({ pool })); // same as main.ts
 const http = await startHttp({ ...config.http, metrics }); // same as main.ts (which logs and exits 1 when it cannot listen)
 log.info('worker_http_listening', { port: http.port }); // same as main.ts
@@ -58,6 +68,17 @@ startWorker({
   log,
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
+  inbound: {
+    store: createDbInboundStore({ pool, services: { fsm, messages } }),
+    settings: config.inbound,
+  },
+  ...(config.events.enabled && {
+    events: {
+      source: createBullmqSource(config.redisUrl, log, config.events.concurrency),
+      handlers: loggingHandlers(log),
+      settings: config.events,
+    },
+  }),
   metrics,
   http,
 }); // same as main.ts

@@ -1,4 +1,12 @@
-import { createDbPool, pingDb, withTenant, type TenantContext, type TenantTx } from '@gani/db';
+import {
+  channelAccountForWebhook,
+  createDbPool,
+  pingDb,
+  withTenant,
+  type TenantContext,
+  type TenantTx,
+  type WebhookChannelAccount,
+} from '@gani/db';
 import { Logger, type OnApplicationShutdown } from '@nestjs/common';
 
 type DbPool = ReturnType<typeof createDbPool>;
@@ -38,6 +46,16 @@ export class DatabaseService implements OnApplicationShutdown {
       );
     }
     return withTenant(this.pool, ctx, fn);
+  }
+
+  /** The channel account a webhook names, before any tenant is known (app.channel_account_for_webhook, N105). */
+  channelAccountForWebhook(channelAccountId: string): Promise<WebhookChannelAccount | null> {
+    if (this.pool === null) {
+      return Promise.reject(
+        new Error('DATABASE_URL_APP is not set: no channel account can be read'),
+      );
+    }
+    return channelAccountForWebhook(this.pool, channelAccountId);
   }
 
   async onApplicationShutdown(): Promise<void> {

@@ -15,6 +15,26 @@ export interface WorkerConfig {
     /** A queue with this many jobs waiting takes no more from its organisation until it drains (backpressure). */
     readonly queueMaxWaiting: number;
   };
+  /** The processing of stored webhooks (inbound spec §2): the same shape as the relay, a small batch per workspace. */
+  readonly inbound: {
+    readonly pollMs: number;
+    readonly leaseSeconds: number;
+    /** Events claimed from one workspace before the next workspace gets its turn. */
+    readonly batchSize: number;
+    readonly maxAttempts: number;
+    readonly orgsPerTick: number;
+    readonly orgParallel: number;
+  };
+  /** The consumer of the event queues (outbox spec §5–6, N141). Off in the kill-tests of the relay, which consume the queues themselves. */
+  readonly events: {
+    readonly enabled: boolean;
+    /** How often the registry of the queues is read for new ones. */
+    readonly discoveryMs: number;
+    /** Each queue holds one blocking connection to Valkey: past this many, new queues are passed over with a warning. */
+    readonly maxQueues: number;
+    /** Jobs of one queue run at the same time. */
+    readonly concurrency: number;
+  };
   /** The worker's own HTTP endpoints (`/healthz`, `/metrics`), for the probes and the monitoring (review OPS-02). */
   readonly http: {
     /** 0: a free port the system picks (the tests); the port is logged in `worker_http_listening`. */
@@ -62,6 +82,22 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       orgParallel: whole('OUTBOX_ORG_PARALLEL', 4, 1, 32),
       shutdownMs: whole('OUTBOX_SHUTDOWN_MS', 10_000, 1_000, 120_000),
       queueMaxWaiting: whole('OUTBOX_QUEUE_MAX_WAITING', 10_000, 1, 1_000_000),
+    },
+    inbound: {
+      pollMs: whole('INBOUND_POLL_MS', 500, 50, 60_000),
+      leaseSeconds: whole('INBOUND_LEASE_S', 60, 1, 3_600),
+      batchSize: whole('INBOUND_BATCH', 10, 1, 1_000),
+      // 5 is the number of Phụ lục #14 (inbound spec §2).
+      maxAttempts: whole('INBOUND_MAX_ATTEMPTS', 5, 1, 20),
+      // 1..1000 is what app.inbound_pending_orgs accepts (22023 otherwise).
+      orgsPerTick: whole('INBOUND_ORGS_PER_TICK', 50, 1, 1_000),
+      orgParallel: whole('INBOUND_ORG_PARALLEL', 2, 1, 32),
+    },
+    events: {
+      enabled: whole('EVENTS_CONSUMER_ENABLED', 1, 0, 1) === 1,
+      discoveryMs: whole('EVENTS_DISCOVERY_MS', 5_000, 100, 60_000),
+      maxQueues: whole('EVENTS_MAX_QUEUES', 200, 1, 10_000),
+      concurrency: whole('EVENTS_CONCURRENCY', 4, 1, 64),
     },
     http: {
       port: whole('WORKER_HTTP_PORT', 9464, 0, 65_535),

@@ -81,6 +81,9 @@ importers:
       '@asteasolutions/zod-to-openapi':
         specifier: 9.1.0
         version: 9.1.0(zod@4.6.5)
+      '@gani/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
       '@gani/conversations':
         specifier: workspace:*
         version: link:../../packages/conversations
@@ -144,9 +147,18 @@ importers:
 
   apps/worker:
     dependencies:
+      '@gani/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
+      '@gani/conversations':
+        specifier: workspace:*
+        version: link:../../packages/conversations
       '@gani/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@gani/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       bullmq:
         specifier: 5.81.5
         version: 5.81.5
@@ -157,9 +169,6 @@ importers:
       '@gani/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gani/domain':
-        specifier: workspace:*
-        version: link:../../packages/domain
       '@types/node':
         specifier: 22.20.5
         version: 22.20.5

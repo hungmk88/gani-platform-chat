@@ -1,11 +1,15 @@
+import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool } from '@gani/db';
 
 import { ConfigError, readConfig } from './config.js';
+import { loggingHandlers } from './consumer/handlers.js';
+import { createDbInboundStore } from './inbound/db-store.js';
 import { startHttp, type WorkerHttp } from './http.js';
 import { createLogger } from './logger.js';
 import { createDbPartitionStore } from './maintenance/db-store.js';
 import { WorkerMetrics } from './metrics.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
+import { createBullmqSource } from './queue/bullmq-source.js';
 import { createDbOutboxStats, createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
 
@@ -28,8 +32,13 @@ function configOrExit(): ReturnType<typeof readConfig> {
 const config = configOrExit();
 // The pool connects on its first query: making it before the HTTP endpoints only lets /metrics read the outbox through it.
 const pool = createDbPool(config.databaseUrl, {
-  max: config.outbox.orgParallel + 2,
+  max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
+});
+// The same state machine and message service as the API (N138); the warnings of the message service carry ids only.
+const fsm = new ConversationStateMachine();
+const messages = new MessageService(fsm, undefined, undefined, {
+  warn: (line) => log.warn('message_clock_skew', { line }),
 });
 const metrics = new WorkerMetrics(Date.now, createDbOutboxStats({ pool }));
 // The probes come first: a worker that cannot serve them (a port in use) does not start at all.
@@ -48,6 +57,17 @@ const worker = startWorker({
   log,
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
+  inbound: {
+    store: createDbInboundStore({ pool, services: { fsm, messages } }),
+    settings: config.inbound,
+  },
+  ...(config.events.enabled && {
+    events: {
+      source: createBullmqSource(config.redisUrl, log, config.events.concurrency),
+      handlers: loggingHandlers(log),
+      settings: config.events,
+    },
+  }),
   metrics,
   http,
 });

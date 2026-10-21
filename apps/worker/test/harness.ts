@@ -241,6 +241,9 @@ export function workerEnv(extra: Readonly<Record<string, string>> = {}): Record<
     OUTBOX_POLL_MS: '100',
     OUTBOX_LEASE_S: '5',
     OUTBOX_SHUTDOWN_MS: '5000',
+    // The kill-tests of the relay consume its queues with their own consumer: the worker's would take jobs from it. A test of the
+    // consumer turns it on (EVENTS_CONSUMER_ENABLED: '1').
+    EVENTS_CONSUMER_ENABLED: '0',
     // A free port each time: K2 and K3 start a worker right after another one.
     WORKER_HTTP_PORT: '0',
     ...extra,
