@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#14, #15, #16, #19, #20, #21, #22, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -21,6 +21,8 @@ const STATES = {
   'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
+  'customer-data.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
+  'customer-data.html?tab=tags&x=1': ['normal', 'empty', 'aioff'],
   'workspace.html': ['normal', 'loading', 'error', 'aioff'],
   'workspace.html?tab=sla&x=1': ['normal'],
   'workspace.html?tab=allocation&x=1': ['normal'],
@@ -219,6 +221,39 @@ check((await p.textContent('.dialog [role=alert]')).includes('Không lưu đư�
 await p.close();
 p = await open('quick-replies.html?role=sales');
 check((await p.textContent('main')).includes('không dùng Mẫu trả lời nhanh'), '#22: Sales không có quyền');
+await p.close();
+
+// #23 Dữ liệu khách
+p = await open('customer-data.html?role=admin');
+check((await p.locator('[role=tab]').count()) === 2 && (await p.locator('tbody tr').count()) === 4, '#23: 2 tab, 4 trường');
+check((await p.locator('tbody tr', { hasText: 'Mã số thuế' }).textContent()).includes('Mã hóa, che'), '#23: trường nhạy cảm có nhãn');
+check((await p.locator('tbody tr', { hasText: 'Mã số thuế' }).textContent()).includes('chỉ ẩn được') && (await p.getByRole('button', { name: 'Xóa Ngày mở cửa hàng' }).count()) === 1, '#23: trường có dữ liệu chỉ ẩn, trường trống xóa được');
+await p.locator('.btn.primary', { hasText: 'Thêm trường' }).click();
+await p.fill('#fd-name', 'Kiểu quán');
+await p.selectOption('#fd-type', 'one');
+await p.fill('#fd-options', 'Một');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('ít nhất 2 lựa chọn'), '#23: kiểu chọn cần ≥ 2 lựa chọn');
+await p.fill('#fd-name', 'mã so thue');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('đã có trường tên này'), '#23: tên trường không trùng (bỏ dấu)');
+await p.keyboard.press('Escape');
+await p.locator('[role=tab]', { hasText: 'Tag' }).click();
+await p.locator('.btn.primary', { hasText: 'Tạo tag' }).click();
+await p.fill('#tag-name', 'Bò Viên');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('trùng khi bỏ dấu'), '#23: tag trùng khi bỏ dấu bị chặn');
+await p.keyboard.press('Escape');
+await p.getByRole('button', { name: 'Gộp bo vien' }).click();
+check((await p.inputValue('#merge-into')) === 'g2' && (await p.textContent('.dialog')).includes('14 khách mang "bo vien" chuyển sang "bò viên"'), '#23: gộp tag gợi ý tag giống, nêu số khách');
+await p.keyboard.press('Escape');
+await shot(p, 'customer-data', true);
+await p.close();
+p = await open('customer-data.html?role=manager&state=aioff');
+check((await p.locator('[role=tab]').count()) === 1 && !(await p.textContent('tbody')).includes('Hỏi giá'), '#23: Manager chỉ tab Tag; AI tắt ẩn tag do AI gắn');
+await p.close();
+p = await open('customer-data.html?role=sales');
+check((await p.textContent('main')).includes('không dùng Dữ liệu khách'), '#23: Sales không có quyền');
 await p.close();
 
 // #21 Workspace
