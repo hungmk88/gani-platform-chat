@@ -56,6 +56,27 @@ export async function pendingOrgs(
   return rows.map((r) => r.org_id);
 }
 
+/** The state of the outbox for the monitoring (outbox spec §7, N118): totals over every organisation that is not deleted. */
+export interface OutboxStats {
+  readonly pending: number;
+  /** How long the oldest `pending` event has waited since it was written; 0 when there is none. */
+  readonly oldestPendingAgeSeconds: number;
+  readonly deadLetter: number;
+}
+
+/** Asked outside any tenant, through `app.outbox_stats` (SECURITY DEFINER, three numbers and nothing else). */
+export async function outboxStats(pool: pg.Pool): Promise<OutboxStats> {
+  const { rows } = await pool.query<{ pending: string; age: number; dead: string }>(
+    'SELECT pending, oldest_pending_age_seconds AS age, dead_letter AS dead FROM app.outbox_stats()',
+  );
+  const [row] = rows;
+  return {
+    pending: Number(row?.pending ?? 0),
+    oldestPendingAgeSeconds: row?.age ?? 0,
+    deadLetter: Number(row?.dead ?? 0),
+  };
+}
+
 /**
  * Takes up to `limit` due events of the tenant's organisation, oldest first, and marks them `claimed` (`attempts + 1`). `FOR UPDATE
  * SKIP LOCKED` hands two relays that ask at once disjoint batches instead of the same one.
@@ -96,7 +117,11 @@ export interface OutboxFailure {
   readonly retryAfterSeconds: number;
 }
 
-/** The queue refused it: back to `pending` after `retryAfterSeconds`, or `dead_letter` once `attempts` reached `maxAttempts`. */
+/**
+ * The queue refused it: back to `pending` after `retryAfterSeconds`, or `dead_letter` once `attempts` reached `maxAttempts`. Only the
+ * claim that `attempts` names is failed, as in the inbound store (review E-02): a relay whose lease was taken back must not fail the
+ * claim of the relay that took the event after it. `null`: not this relay's claim any more.
+ */
 export async function failOutboxEvent(
   tx: TenantTx,
   f: OutboxFailure,
@@ -110,7 +135,13 @@ export async function failOutboxEvent(
       lastError: f.errorCode,
       ...(dead ? {} : { availableAt: sql`now() + make_interval(secs => ${f.retryAfterSeconds})` }),
     })
-    .where(and(eq(outboxEvents.id, f.id), eq(outboxEvents.status, 'claimed')))
+    .where(
+      and(
+        eq(outboxEvents.id, f.id),
+        eq(outboxEvents.status, 'claimed'),
+        eq(outboxEvents.attempts, f.attempts),
+      ),
+    )
     .returning({ status: outboxEvents.status });
   return row ? (dead ? 'dead_letter' : 'pending') : null;
 }

@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
+import type pg from 'pg';
 
 import { idempotencyKeys } from './schema/idempotency-keys.js';
 import { currentTenantContext } from './tenant-context.js';
@@ -41,6 +42,7 @@ const own = (userId: string, key: string) =>
 export async function beginIdempotent(
   tx: TenantTx,
   r: IdempotencyRequest,
+  again = true,
 ): Promise<IdempotencyBegin> {
   const fields = { method: r.method, path: r.path, requestHash: r.requestHash };
   const inserted = await tx
@@ -69,7 +71,9 @@ export async function beginIdempotent(
     .from(k)
     .where(own(r.userId, r.key))
     .for('update');
-  // The INSERT conflicted, so the row exists; it can only be missing if RLS hides it, which the conflict rules out within one org.
+  // The INSERT conflicted, so the row existed; app.purge_idempotency_keys may have removed it (older than 24 hours) since. Once more,
+  // then the INSERT goes through. RLS cannot hide it: the conflict was within the organisation.
+  if (!row && again) return beginIdempotent(tx, r, false);
   if (!row) throw new Error('idempotency key vanished between the insert and the read');
 
   const reset = async (): Promise<IdempotencyBegin> => {
@@ -129,4 +133,23 @@ export async function failIdempotent(
     .update(k)
     .set({ status: 'failed', updatedAt: sql`now()` })
     .where(and(own(r.userId, r.key), eq(k.status, 'in_progress')));
+}
+
+export const IDEMPOTENCY_PURGE_LIMIT = 10_000;
+
+/**
+ * Removes the keys older than `retentionHours`, at most `limit`, for every organisation (`app.purge_idempotency_keys`, SECURITY
+ * DEFINER; it refuses less than 24 hours and a limit outside 1..10000 with 22023). Returns how many it removed; the caller asks again
+ * until it gets 0. On the pool of app_role, outside any tenant.
+ */
+export async function purgeIdempotencyKeys(
+  pool: pg.Pool,
+  retentionHours: number,
+  limit: number,
+): Promise<number> {
+  const { rows } = await pool.query<{ removed: number }>(
+    'SELECT app.purge_idempotency_keys($1, $2) AS removed',
+    [retentionHours, limit],
+  );
+  return rows[0]?.removed ?? 0;
 }
