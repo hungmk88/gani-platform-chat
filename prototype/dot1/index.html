@@ -209,7 +209,7 @@
       </section>
 
       <section>
-        <h2>1d. Màn S4 — Thành viên (#19) và Workspace (#21), nộp 21/12</h2>
+        <h2>1d. Màn S4 — Thành viên (#19), Team (#20) và Workspace (#21), nộp 21/12</h2>
         <p class="muted">
           Theo Phụ lục B (Mời thành viên, đổi vai trò), spec M8 §3.5 và §3.8 (Q-U20-1), endpoint-M8. Chỉ Owner, Admin. Admin
           không nâng ai lên Owner; 2FA của Owner chỉ Owner khác đặt lại.
@@ -223,6 +223,15 @@
               <li><a href="members.html?role=admin&state=loading">Đang tải</a> · <a href="members.html?role=admin&state=empty">Trống</a> · <a href="members.html?role=admin&state=error">Lỗi</a></li>
               <li><a href="members.html?role=admin&state=aioff">AI tắt — Không áp dụng</a> · <a href="members.html?role=admin&state=invite_expired">Lời mời hết hạn</a></li>
               <li><a href="members.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="teams.html?role=admin">Team (#20)</a></h3>
+            <ul>
+              <li><a href="teams.html?role=admin">Admin: tạo, thành viên, kênh, mặc định, xóa (bị chặn khi là mặc định hay có kênh)</a></li>
+              <li><a href="teams.html?role=manager">Manager: chỉ xem team của mình</a></li>
+              <li><a href="teams.html?role=admin&state=loading">Đang tải</a> · <a href="teams.html?role=admin&state=empty">Trống</a> · <a href="teams.html?role=admin&state=error">Lỗi</a> · <a href="teams.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="teams.html?role=sales">Sales: không có quyền</a></li>
             </ul>
           </div>
           <div class="card">
