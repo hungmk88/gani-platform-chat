@@ -11,14 +11,8 @@ const STATE_LABEL = {
   CLOSED: 'Đã đóng',
   HOLD: 'Ngoài giờ — chờ đến giờ làm',
 };
-const PEOPLE = [
-  { name: 'Trần Thu', team: 'Sales B2B', recent: true },
-  { name: 'Vũ Nam', team: 'Sales B2B', recent: true },
-  { name: 'Đặng Mai', team: 'CSKH', recent: false },
-  { name: 'Lý Hùng', team: 'CSKH', recent: false },
-  { name: 'Team CSKH', team: 'Team', recent: true },
-];
-const REASONS = ['Cần chuyên môn khác', 'Hết ca làm việc', 'Khách quen của người khác', 'Quá tải'];
+// Người nhận, lý do chuyển và các hộp thoại: inbox-dialogs.js (tách cho file ≤ 500 dòng, N126).
+const D = Proto.inboxDialogs;
 const TEMPLATES = [
   { name: 'Chào hỏi', text: 'Chào {{ten_khach}}, em là {{ten_nhan_vien}} từ {{ten_cong_ty}}. Em hỗ trợ được gì ạ?' },
   { name: 'Xin số điện thoại', text: 'Anh/chị cho em xin số điện thoại để bộ phận kinh doanh gọi lại ạ.' },
@@ -78,6 +72,11 @@ function seed() {
       sla: null, unread: 0, tags: [], phone: '0900000005', lead: null,
       messages: [{ kind: 'system', text: 'Đã đóng — kết quả: Đã xong', at: 'Thứ Hai' }],
     },
+    {
+      id: 'c8', name: 'Hoàng Yến', company: 'Bếp Ăn Yến Hoàng', state: 'HUMAN_ACTIVE', assignee: 'Trần Thu',
+      sla: 30, unread: 0, tags: [], phone: '0900000006', lead: null,
+      messages: [{ kind: 'customer', text: 'Cho chị xin lịch giao tuần này', at: '09:20' }],
+    },
   ];
 }
 
@@ -129,6 +128,7 @@ function lastText(c) {
 function visibleConvs() {
   const f = db.filter;
   return db.convs.filter((c) => {
+    if (!Proto.isManagerUp() && c.assignee && c.assignee !== ME) return false; // #139: Sales/Support thấy của mình + chưa ai nhận (N133)
     if (f.state !== 'all' && c.state !== f.state) return false;
     if (f.who === 'mine' && c.assignee !== ME) return false;
     if (f.who === 'none' && c.assignee !== null) return false;
@@ -143,7 +143,8 @@ function filterSelect(label, key, options) {
 }
 function leftColumn() {
   const s = Proto.state();
-  const whoOptions = [['all', Proto.isManagerUp() ? 'Tất cả' : 'Của tôi + chưa ai nhận + team'], ['mine', 'Của tôi'], ['none', 'Chưa ai nhận'], ['team', 'Team của tôi']];
+  // Sales/Support: backend tạm chỉ trả "của tôi + chưa ai nhận"; phần team chờ routing S4 (N133).
+  const whoOptions = [['all', Proto.isManagerUp() ? 'Tất cả' : 'Của tôi + chưa ai nhận + team (team chờ N133)'], ['mine', 'Của tôi'], ['none', 'Chưa ai nhận'], ['team', 'Team của tôi (chờ N133)']];
   const active = db.convs.filter((c) => c.assignee === ME && c.state === 'HUMAN_ACTIVE').length + (s === 'overload' ? 4 : 3);
   const pending = db.convs.filter((c) => c.assignee === ME && c.state === 'PENDING_CUSTOMER').length + 2;
   let list;
@@ -222,15 +223,17 @@ function headerActions(c) {
   if (isClaimable(c)) {
     const over = Proto.state() === 'overload';
     return [over ? h('span', { class: 'badge warn' }, 'Bạn đang xử lý 5/5 — vẫn nhận được') : null,
-      Proto.can('inbox.spam') ? h('button', { class: 'btn', onclick: () => spamDialog(c) }, 'Chặn spam') : null,
+      Proto.can('inbox.spam') ? h('button', { class: 'btn', onclick: () => D.spam(c) }, 'Chặn spam') : null,
+      Proto.isManagerUp() && c.state === 'HUMAN_WAITING_Q' ? h('button', { class: 'btn', onclick: () => D.assign(c) }, 'Gán cho…') : null,
       Proto.can('inbox.claim') ? h('button', { class: 'btn primary', id: 'claim', onclick: (e) => claim(c, e.currentTarget) }, 'Nhận ', h('span', { class: 'kbd' }, 'A')) : null];
   }
   if (c.state === 'HUMAN_ACTIVE' || c.state === 'PENDING_CUSTOMER') {
     if (!canAct(c)) return [h('span', { class: 'muted small' }, 'Đồng nghiệp đang xử lý')];
+    if (c.assignee !== ME) return [h('button', { class: 'btn', onclick: () => D.assign(c) }, 'Gán lại ', h('span', { class: 'kbd' }, 'T')), h('button', { class: 'btn', onclick: () => D.close(c) }, 'Đóng ', h('span', { class: 'kbd' }, 'E'))];
     return [
       c.state === 'HUMAN_ACTIVE' ? h('button', { class: 'btn', onclick: () => { c.state = 'PENDING_CUSTOMER'; c.messages.push({ kind: 'system', text: 'Chuyển sang Chờ khách trả lời', at: 'Vừa xong' }); Proto.render(); } }, 'Chờ khách') : null,
-      h('button', { class: 'btn', onclick: () => transferDialog(c) }, 'Chuyển ', h('span', { class: 'kbd' }, 'T')),
-      h('button', { class: 'btn', onclick: () => closeDialog(c) }, 'Đóng ', h('span', { class: 'kbd' }, 'E')),
+      h('button', { class: 'btn', onclick: () => D.transfer(c) }, 'Chuyển ', h('span', { class: 'kbd' }, 'T')),
+      h('button', { class: 'btn', onclick: () => D.close(c) }, 'Đóng ', h('span', { class: 'kbd' }, 'E')),
     ];
   }
   if (c.state === 'BOT_ACTIVE') return [h('span', { class: 'muted small' }, 'Bot đang xử lý — chưa cần người')];
@@ -251,81 +254,6 @@ function claim(c, button) {
     }
     Proto.render();
   });
-}
-
-function chipGroup(options, selected, onPick, label) {
-  return h('div', { class: 'row', role: 'group', 'aria-label': label }, options.map((o) => h('button', { class: 'chip', 'aria-pressed': String(o === selected), onclick: (e) => onPick(o, e.currentTarget) }, o)));
-}
-
-function doTransfer(c, person, reason, close) {
-  c.assignee = person;
-  c.messages.push({ kind: 'system', text: `Đã chuyển cho ${person} — lý do: ${reason}`, at: 'Vừa xong' });
-  close();
-  Proto.toast(`Đã chuyển cho ${person}. Hội thoại rời khỏi "Của tôi".`);
-  Proto.render();
-}
-
-function transferDialog(c) {
-  const variant = Proto.get('transfer', 'A');
-  let reason = variant === 'A' ? REASONS[0] : null;
-  let person = null;
-  const body = h('div', { class: 'stack' });
-  const draw = (close) => {
-    body.replaceChildren();
-    if (variant === 'A') {
-      body.append(
-        h('p', { class: 'small muted' }, 'Bấm tên người nhận là chuyển luôn (lý do đã chọn sẵn, đổi được).'),
-        h('div', { class: 'field' }, h('label', {}, 'Lý do (bắt buộc)'), chipGroup(REASONS, reason, (r) => { reason = r; draw(close); }, 'Lý do')),
-        h('div', { class: 'field' }, h('label', {}, 'Người nhận — team và gần đây'), h('div', { class: 'row' }, PEOPLE.filter((p) => p.recent).map((p) => h('button', { class: 'chip', onclick: (e) => Proto.serverAction(e.currentTarget, p.name, () => doTransfer(c, p.name, reason, close)) }, p.name)))),
-        h('button', { class: 'btn link', onclick: () => { close(); Proto.set('transfer', 'B'); transferDialog(c); } }, 'Tìm người khác…'));
-    } else {
-      const results = h('div', { class: 'stack', role: 'radiogroup', 'aria-label': 'Người nhận' });
-      const reasons = h('div', {});
-      const drawResults = (q) => results.replaceChildren(...PEOPLE.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).map((p) => h('label', { class: 'row' }, h('input', { type: 'radio', name: 'who', checked: person === p.name, onchange: () => { person = p.name; } }), `${p.name} · ${p.team}`)));
-      const drawReasons = () => reasons.replaceChildren(chipGroup(REASONS, reason, (r) => { reason = r; drawReasons(); }, 'Lý do'));
-      body.append(
-        h('div', { class: 'field' }, h('label', { for: 'who-q' }, 'Tìm người nhận hoặc team'), h('input', { id: 'who-q', class: 'input', autofocus: true, oninput: (e) => drawResults(e.target.value) })),
-        results,
-        h('div', { class: 'field' }, h('label', {}, 'Lý do (bắt buộc)'), reasons));
-      drawResults('');
-      drawReasons();
-    }
-  };
-  Proto.dialog(`Chuyển hội thoại — biến thể ${variant}`, body, (close) => {
-    draw(close);
-    if (variant === 'A') return [h('button', { class: 'btn', onclick: close }, 'Hủy')];
-    const confirm = h('button', { class: 'btn primary', onclick: (e) => {
-      if (!person || !reason) { Proto.toast('Chọn người nhận và lý do trước.'); return; }
-      Proto.serverAction(e.currentTarget, 'Xác nhận', () => doTransfer(c, person, reason, close));
-    } }, 'Xác nhận');
-    return [h('button', { class: 'btn', onclick: close }, 'Hủy'), confirm];
-  });
-}
-
-function closeDialog(c) {
-  const note = h('textarea', { class: 'input', rows: 2, id: 'close-note' });
-  const pick = (label, button, close) => Proto.serverAction(button, label, () => {
-    c.state = 'CLOSED';
-    c.messages.push({ kind: 'system', text: `Đã đóng — kết quả: ${label}`, at: 'Vừa xong' });
-    close();
-    Proto.render();
-    if (c.lead) {
-      Proto.dialog('Cập nhật lead?', h('p', {}, `Khách có lead đang mở ở "${c.lead}" (tên tạm). Đóng hội thoại không đổi trạng thái lead.`), (close2) => [
-        h('button', { class: 'btn', onclick: close2 }, 'Để sau'),
-        h('a', { class: 'btn primary', href: `leads.html?role=${Proto.role()}` }, 'Mở pipeline lead'),
-      ]);
-    }
-  });
-  Proto.dialog('Đóng hội thoại — chọn kết quả', h('div', { class: 'stack' }, h('p', { class: 'small muted' }, 'Bấm kết quả là đóng luôn.'), h('div', { class: 'field' }, h('label', { for: 'close-note' }, 'Ghi chú (không bắt buộc)'), note)), (close) => [
-    ['Đã xong', 'Khách không phản hồi', 'Spam'].map((label) => h('button', { class: 'btn', onclick: (e) => pick(label, e.currentTarget, close) }, label)),
-  ]);
-}
-
-function spamDialog(c) {
-  Proto.dialog('Chặn spam?', h('p', {}, `Chặn ${c.name}: hội thoại đóng với kết quả Spam, ghi audit.`), (close) => [
-    h('button', { class: 'btn', onclick: close }, 'Hủy'),
-    h('button', { class: 'btn primary', onclick: (e) => Proto.serverAction(e.currentTarget, 'Chặn', () => { c.state = 'CLOSED'; close(); Proto.render(); }) }, 'Chặn'),
-  ]);
 }
 
 /* Ô soạn tin (§4.5) */
@@ -364,7 +292,7 @@ function composer(c) {
     if (blanks) help.append(h('p', { class: 'small' }, h('span', { class: 'var-blank' }, `Cần điền: ${blanks.join(', ')}`), ' — không bao giờ gửi {{…}} ra khách.'));
     sendBtn.disabled = Boolean(blanks) || !area.value.trim();
     if (area.value === '/' && db.mode === 'reply') help.append(h('ul', { class: 'template-list', 'aria-label': 'Mẫu trả lời nhanh' }, TEMPLATES.map((t) => h('li', {}, h('button', { onclick: () => { area.value = fillTemplate(t.text, c); refresh(); area.focus(); } }, h('strong', {}, t.name), ' — ', t.text)))));
-    if (db.mode === 'note' && area.value.endsWith('@')) help.append(h('div', { class: 'row' }, PEOPLE.slice(0, 4).map((p) => h('button', { class: 'chip', onclick: () => { area.value += `${p.name} `; refresh(); area.focus(); } }, p.name))));
+    if (db.mode === 'note' && area.value.endsWith('@')) help.append(h('div', { class: 'row' }, D.PEOPLE.slice(0, 4).map((p) => h('button', { class: 'chip', onclick: () => { area.value += `${p.name} `; refresh(); area.focus(); } }, p.name))));
     draft.textContent = area.value ? 'Đang lưu nháp lên máy chủ…' : 'Nháp lưu trên máy chủ';
     if (area.value) setTimeout(() => { draft.textContent = 'Đã lưu nháp'; }, 600);
   };
@@ -465,8 +393,8 @@ document.addEventListener('keydown', (e) => {
     a: () => isClaimable(c) && document.getElementById('claim')?.click(),
     r: () => { db.mode = 'reply'; Proto.render(); document.getElementById('composer')?.focus(); },
     n: () => { db.mode = 'note'; Proto.render(); document.getElementById('composer')?.focus(); },
-    t: () => canAct(c) && ['HUMAN_ACTIVE', 'PENDING_CUSTOMER'].includes(c.state) && transferDialog(c),
-    e: () => canAct(c) && ['HUMAN_ACTIVE', 'PENDING_CUSTOMER'].includes(c.state) && closeDialog(c),
+    t: () => canAct(c) && ['HUMAN_ACTIVE', 'PENDING_CUSTOMER'].includes(c.state) && (c.assignee === ME ? D.transfer(c) : D.assign(c)),
+    e: () => canAct(c) && ['HUMAN_ACTIVE', 'PENDING_CUSTOMER'].includes(c.state) && D.close(c),
     j: () => step(1),
     k: () => step(-1),
     '/': () => document.getElementById('search')?.focus(),
@@ -485,13 +413,13 @@ function step(delta) {
   if (next) select(next.id);
 }
 function shortcuts() {
-  const rows = [['A', 'Nhận hội thoại'], ['R', 'Trả lời'], ['T', 'Chuyển'], ['E', 'Đóng'], ['N', 'Ghi chú nội bộ'], ['J / K', 'Hội thoại kế tiếp / trước'], ['/', 'Tìm (ngoài ô soạn) · mẫu trả lời (trong ô soạn)'], ['?', 'Bảng phím tắt'], ['Esc', 'Ra khỏi ô soạn / đóng hộp thoại']];
+  const rows = [['A', 'Nhận hội thoại'], ['R', 'Trả lời'], ['T', 'Chuyển (Manager: Gán lại khi người khác đang giữ)'], ['E', 'Đóng'], ['N', 'Ghi chú nội bộ'], ['J / K', 'Hội thoại kế tiếp / trước'], ['/', 'Tìm (ngoài ô soạn) · mẫu trả lời (trong ô soạn)'], ['?', 'Bảng phím tắt'], ['Esc', 'Ra khỏi ô soạn / đóng hộp thoại']];
   Proto.dialog('Phím tắt', h('table', { class: 'plain' }, rows.map(([k, v]) => h('tr', {}, h('td', {}, h('span', { class: 'kbd' }, k)), h('td', {}, v)))), (close) => [h('button', { class: 'btn', onclick: close }, 'Đóng')]);
 }
 
 Proto.mount({
   page: 'inbox',
-  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['api_closed', 'Hết khung gửi Zalo'], ['paid_only', 'Ngoài khung miễn phí'], ['send_failed', 'Tin gửi lỗi'], ['after_hours', 'Ngoài giờ — SLA tạm dừng'], ['claimed', 'Đã được người khác nhận'], ['overload', 'Vượt giới hạn tải']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt'], ['api_closed', 'Hết khung gửi Zalo'], ['paid_only', 'Ngoài khung miễn phí'], ['send_failed', 'Tin gửi lỗi'], ['after_hours', 'Ngoài giờ — SLA tạm dừng'], ['claimed', 'Đã được người khác nhận'], ['overload', 'Vượt giới hạn tải'], ['handover_invalid', 'Chuyển/Gán — người nhận không hợp lệ (422)'], ['handover_conflict', 'Chuyển/Gán — hội thoại vừa thay đổi (409)']],
   variants: [
     { label: 'Chuyển', name: 'transfer', options: [['A', 'A (2 thao tác)'], ['B', 'B (3 thao tác)']] },
     { label: 'O7 đã xem/thu hồi/trích dẫn', name: 'o7', options: [['yes', 'Kênh hỗ trợ'], ['no', 'Không hỗ trợ']] },
