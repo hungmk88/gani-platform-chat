@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#14, #15, #16, #19, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#14, #15, #16, #19, #21, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -19,6 +19,9 @@ const STATES = {
   'overview.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'autonomy.html': ['normal', 'loading', 'error', 'aioff'],
   'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
+  'workspace.html': ['normal', 'loading', 'error', 'aioff'],
+  'workspace.html?tab=sla&x=1': ['normal'],
+  'workspace.html?tab=allocation&x=1': ['normal'],
 };
 
 await renderAll(STATES);
@@ -151,6 +154,27 @@ check((await p.locator('#inv-role option', { hasText: 'Owner' }).count()) === 1,
 await p.close();
 p = await open('members.html?role=manager');
 check((await p.textContent('main')).includes('không dùng Thành viên'), '#19: Manager không có quyền');
+await p.close();
+
+// #21 Workspace
+p = await open('workspace.html?role=admin');
+check((await p.locator('[role=tab]').count()) === 3 && (await p.locator('.btn.primary').count()) === 1, '#21: 3 tab, 1 nút chính');
+await p.fill('#close-T2', '07:00');
+await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
+check((await p.textContent('[role=alert]')).includes('T2: giờ đóng cửa phải sau giờ mở cửa'), '#21: giờ đóng phải sau giờ mở');
+await p.locator('[role=tab]', { hasText: 'SLA' }).click();
+check((await p.textContent('main')).includes('Chờ khách trả lời') && (await p.locator('#first-Khẩn').count()) === 1, '#21: tab SLA, 3 mức, quy tắc dừng đồng hồ');
+await p.locator('[role=tab]', { hasText: 'Phân bổ' }).click();
+await p.fill('#cap-default', '0');
+await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
+check((await p.textContent('[role=alert]')).includes('từ 1 đến 50'), '#21: giới hạn tải 1–50');
+await shot(p, 'workspace', true);
+await p.close();
+p = await open('workspace.html?role=manager&tab=sla');
+check((await p.locator('.btn.primary').count()) === 0 && (await p.locator('#first-Thường').isDisabled()), '#21: Manager chỉ xem');
+await p.close();
+p = await open('workspace.html?role=sales');
+check((await p.textContent('main')).includes('không dùng Cài đặt workspace'), '#21: Sales không có quyền');
 await p.close();
 
 // #24, #25
