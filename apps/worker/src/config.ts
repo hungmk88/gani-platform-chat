@@ -15,6 +15,16 @@ export interface WorkerConfig {
     /** A queue with this many jobs waiting takes no more from its organisation until it drains (backpressure). */
     readonly queueMaxWaiting: number;
   };
+  /** The processing of stored webhooks (inbound spec §2): the same shape as the relay, a small batch per workspace. */
+  readonly inbound: {
+    readonly pollMs: number;
+    readonly leaseSeconds: number;
+    /** Events claimed from one workspace before the next workspace gets its turn. */
+    readonly batchSize: number;
+    readonly maxAttempts: number;
+    readonly orgsPerTick: number;
+    readonly orgParallel: number;
+  };
 }
 
 /** Lists every wrong variable at once, by name only: a URL carries a password and is never echoed. */
@@ -55,6 +65,16 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       orgParallel: whole('OUTBOX_ORG_PARALLEL', 4, 1, 32),
       shutdownMs: whole('OUTBOX_SHUTDOWN_MS', 10_000, 1_000, 120_000),
       queueMaxWaiting: whole('OUTBOX_QUEUE_MAX_WAITING', 10_000, 1, 1_000_000),
+    },
+    inbound: {
+      pollMs: whole('INBOUND_POLL_MS', 500, 50, 60_000),
+      leaseSeconds: whole('INBOUND_LEASE_S', 60, 1, 3_600),
+      batchSize: whole('INBOUND_BATCH', 10, 1, 1_000),
+      // 5 is the number of Phụ lục #14 (inbound spec §2).
+      maxAttempts: whole('INBOUND_MAX_ATTEMPTS', 5, 1, 20),
+      // 1..1000 is what app.inbound_pending_orgs accepts (22023 otherwise).
+      orgsPerTick: whole('INBOUND_ORGS_PER_TICK', 50, 1, 1_000),
+      orgParallel: whole('INBOUND_ORG_PARALLEL', 2, 1, 32),
     },
   };
   if (problems.length > 0) throw new ConfigError(problems);
