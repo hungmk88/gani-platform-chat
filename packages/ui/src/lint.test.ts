@@ -1,5 +1,5 @@
 import css from '@eslint/css';
-import { rawCssSelectors, rawStyleSelectors } from '@gani/config/ui-lint';
+import { rawCssSelectors, rawHtmlSelectors, rawStyleSelectors } from '@gani/config/ui-lint';
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
@@ -35,6 +35,30 @@ describe('the token lint of apps/admin', () => {
   ])('allows %s', (code) => {
     expect(errors(code)).toBe(0);
   });
+});
+
+describe('the plain-text lint of apps/admin (T2)', () => {
+  const html = (code: string) =>
+    linter.verify(code, {
+      languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
+      rules: { 'no-restricted-syntax': ['error', ...rawHtmlSelectors] },
+    }).length;
+
+  it.each([
+    '<p dangerouslySetInnerHTML={{ __html: body }} />',
+    'el.innerHTML = body;',
+    'node.outerHTML = body;',
+    'el.insertAdjacentHTML("beforeend", body);',
+  ])('refuses %s', (code) => {
+    expect(html(code)).toBeGreaterThan(0);
+  });
+
+  it.each(['<p>{body}</p>', 'const t = el.innerHTML;', 'el.textContent = body;'])(
+    'allows %s',
+    (code) => {
+      expect(html(code)).toBe(0);
+    },
+  );
 });
 
 describe('the stylesheet lint of apps/admin', () => {

@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#14, #15, #16, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#14, #15, #16, #19, #21, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -18,6 +18,10 @@ const STATES = {
   'platform.html?tab=policies&x=1': ['normal'],
   'overview.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'autonomy.html': ['normal', 'loading', 'error', 'aioff'],
+  'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
+  'workspace.html': ['normal', 'loading', 'error', 'aioff'],
+  'workspace.html?tab=sla&x=1': ['normal'],
+  'workspace.html?tab=allocation&x=1': ['normal'],
 };
 
 await renderAll(STATES);
@@ -125,6 +129,53 @@ for (const page of ['login.html?role=sales', 'twofa.html?role=admin', 'reset.htm
   check((await p.textContent('main')).includes('Không áp dụng AI'), `${page.split('?')[0]}: AI tắt — Không áp dụng`);
   await p.close();
 }
+
+// #19 Thành viên
+p = await open('members.html?role=admin');
+check((await p.locator('tbody tr').count()) === 6 && (await p.locator('.btn.primary').count()) === 1, '#19: 6 thành viên, 1 nút chính');
+check((await p.locator('tbody tr', { hasText: 'Owner Gani' }).locator('button').count()) === 0, '#19: Admin không sửa được Owner');
+await p.locator('.btn.primary', { hasText: 'Mời thành viên' }).click();
+check(!(await p.locator('#inv-role option', { hasText: 'Owner' }).count()), '#19: Admin không mời được Owner');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog')).includes('Nhập email hợp lệ'), '#19: mời cần email hợp lệ');
+await p.keyboard.press('Escape');
+await p.locator('button', { hasText: 'Đặt lại 2FA…' }).first().click();
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog')).includes('Ghi lý do'), '#19: đặt lại 2FA bắt buộc lý do');
+await p.fill('#tfa-reason', 'Mất điện thoại, đã xác minh qua quản lý');
+await p.locator('.dialog .btn.primary').click();
+await p.waitForTimeout(900);
+check((await p.textContent('.toast')).includes('thu hồi mọi phiên'), '#19: đặt lại 2FA chờ máy chủ, thu hồi phiên');
+await shot(p, 'members', true);
+await p.close();
+p = await open('members.html?role=owner');
+await p.locator('.btn.primary', { hasText: 'Mời thành viên' }).click();
+check((await p.locator('#inv-role option', { hasText: 'Owner' }).count()) === 1, '#19: Owner mời được Owner');
+await p.close();
+p = await open('members.html?role=manager');
+check((await p.textContent('main')).includes('không dùng Thành viên'), '#19: Manager không có quyền');
+await p.close();
+
+// #21 Workspace
+p = await open('workspace.html?role=admin');
+check((await p.locator('[role=tab]').count()) === 3 && (await p.locator('.btn.primary').count()) === 1, '#21: 3 tab, 1 nút chính');
+await p.fill('#close-T2', '07:00');
+await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
+check((await p.textContent('[role=alert]')).includes('T2: giờ đóng cửa phải sau giờ mở cửa'), '#21: giờ đóng phải sau giờ mở');
+await p.locator('[role=tab]', { hasText: 'SLA' }).click();
+check((await p.textContent('main')).includes('Chờ khách trả lời') && (await p.locator('#first-Khẩn').count()) === 1, '#21: tab SLA, 3 mức, quy tắc dừng đồng hồ');
+await p.locator('[role=tab]', { hasText: 'Phân bổ' }).click();
+await p.fill('#cap-default', '0');
+await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
+check((await p.textContent('[role=alert]')).includes('từ 1 đến 50'), '#21: giới hạn tải 1–50');
+await shot(p, 'workspace', true);
+await p.close();
+p = await open('workspace.html?role=manager&tab=sla');
+check((await p.locator('.btn.primary').count()) === 0 && (await p.locator('#first-Thường').isDisabled()), '#21: Manager chỉ xem');
+await p.close();
+p = await open('workspace.html?role=sales');
+check((await p.textContent('main')).includes('không dùng Cài đặt workspace'), '#21: Sales không có quyền');
+await p.close();
 
 // #24, #25
 p = await open('channels.html?role=admin');

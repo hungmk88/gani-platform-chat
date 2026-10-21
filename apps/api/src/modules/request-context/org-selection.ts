@@ -12,6 +12,9 @@ export interface OrganisationSources {
   member(orgId: string, userId: string): Promise<MemberContext | null>;
 }
 
+/** The Nest token of the one `OrganisationSources` of the application (RequestContextModule): /v1, the socket and `GET /v1/me`. */
+export const ORGANISATION_SOURCES = Symbol('OrganisationSources');
+
 export type OrganisationRefusal = 'no_organisation' | 'org_not_selected';
 
 export type OrganisationChoice =

@@ -73,7 +73,8 @@ Trang mặc định sau đăng nhập:
 - Next.js 16 (App Router) + React 19 + Tailwind 4 (`@gani/ui/theme.css`, chỉ class theo token). Font Inter tự host (`@fontsource-variable/inter`).
 - `pnpm --filter @gani/admin dev` → cổng 3001. `/api/auth/*` và `/v1/*` được chuyển tiếp sang `API_ORIGIN` (mặc định `http://localhost:3000`):
   admin và API chung một địa chỉ gốc (`BETTER_AUTH_URL`, N136), production do reverse proxy làm.
-- Khung app lấy người dùng từ `GET /v1/me` (U32, Backend chưa có): chưa có thì hiện trang lỗi, không có vai trò giả trong mã.
+- Khung app lấy người dùng từ `GET /v1/me` (U32, N145; kiểu `Me` sinh từ OpenAPI, `src/me.ts`): lỗi thì hiện trang lỗi, không có vai trò giả trong mã.
+  `org: null` mà không phải platform operator (không thuộc công ty nào, hay thuộc nhiều công ty mà chưa chọn) → trang "không có quyền"; màn chọn công ty chờ danh sách công ty (N145 còn mở).
 - `next build` hỏng ("reading 'useContext'") nếu `NODE_ENV=development` đặt sẵn trong môi trường: bỏ biến đó khi build. CI không đặt.
 - `typecheck` = `next typegen && tsc --noEmit` (`next-env.d.ts` do Next sinh, không commit).
 - Import trong app không có đuôi `.js` (bundler), khác `apps/api`.
@@ -83,7 +84,7 @@ Trang mặc định sau đăng nhập:
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
 - Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
-  API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` theo đề xuất U32 — Backend làm xong thì đối chiếu lại.
+  API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
 - `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
@@ -96,7 +97,7 @@ Trang mặc định sau đăng nhập:
 - Kiểu: `components['schemas'][...]` trong `src/api/schema.d.ts`, sinh bằng `pnpm --filter @gani/admin gen:api` từ `docs/openapi/openapi.json` (không sửa tay, không lint/format). Backend đổi OpenAPI thì chạy lại; CI đỏ nếu lệch.
 - Server state: `useApiQuery<T>(parts, path)` (`src/query/provider.tsx`), khóa luôn là `['org', orgId, 'ws', workspaceId, ...parts]` (`src/query/keys.ts`).
   `QueryProvider` gắn `key={scopeId(scope)}` trong khung app: đổi công ty/workspace là cache mới; đăng xuất xóa cache. Lỗi `sign_in`/`set_up_2fa` của mọi query tự chuyển trang.
-  `workspaceId` đang `null` tới khi có bộ đổi workspace (U32 chưa có workspace hiện tại).
+  `workspaceId` đang `null` tới khi có bộ đổi workspace (`/v1/me` chỉ trả danh sách workspace, chưa có workspace hiện tại).
 
 ## Hộp thư (#6)
 
