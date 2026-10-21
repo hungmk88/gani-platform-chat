@@ -79,5 +79,6 @@ export function setupApp(app: NestExpressApplication): void {
     sessions: app.get(SessionResolver),
     mustSetUp: (userId) => authService.mustSetUpTwoFactor(userId),
     ...organisations,
+    withTenant: (ctx, fn) => database.withTenant(ctx, fn),
   });
 }
