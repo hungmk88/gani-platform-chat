@@ -78,3 +78,12 @@ Trang mặc định sau đăng nhập:
 - `typecheck` = `next typegen && tsc --noEmit` (`next-env.d.ts` do Next sinh, không commit).
 - Import trong app không có đuôi `.js` (bundler), khác `apps/api`.
 - Đăng nhập thật khi dev: API chạy với `BETTER_AUTH_URL=http://localhost:3001` (địa chỉ của admin), vì cookie phiên và kiểm `Origin` (N136) theo địa chỉ trình duyệt thấy. Khung app hỏi `GET /v1/me/security-status` trước (401 → `/login`, phải cài 2FA → `/two-factor/setup`), rồi mới `GET /v1/me`.
+
+## E2E và axe (F4)
+
+- `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống, `<vai trò>@e2e.test` đăng nhập được với vai trò đó.
+  API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` theo đề xuất U32 — Backend làm xong thì đối chiếu lại.
+- Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
+  Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
+- `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
