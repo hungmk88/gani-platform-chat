@@ -6,7 +6,7 @@ import { ROLES, createRunner } from './lib.mjs';
 const { open, check, shot, renderAll, finish } = await createRunner();
 
 const STATES = {
-  'inbox.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'api_closed', 'paid_only', 'send_failed', 'claimed', 'overload', 'after_hours'],
+  'inbox.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'api_closed', 'paid_only', 'send_failed', 'claimed', 'overload', 'after_hours', 'handover_invalid', 'handover_conflict'],
   'customer.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'merge_suggestion', 'human_only', 'merge'],
   'leads.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'many', 'saving', 'save_error', 'drawer', 'drawer_loading', 'drawer_error'],
   'bots.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'config_error', 'missing_greeting', 'published_view'],
