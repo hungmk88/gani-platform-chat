@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
 import { AuthService } from '../auth/auth.service.js';
 import { DatabaseService } from '../database/database.service.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { HealthController } from './health.controller.js';
 
 let app: INestApplication | undefined;
@@ -15,12 +16,15 @@ let app: INestApplication | undefined;
 async function start(
   ping: () => Promise<boolean>,
   authPing: () => Promise<boolean> = () => Promise.resolve(true),
+  valkeyPing: () => Promise<boolean> = () => Promise.resolve(true),
 ): Promise<string> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(DatabaseService)
     .useValue({ ping })
     .overrideProvider(AuthService)
     .useValue({ ping: authPing })
+    .overrideProvider(RealtimeService)
+    .useValue({ ping: valkeyPing })
     .compile();
   app = moduleRef.createNestApplication();
   await app.listen(0, '127.0.0.1');
@@ -71,6 +75,15 @@ describe('GET /readyz', () => {
     );
     expect((await fetch(`${url}/readyz`)).status).toBe(503);
     expect((await fetch(`${url}/healthz`)).status).toBe(200);
+  });
+
+  it('answers 503 when the Valkey of the realtime server does not answer (N144)', async () => {
+    const url = await start(
+      () => Promise.resolve(true),
+      () => Promise.resolve(true),
+      () => Promise.resolve(false),
+    );
+    expect((await fetch(`${url}/readyz`)).status).toBe(503);
   });
 
   it('answers a generic 500 and leaks nothing if the check itself breaks (a bug, not "down")', async () => {
