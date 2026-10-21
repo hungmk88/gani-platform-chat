@@ -59,3 +59,10 @@ export function useApiPages<T extends { readonly nextCursor: string | null }>(
     getNextPageParam: (last) => last.nextCursor,
   });
 }
+
+/** The company and workspace of the frame, for keys a screen builds itself (a mutation that updates a query). */
+export function useScope(): Scope {
+  const scope = useContext(ScopeContext);
+  if (!scope) throw new Error('useScope outside QueryProvider');
+  return scope;
+}
