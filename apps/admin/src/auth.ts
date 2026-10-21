@@ -21,7 +21,7 @@ export async function readSignIn(res: Response): Promise<SignInResult> {
 }
 
 export type SecurityStatus =
-  | { readonly kind: 'signed_in' }
+  | { readonly kind: 'signed_in'; readonly twoFactorEnabled: boolean }
   | { readonly kind: 'signed_out' }
   | { readonly kind: 'must_set_up' }
   | { readonly kind: 'error'; readonly status: number; readonly traceId: string | null };
@@ -30,10 +30,13 @@ export type SecurityStatus =
 export async function readSecurityStatus(res: Response): Promise<SecurityStatus> {
   const body = (await res.json().catch(() => null)) as {
     mustSetUp?: unknown;
+    twoFactorEnabled?: unknown;
     traceId?: unknown;
   } | null;
-  if (res.ok && typeof body?.mustSetUp === 'boolean')
-    return body.mustSetUp ? { kind: 'must_set_up' } : { kind: 'signed_in' };
+  if (res.ok && typeof body?.mustSetUp === 'boolean' && typeof body.twoFactorEnabled === 'boolean')
+    return body.mustSetUp
+      ? { kind: 'must_set_up' }
+      : { kind: 'signed_in', twoFactorEnabled: body.twoFactorEnabled };
   if (res.status === 401) return { kind: 'signed_out' };
   return {
     kind: 'error',
