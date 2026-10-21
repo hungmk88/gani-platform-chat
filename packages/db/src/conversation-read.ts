@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 
 import { cursorString, cursorWhole, decodeCursor, encodeCursor } from './cursor.js';
 import { conversations } from './schema/conversations.js';
@@ -139,6 +139,17 @@ export interface MessageView {
   readonly createdAt: Date;
 }
 
+const MESSAGE_COLUMNS = {
+  id: messages.id,
+  sequenceNumber: messages.sequenceNumber,
+  senderKind: messages.senderKind,
+  senderUserId: messages.senderUserId,
+  kind: messages.kind,
+  body: messages.body,
+  platformSentAt: messages.platformSentAt,
+  createdAt: messages.createdAt,
+};
+
 /**
  * The messages of a conversation, newest first (a chat loads the latest and pages back), by `sequence_number`. The caller first
  * makes sure the conversation is visible (loadConversationView); RLS limits the messages to the session's workspaces anyway.
@@ -154,16 +165,7 @@ export async function listMessages(
   if (q.cursor !== undefined)
     where.push(lt(m.sequenceNumber, cursorWhole(decodeCursor(q.cursor), 'before')));
   const rows = await tx
-    .select({
-      id: m.id,
-      sequenceNumber: m.sequenceNumber,
-      senderKind: m.senderKind,
-      senderUserId: m.senderUserId,
-      kind: m.kind,
-      body: m.body,
-      platformSentAt: m.platformSentAt,
-      createdAt: m.createdAt,
-    })
+    .select(MESSAGE_COLUMNS)
     .from(m)
     .where(and(...where))
     .orderBy(desc(m.sequenceNumber))
@@ -174,5 +176,45 @@ export async function listMessages(
     rows: page,
     nextCursor:
       rows.length > q.limit && last ? encodeCursor({ before: last.sequenceNumber }) : null,
+  };
+}
+
+/** At most this many messages in one answer of `resume` (realtime spec §5). */
+export const RESUME_PAGE_MAX = 200;
+
+/**
+ * For `resume` (realtime spec §5): the messages after `after`, oldest first, at most `limit`, and the highest number the conversation
+ * has. The highest is read first: a message that commits between the two reads can be in the page with a number above it, never be
+ * missed (the client drops what it already has by `sequenceNumber`). The caller first makes sure the conversation is visible.
+ */
+export async function listMessagesAfter(
+  tx: TenantTx,
+  conversationId: string,
+  q: { readonly after: number; readonly limit: number },
+): Promise<{
+  readonly rows: readonly MessageView[];
+  readonly hasMore: boolean;
+  readonly maxSequence: number;
+}> {
+  if (!Number.isSafeInteger(q.after) || q.after < 0)
+    throw new RangeError('after must be a whole number >= 0');
+  if (!Number.isInteger(q.limit) || q.limit < 1 || q.limit > RESUME_PAGE_MAX)
+    throw new RangeError(`limit must be 1..${RESUME_PAGE_MAX}`);
+  const m = messages;
+  const id = assertUuid(conversationId, 'conversationId');
+  const [top] = await tx
+    .select({ max: sql<number>`coalesce(max(${m.sequenceNumber}), 0)::int` })
+    .from(m)
+    .where(eq(m.conversationId, id));
+  const rows = await tx
+    .select(MESSAGE_COLUMNS)
+    .from(m)
+    .where(and(eq(m.conversationId, id), gt(m.sequenceNumber, q.after)))
+    .orderBy(asc(m.sequenceNumber))
+    .limit(q.limit + 1);
+  return {
+    rows: rows.slice(0, q.limit),
+    hasMore: rows.length > q.limit,
+    maxSequence: top?.max ?? 0,
   };
 }
