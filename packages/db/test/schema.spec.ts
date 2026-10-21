@@ -22,6 +22,7 @@ const tables: PgTable[] = [
   db.agentSettings,
   db.conversations,
   db.idempotencyKeys,
+  db.messageDeliveries,
   db.sessions,
   db.accounts,
   db.verifications,
