@@ -39,6 +39,7 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
   };
 
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
+  const query = paramsOf(filter).toString();
   const empty = emptyOf(filter, role);
 
   return (
@@ -110,16 +111,25 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
         <>
           <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
             {rows.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
-                <span className="flex flex-col gap-1">
-                  <span className="font-semibold">
-                    {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
+              <li key={c.id}>
+                <Link
+                  href={`/inbox/${c.id}${query ? `?${query}` : ''}`}
+                  aria-current={pathname === `/inbox/${c.id}` ? 'page' : undefined}
+                  className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-bg-subtle aria-[current=page]:bg-bg-subtle"
+                >
+                  <span className="flex flex-col gap-1">
+                    <span className="font-semibold">
+                      {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
+                    </span>
+                    <span className="text-12 text-text-muted">{holderOf(c, meId)}</span>
                   </span>
-                  <span className="text-12 text-text-muted">{holderOf(c, meId)}</span>
-                </span>
-                <time dateTime={c.lastMessageAt ?? c.createdAt} className="text-12 text-text-muted">
-                  {whenOf(c)}
-                </time>
+                  <time
+                    dateTime={c.lastMessageAt ?? c.createdAt}
+                    className="text-12 text-text-muted"
+                  >
+                    {whenOf(c)}
+                  </time>
+                </Link>
               </li>
             ))}
           </ul>

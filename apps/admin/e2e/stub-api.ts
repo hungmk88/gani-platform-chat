@@ -40,6 +40,33 @@ const conversation = (n: number, state: string, assignedUserId: string | null, h
   lastCustomerMessageAt: null,
   createdAt: '2026-10-20T00:00:00Z',
 });
+/** A message a customer could send to break a page (T2): it must show as these characters and run nothing. */
+export const HOSTILE =
+  '<script>window.__xss = 1</script><img src=x onerror="window.__xss = 1">**đậm**';
+const message = (
+  n: number,
+  senderKind: string,
+  body: string,
+  platformSentAt: string | null,
+  senderUserId: string | null = null,
+) => ({
+  id: `0190b000-0000-7000-8000-00000000000${n}`,
+  sequenceNumber: n,
+  senderKind,
+  senderUserId,
+  kind: 'text',
+  body,
+  platformSentAt,
+  createdAt: `2026-10-21T02:0${n}:30Z`,
+});
+/** The messages of conversation #2 (sales holds it); #5 arrived late from Zalo and was sent before #4. */
+export const MESSAGES = [
+  message(1, 'customer', 'Chào shop, cho hỏi giá thùng 24 lon.', '2026-10-21T02:01:00Z'),
+  message(2, 'bot', 'Dạ em chuyển anh/chị cho nhân viên ạ.', '2026-10-21T02:02:00Z'),
+  message(3, 'agent', 'Dạ em chào anh, em gửi báo giá ngay.', null, 'user-sales'),
+  message(4, 'customer', HOSTILE, '2026-10-21T02:06:00Z'),
+  message(5, 'customer', 'Gửi lúc 02:05, tới sau.', '2026-10-21T02:05:00Z'),
+];
 export const CONVERSATIONS = [
   conversation(1, 'HUMAN_WAITING_Q', null),
   conversation(2, 'HUMAN_ACTIVE', 'user-sales'),
@@ -209,6 +236,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const from = Number(q.get('cursor') ?? 0);
     const next = from + STUB_PAGE < seen.length ? String(from + STUB_PAGE) : null;
     return send(res, 200, { data: seen.slice(from, from + STUB_PAGE), nextCursor: next });
+  }
+  const one = /^\/v1\/conversations\/([^/]+)(\/messages)?$/.exec(path ?? '');
+  if (req.method === 'GET' && one) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const me = meOf(session.email);
+    const all = ['owner', 'admin', 'manager'].includes(me?.org?.role ?? '');
+    const c = CONVERSATIONS.find((x) => x.id === one[1]);
+    // Not there and not visible are the same 404 (P9).
+    if (!c || !(all || c.assignedUserId === null || c.assignedUserId === me?.id))
+      return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (!one[2]) return send(res, 200, c);
+    const own = c === CONVERSATIONS[1] ? [...MESSAGES].reverse() : [];
+    const from = Number(new URL(req.url ?? '/', 'http://stub').searchParams.get('cursor') ?? 0);
+    const next = from + STUB_PAGE < own.length ? String(from + STUB_PAGE) : null;
+    return send(res, 200, { data: own.slice(from, from + STUB_PAGE), nextCursor: next });
   }
   if (req.method === 'GET' && path === '/v1/me') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
