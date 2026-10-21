@@ -8,12 +8,12 @@ function form() {
   const s = Proto.state();
   const email = h('input', { id: 'email', class: 'input', type: 'email', autocomplete: 'username', value: 'linh@example.test' });
   const pass = h('input', { id: 'pass', class: 'input', type: 'password', autocomplete: 'current-password' });
+  // Sai mật khẩu và tài khoản đang khóa 30 phút: API trả cùng một câu (401 INVALID_EMAIL_OR_PASSWORD, không lộ tài khoản nào tồn tại),
+  // nên chỉ có một câu báo lỗi (CEO duyệt 21/10/2026).
   const error = s === 'error'
-    ? h('p', { class: 'field-error', role: 'alert' }, 'Email hoặc mật khẩu không đúng.')
-    : s === 'locked'
-      ? h('p', { class: 'field-error', role: 'alert' }, 'Tài khoản tạm khóa 30 phút vì nhập sai 5 lần. Thử lại sau hoặc liên hệ Admin.')
-      : null;
-  const submit = h('button', { class: 'btn primary', type: 'submit', disabled: s === 'locked' }, 'Đăng nhập');
+    ? h('p', { class: 'field-error', role: 'alert' }, 'Email hoặc mật khẩu không đúng. Nhập sai 5 lần liên tiếp, tài khoản tạm khóa 30 phút.')
+    : null;
+  const submit = h('button', { class: 'btn primary', type: 'submit' }, 'Đăng nhập');
   if (s === 'loading') {
     submit.setAttribute('aria-busy', 'true');
     submit.disabled = true;
@@ -37,7 +37,7 @@ function form() {
 }
 
 Proto.mountBare({
-  states: [['normal', 'Bình thường'], ['loading', 'Đang đăng nhập'], ['error', 'Sai email hoặc mật khẩu'], ['locked', 'Khóa 30 phút (5 lần sai)'], ['aioff', 'AI tắt — Không áp dụng']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang đăng nhập'], ['error', 'Sai email/mật khẩu hoặc đang khóa 30 phút'], ['aioff', 'AI tắt — Không áp dụng']],
   render: () => h('main', { class: 'card stack auth-card' },
     Proto.noAiNote(),
     h('h1', {}, 'Đăng nhập'),

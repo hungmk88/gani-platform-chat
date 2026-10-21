@@ -22,7 +22,6 @@ const PAGES = [
   'bots.html?role=admin',
   'bots.html?role=admin&state=config_error',
   'login.html?role=sales&state=error',
-  'login.html?role=sales&state=locked',
   'invite.html?role=admin',
   'invite.html?role=sales&state=used',
   'me.html?role=sales',

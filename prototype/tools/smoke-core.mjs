@@ -10,7 +10,7 @@ const STATES = {
   'customer.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'merge_suggestion', 'human_only', 'merge'],
   'leads.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'many', 'saving', 'save_error', 'drawer', 'drawer_loading', 'drawer_error'],
   'bots.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'config_error', 'missing_greeting', 'published_view'],
-  'login.html': ['normal', 'loading', 'error', 'locked', 'aioff'],
+  'login.html': ['normal', 'loading', 'error', 'aioff'],
   'reset.html': ['normal', 'sent', 'set', 'weak', 'done', 'expired', 'aioff'],
   'invite.html': ['normal', 'expired', 'invalid', 'used', 'timeout', 'aioff'],
   'me.html': ['normal', 'tfa_on', 'loading', 'error', 'aioff'],
@@ -162,11 +162,9 @@ await shot(p, 'system-error');
 await p.close();
 
 // #1 Đăng nhập
-p = await open('login.html?role=sales&state=locked');
-check(await p.locator('button[type=submit]').isDisabled(), 'Khóa 30 phút: nút Đăng nhập bị khóa');
-await p.close();
 p = await open('login.html?role=sales&state=error');
 check((await p.textContent('[role=alert]')).includes('Email hoặc mật khẩu không đúng'), 'Lỗi chung, không nói sai cái nào');
+check((await p.textContent('[role=alert]')).includes('tạm khóa 30 phút'), 'Khóa 30 phút: cùng câu lỗi chung (API không phân biệt)');
 await shot(p, 'login-error');
 await p.close();
 p = await open('login.html?role=admin');

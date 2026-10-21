@@ -13,7 +13,7 @@ Mở `prototype/dot1/index.html` bằng trình duyệt; thanh đen trên cùng m
 | 2 | Hồ sơ khách (#8) + Gộp (#9) | `customer.html` | SĐT che, trường nhạy cảm Che (Marketing/Viewer), đề xuất gộp, cờ "chỉ người phục vụ" | Đủ | M8 (J1, J4) |
 | 3 | Pipeline (#12) + Chi tiết lead (#13) | `leads.html` | Trống, cột nhiều thẻ, đang lưu; drawer chi tiết | Đủ; drawer có đang tải, lỗi | O1 (tên 6 bước, lý do Thua), U25 câu 3 |
 | 4 | Trình dựng bot (#18) + Danh sách flow (#17) | `bots.html` | Lỗi cấu hình, chặn xuất bản khi thiếu câu chào; dạng form, không canvas | Đủ | M8 + Q7 (D4) |
-| 5 | Đăng nhập (#1) | `login.html` | Đang tải nút, lỗi chung, khóa 30 phút sau 5 lần sai | Đủ | — |
+| 5 | Đăng nhập (#1) | `login.html` | Đang tải nút, lỗi chung; khóa 30 phút sau 5 lần sai dùng cùng câu lỗi chung, vì API không phân biệt (CEO duyệt 21/10) | Đủ | — |
 | 6 | Xác thực 2 lớp (#2) | `twofa.html` | Đang tải, mã sai, khóa tạm, cài 2FA bắt buộc, 10 mã dự phòng | Đủ; thêm cài lại sau khi Admin đặt lại | U25 câu 2 (mã dự phòng khi đang khóa) |
 | 7 | Quên mật khẩu (#3) | `reset.html` | Đã gửi (cùng một câu), link hết hạn/đã dùng, mật khẩu yếu | Đủ (bố cục) | **PR7**: duyệt lại chi tiết |
 | 8 | Nhận lời mời (#4) | `invite.html` | Link hết hạn, đã dùng (N31), quá thời gian → gửi link email | Đủ (bố cục) | **PR7**: duyệt lại chi tiết |
