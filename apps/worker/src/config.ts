@@ -25,6 +25,16 @@ export interface WorkerConfig {
     readonly orgsPerTick: number;
     readonly orgParallel: number;
   };
+  /** The consumer of the event queues (outbox spec §5–6, N141). Off in the kill-tests of the relay, which consume the queues themselves. */
+  readonly events: {
+    readonly enabled: boolean;
+    /** How often the registry of the queues is read for new ones. */
+    readonly discoveryMs: number;
+    /** Each queue holds one blocking connection to Valkey: past this many, new queues are passed over with a warning. */
+    readonly maxQueues: number;
+    /** Jobs of one queue run at the same time. */
+    readonly concurrency: number;
+  };
 }
 
 /** Lists every wrong variable at once, by name only: a URL carries a password and is never echoed. */
@@ -75,6 +85,12 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       // 1..1000 is what app.inbound_pending_orgs accepts (22023 otherwise).
       orgsPerTick: whole('INBOUND_ORGS_PER_TICK', 50, 1, 1_000),
       orgParallel: whole('INBOUND_ORG_PARALLEL', 2, 1, 32),
+    },
+    events: {
+      enabled: whole('EVENTS_CONSUMER_ENABLED', 1, 0, 1) === 1,
+      discoveryMs: whole('EVENTS_DISCOVERY_MS', 5_000, 100, 60_000),
+      maxQueues: whole('EVENTS_MAX_QUEUES', 200, 1, 10_000),
+      concurrency: whole('EVENTS_CONCURRENCY', 4, 1, 64),
     },
   };
   if (problems.length > 0) throw new ConfigError(problems);
