@@ -219,9 +219,10 @@ jobs:
           docker exec "$VALKEY_CONTAINER" valkey-cli INFO server | grep -E '^(redis_version|valkey_version):' || true
           docker exec "$VALKEY_CONTAINER" valkey-cli CONFIG GET appendonly
           docker exec "$VALKEY_CONTAINER" valkey-cli CONFIG GET maxmemory-policy
-      # The kill-tests run `node dist/main.js` as a real process, so the worker and what it imports must be built.
-      - name: Build the worker
-        run: pnpm --filter "@gani/worker..." build
+      # The kill-tests run `node dist/main.js` as a real process, so the worker and what it imports must be built. The end-to-end test
+      # of realtime (webhook -> worker -> socket, V8c) also runs the API's `dist/main.js`.
+      - name: Build the worker and the API
+        run: pnpm --filter "@gani/worker..." --filter "@gani/api..." build
       - name: Migrate and run the queue tests
         run: |
           base="127.0.0.1:5432/${PG_DB}"

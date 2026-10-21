@@ -46,3 +46,4 @@
 - Kill worker khi đang nhận 50 tin/s → 0 tin mất (`inbound-e2e.spec.ts` K-IN: 1000 sự kiện, `SIGKILL` khi có claim, mỗi `platform_message_id` đúng 1 tin, mọi `message.created` tới consumer).
 - `workerEnv()` tắt consumer (`EVENTS_CONSUMER_ENABLED=0`): K1–K3 dùng consumer riêng của test, consumer thật sẽ tranh job (bật lên thì K1b đỏ). Test của consumer tự bật.
 - Job thiếu `orgId` → fail ngay, có log.
+- E2E lát dọc (`realtime-e2e.spec.ts`, V8c): webhook Zalo có chữ ký → **API thật** (`test/api.ts` `spawnApi`, chạy `apps/api/dist/main.js` với `REDIS_URL`; job `queue` build cả `@gani/api...`) → worker thật → Valkey → socket của agent. Agent W1 nhận bản rút gọn (không `body`) ở `ws:`, subscribe rồi nhận tin đầy đủ ở `conv:`; agent W2 cùng org không nhận gì của W1 (mốc: một tin của W2 gửi sau cùng). Mật khẩu test băm bằng `@node-rs/argon2` (devDependency, cùng bản với API).
