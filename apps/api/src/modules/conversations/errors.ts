@@ -18,6 +18,20 @@ export class ConversationAlreadyClaimedError extends Error {
     super('conversation already claimed');
     this.name = 'ConversationAlreadyClaimedError';
   }
+  /** Added to the 409 body by ProblemFilter (PRR-05): an id, which the person may see once the conversation is in their workspace. */
+  get problemExtensions() {
+    return { assignedUserId: this.assignedUserId };
+  }
+}
+
+/** Transfer or assign to someone who cannot hold it: one answer for every reason, so nobody learns who is a member (P9). */
+export class InvalidAssigneeError extends Error {
+  readonly status = 422;
+  readonly code = 'invalid_assignee';
+  constructor() {
+    super('This person cannot take the conversation.');
+    this.name = 'InvalidAssigneeError';
+  }
 }
 
 /** The client acted on a version that is no longer current: reload and try again. */

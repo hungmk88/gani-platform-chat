@@ -1,6 +1,7 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
+import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { problemResponse as problem } from './schemas.js';
 
 // The contract the front end builds on (Brief P18): generated from the Zod schemas the API validates with, so the two cannot drift.
@@ -57,7 +58,10 @@ function registerPlatform(registry: OpenAPIRegistry): void {
   });
 }
 
-const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [registerPlatform];
+const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
+  registerPlatform,
+  registerConversations,
+];
 
 export function buildOpenApiDocument() {
   const registry = new OpenAPIRegistry();

@@ -78,7 +78,7 @@ function list() {
   return h('table', { class: 'plain' },
     h('thead', {}, h('tr', {}, ['Ticket', 'Loại', 'Khách', 'Phụ trách', 'Trạng thái', 'SLA'].map((c) => h('th', {}, c)))),
     h('tbody', {}, rows.map((t) => h('tr', {},
-      h('td', {}, h('button', { class: 'btn link ticket-open', onclick: () => { openId = t.id; Proto.render(); } }, t.title)),
+      h('td', {}, h('button', { class: 'btn link ticket-open', 'data-opens': t.id, onclick: () => { openId = t.id; Proto.render(); Proto.focusDrawer(); } }, t.title)),
       h('td', {}, t.type, ' ', h('span', { class: 'pending-spec' }, 'chờ Q8')),
       h('td', {}, t.customer),
       h('td', {}, t.owner || h('span', { class: 'muted' }, 'Chưa giao')),
@@ -134,7 +134,7 @@ function drawer() {
         t.status === 'done' ? h('li', {}, 'Đã xong') : null));
   }
   return h('aside', { class: 'lead-drawer stack', role: 'dialog', 'aria-label': `Chi tiết ticket ${t.title}` },
-    h('div', { class: 'spread' }, h('h2', {}, t.title), h('button', { class: 'btn', onclick: () => { openId = null; Proto.render(); }, 'aria-label': 'Đóng chi tiết ticket' }, 'Đóng')),
+    h('div', { class: 'spread' }, h('h2', {}, t.title), h('button', { class: 'btn', onclick: closeDrawer, 'data-drawer-close': true, 'aria-label': 'Đóng chi tiết ticket' }, 'Đóng')),
     content);
 }
 
@@ -146,7 +146,14 @@ function body() {
   return h('div', {}, filters(), list());
 }
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId && !document.querySelector('.overlay')) { openId = null; Proto.render(); } });
+function closeDrawer() {
+  const id = openId;
+  openId = null;
+  Proto.render();
+  Proto.focusOpener(id);
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId && !document.querySelector('.overlay')) closeDrawer(); });
 
 Proto.mount({
   page: 'tickets',

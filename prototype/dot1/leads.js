@@ -79,7 +79,7 @@ function card(lead) {
     title: movable ? 'Kéo để đổi bước' : 'Chỉ người phụ trách đổi bước',
     ondragstart: (e) => e.dataTransfer.setData('text/plain', lead.id),
   },
-  h('div', { class: 'spread' }, h('button', { class: 'btn link lead-open', 'aria-label': `Xem chi tiết ${lead.company}`, onclick: () => { openId = lead.id; Proto.render(); } }, h('strong', {}, lead.company)), busy ? h('span', { class: 'row small muted' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), 'Đang lưu…') : null),
+  h('div', { class: 'spread' }, h('button', { class: 'btn link lead-open', 'data-opens': lead.id, 'aria-label': `Xem chi tiết ${lead.company}`, onclick: () => { openId = lead.id; Proto.render(); Proto.focusDrawer(); } }, h('strong', {}, lead.company)), busy ? h('span', { class: 'row small muted' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), 'Đang lưu…') : null),
   h('span', { class: 'small' }, `${lead.contact} · ${lead.owner}`),
   h('span', { class: 'small muted' }, `Liên hệ cuối ${lead.last} · ${lead.days} ngày ở bước này`),
   h('a', { class: 'small', href: `inbox.html?role=${Proto.role()}` }, `Nguồn: ${lead.source} · hội thoại gốc`),
@@ -153,7 +153,7 @@ function drawer() {
   const s = Proto.state();
   const lead = leads.find((l) => l.id === openId);
   if (!lead) return null;
-  const close = () => { openId = null; Proto.render(); };
+  const close = closeDrawer;
   let content;
   if (s === 'drawer_loading') content = Proto.loading(6);
   else if (s === 'drawer_error') content = Proto.error('Không tải được chi tiết lead.');
@@ -180,7 +180,7 @@ function drawer() {
       h('ol', { class: 'stack small', style: 'margin:0;padding-left:var(--sp-4)' }, history(lead).map(([what, who, at]) => h('li', {}, `${at} · ${what} · ${who}`))));
   }
   return h('aside', { class: 'lead-drawer stack', role: 'dialog', 'aria-label': `Chi tiết lead ${lead.company}` },
-    h('div', { class: 'spread' }, h('h2', {}, lead.company), h('button', { class: 'btn', onclick: close, 'aria-label': 'Đóng chi tiết lead' }, 'Đóng')),
+    h('div', { class: 'spread' }, h('h2', {}, lead.company), h('button', { class: 'btn', onclick: close, 'data-drawer-close': true, 'aria-label': 'Đóng chi tiết lead' }, 'Đóng')),
     content);
 }
 
@@ -192,7 +192,14 @@ function body() {
   return h('div', {}, filters(), board());
 }
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId && !document.querySelector('.overlay')) { openId = null; Proto.render(); } });
+function closeDrawer() {
+  const id = openId;
+  openId = null;
+  Proto.render();
+  Proto.focusOpener(id);
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId && !document.querySelector('.overlay')) closeDrawer(); });
 
 Proto.mount({
   page: 'leads',

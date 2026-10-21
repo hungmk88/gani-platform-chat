@@ -18,6 +18,18 @@ describe('the OpenAPI document (Brief P18)', () => {
     expect(Object.keys(doc.components?.schemas ?? {})).toEqual(
       expect.arrayContaining(['Problem', 'SecurityStatus']),
     );
-    expect(Object.keys(doc.paths ?? {})).toEqual(['/healthz', '/readyz', '/v1/me/security-status']);
+    expect(Object.keys(doc.paths ?? {})).toEqual([
+      '/healthz',
+      '/readyz',
+      '/v1/me/security-status',
+      '/v1/conversations',
+      '/v1/conversations/{id}',
+      '/v1/conversations/{id}/messages',
+      '/v1/conversations/{id}/claim',
+      '/v1/conversations/{id}/wait-customer',
+      '/v1/conversations/{id}/transfer',
+      '/v1/conversations/{id}/assign',
+      '/v1/conversations/{id}/close',
+    ]);
   });
 });

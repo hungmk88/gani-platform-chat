@@ -1,6 +1,8 @@
 import { and, eq, isNull } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 
 import { orgMembers, type OrgRole } from './schema/org-members.js';
+import { teamMembers } from './schema/team-members.js';
 import { workspaceMembers } from './schema/workspace-members.js';
 import { workspaces } from './schema/workspaces.js';
 import type { TenantTx } from './tenant-tx.js';
@@ -44,4 +46,23 @@ export async function readMemberContext(
       ),
     );
   return { role: member.role, workspaceIds: rows.map((r) => r.id).sort() };
+}
+
+/** Do `a` and `b` belong to one team (neither membership soft-deleted)? Phụ lục B "Team" for a transfer by sales or support. */
+export async function shareTeam(tx: TenantTx, a: string, b: string): Promise<boolean> {
+  const other = alias(teamMembers, 'other');
+  const rows = await tx
+    .select({ team: teamMembers.teamId })
+    .from(teamMembers)
+    .innerJoin(other, and(eq(other.orgId, teamMembers.orgId), eq(other.teamId, teamMembers.teamId)))
+    .where(
+      and(
+        eq(teamMembers.userId, a),
+        eq(other.userId, b),
+        isNull(teamMembers.deletedAt),
+        isNull(other.deletedAt),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
