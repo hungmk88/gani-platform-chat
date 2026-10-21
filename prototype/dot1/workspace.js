@@ -1,4 +1,4 @@
-/* global Proto */
+/* global document, Proto */
 /* #21 Workspace, 3 tab (danh-sach-man-M11; A2, C8, C9, C10, D4). Sprint S4, nộp wireframe 21/12/2026.
    Căn cứ: spec M8 §3.3 SLA & ưu tiên, §3.4 Giờ làm việc + trạng thái agent (U20-4/5, Q-U20-4), §3.5 Phân bổ (Q-M8-1: không theo
    kỹ năng ở Đợt 1). Owner, Admin sửa; Manager xem (spec M8, chờ đối chiếu Phụ lục B). Giá trị lịch là tạm, chờ Q7 (U18, U20-6). */
@@ -29,7 +29,7 @@ function infoTab() {
     h('td', {}, close ? input(`close-${day}`, close, { type: 'time', 'aria-label': `${day} đóng cửa` }) : null),
     h('td', {}, open && day !== 'T7' ? h('span', { class: 'small' }, '12:00–13:00') : null)));
   const check = () => {
-    for (const [day, open, close] of DAYS) {
+    for (const [day, open] of DAYS) {
       const o = document.getElementById(`open-${day}`)?.value;
       const c = document.getElementById(`close-${day}`)?.value;
       if (open && o && c && o >= c) return `${day}: giờ đóng cửa phải sau giờ mở cửa.`;
