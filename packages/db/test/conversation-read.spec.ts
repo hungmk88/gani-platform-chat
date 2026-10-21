@@ -7,6 +7,7 @@ import {
   InvalidCursorError,
   listConversations,
   listMessages,
+  listMessagesAfter,
   loadConversationView,
   withTenant,
   type ConversationListQuery,
@@ -180,5 +181,49 @@ describe('listMessages', () => {
       rows: [],
       nextCursor: null,
     });
+  });
+});
+
+describe('listMessagesAfter', () => {
+  it('gives the messages after a number, oldest first, page by page, with the highest number of the conversation', async () => {
+    const [c, empty] = [await conversation(), await conversation()];
+    for (let n = 1; n <= 7; n++)
+      await admin.query(
+        `INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, $5, 'customer', 'text', 'm')`,
+        [uuidv7(), A, W1, c, n],
+      );
+    const after = (n: number, limit = 3) =>
+      inA([W1], (tx) => listMessagesAfter(tx, c, { after: n, limit }));
+    const first = await after(2);
+    expect(first.rows.map((r) => r.sequenceNumber)).toEqual([3, 4, 5]);
+    expect(first).toMatchObject({ hasMore: true, maxSequence: 7 });
+    expect((await after(5)).rows.map((r) => r.sequenceNumber)).toEqual([6, 7]);
+    expect(await after(5)).toMatchObject({ hasMore: false, maxSequence: 7 });
+    expect(await after(9)).toEqual({ rows: [], hasMore: false, maxSequence: 7 });
+    expect(await inA([W1], (tx) => listMessagesAfter(tx, empty, { after: 0, limit: 5 }))).toEqual({
+      rows: [],
+      hasMore: false,
+      maxSequence: 0,
+    });
+    // Another workspace of the session sees nothing of it, not even its highest number (RLS).
+    expect(await inA([W2], (tx) => listMessagesAfter(tx, c, { after: 0, limit: 5 }))).toEqual({
+      rows: [],
+      hasMore: false,
+      maxSequence: 0,
+    });
+  });
+
+  it('refuses a number below 0, a limit outside 1..200 and an id that is not a UUID', async () => {
+    const c = await conversation();
+    for (const q of [
+      { after: -1, limit: 1 },
+      { after: 0, limit: 0 },
+      { after: 0, limit: 201 },
+      { after: 0.5, limit: 1 },
+    ])
+      await expect(inA([W1], (tx) => listMessagesAfter(tx, c, q))).rejects.toThrow(RangeError);
+    await expect(
+      inA([W1], (tx) => listMessagesAfter(tx, 'x', { after: 0, limit: 1 })),
+    ).rejects.toThrow();
   });
 });
