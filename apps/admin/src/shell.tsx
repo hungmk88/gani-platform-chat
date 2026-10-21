@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Me } from './me';
 import { NavLink } from './nav-link';
 import { navFor, type Role } from './nav';
+import { SignOutButton } from './sign-out';
 
 /** The frame of every screen: the menu of the role on the left, the company and the person on top (Brief UI Phần 2). */
 export function Shell({ me, role, children }: { me: Me; role: Role; children: ReactNode }) {
@@ -38,7 +39,10 @@ export function Shell({ me, role, children }: { me: Me; role: Role; children: Re
               ? `${me.org.name} · ${me.workspaces.map((w) => w.name).join(', ')}`
               : 'Nền tảng — không thuộc công ty nào'}
           </span>
-          <span>{me.name}</span>
+          <span className="flex items-center gap-2">
+            {me.name}
+            <SignOutButton />
+          </span>
         </header>
         <main className="flex-1 p-4">{children}</main>
       </div>

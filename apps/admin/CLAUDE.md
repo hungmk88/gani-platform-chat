@@ -77,4 +77,4 @@ Trang mặc định sau đăng nhập:
 - `next build` hỏng ("reading 'useContext'") nếu `NODE_ENV=development` đặt sẵn trong môi trường: bỏ biến đó khi build. CI không đặt.
 - `typecheck` = `next typegen && tsc --noEmit` (`next-env.d.ts` do Next sinh, không commit).
 - Import trong app không có đuôi `.js` (bundler), khác `apps/api`.
-
+- Đăng nhập thật khi dev: API chạy với `BETTER_AUTH_URL=http://localhost:3001` (địa chỉ của admin), vì cookie phiên và kiểm `Origin` (N136) theo địa chỉ trình duyệt thấy. Khung app hỏi `GET /v1/me/security-status` trước (401 → `/login`, phải cài 2FA → `/two-factor/setup`), rồi mới `GET /v1/me`.
