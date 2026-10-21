@@ -381,6 +381,10 @@
     return out;
   };
 
+  /* Ngăn kéo (#13, #15): mở thì đưa con trỏ bàn phím vào nút Đóng, đóng thì trả về nút đã mở. */
+  Proto.focusDrawer = () => document.querySelector('[data-drawer-close]')?.focus();
+  Proto.focusOpener = (id) => document.querySelector(`[data-opens="${id}"]`)?.focus();
+
   /* Gõ phím tắt chỉ khi con trỏ không ở ô nhập (§4.7). */
   Proto.inTextField = (event) => event.target.closest('input, textarea, select, [contenteditable]');
 

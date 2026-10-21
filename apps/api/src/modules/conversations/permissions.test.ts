@@ -1,23 +1,15 @@
 import type { OrgRole } from '@gani/db';
 import { describe, expect, it } from 'vitest';
 
-import { canSee, readScope } from './permissions.js';
+import { actionScope, canSee, mayAct, readScope, type ConversationAction } from './permissions.js';
 
 const ME = '0190a000-0000-7000-8000-000000000001';
 const OTHER = '0190a000-0000-7000-8000-000000000002';
+const ROLES: OrgRole[] = ['owner', 'admin', 'manager', 'sales', 'support', 'marketing', 'viewer'];
 
 describe('who sees which conversations (Phụ lục B rows 11–12, N133)', () => {
   it('gives each of the seven roles its scope', () => {
-    const roles: OrgRole[] = [
-      'owner',
-      'admin',
-      'manager',
-      'sales',
-      'support',
-      'marketing',
-      'viewer',
-    ];
-    expect(Object.fromEntries(roles.map((r) => [r, readScope(r)]))).toEqual({
+    expect(Object.fromEntries(ROLES.map((r) => [r, readScope(r)]))).toEqual({
       owner: 'workspace',
       admin: 'workspace',
       manager: 'workspace',
@@ -42,5 +34,33 @@ describe('who sees which conversations (Phụ lục B rows 11–12, N133)', () =
       false,
       false,
     ]);
+  });
+});
+
+describe('who may act on a conversation (Phụ lục B rows 13, 15–17)', () => {
+  it('gives each of the seven roles its scope for the five actions', () => {
+    const actions: ConversationAction[] = ['claim', 'wait_customer', 'transfer', 'assign', 'close'];
+    const row = (role: OrgRole) => actions.map((a) => actionScope(role, a)).join(' ');
+    expect(Object.fromEntries(ROLES.map((r) => [r, row(r)]))).toEqual({
+      owner: 'any any any any any',
+      admin: 'any any any any any',
+      manager: 'any any any any any',
+      sales: 'any own own none own',
+      support: 'any own own none own',
+      marketing: 'none none none none none',
+      viewer: 'none none none none none',
+    });
+  });
+
+  it('lets sales close only what they hold, a manager anything, and nobody assign below manager', () => {
+    const on = (role: OrgRole, action: ConversationAction) =>
+      [ME, OTHER, null]
+        .map((assignedUserId) => mayAct(role, ME, action, { assignedUserId }))
+        .join(' ');
+    expect(on('sales', 'close')).toBe('true false false');
+    expect(on('manager', 'close')).toBe('true true true');
+    expect(on('support', 'claim')).toBe('true true true');
+    expect(on('sales', 'assign')).toBe('false false false');
+    expect(on('viewer', 'claim')).toBe('false false false');
   });
 });
