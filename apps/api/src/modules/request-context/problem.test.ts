@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 
 import { describe, expect, it } from 'vitest';
 
-import { PROBLEM_CONTENT_TYPE, problem, sendProblem } from './problem.js';
+import { PROBLEM_CONTENT_TYPE, extensionsOf, problem, sendProblem } from './problem.js';
 
 describe('problem', () => {
   it('builds an RFC 9457 body with the reason phrase as title', () => {
@@ -15,6 +15,23 @@ describe('problem', () => {
     });
     const full = problem(401, 'unauthorized', 'Sign in first', 'trace-1');
     expect(full).toMatchObject({ detail: 'Sign in first', traceId: 'trace-1' });
+  });
+
+  it('adds extension members after its own, never in place of one, and gives them back (RFC 9457 §3.2)', () => {
+    const body = problem(409, 'taken', undefined, 't', {
+      assignedUserId: null,
+      status: 200,
+      code: 'x',
+    });
+    expect(body).toEqual({
+      type: 'about:blank',
+      title: 'Conflict',
+      status: 409,
+      code: 'taken',
+      traceId: 't',
+      assignedUserId: null,
+    });
+    expect(extensionsOf(body)).toEqual({ assignedUserId: null });
   });
 
   it('is sent as application/problem+json with the status of the problem and no caching', async () => {
