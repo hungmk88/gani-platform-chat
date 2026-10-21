@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "smoke": "node scripts/smoke-start.mjs",
+    "bootstrap:operator": "node scripts/bootstrap-platform-operator.mjs",
     "openapi": "node scripts/openapi.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
