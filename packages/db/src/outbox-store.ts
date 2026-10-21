@@ -96,7 +96,11 @@ export interface OutboxFailure {
   readonly retryAfterSeconds: number;
 }
 
-/** The queue refused it: back to `pending` after `retryAfterSeconds`, or `dead_letter` once `attempts` reached `maxAttempts`. */
+/**
+ * The queue refused it: back to `pending` after `retryAfterSeconds`, or `dead_letter` once `attempts` reached `maxAttempts`. Only the
+ * claim that `attempts` names is failed, as in the inbound store (review E-02): a relay whose lease was taken back must not fail the
+ * claim of the relay that took the event after it. `null`: not this relay's claim any more.
+ */
 export async function failOutboxEvent(
   tx: TenantTx,
   f: OutboxFailure,
@@ -110,7 +114,13 @@ export async function failOutboxEvent(
       lastError: f.errorCode,
       ...(dead ? {} : { availableAt: sql`now() + make_interval(secs => ${f.retryAfterSeconds})` }),
     })
-    .where(and(eq(outboxEvents.id, f.id), eq(outboxEvents.status, 'claimed')))
+    .where(
+      and(
+        eq(outboxEvents.id, f.id),
+        eq(outboxEvents.status, 'claimed'),
+        eq(outboxEvents.attempts, f.attempts),
+      ),
+    )
     .returning({ status: outboxEvents.status });
   return row ? (dead ? 'dead_letter' : 'pending') : null;
 }
