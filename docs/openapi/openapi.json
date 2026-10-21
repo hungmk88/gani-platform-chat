@@ -63,6 +63,87 @@
         ],
         "description": "RFC 9457 problem details; `code` is the stable word (Brief P9)."
       },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isPlatformOperator": {
+            "type": "boolean"
+          },
+          "org": {
+            "$ref": "#/components/schemas/MeOrg"
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeWorkspace"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isPlatformOperator",
+          "org",
+          "workspaces"
+        ]
+      },
+      "Uuid": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUIDv7."
+      },
+      "MeOrg": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "manager",
+              "sales",
+              "support",
+              "marketing",
+              "viewer"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ]
+      },
+      "MeWorkspace": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "ConversationPage": {
         "type": "object",
         "properties": {
@@ -175,11 +256,6 @@
           "lastCustomerMessageAt",
           "createdAt"
         ]
-      },
-      "Uuid": {
-        "type": "string",
-        "format": "uuid",
-        "description": "UUIDv7."
       },
       "MessagePage": {
         "type": "object",
@@ -484,6 +560,56 @@
           },
           "401": {
             "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "summary": "The signed-in person, the organisation they act in and its workspaces they belong to (U32, N145). Ask security-status first.",
+        "tags": [
+          "me"
+        ],
+        "responses": {
+          "200": {
+            "description": "`org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "two_factor_setup_required: the second factor must be set up first (N93).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: a database did not answer.",
             "content": {
               "application/problem+json": {
                 "schema": {

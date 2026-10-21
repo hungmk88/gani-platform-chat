@@ -60,6 +60,20 @@ export class AuthService implements OnApplicationShutdown {
     return mustSetUpTwoFactor(this.pool, userId);
   }
 
+  /**
+   * Name and platform right of `userId` for `GET /v1/me` (U32), or `null` for a person who was deleted. `users` is global and
+   * `app_role` cannot read it, so this goes through the column grants of `auth_role`. The name falls back to the email (N145).
+   */
+  async profile(userId: string): Promise<{ name: string; isPlatformOperator: boolean } | null> {
+    const { rows } = await this.pool.query<{ name: string; is_platform_operator: boolean }>(
+      `SELECT coalesce(nullif(btrim(display_name), ''), email) AS name, is_platform_operator
+         FROM public.users WHERE id = $1 AND deleted_at IS NULL`,
+      [userId],
+    );
+    const [row] = rows;
+    return row ? { name: row.name, isPlatformOperator: row.is_platform_operator } : null;
+  }
+
   twoFactorStatus(userId: string): Promise<TwoFactorStatus | null> {
     return twoFactorStatus(this.pool, userId);
   }

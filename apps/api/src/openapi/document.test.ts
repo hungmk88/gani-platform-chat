@@ -16,12 +16,13 @@ describe('the OpenAPI document (Brief P18)', () => {
     const doc = buildOpenApiDocument();
     expect(doc.openapi).toBe('3.1.0');
     expect(Object.keys(doc.components?.schemas ?? {})).toEqual(
-      expect.arrayContaining(['Problem', 'SecurityStatus']),
+      expect.arrayContaining(['Problem', 'SecurityStatus', 'Me']),
     );
     expect(Object.keys(doc.paths ?? {})).toEqual([
       '/healthz',
       '/readyz',
       '/v1/me/security-status',
+      '/v1/me',
       '/v1/conversations',
       '/v1/conversations/{id}',
       '/v1/conversations/{id}/messages',

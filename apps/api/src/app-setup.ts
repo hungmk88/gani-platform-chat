@@ -1,5 +1,5 @@
 import { SecretBox } from '@gani/channels';
-import { insertIfAbsent, readMemberContext } from '@gani/db';
+import { insertIfAbsent } from '@gani/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { toNodeHandler } from 'better-auth/node';
 
@@ -9,6 +9,10 @@ import { createZaloWebhook } from './modules/hooks/zalo-webhook.js';
 import { RealtimeService } from './modules/realtime/realtime.service.js';
 import { revalidatePeriodMs } from './modules/realtime/revalidate.js';
 import { realtimeAdapterPolicy } from './modules/realtime/valkey.js';
+import {
+  ORGANISATION_SOURCES,
+  type OrganisationSources,
+} from './modules/request-context/org-selection.js';
 import { ProblemFilter, parserErrors } from './modules/request-context/problem.filter.js';
 import { createSameOriginCheck } from './modules/request-context/same-origin.js';
 import { securityHeaders } from './modules/request-context/security-headers.js';
@@ -65,11 +69,7 @@ export function setupApp(app: NestExpressApplication): void {
   // A body the parser refuses (malformed, too large) is answered as problem+json, and so is every error Nest catches (AR-03).
   express.use(parserErrors);
   app.useGlobalFilters(new ProblemFilter());
-  const organisations = {
-    organisations: (userId: string) => authService.activeOrganisationIds(userId),
-    member: (orgId: string, userId: string) =>
-      database.withTenant({ orgId, workspaceIds: [] }, (tx) => readMemberContext(tx, userId)),
-  };
+  const organisations = app.get<OrganisationSources>(ORGANISATION_SOURCES);
   express.use(
     '/v1',
     createTenantContextMiddleware({ sessions: app.get(SessionResolver), ...organisations }),
