@@ -47,7 +47,7 @@ describe('readSecurityStatus', () => {
       await readSecurityStatus(
         json(200, { twoFactorEnabled: true, required: true, mustSetUp: false }),
       ),
-    ).toEqual({ kind: 'signed_in' });
+    ).toEqual({ kind: 'signed_in', twoFactorEnabled: true });
     expect(
       await readSecurityStatus(
         json(200, { twoFactorEnabled: false, required: true, mustSetUp: true }),
