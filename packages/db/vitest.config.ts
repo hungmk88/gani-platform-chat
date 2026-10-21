@@ -20,6 +20,7 @@ export default defineConfig({
         'src/outbox-store.ts',
         'src/tenant-tx.ts',
         'src/member-context.ts',
+        'src/org-summary.ts',
         'src/auth-tx.ts',
         'src/auth-db.ts',
         'src/pool.ts',

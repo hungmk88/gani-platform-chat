@@ -11,6 +11,7 @@ export * from './message-store.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, shareTeam, type MemberContext } from './member-context.js';
 export { insertAuditLog } from './audit-log.js';
+export { readOrgSummary, type OrgSummary } from './org-summary.js';
 export * from './outbox-store.js';
 export * from './partition-store.js';
 export { pingDb } from './ping.js';
