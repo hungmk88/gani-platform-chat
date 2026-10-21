@@ -24,6 +24,7 @@ describe('readConfig', () => {
       outbox: { pollMs: 500, leaseSeconds: 60, batchSize: 100, maxAttempts: 5, orgsPerTick: 50, orgParallel: 4, shutdownMs: 10_000, queueMaxWaiting: 10_000 },
       inbound: { pollMs: 500, leaseSeconds: 60, batchSize: 10, maxAttempts: 5, orgsPerTick: 50, orgParallel: 2 },
       events: { enabled: true, discoveryMs: 5000, maxQueues: 200, concurrency: 4 },
+      http: { port: 9464, healthMaxAgeMs: 120_000 },
     });
   });
 
@@ -35,6 +36,11 @@ describe('readConfig', () => {
     const events = { ...URLS, EVENTS_CONSUMER_ENABLED: '0', EVENTS_DISCOVERY_MS: '250', EVENTS_MAX_QUEUES: '7', EVENTS_CONCURRENCY: '2' };
     expect(readConfig(events).events).toEqual({ enabled: false, discoveryMs: 250, maxQueues: 7, concurrency: 2 });
     expect(readConfig(inbound).inbound).toEqual({ pollMs: 100, leaseSeconds: 20, batchSize: 3, maxAttempts: 2, orgsPerTick: 9, orgParallel: 6 });
+  });
+
+  it('reads the HTTP settings, and takes port 0 (a free port)', () => {
+    const env = { ...URLS, WORKER_HTTP_PORT: '0', WORKER_HEALTH_MAX_AGE_S: '30' };
+    expect(readConfig(env).http).toEqual({ port: 0, healthMaxAgeMs: 30_000 });
   });
 
   it('treats an empty variable as not set', () => {
@@ -55,6 +61,7 @@ describe('readConfig', () => {
     ['OUTBOX_ORG_PARALLEL', '33'], ['OUTBOX_SHUTDOWN_MS', '10'], ['OUTBOX_BATCH', '1.5'], ['OUTBOX_BATCH', 'ten'], ['OUTBOX_BATCH', '-1'], ['OUTBOX_QUEUE_MAX_WAITING', '0'],
     ['INBOUND_POLL_MS', '10'], ['INBOUND_LEASE_S', '0'], ['INBOUND_BATCH', '1001'], ['INBOUND_MAX_ATTEMPTS', '21'], ['INBOUND_ORGS_PER_TICK', '0'], ['INBOUND_ORG_PARALLEL', '33'],
     ['EVENTS_CONSUMER_ENABLED', 'yes'], ['EVENTS_CONSUMER_ENABLED', '2'], ['EVENTS_DISCOVERY_MS', '10'], ['EVENTS_MAX_QUEUES', '0'], ['EVENTS_CONCURRENCY', '65'],
+    ['WORKER_HTTP_PORT', '65536'], ['WORKER_HEALTH_MAX_AGE_S', '5'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);
