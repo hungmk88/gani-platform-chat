@@ -70,4 +70,15 @@ describe('SessionResolver', () => {
     await expect(resolver.resolve(request)).resolves.toMatchObject({ userId: 'u1' });
     expect(getSession).toHaveBeenCalledTimes(2);
   });
+
+  it('looks again past the cache when asked for a fresh answer, and the cache still answers the other callers', async () => {
+    const src = source();
+    const resolver = new SessionResolver(src);
+    const request = req();
+    const cached = await resolver.resolve(request);
+    src.api.getSession.mockResolvedValueOnce(null);
+    expect(await resolver.resolveFresh(request)).toBeNull();
+    expect(await resolver.resolve(request)).toBe(cached);
+    expect(src.api.getSession).toHaveBeenCalledTimes(2);
+  });
 });

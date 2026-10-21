@@ -38,6 +38,14 @@ export class SessionResolver {
     return lookup;
   }
 
+  /**
+   * Looks the session up again, past the cache: for a socket, whose request object lives as long as the connection, so that the cache
+   * of `resolve` would answer for ever and never see a session that was revoked (realtime spec §6, N94(2)).
+   */
+  resolveFresh(req: IncomingMessage): Promise<ResolvedSession | null> {
+    return this.lookup(req);
+  }
+
   private async lookup(req: IncomingMessage): Promise<ResolvedSession | null> {
     const found = await this.source.api.getSession({ headers: fromNodeHeaders(req.headers) });
     if (!found) return null;
