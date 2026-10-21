@@ -18,6 +18,12 @@ export const JOB_OPTIONS = {
   removeOnFail: { age: 604_800, count: 1000 },
 } as const satisfies BulkJobOptions;
 
+/**
+ * The set of the names of the event queues, for the consumer to find them (N141): every publish adds its queues to it again, so a
+ * Valkey that lost its data has them back at the next publish.
+ */
+export const EVENT_QUEUE_REGISTRY = 'q.events:queues';
+
 /** The queue did not answer in time or has no connection: the relay stores `E_QUEUE_DOWN` and retries after the backoff. */
 export class QueueDownError extends Error {
   readonly code = 'E_QUEUE_DOWN';
@@ -35,6 +41,7 @@ export interface Connection {
   readonly status: string;
   once(event: 'ready', listener: () => void): unknown;
   off(event: 'ready', listener: () => void): unknown;
+  sadd(key: string, ...members: string[]): Promise<unknown>;
   quit(): Promise<unknown>;
   disconnect(): void;
 }
@@ -73,6 +80,7 @@ export class BullmqPublisher implements QueuePublisher {
         ),
       ),
     );
+    await this.within(this.deps.connection.sadd(EVENT_QUEUE_REGISTRY, ...byQueue.keys()));
     return { duplicates: [] };
   }
 

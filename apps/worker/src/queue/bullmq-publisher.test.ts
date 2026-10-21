@@ -10,6 +10,7 @@ import { errorCodeOf, type EventJob } from '../relay/job.js';
 import {
   BullmqPublisher,
   createBullmqPublisher,
+  EVENT_QUEUE_REGISTRY,
   JOB_OPTIONS,
   QueueDownError,
   throttledErrorLog,
@@ -37,8 +38,13 @@ function setup(callMs = 1000) {
   const warnings: string[] = [];
   const queues = new Map<string, FakeQueue>();
   const emitter = new EventEmitter();
+  const registered: string[][] = [];
   const connection = Object.assign(emitter, {
     status: 'ready',
+    sadd: vi.fn((key: string, ...names: string[]): Promise<unknown> => {
+      registered.push([key, ...names]);
+      return Promise.resolve(names.length);
+    }),
     quitFails: false,
     quit: vi.fn((): Promise<unknown> => {
       events.push('quit');
@@ -83,7 +89,7 @@ function setup(callMs = 1000) {
     log,
     callMs,
   });
-  return { publisher, connection, makeQueue, queues, events, warnings };
+  return { publisher, connection, makeQueue, queues, events, warnings, registered };
 }
 
 describe('publish', () => {
@@ -110,6 +116,22 @@ describe('publish', () => {
       [expect.objectContaining({ jobId: 'e-4' })],
     ]);
     expect(t.queues.get('qb')?.added).toHaveLength(1);
+  });
+
+  it('adds the names of the queues to the registry of the consumer after their jobs, at every publish', async () => {
+    const t = setup();
+    await t.publisher.publish([job('qa', 'e-1'), job('qb', 'e-2'), job('qa', 'e-3')]);
+    await t.publisher.publish([job('qa', 'e-4')]);
+    expect(t.registered).toEqual([
+      [EVENT_QUEUE_REGISTRY, 'qa', 'qb'],
+      [EVENT_QUEUE_REGISTRY, 'qa'],
+    ]);
+    expect(EVENT_QUEUE_REGISTRY).toBe('q.events:queues');
+    const qa = t.queues.get('qa');
+    if (!qa) throw new Error('queue missing');
+    qa.failAdd = true;
+    await expect(t.publisher.publish([job('qa', 'e-5')])).rejects.toThrow('NOSCRIPT');
+    expect(t.registered).toHaveLength(2);
   });
 
   it('reports no duplicates: BullMQ does not tell a job it already has from a new one', async () => {
