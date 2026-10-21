@@ -9,6 +9,16 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     // Integration tests need PostgreSQL: pnpm test:integration.
     exclude: [...configDefaults.exclude, 'src/**/*.integration.test.ts'],
-    coverage,
+    // Files that only make sense against PostgreSQL (a controller of the Inbox, the Idempotency-Key interceptor) are covered by the
+    // integration suite (vitest.integration.config.ts) and left out of the unit coverage gate, as in packages/db.
+    coverage: {
+      ...coverage,
+      exclude: [
+        ...coverage.exclude,
+        'src/modules/conversations/conversations.controller.ts',
+        'src/modules/conversations/conversation-actions.controller.ts',
+        'src/modules/idempotency/idempotency.interceptor.ts',
+      ],
+    },
   },
 });
