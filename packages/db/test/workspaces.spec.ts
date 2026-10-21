@@ -94,7 +94,9 @@ beforeAll(async () => {
   await addOrgMember(B, uB);
   await addWorkspace(A, {}, WA);
   await addWorkspace(B, {}, WB);
-  // Case 1 needs a row in each table: on an empty table the policy is never evaluated, so nothing raises TN001.
+  // Case 1 needs a row in each table: PostgreSQL asks app.current_org() only for a row it has to filter, so on an empty table a query
+  // without a tenant finds nothing instead of raising TN001. Without this row the case passed or failed with whatever another test file
+  // had left in workspace_members (review TEST-01, DB-04).
   await admin.query(
     'INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ($1, $2, $3, $4)',
     [uuidv7(), B, WB, uB],

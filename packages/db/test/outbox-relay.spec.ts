@@ -78,11 +78,15 @@ describe('app.outbox_pending_orgs', () => {
     await put(B, { status: 'claimed', claimed: '-5 seconds' });
     await put(B, { status: 'published' });
     await put(D);
-    expect(await pendingOrgs(pool, 10, 60)).toEqual([A]);
+    // The function sees every organisation, and other test files leave work behind in a database that is used again (review TEST-01):
+    // only this file's organisations are compared, in the order the function gave them.
+    const mine = async (limit: number, lease: number) =>
+      (await pendingOrgs(pool, limit, lease)).filter((org) => orgs.includes(org));
+    expect(await mine(1000, 60)).toEqual([A]);
     await put(B, { status: 'claimed', claimed: '-5 minutes' });
-    expect(await pendingOrgs(pool, 10, 60)).toEqual([A, B]);
-    expect(await pendingOrgs(pool, 10, 3600)).toEqual([A]);
-    expect(await pendingOrgs(pool, 1, 60)).toEqual([A]);
+    expect(await mine(1000, 60)).toEqual([A, B]);
+    expect(await mine(1000, 3600)).toEqual([A]);
+    expect(await pendingOrgs(pool, 1, 60)).toHaveLength(1);
   });
 
   it.each([
