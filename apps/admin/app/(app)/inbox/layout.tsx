@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { readsConversations } from '../../../src/inbox/actions';
 import { ConversationList } from '../../../src/inbox/conversation-list';
 import { roleOf } from '../../../src/me';
 import { getMe } from '../../../src/me.server';
@@ -8,14 +9,12 @@ import { SystemPage } from '../../../src/system-page';
 
 export const metadata: Metadata = { title: 'Hộp thư — Gani Platform' };
 
-// The roles that see conversations (Phụ lục B rows 11–12, apps/api permissions.ts); the menu shows /inbox to the same ones.
-const READERS = new Set(['owner', 'admin', 'manager', 'sales', 'support']);
-
 /** #6 Hộp thư: the list (I1a) beside the open conversation (I1b). The frame has already asked who is signed in (cached). */
 export default async function InboxLayout({ children }: { children: ReactNode }) {
   const result = await getMe();
   const role = result.kind === 'ok' ? roleOf(result.me) : null;
-  if (result.kind !== 'ok' || !role || !READERS.has(role)) return <SystemPage kind="forbidden" />;
+  if (result.kind !== 'ok' || !role || !readsConversations(role))
+    return <SystemPage kind="forbidden" />;
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-20 font-semibold">Hộp thư</h1>

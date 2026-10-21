@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { components } from '../api/schema';
 import { useApiPages, useApiQuery } from '../query/provider';
 import type { Role } from '../nav';
+import { useConversationRealtime } from '../realtime/use-conversation-realtime';
 import { RetryAction } from '../retry-button';
 import { ConversationActions } from './conversation-actions';
 import { HOLD_LABEL, holderOf, STATE_LABEL } from './list';
@@ -40,6 +41,7 @@ export function ConversationView({ id, role, meId }: { id: string; role: Role; m
     `/v1/conversations/${encodeURIComponent(id)}`,
   );
   const messages = useApiPages<MessagePage>(['messages', id], (cursor) => messagesPath(id, cursor));
+  useConversationRealtime(id);
 
   if (conversation.isPending)
     return (
