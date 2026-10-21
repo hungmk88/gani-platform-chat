@@ -51,6 +51,8 @@ const PAGES = [
   'teams.html?role=admin',
   'teams.html?role=manager',
   'teams.html?role=admin&state=empty',
+  'quick-replies.html?role=manager',
+  'quick-replies.html?role=admin&state=empty',
   'workspace.html?role=admin',
   'workspace.html?role=admin&tab=sla',
   'workspace.html?role=admin&tab=allocation',
