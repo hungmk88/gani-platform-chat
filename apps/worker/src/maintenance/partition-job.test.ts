@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LogFields } from '../logger.js';
 import {
   AFTER_FAILURE_MS,
+  IDEMPOTENCY_KEY_RETENTION_HOURS,
   INBOUND_KEY_RETENTION_DAYS,
   PURGE_BATCH,
   PURGE_MAX_ROUNDS,
@@ -12,9 +13,10 @@ import {
 } from './partition-job.js';
 
 const NOW = new Date('2026-10-14T10:00:00Z');
-const SIX = [
+const NUMBERS = [
   'created',
   'purged_keys',
+  'purged_idempotency_keys',
   'blocked_months_count',
   'default_rows_count',
   'consecutive_failures',
@@ -50,6 +52,7 @@ function setup(over: Partial<PartitionStore> = {}) {
   const store: PartitionStore = {
     ensure: () => Promise.resolve([made('audit_logs', 1)]),
     purgeKeys: () => Promise.resolve(0),
+    purgeIdempotencyKeys: () => Promise.resolve(0),
     defaultRows: () => Promise.resolve([]),
     ...over,
   };
@@ -72,7 +75,9 @@ const failedRun = async (job: PartitionMaintenanceJob) => {
 describe('one run', () => {
   it('makes three months, purges until nothing is left, and says it in one line', async () => {
     const answers = [PURGE_BATCH, 250, 0];
+    const kept = [3, 0];
     const asked: [number, number][] = [];
+    const askedKeys: [number, number][] = [];
     const months: number[] = [];
     const { job, lines } = setup({
       ensure: (n) => (
@@ -83,10 +88,15 @@ describe('one run', () => {
         asked.push([days, limit]),
         Promise.resolve(answers.shift() ?? 0)
       ),
+      purgeIdempotencyKeys: (hours, limit) => (
+        askedKeys.push([hours, limit]),
+        Promise.resolve(kept.shift() ?? 0)
+      ),
     });
     expect(await job.runOnce()).toBe(true);
     expect(months).toEqual([3]);
     expect(asked).toEqual(Array(3).fill([INBOUND_KEY_RETENTION_DAYS, PURGE_BATCH]));
+    expect(askedKeys).toEqual(Array(2).fill([IDEMPOTENCY_KEY_RETENTION_HOURS, PURGE_BATCH]));
     expect(lines).toEqual([
       {
         level: 'info',
@@ -94,6 +104,7 @@ describe('one run', () => {
         fields: {
           created: 3,
           purged_keys: PURGE_BATCH + 250,
+          purged_idempotency_keys: 3,
           blocked_months_count: 0,
           default_rows_count: 0,
           consecutive_failures: 0,
@@ -149,6 +160,16 @@ describe('one run', () => {
     expect(line?.fields).toMatchObject({
       purge_complete: false,
       purged_keys: PURGE_MAX_ROUNDS * PURGE_BATCH,
+    });
+  });
+
+  it('says the purge is not finished when the Idempotency-Keys reach the ceiling, the inbound keys done (N134)', async () => {
+    const { job, lines } = setup({ purgeIdempotencyKeys: () => Promise.resolve(PURGE_BATCH) });
+    await job.runOnce();
+    expect(only(lines, 'partition_maintenance')?.fields).toMatchObject({
+      purge_complete: false,
+      purged_keys: 0,
+      purged_idempotency_keys: PURGE_MAX_ROUNDS * PURGE_BATCH,
     });
   });
 });
@@ -244,7 +265,7 @@ describe('the schedule and the stop', () => {
 });
 
 describe('what the lines hold', () => {
-  it('has the six numbers in every line, only plain values, and never the message of an error', async () => {
+  it('has the seven numbers in every line, only plain values, and never the message of an error', async () => {
     const secret = 'Nguyen Van A 0901234567 an@example.test';
     const blocked = setup({
       ensure: () => Promise.resolve([made('audit_logs', 1, ['2027-01'])]),
@@ -267,7 +288,7 @@ describe('what the lines hold', () => {
       ]),
     );
     for (const line of all) {
-      for (const key of SIX)
+      for (const key of NUMBERS)
         expect(typeof line.fields[key], `${line.message} ${key}`).toBe('number');
       for (const value of Object.values(line.fields))
         expect(['string', 'number', 'boolean']).toContain(typeof value);

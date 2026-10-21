@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { format } from 'node:util';
 
 import { createDbPool } from '@gani/db';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { createAuth } from './auth.config.js';
 import { loadAuthEnv } from './auth.env.js';
@@ -255,5 +256,70 @@ describe('POST /switch-org', () => {
     ]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
     expect(await live(u.id)).toHaveLength(1);
+  });
+});
+
+// Review SEC-01: Better Auth on a pool that may read none of its tables (app_role), so every query fails with 42501. Nothing printed while
+// it fails may hold the email, the session token or the parameters of a query.
+describe('a failing auth database', () => {
+  const appPool = createDbPool(need('DATABASE_URL_APP'), { max: 2 });
+  const broken = createAuth({ pool: appPool, env });
+  afterAll(() => appPool.end());
+
+  async function printedWhile(run: () => Promise<unknown>): Promise<string> {
+    const lines: string[] = [];
+    const keep = (...args: unknown[]) => void lines.push(format(...args));
+    const spies = [
+      vi.spyOn(console, 'error').mockImplementation(keep),
+      vi.spyOn(console, 'warn').mockImplementation(keep),
+      vi.spyOn(console, 'log').mockImplementation(keep),
+      vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => (keep(String(chunk)), true)),
+      vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => (keep(String(chunk)), true)),
+    ];
+    try {
+      await run();
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+    return lines.join('\n');
+  }
+
+  it('answers 500 to a sign-in and prints neither the email, the password nor the query', async () => {
+    const u = await newUser();
+    let status = 0;
+    const printed = await printedWhile(async () => {
+      const res = await broken.handler(
+        new Request(`${BASE}/api/auth/sign-in/email`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            origin: BASE,
+            'x-forwarded-for': freshIp(),
+          },
+          body: JSON.stringify({ email: u.email, password: PW }),
+        }),
+      );
+      status = res.status;
+    });
+    expect(status).toBeGreaterThanOrEqual(500);
+    expect(printed).toMatch(/42501/);
+    for (const secret of [u.email, u.id, PW, 'Failed query', 'params'])
+      expect(printed).not.toContain(secret);
+  });
+
+  it('reads no session and prints neither the session token nor the query', async () => {
+    const u = await newUser();
+    const cookie = cookieOf(await signIn(u.email));
+    const token = cookie.split('=')[1]?.split('.')[0] ?? '';
+    expect(token.length).toBeGreaterThan(10);
+    let outcome: unknown = 'not run';
+    const printed = await printedWhile(async () => {
+      outcome = await broken.api
+        .getSession({ headers: new Headers({ cookie }) })
+        .catch(() => 'threw');
+    });
+    expect([null, 'threw']).toContain(outcome);
+    for (const secret of [token, decodeURIComponent(token), 'Failed query', 'params'])
+      expect(printed).not.toContain(secret);
   });
 });

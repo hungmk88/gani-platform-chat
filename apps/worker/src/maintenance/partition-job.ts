@@ -3,15 +3,17 @@ import type { DefaultPartitionRows, EnsuredPartitions } from '@gani/db';
 import type { LogFields, Logger } from '../logger.js';
 
 // The partition maintenance (PM-2b, N110, N121): once a day it makes the next months of the log tables, removes old inbound
-// duplicate-guard keys, and looks at the DEFAULT partitions. A timer of this process, not a BullMQ job: it needs only PostgreSQL.
+// duplicate-guard keys and Idempotency-Keys older than 24 hours (N134), and looks at the DEFAULT partitions. A timer of this process, not a BullMQ job: it needs only PostgreSQL.
 // Several workers may run it at once (the database function takes an advisory lock; the purge is idempotent). It speaks in the log,
-// with the same six numbers in every line (no metrics endpoint yet: E-01), and never a customer name or a word of a message.
+// with the same seven numbers in every line (no metrics endpoint yet: E-01), and never a customer name or a word of a message.
 
 /** 19:00 UTC is 02:00 in Vietnam, outside the working day. */
 export const PARTITION_JOB_HOUR_UTC = 19;
 export const PARTITION_MONTHS_AHEAD = 3;
 /** Age at which an inbound duplicate-guard key goes (the function refuses less than 30). Lower it when Zalo's retry policy is known. */
 export const INBOUND_KEY_RETENTION_DAYS = 35;
+/** Age at which an Idempotency-Key goes: it gives nothing back after 24 hours (the function refuses less, N134). */
+export const IDEMPOTENCY_KEY_RETENTION_HOURS = 24;
 export const PURGE_BATCH = 10_000;
 /** At most this many batches per run: what is left waits for the next run, and the line says so. */
 export const PURGE_MAX_ROUNDS = 20;
@@ -26,6 +28,7 @@ export const ESCALATE_AFTER_FAILURES = 2;
 export interface PartitionStore {
   ensure(monthsAhead: number): Promise<EnsuredPartitions[]>;
   purgeKeys(retentionDays: number, limit: number): Promise<number>;
+  purgeIdempotencyKeys(retentionHours: number, limit: number): Promise<number>;
   defaultRows(): Promise<DefaultPartitionRows[]>;
 }
 
@@ -38,6 +41,7 @@ export function msUntilNextHour(now: Date, hourUtc: number): number {
 interface Seen {
   created: number;
   purgedKeys: number;
+  purgedIdempotencyKeys: number;
   purgeComplete: boolean;
   blocked: { parent: string; months: readonly string[] }[];
   defaultRows: DefaultPartitionRows[];
@@ -103,6 +107,7 @@ export class PartitionMaintenanceJob {
     const seen: Seen = {
       created: 0,
       purgedKeys: 0,
+      purgedIdempotencyKeys: 0,
       purgeComplete: true,
       blocked: [],
       defaultRows: [],
@@ -141,16 +146,29 @@ export class PartitionMaintenanceJob {
     seen.blocked = ensured
       .filter((e) => e.blockedMonths.length > 0)
       .map((e) => ({ parent: e.parent, months: e.blockedMonths }));
-    seen.purgeComplete = false;
-    for (let round = 0; round < PURGE_MAX_ROUNDS && !this.stopping; round++) {
-      const removed = await store.purgeKeys(INBOUND_KEY_RETENTION_DAYS, PURGE_BATCH);
-      seen.purgedKeys += removed;
-      if (removed === 0) {
-        seen.purgeComplete = true;
-        break;
-      }
-    }
+    const inbound = await this.purge(() =>
+      store.purgeKeys(INBOUND_KEY_RETENTION_DAYS, PURGE_BATCH),
+    );
+    seen.purgedKeys += inbound.removed;
+    const keys = await this.purge(() =>
+      store.purgeIdempotencyKeys(IDEMPOTENCY_KEY_RETENTION_HOURS, PURGE_BATCH),
+    );
+    seen.purgedIdempotencyKeys += keys.removed;
+    seen.purgeComplete = inbound.complete && keys.complete;
     seen.defaultRows = (await store.defaultRows()).filter((r) => r.rowsCapped > 0);
+  }
+
+  /** Batches until one removes nothing, at most PURGE_MAX_ROUNDS: what is left waits for the next run. */
+  private async purge(
+    batch: () => Promise<number>,
+  ): Promise<{ removed: number; complete: boolean }> {
+    let removed = 0;
+    for (let round = 0; round < PURGE_MAX_ROUNDS && !this.stopping; round++) {
+      const n = await batch();
+      removed += n;
+      if (n === 0) return { removed, complete: true };
+    }
+    return { removed, complete: false };
   }
 
   private numbers(seen: Seen, durationMs: number): LogFields {
@@ -159,6 +177,7 @@ export class PartitionMaintenanceJob {
     return {
       created: seen.created,
       purged_keys: seen.purgedKeys,
+      purged_idempotency_keys: seen.purgedIdempotencyKeys,
       blocked_months_count: sum(seen.blocked, (b) => b.months.length),
       default_rows_count: sum(seen.defaultRows, (r) => r.rowsCapped),
       consecutive_failures: this.failures,

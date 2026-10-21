@@ -14,7 +14,9 @@ import {
   MIN_PASSWORD_LENGTH,
   verifyPassword,
 } from './password.js';
+import { authLogger, logAuthMessage } from './auth-logger.js';
 import { revokingAdapter } from './revoking-adapter.js';
+import { safeErrorsAdapter, safeQueryPool, storeErrorCode } from './safe-errors-adapter.js';
 import { MAX_SESSION_MS, sessionCreateBefore } from './session-hooks.js';
 import { switchActiveOrg } from './switch-active-org.js';
 
@@ -164,20 +166,33 @@ export function buildAuthOptions(
       additionalFields: { usedAt: { type: 'date', required: false, input: false } },
     },
     telemetry: { enabled: false },
+    // Review SEC-01: the library's own handling of a failed request prints e.message (which holds a query for a DrizzleQueryError);
+    // this one names the error by its code only.
+    logger: { level: 'warn', log: (level, message) => logAuthMessage(level, message) },
+    onAPIError: {
+      onError: (error) =>
+        authLogger.error(
+          `auth request failed (${isAPIError(error) ? String(error.status) : storeErrorCode(error)})`,
+        ),
+    },
   } satisfies BetterAuthOptions;
 }
 
 /** Better Auth on PostgreSQL as auth_role: `pool` is the pool of DATABASE_URL_AUTH, `env` comes from loadAuthEnv. */
 export function createAuth(args: { pool: ReturnType<typeof createDbPool>; env: AuthEnv }) {
-  const adapter = drizzleAdapter(createAuthDb(args.pool), {
-    provider: 'pg',
-    schema: authSchema,
-    usePlural: true,
-  });
+  const adapter = safeErrorsAdapter(
+    drizzleAdapter(createAuthDb(args.pool), {
+      provider: 'pg',
+      schema: authSchema,
+      usePlural: true,
+    }),
+  );
+  // The raw queries of the lockout and of /switch-org run inside Better Auth's requests: they get the guarded pool too.
+  const pool = safeQueryPool(args.pool);
   return betterAuth(
     buildAuthOptions(args.env, revokingAdapter(adapter), {
-      lockout: loginLockout(args.pool),
-      plugins: [switchActiveOrg(args.pool)],
+      lockout: loginLockout(pool),
+      plugins: [switchActiveOrg(pool)],
     }),
   );
 }
