@@ -35,6 +35,11 @@ export const MessageSchema = z
     body: z.string().nullable(),
     platformSentAt: at.nullable(),
     createdAt: at,
+    /**
+     * A message of the account to the channel: `pending` until the outbound worker sends it (N146); null for the others. Every REST
+     * answer has it; optional because the packets of the socket (realtime spec §3) do not carry it yet.
+     */
+    deliveryStatus: z.enum(['pending', 'sent', 'failed']).nullable().optional(),
   })
   .meta({ id: 'Message' });
 
@@ -75,6 +80,25 @@ export const CloseBodySchema = z
   })
   .strict()
   .meta({ id: 'CloseBody' });
+
+/** What an agent says to the customer (N146): text only in Đợt 1 (N100(7)); the limit of Zalo is not verified yet (Z6). */
+export const SendMessageBodySchema = z
+  .object({ text: z.string().trim().min(1).max(2000) })
+  .strict()
+  .meta({ id: 'SendMessageBody' });
+
+/** 422 of a send the channel may not carry now (channel-policy-spec §3): the state of the window and why. */
+export const WindowClosedSchema = ProblemSchema.extend({
+  code: z.literal('channel_window_closed'),
+  windowState: z.enum(['paid_only', 'api_closed']),
+  reason: z.enum([
+    'no_customer_message',
+    'no_free_window',
+    'window_expired',
+    'quota_exhausted',
+    'no_policy',
+  ]),
+}).meta({ id: 'WindowClosedProblem' });
 
 /** 409 of a claim that lost: who holds the conversation now (PRR-05). */
 export const ClaimConflictSchema = ProblemSchema.extend({

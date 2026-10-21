@@ -446,7 +446,100 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** Answer the customer (N146): a text message of the agent, `pending` until the outbound worker sends it. Only while a person holds the conversation, and only inside the free window of the channel (channel-policy-spec §3). Sales and support: one they hold. */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
+                    "Idempotency-Key": string;
+                };
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SendMessageBody"];
+                };
+            };
+            responses: {
+                /** @description The message, with deliveryStatus pending. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Message"];
+                    };
+                };
+                /** @description validation_failed: the id, the text or the Idempotency-Key header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: the role may not answer, or not a conversation the person does not hold. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description conversation_not_active (claim it first, or it is closed); idempotency_in_progress. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description channel_window_closed with windowState and reason: nothing was written (C-N4); or idempotency_key_reused. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["WindowClosedProblem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1076,6 +1169,26 @@ export interface components {
             platformSentAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** @enum {string|null} */
+            deliveryStatus?: "pending" | "sent" | "failed" | null;
+        };
+        WindowClosedProblem: {
+            /** @enum {string} */
+            type: "about:blank";
+            title: string;
+            status: number;
+            /** @enum {string} */
+            code: "channel_window_closed";
+            detail?: string;
+            /** Format: uuid */
+            traceId?: string;
+            /** @enum {string} */
+            windowState: "paid_only" | "api_closed";
+            /** @enum {string} */
+            reason: "no_customer_message" | "no_free_window" | "window_expired" | "quota_exhausted" | "no_policy";
+        };
+        SendMessageBody: {
+            text: string;
         };
         ClaimConflictProblem: {
             /** @enum {string} */

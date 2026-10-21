@@ -33,9 +33,10 @@ export function canSee(
   return conversation.assignedUserId === null || conversation.assignedUserId === userId;
 }
 
-// Who may act on a conversation (Phụ lục B rows 13, 15–17; "Chờ khách" is the holder's, like closing). `any`: whoever holds it;
+// Who may act on a conversation (Phụ lục B rows 13–17; "Chờ khách" and answering the customer are the holder's, like closing). `any`: whoever holds it;
 // `own`: only while the person holds it themselves; `none`: 403. Transfer for sales and support also needs a shared team (E2).
-export type ConversationAction = 'claim' | 'wait_customer' | 'transfer' | 'assign' | 'close';
+export type ConversationAction =
+  'claim' | 'wait_customer' | 'transfer' | 'assign' | 'close' | 'send_message';
 export type ActionScope = 'any' | 'own' | 'none';
 
 const LEAD: Readonly<Record<ConversationAction, ActionScope>> = {
@@ -44,6 +45,7 @@ const LEAD: Readonly<Record<ConversationAction, ActionScope>> = {
   transfer: 'any',
   assign: 'any',
   close: 'any',
+  send_message: 'any',
 };
 const AGENT: Readonly<Record<ConversationAction, ActionScope>> = {
   claim: 'any',
@@ -51,6 +53,7 @@ const AGENT: Readonly<Record<ConversationAction, ActionScope>> = {
   transfer: 'own',
   assign: 'none',
   close: 'own',
+  send_message: 'own',
 };
 const NOTHING: Readonly<Record<ConversationAction, ActionScope>> = {
   claim: 'none',
@@ -58,6 +61,7 @@ const NOTHING: Readonly<Record<ConversationAction, ActionScope>> = {
   transfer: 'none',
   assign: 'none',
   close: 'none',
+  send_message: 'none',
 };
 const ACTIONS: Readonly<Record<OrgRole, Readonly<Record<ConversationAction, ActionScope>>>> = {
   owner: LEAD,

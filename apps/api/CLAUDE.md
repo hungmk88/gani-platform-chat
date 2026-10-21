@@ -25,6 +25,7 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - REST `/v1`, lỗi RFC 9457 (`application/problem+json`).
 - `org_id` không bao giờ nhận từ client.
 - Cursor pagination, không offset.
+- Agent trả lời khách (`send-message.controller.ts`, N146): `lockConversation` → `canSee`/`mayAct('send_message')` → trạng thái (`HUMAN_ACTIVE`/`PENDING_CUSTOMER`, còn lại 409 `conversation_not_active`) → `ChannelPolicyService.check` (cổng duy nhất, 422 `channel_window_closed`) → `MessageService.append` → `insertPendingDelivery`. Mọi đường gửi ra kênh mới phải qua cùng `check`.
 - Idempotency-Key cho POST tạo dữ liệu: gắn `@Idempotent()` (`modules/idempotency`, N134). Thiếu khóa → 400; cùng khóa khác request → 422 `idempotency_key_reused`; đang chạy → 409 `idempotency_in_progress`; 2xx/4xx được trả lại 24 giờ, 5xx thì không.
 - Webhook vào: verify → ghi `inbound_events` → trả 200 < 100ms → worker xử lý.
 - `GET /v1/me` và `GET /v1/me/security-status` là hai route `/v1` duy nhất không qua middleware tenant (so khớp đúng chuỗi, `tenant-context.middleware.ts`): `/v1/me` tự chọn công ty bằng `chooseOrganisation` (provider `ORGANISATION_SOURCES`), không có thì `org: null` (N145). Thêm route miễn mới phải có lý do và test chính tả lạ.

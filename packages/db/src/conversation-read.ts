@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from '
 
 import { cursorString, cursorWhole, decodeCursor, encodeCursor } from './cursor.js';
 import { conversations } from './schema/conversations.js';
+import { messageDeliveries } from './schema/message-deliveries.js';
 import { messages } from './schema/messages.js';
 import type { TenantTx } from './tenant-tx.js';
 import { assertUuid } from './validate.js';
@@ -150,6 +151,11 @@ const MESSAGE_COLUMNS = {
   createdAt: messages.createdAt,
 };
 
+/** A message as the Inbox lists it: with the delivery of a message the account sent to the channel (N146), null for the others. */
+export type ListedMessage = MessageView & {
+  readonly deliveryStatus: 'pending' | 'sent' | 'failed' | null;
+};
+
 /**
  * The messages of a conversation, newest first (a chat loads the latest and pages back), by `sequence_number`. The caller first
  * makes sure the conversation is visible (loadConversationView); RLS limits the messages to the session's workspaces anyway.
@@ -158,15 +164,17 @@ export async function listMessages(
   tx: TenantTx,
   conversationId: string,
   q: { readonly cursor?: string; readonly limit: number },
-): Promise<Page<MessageView>> {
+): Promise<Page<ListedMessage>> {
   assertLimit(q.limit);
   const m = messages;
   const where: SQL[] = [eq(m.conversationId, assertUuid(conversationId, 'conversationId'))];
   if (q.cursor !== undefined)
     where.push(lt(m.sequenceNumber, cursorWhole(decodeCursor(q.cursor), 'before')));
+  const d = messageDeliveries;
   const rows = await tx
-    .select(MESSAGE_COLUMNS)
+    .select({ ...MESSAGE_COLUMNS, deliveryStatus: d.status })
     .from(m)
+    .leftJoin(d, and(eq(d.orgId, m.orgId), eq(d.messageId, m.id)))
     .where(and(...where))
     .orderBy(desc(m.sequenceNumber))
     .limit(q.limit + 1);
