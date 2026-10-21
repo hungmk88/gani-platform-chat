@@ -46,6 +46,8 @@ const PAGES = [
   'reset.html?role=sales&state=weak',
   'reset.html?role=sales&state=expired',
   'login.html?role=sales&state=aioff',
+  'members.html?role=admin',
+  'members.html?role=admin&state=invite_expired',
   'channels.html?role=admin',
   'channels.html?role=admin&state=disconnected',
   'channels.html?role=admin&screen=detail',
