@@ -22,7 +22,7 @@ const GLOBAL_TABLES: Record<string, { app: string[]; support: string[] }> = {
 };
 // Tables with RLS by organisation AND workspace (O+W, N75). Explicit on purpose: teams and api_keys have a workspace_id
 // column too but are O only, so the column cannot tell.
-const OW_TABLES = ['conversations', 'messages'];
+const OW_TABLES = ['conversations', 'message_deliveries', 'messages'];
 // app_role has no privilege here on purpose (N69): case 1 is 42501, not TN001.
 const NO_APP_ACCESS = ['platform_access_logs'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
