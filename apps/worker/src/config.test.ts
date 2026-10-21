@@ -23,6 +23,7 @@ describe('readConfig', () => {
       databaseUrl: URLS.DATABASE_URL_APP, redisUrl: URLS.REDIS_URL,
       outbox: { pollMs: 500, leaseSeconds: 60, batchSize: 100, maxAttempts: 5, orgsPerTick: 50, orgParallel: 4, shutdownMs: 10_000, queueMaxWaiting: 10_000 },
       inbound: { pollMs: 500, leaseSeconds: 60, batchSize: 10, maxAttempts: 5, orgsPerTick: 50, orgParallel: 2 },
+      events: { enabled: true, discoveryMs: 5000, maxQueues: 200, concurrency: 4 },
     });
   });
 
@@ -31,6 +32,8 @@ describe('readConfig', () => {
     const env = { ...URLS, OUTBOX_POLL_MS: '250', OUTBOX_LEASE_S: '30', OUTBOX_BATCH: '10', OUTBOX_MAX_ATTEMPTS: '3', OUTBOX_ORGS_PER_TICK: '7', OUTBOX_ORG_PARALLEL: '2', OUTBOX_SHUTDOWN_MS: '5000', OUTBOX_QUEUE_MAX_WAITING: '300' };
     expect(readConfig(env).outbox).toEqual({ pollMs: 250, leaseSeconds: 30, batchSize: 10, maxAttempts: 3, orgsPerTick: 7, orgParallel: 2, shutdownMs: 5000, queueMaxWaiting: 300 });
     const inbound = { ...URLS, INBOUND_POLL_MS: '100', INBOUND_LEASE_S: '20', INBOUND_BATCH: '3', INBOUND_MAX_ATTEMPTS: '2', INBOUND_ORGS_PER_TICK: '9', INBOUND_ORG_PARALLEL: '6' };
+    const events = { ...URLS, EVENTS_CONSUMER_ENABLED: '0', EVENTS_DISCOVERY_MS: '250', EVENTS_MAX_QUEUES: '7', EVENTS_CONCURRENCY: '2' };
+    expect(readConfig(events).events).toEqual({ enabled: false, discoveryMs: 250, maxQueues: 7, concurrency: 2 });
     expect(readConfig(inbound).inbound).toEqual({ pollMs: 100, leaseSeconds: 20, batchSize: 3, maxAttempts: 2, orgsPerTick: 9, orgParallel: 6 });
   });
 
@@ -51,6 +54,7 @@ describe('readConfig', () => {
     ['OUTBOX_POLL_MS', '10'], ['OUTBOX_POLL_MS', '999999'], ['OUTBOX_LEASE_S', '0'], ['OUTBOX_BATCH', '1001'], ['OUTBOX_MAX_ATTEMPTS', '0'], ['OUTBOX_ORGS_PER_TICK', '1001'],
     ['OUTBOX_ORG_PARALLEL', '33'], ['OUTBOX_SHUTDOWN_MS', '10'], ['OUTBOX_BATCH', '1.5'], ['OUTBOX_BATCH', 'ten'], ['OUTBOX_BATCH', '-1'], ['OUTBOX_QUEUE_MAX_WAITING', '0'],
     ['INBOUND_POLL_MS', '10'], ['INBOUND_LEASE_S', '0'], ['INBOUND_BATCH', '1001'], ['INBOUND_MAX_ATTEMPTS', '21'], ['INBOUND_ORGS_PER_TICK', '0'], ['INBOUND_ORG_PARALLEL', '33'],
+    ['EVENTS_CONSUMER_ENABLED', 'yes'], ['EVENTS_CONSUMER_ENABLED', '2'], ['EVENTS_DISCOVERY_MS', '10'], ['EVENTS_MAX_QUEUES', '0'], ['EVENTS_CONCURRENCY', '65'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);

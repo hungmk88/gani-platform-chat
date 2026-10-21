@@ -2,10 +2,12 @@ import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool } from '@gani/db';
 
 import { ConfigError, readConfig } from './config.js';
+import { loggingHandlers } from './consumer/handlers.js';
 import { createDbInboundStore } from './inbound/db-store.js';
 import { createLogger } from './logger.js';
 import { createDbPartitionStore } from './maintenance/db-store.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
+import { createBullmqSource } from './queue/bullmq-source.js';
 import { createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
 
@@ -46,6 +48,13 @@ const worker = startWorker({
     store: createDbInboundStore({ pool, services: { fsm, messages } }),
     settings: config.inbound,
   },
+  ...(config.events.enabled && {
+    events: {
+      source: createBullmqSource(config.redisUrl, log, config.events.concurrency),
+      handlers: loggingHandlers(log),
+      settings: config.events,
+    },
+  }),
 });
 log.info('worker_started');
 
