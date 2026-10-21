@@ -1,4 +1,4 @@
-/* global Proto */
+/* global location, Proto */
 /* #7 Danh sách khách (danh-sach-man-M11; J1, J2, J4, J5, J6). Sprint S4, nộp wireframe 21/12/2026.
    Căn cứ: spec M8 §3.7 (tìm theo tên, SĐT, email; lọc theo tag, kênh, trường tùy chỉnh, người phụ trách, ngày liên hệ cuối;
    không có "Lưu bộ lọc" — Q-M8-2), §3.6 (trường mới có ngay trong bộ lọc), Phụ lục B (mọi vai trò công ty xem danh sách;
@@ -90,7 +90,7 @@ Proto.mount({
     let body;
     if (s === 'loading') body = Proto.loading(6);
     else if (s === 'error') body = Proto.error('Không tải được danh sách khách.');
-    else if (s === 'empty') body = Proto.empty('Chưa có khách nào. Khách tự xuất hiện khi nhắn qua kênh đã kết nối.', can(['owner', 'admin']) ? 'Nhập khách từ file' : null, () => Proto.toast('Mở #10 Nhập khách từ file.'));
+    else if (s === 'empty') body = Proto.empty('Chưa có khách nào. Khách tự xuất hiện khi nhắn qua kênh đã kết nối.', can(['owner', 'admin']) ? 'Nhập khách từ file' : null, () => { location.href = `customer-import.html?role=${Proto.role()}`; });
     else {
       const rows = CUSTOMERS.filter((c) => matches(c, f));
       body = rows.length ? table(rows) : h('div', { class: 'state-box' }, h('p', {}, 'Không có khách khớp bộ lọc.'), h('button', { class: 'btn', onclick: () => { for (const k of ['q', 'tag', 'kind', 'owner', 'range']) Proto.set(k, ''); } }, 'Xóa bộ lọc'));
@@ -101,7 +101,7 @@ Proto.mount({
         h('div', {}, h('h1', {}, 'Khách hàng'), h('p', { class: 'small muted' }, 'Công ty Gani Foods · hồ sơ dùng chung mọi workspace. ', masked ? 'Vai trò của bạn thấy SĐT dạng che. ' : '', h('span', { class: 'pending-spec' }, 'cột và bộ lọc theo spec M8; Brief UI §6.1 chưa có trong repo'))),
         can(['owner', 'admin']) ? h('div', { class: 'row' },
           h('button', { class: 'btn', onclick: () => Proto.toast('Xuất CSV theo bộ lọc hiện tại; SĐT đầy đủ, ghi audit (Phụ lục B: Owner, Admin).') }, 'Xuất CSV'),
-          h('button', { class: 'btn primary', onclick: () => Proto.toast('Mở #10 Nhập khách từ file (3 bước).') }, 'Nhập từ file')) : null),
+          h('a', { class: 'btn primary', href: `customer-import.html?role=${Proto.role()}` }, 'Nhập từ file')) : null),
       aiOff() ? h('div', { class: 'banner info', role: 'note' }, 'AI đang tắt: tag do AI gắn không hiện trong danh sách và bộ lọc; tag gắn tay dùng bình thường.') : null,
       h('div', { class: 'page-body stack' },
         s === 'normal' || s === 'aioff' ? h('div', { class: 'card' }, filters(f)) : null,

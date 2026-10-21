@@ -209,7 +209,7 @@
       </section>
 
       <section>
-        <h2>1d. Màn S4 — Thành viên (#19), Team (#20), Workspace (#21), Mẫu trả lời nhanh (#22), Dữ liệu khách (#23) và Danh sách khách (#7), nộp 21/12</h2>
+        <h2>1d. Màn S4 — Thành viên (#19), Team (#20), Workspace (#21), Mẫu trả lời nhanh (#22), Dữ liệu khách (#23), Danh sách khách (#7) và Nhập khách (#10), nộp 21/12</h2>
         <p class="muted">
           Theo Phụ lục B (Mời thành viên, đổi vai trò), spec M8 §3.5 và §3.8 (Q-U20-1), endpoint-M8. Chỉ Owner, Admin. Admin
           không nâng ai lên Owner; 2FA của Owner chỉ Owner khác đặt lại.
@@ -250,6 +250,14 @@
               <li><a href="customers.html?role=manager">Manager: chọn 2 khách để gộp (#9)</a> · <a href="customers.html?role=admin">Admin: Nhập từ file, Xuất CSV</a></li>
               <li><a href="customers.html?role=marketing">Marketing: SĐT che</a> · <a href="customers.html?role=sales&state=aioff">AI tắt: ẩn tag do AI gắn</a></li>
               <li><a href="customers.html?role=sales&state=loading">Đang tải</a> · <a href="customers.html?role=admin&state=empty">Trống</a> · <a href="customers.html?role=sales&state=error">Lỗi</a> · <a href="customers.html?role=sales&q=khongco">Không khớp bộ lọc</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="customer-import.html?role=admin">Nhập khách từ file (#10)</a></h3>
+            <ul>
+              <li><a href="customer-import.html?role=admin">Bước 1 chọn file</a> · <a href="customer-import.html?role=admin&step=2">Bước 2 ghép cột, xem trước, SĐT +84</a> · <a href="customer-import.html?role=admin&step=3">Bước 3 xác nhận</a></li>
+              <li><a href="customer-import.html?role=admin&state=bad_file">File không đọc được</a> · <a href="customer-import.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
+              <li><a href="customer-import.html?role=manager">Manager: không có quyền</a></li>
             </ul>
           </div>
           <div class="card">
