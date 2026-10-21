@@ -1,5 +1,7 @@
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
+export * from './contact-store.js';
+export { lockContact } from './conversation-lock.js';
 export * from './conversation-read.js';
 export * from './conversation-store.js';
 export * from './cursor.js';

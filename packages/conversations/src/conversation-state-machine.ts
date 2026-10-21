@@ -87,10 +87,15 @@ export class ConversationStateMachine {
     private readonly outbox: OutboxWriter = new OutboxWriter(store),
   ) {}
 
-  /** T01: a new conversation in `workspaceId`, `BOT_ACTIVE`, version 0. */
+  /** T01: a new conversation in `workspaceId`, `BOT_ACTIVE`, version 0; of a person of a channel account when `channel` is given. */
   async create(
     tx: TenantTx,
-    input: { workspaceId: string; actor: Actor; traceId: string },
+    input: {
+      workspaceId: string;
+      actor: Actor;
+      traceId: string;
+      channel?: { channelAccountId: string; externalUserId: string };
+    },
   ): Promise<TransitionOutcome> {
     const decision = decide(null, { type: 'conversation_started' });
     if (decision.kind !== 'transition')
@@ -98,6 +103,7 @@ export class ConversationStateMachine {
     const row = await this.store.insertConversation(tx, {
       id: uuidv7(),
       workspaceId: input.workspaceId,
+      channel: input.channel,
       ...decision.next,
     });
     await this.record(tx, toRecord(row), null, decision, input);
