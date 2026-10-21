@@ -4,11 +4,13 @@ import { createDbPool } from '@gani/db';
 import { ConfigError, readConfig } from './config.js';
 import { loggingHandlers } from './consumer/handlers.js';
 import { createDbInboundStore } from './inbound/db-store.js';
+import { startHttp, type WorkerHttp } from './http.js';
 import { createLogger } from './logger.js';
 import { createDbPartitionStore } from './maintenance/db-store.js';
+import { WorkerMetrics } from './metrics.js';
 import { createBullmqPublisher } from './queue/bullmq-publisher.js';
 import { createBullmqSource } from './queue/bullmq-source.js';
-import { createDbRelayStore } from './relay/db-store.js';
+import { createDbOutboxStats, createDbRelayStore } from './relay/db-store.js';
 import { startWorker } from './worker.js';
 
 // The entry point: it reads the settings, builds the real ports and ties the signals to the shutdown. Nothing here is logic worth a
@@ -28,6 +30,7 @@ function configOrExit(): ReturnType<typeof readConfig> {
 }
 
 const config = configOrExit();
+// The pool connects on its first query: making it before the HTTP endpoints only lets /metrics read the outbox through it.
 const pool = createDbPool(config.databaseUrl, {
   max: config.outbox.orgParallel + config.inbound.orgParallel + 2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
@@ -37,6 +40,16 @@ const fsm = new ConversationStateMachine();
 const messages = new MessageService(fsm, undefined, undefined, {
   warn: (line) => log.warn('message_clock_skew', { line }),
 });
+const metrics = new WorkerMetrics(Date.now, createDbOutboxStats({ pool }));
+// The probes come first: a worker that cannot serve them (a port in use) does not start at all.
+let http: WorkerHttp;
+try {
+  http = await startHttp({ ...config.http, metrics });
+} catch (error) {
+  log.error('worker_http_failed', { code: (error as { code?: string }).code ?? 'unknown' });
+  process.exit(1);
+}
+log.info('worker_http_listening', { port: http.port });
 const worker = startWorker({
   store: createDbRelayStore({ pool }),
   queue: createBullmqPublisher(config.redisUrl, log),
@@ -55,6 +68,8 @@ const worker = startWorker({
       settings: config.events,
     },
   }),
+  metrics,
+  http,
 });
 log.info('worker_started');
 

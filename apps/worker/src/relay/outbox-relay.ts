@@ -2,6 +2,7 @@ import type { ClaimedOutboxEvent, OutboxFailure } from '@gani/db';
 
 import type { WorkerConfig } from '../config.js';
 import type { Logger } from '../logger.js';
+import type { RelayMetrics } from '../metrics.js';
 import { backoffSeconds, errorCodeOf, toJob, type EventJob } from './job.js';
 
 /** What the relay needs from the database: every call is one short transaction of one organisation (outbox spec §4). */
@@ -24,6 +25,8 @@ export interface RelayDeps {
   readonly queue: QueuePublisher;
   readonly log: Logger;
   readonly settings: WorkerConfig['outbox'];
+  /** Absent: nothing is counted (the tests that do not look at it). */
+  readonly metrics?: RelayMetrics | undefined;
 }
 
 /** Runs `fn` over the items, at most `limit` at a time. */
@@ -110,10 +113,12 @@ export class OutboxRelay {
         waiting = await queue.waiting(name);
       } catch (error) {
         log.warn('queue_unreachable', { orgId, queue: name, code: errorCodeOf(error) });
+        this.deps.metrics?.queueFull();
         return true;
       }
       if (waiting >= settings.queueMaxWaiting) {
         log.warn('queue_full', { orgId, queue: name, waiting, max: settings.queueMaxWaiting });
+        this.deps.metrics?.queueFull();
         return true;
       }
     }
@@ -125,7 +130,8 @@ export class OutboxRelay {
     claimed: readonly ClaimedOutboxEvent[],
     errorCode: string,
   ): Promise<void> {
-    const { store, log, settings } = this.deps;
+    const { store, log, settings, metrics } = this.deps;
+    metrics?.publishFailed(claimed.length);
     for (const event of claimed) {
       const failure = {
         id: event.id,
@@ -134,8 +140,10 @@ export class OutboxRelay {
         maxAttempts: settings.maxAttempts,
         retryAfterSeconds: backoffSeconds(event.attempts),
       };
-      if ((await store.fail(orgId, failure)) === 'dead_letter')
+      if ((await store.fail(orgId, failure)) === 'dead_letter') {
         log.error('dead_letter', { orgId, eventId: event.id, code: errorCode });
+        metrics?.deadLettered();
+      }
     }
     log.warn('publish_failed', { orgId, count: claimed.length, code: errorCode });
   }
@@ -148,13 +156,16 @@ export class OutboxRelay {
   private async run(): Promise<void> {
     while (!this.stopping) {
       let more = false;
+      let ok = true;
       try {
         more = await this.tick();
       } catch (error) {
+        ok = false;
         this.deps.log.error('relay_tick_failed', {
           error: error instanceof Error ? error.name : 'unknown',
         });
       }
+      this.deps.metrics?.passEnded(ok);
       if (!this.stopping && !more) await this.sleep(this.deps.settings.pollMs);
     }
   }

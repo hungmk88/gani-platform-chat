@@ -2,12 +2,14 @@ import {
   claimOutboxBatch,
   failOutboxEvent,
   markOutboxPublished,
+  outboxStats,
   pendingOrgs,
   reapExpiredOutboxClaims,
   withTenant,
   type TenantTx,
 } from '@gani/db';
 
+import type { OutboxTotals } from '../metrics.js';
 import { runForJob } from '../tenant-job.js';
 import type { RelayStore } from './outbox-relay.js';
 
@@ -46,4 +48,9 @@ export function createDbRelayStore(deps: DbStoreDeps): RelayStore {
     markPublished: (orgId, ids) => forOrg(orgId, (tx) => fns.markOutboxPublished(tx, ids)),
     fail: (orgId, failure) => forOrg(orgId, (tx) => fns.failOutboxEvent(tx, failure)),
   };
+}
+
+/** The state of the outbox for `/metrics` (N118): one query outside any tenant, through `app.outbox_stats` (three numbers). */
+export function createDbOutboxStats(deps: { readonly pool: DbPool }): () => Promise<OutboxTotals> {
+  return () => outboxStats(deps.pool);
 }
