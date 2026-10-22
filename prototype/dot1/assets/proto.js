@@ -193,6 +193,7 @@
       items.push(['audit', 'Audit log', 'audit.html', true]);
       items.push(['security', 'Sự cố bảo mật', 'security.html', true]);
       items.push(['autonomy', 'Tự chủ & feature flag', 'autonomy.html', true]);
+      items.push(['ai', 'Cài đặt › AI nội bộ', 'ai.html', true]);
     }
     return items;
   }

@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#7, #10, #11, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #29, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#7, #10, #11, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28, #29, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -22,6 +22,7 @@ const STATES = {
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'customers.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
+  'ai.html': ['normal', 'loading', 'error', 'aioff', 'budget_80', 'budget_100', 'legal_ok'],
   'security.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'privacy.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'customer-import.html': ['normal', 'bad_file', 'aioff'],
@@ -255,6 +256,34 @@ await shot(p, 'customers', true);
 await p.close();
 p = await open('customers.html?role=marketing&state=aioff');
 check(!(await p.textContent('tbody')).includes('0900000001') && (await p.textContent('tbody')).includes('090***0001') && !(await p.textContent('tbody')).includes('Hỏi giá'), '#7: Marketing thấy SĐT che; AI tắt ẩn tag AI');
+await p.close();
+
+// #26 AI nội bộ
+p = await open('ai.html?role=owner');
+check((await p.getByRole('button', { name: 'Chuyển sang Production…' }).isDisabled()) && (await p.textContent('#env-reason')).includes('Q1'), '#26: Production khóa khi chưa có văn bản pháp lý (Q1)');
+check((await p.textContent('main')).includes('[PHONE_1]') && (await p.textContent('main')).includes('ai.customer_reply'), '#26: bảng che dữ liệu (E7), AI không trả lời khách');
+await p.fill('#ai-budget', '0');
+await p.locator('.btn.primary', { hasText: 'Lưu ngân sách' }).click();
+check((await p.textContent('[role=alert]')).includes('lớn hơn 0'), '#26: ngân sách phải > 0');
+await p.close();
+p = await open('ai.html?role=owner&state=legal_ok');
+await p.getByRole('button', { name: 'Chuyển sang Production…' }).click();
+await p.locator('.dialog .btn.primary').click();
+await p.waitForSelector('text=Đang chạy: Production');
+check((await p.textContent('main')).includes('Đang chạy: Production'), '#26: Owner chuyển Production khi đã có văn bản');
+await shot(p, 'ai', true);
+await p.close();
+p = await open('ai.html?role=admin&state=legal_ok');
+check((await p.getByRole('button', { name: 'Chuyển sang Production…' }).isDisabled()) && (await p.textContent('#env-reason')).includes('Chỉ Owner'), '#26: Admin không chuyển Production');
+await p.close();
+p = await open('ai.html?role=owner&state=budget_100');
+check((await p.textContent('main')).includes('ai_budget_exceeded') && (await p.textContent('main')).includes('Đã dùng 100%'), '#26: hết ngân sách thì dừng AI, về flow kịch bản');
+await p.close();
+p = await open('ai.html?role=owner&state=aioff');
+check(!(await p.isChecked('#ai-e1')) && (await p.textContent('main')).includes('AI đang tắt'), '#26: AI tắt hiện dải báo, E1 tắt');
+await p.close();
+p = await open('ai.html?role=manager');
+check((await p.textContent('main')).includes('không dùng AI nội bộ'), '#26: Manager không có quyền');
 await p.close();
 
 // #29 Sự cố bảo mật
