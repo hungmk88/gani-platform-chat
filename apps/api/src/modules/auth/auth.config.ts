@@ -18,6 +18,7 @@ import { authLogger, logAuthMessage } from './auth-logger.js';
 import { revokingAdapter } from './revoking-adapter.js';
 import { safeErrorsAdapter, safeQueryPool, storeErrorCode } from './safe-errors-adapter.js';
 import { MAX_SESSION_MS, sessionCreateBefore } from './session-hooks.js';
+import { invitations } from './invitations.js';
 import { switchActiveOrg } from './switch-active-org.js';
 
 // The whole configuration of Better Auth in one place (ADR-003, N79, N81, N82, N83). It takes the checked environment, never process.env.
@@ -157,7 +158,12 @@ export function buildAuthOptions(
       storage: 'memory',
       window: 60,
       max: 100,
-      customRules: { '/sign-in/email': { window: 60, max: 10 } },
+      customRules: {
+        '/sign-in/email': { window: 60, max: 10 },
+        // Per address; the routes also limit each token to 10 a minute themselves (N151).
+        '/invite/lookup': { window: 60, max: 60 },
+        '/invite/accept': { window: 60, max: 60 },
+      },
     },
     // A one-time token is marked used_at, never deleted, and the library's habit of deleting expired rows on every read is switched
     // off: cleaning is a job of migration_role (N87). usedAt is our column; the revoking adapter needs the library to know it.
@@ -192,7 +198,8 @@ export function createAuth(args: { pool: ReturnType<typeof createDbPool>; env: A
   return betterAuth(
     buildAuthOptions(args.env, revokingAdapter(adapter), {
       lockout: loginLockout(pool),
-      plugins: [switchActiveOrg(pool)],
+      // The invitations open transactions of their own (one step, N151): they get the pool itself, whose errors they never print.
+      plugins: [switchActiveOrg(pool), invitations(args.pool, args.env.baseURL)],
     }),
   );
 }
