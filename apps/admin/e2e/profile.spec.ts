@@ -4,6 +4,8 @@ import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf, GOOD } from './stub-api';
 
+const NEXT = 'matkhau-moi-123';
+
 // #5 Hồ sơ cá nhân: the name in the header opens it; password changes are checked here first (ADR-003), then by Better Auth.
 test('the name in the header opens the profile with what /v1/me says', async ({ page }) => {
   await signIn(page, accountOf('sales'));
@@ -39,12 +41,12 @@ test('changing the password: the rule first, then the wrong current one, then do
   await fill(GOOD, 'aaaaaaaaaaaa');
   await expect(form.getByRole('alert')).toHaveText('Mật khẩu mới cần có cả chữ và số.');
   expect(await sent).toBeNull();
-  await fill('sai-mat-khau-1', 'matkhau-moi-123');
+  await fill('sai-mat-khau-1', NEXT);
   await expect(form.getByRole('alert')).toHaveText('Mật khẩu hiện tại chưa đúng.');
   const posted = page.waitForRequest((r) => r.url().endsWith('/api/auth/change-password'));
-  await fill(GOOD, 'matkhau-moi-123');
+  await fill(GOOD, NEXT);
   expect((await posted).postDataJSON()).toMatchObject({
-    newPassword: 'matkhau-moi-123',
+    newPassword: NEXT,
     revokeOtherSessions: true,
   });
   await expect(form.getByRole('status')).toHaveText(
