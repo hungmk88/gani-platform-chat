@@ -29,6 +29,7 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - Idempotency-Key cho POST tạo dữ liệu: gắn `@Idempotent()` (`modules/idempotency`, N134). Thiếu khóa → 400; cùng khóa khác request → 422 `idempotency_key_reused`; đang chạy → 409 `idempotency_in_progress`; 2xx/4xx được trả lại 24 giờ, 5xx thì không.
 - Webhook vào: verify → ghi `inbound_events` → trả 200 < 100ms → worker xử lý.
 - `GET /v1/me` và `GET /v1/me/security-status` là hai route `/v1` duy nhất không qua middleware tenant (so khớp đúng chuỗi, `tenant-context.middleware.ts`): `/v1/me` tự chọn công ty bằng `chooseOrganisation` (provider `ORGANISATION_SOURCES`), không có thì `org: null` (N145). Thêm route miễn mới phải có lý do và test chính tả lạ.
+- Lời mời (`modules/auth/invitations.ts`, N151): plugin Better Auth `/api/auth/invite/lookup` và `/invite/accept`. Người chưa đăng nhập nhận lời mời + đặt mật khẩu + được tạo phiên trong một bước (`acceptInviteWithPassword`, một transaction); người đã đăng nhập đúng email chỉ nhận. Mọi từ chối là 404 `INVITE_INVALID` cùng một câu; bắt buộc `Origin` = `BETTER_AUTH_URL` (cả khi không có cookie); 10 lần/phút theo SHA-256 của token + 60 lần/phút theo địa chỉ (bộ nhớ). Đường này không nằm trong OpenAPI (của Better Auth, như `/sign-in/email`).
 - CSRF (N136): request dưới `/v1` không phải GET/HEAD/OPTIONS mà có cookie phải có `Origin` = `BETTER_AUTH_URL` (`same-origin.ts`), sai → 403. Test gửi POST `/v1` có cookie thì phải kèm header `origin`.
 
 ## Kiểm chứng
