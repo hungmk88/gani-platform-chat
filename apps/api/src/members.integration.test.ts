@@ -13,8 +13,8 @@ import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
 import { hashPassword } from './modules/auth/password.js';
 
-// POST /v1/members/invite (N152) over HTTP with the whole application, PostgreSQL and an SMTP server in the process.
-// Org A: an owner, an admin (both with a second factor), a manager.
+// POST /v1/members/invite and /v1/members/{id}/resend-invite (N152) over HTTP with the whole application, PostgreSQL and an SMTP
+// server in the process. Org A: an owner, an admin (both with a second factor), a manager; org B has a pending invitation of its own.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -22,7 +22,7 @@ const need = (name: string): string => {
   return value;
 };
 const ORIGIN = 'http://localhost:3000';
-const orgA = randomUUID();
+const [orgA, orgB] = [randomUUID(), randomUUID()];
 const PW = randomBytes(18).toString('base64url');
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const people: Record<string, string> = {};
@@ -95,7 +95,7 @@ beforeAll(async () => {
   const smtpPort = (smtp.server.address() as AddressInfo).port;
   Object.assign(process.env, { BETTER_AUTH_SECRET: randomBytes(32).toString('hex'), BETTER_AUTH_URL: ORIGIN, APP_ENV: 'test', AUTH_ALLOW_HTTP: 'true',
     SMTP_URL: `smtp://127.0.0.1:${smtpPort}`, EMAIL_FROM: 'Gani <no-reply@example.test>' });
-  await q('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [orgA, `t-${orgA}`, 'Gani Foods']);
+  for (const [org, name] of [[orgA, 'Gani Foods'], [orgB, 'B']]) await q('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [org, `t-${org}`, name]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const nest = (app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false }));
   setupApp(nest);
@@ -112,8 +112,8 @@ afterAll(async () => {
   const users = Object.values(people);
   for (const [text, ids] of [
     ['idempotency_keys WHERE org_id', [orgA]], ['audit_logs WHERE org_id', [orgA]], ['sessions WHERE user_id', users],
-    ['org_members WHERE org_id', [orgA]], ['accounts WHERE user_id', users], ['users WHERE id', users],
-    ['organizations WHERE id', [orgA]],
+    ['org_members WHERE org_id', [orgA, orgB]], ['accounts WHERE user_id', users], ['users WHERE id', users],
+    ['organizations WHERE id', [orgA, orgB]],
   ] as const)
     await q(`DELETE FROM ${text} = ANY($1::uuid[])`, [ids]).catch(() => undefined);
   await admin.end();
@@ -181,8 +181,55 @@ describe('POST /v1/members/invite', () => {
   });
 });
 
+describe('POST /v1/members/{id}/resend-invite', () => {
+  it('sends a new token for seven more days; the one sent before stops being the invitation', async () => {
+    const to = email();
+    const id = (await invite('owner', to, 'manager')).body['id'] as string;
+    const before = tokenTo(to);
+    await q("UPDATE org_members SET invite_expires_at = now() + interval '1 hour' WHERE id = $1", [
+      id,
+    ]);
+    const res = await post('admin', `${id}/resend-invite`);
+    expect(res).toMatchObject({
+      status: 200,
+      body: { id, email: to, role: 'manager', emailSent: true },
+    });
+    const after = tokenTo(to);
+    expect(after).not.toBe(before);
+    const row = await rowOf(id);
+    expect(row['invite_token_hash']).toEqual(sha256(after));
+    expect((row['invite_expires_at'] as Date).getTime() - Date.now()).toBeGreaterThan(
+      6.99 * 86_400_000,
+    );
+    const audit = await q(
+      'SELECT count(*)::int AS n FROM audit_logs WHERE target_id = $1 AND action = $2',
+      [id, 'member.invite_resent'],
+    );
+    expect(audit.rows[0]).toEqual({ n: 1 });
+  });
+
+  it('refuses an Admin for an Owner invitation, a manager, and finds no member, no other organisation, no unknown id', async () => {
+    const ownerInvite = (await invite('owner', email(), 'owner')).body['id'] as string;
+    const sales = (await invite('owner', email(), 'sales')).body['id'] as string;
+    const ofB = randomUUID();
+    // prettier-ignore
+    await q(`INSERT INTO org_members (id, org_id, invited_email, role, status, invite_token_hash, invite_expires_at) VALUES ($1, $2, $3, 'sales', 'pending', $4, now() + interval '7 days')`,
+      [ofB, orgB, email(), randomBytes(32)]);
+    const active = (await q('SELECT id FROM org_members WHERE user_id = $1', [people['manager']]))
+      .rows[0] as { id: string };
+    const answers = [
+      await post('admin', `${ownerInvite}/resend-invite`),
+      await post('manager', `${sales}/resend-invite`),
+      await post('owner', `${active.id}/resend-invite`),
+      await post('owner', `${ofB}/resend-invite`),
+      await post('owner', `${randomUUID()}/resend-invite`),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 403, 404, 404, 404]);
+  });
+});
+
 describe('when the email cannot be sent', () => {
-  it('keeps the invitation and says emailSent: false', async () => {
+  it('keeps the invitation and says emailSent: false, so that resend-invite can send it', async () => {
     await new Promise<void>((resolve) => smtp.close(() => resolve()));
     const res = await invite('owner', email(), 'viewer');
     expect(res).toMatchObject({ status: 201, body: { emailSent: false } });
