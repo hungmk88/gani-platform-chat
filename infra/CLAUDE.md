@@ -46,7 +46,7 @@ infra/
 - `migration_role`: BYPASSRLS, **không phải superuser**; chỉ pipeline migration/backfill dùng, mỗi lần chạy ghi log.
 - `app_role`: không owner, không BYPASSRLS. `support_role`: bị lọc như `app_role`, cần access-session.
 - Chi tiết: `docs/specs/rls-spec-M01.md`.
-- `infra/scripts/bootstrap-platform-operator`: tạo `platform_operator` đầu tiên, chạy **một lần** bằng `migration_role`, **từ chối nếu đã có** `platform_operator`, ghi audit `reason = "initial bootstrap"`.
+- Bootstrap `platform_operator` đầu tiên (N25, N148): `pnpm --filter @gani/api build && pnpm --filter @gani/api bootstrap:operator` (`apps/api/scripts/bootstrap-platform-operator.mjs`, không ở `infra/scripts/` vì cần đúng bộ băm Argon2id của API). Chạy **một lần** từ pipeline bằng `DATABASE_URL_MIGRATION`, cần `APP_ENV`, `BOOTSTRAP_OPERATOR_EMAIL`, `BOOTSTRAP_OPERATOR_PASSWORD` (`BOOTSTRAP_OPERATOR_NAME` tùy chọn); **từ chối nếu đã có** `platform_operator` hoặc email đã dùng. Dấu vết: một dòng JSON trên stdout (id, `reason = "initial bootstrap"`), không in email/mật khẩu; không có bảng audit nào nhận dòng không có công ty.
 
 ### Sao lưu & khôi phục (Phụ lục v2.3 §22)
 - PITR bật. **RPO ≤ 1 giờ, RTO ≤ 4 giờ.**
