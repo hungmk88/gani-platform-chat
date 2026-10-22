@@ -18,6 +18,7 @@ export default defineConfig({
         'src/delivery-store.ts',
         'src/idempotency-store.ts',
         'src/inbound-store.ts',
+        'src/invite-store.ts',
         'src/message-store.ts',
         'src/outbox-store.ts',
         'src/tenant-tx.ts',
