@@ -19,6 +19,7 @@ export default defineConfig({
         'src/idempotency-store.ts',
         'src/inbound-store.ts',
         'src/invite-store.ts',
+        'src/member-invite-store.ts',
         'src/message-store.ts',
         'src/outbox-store.ts',
         'src/tenant-tx.ts',
