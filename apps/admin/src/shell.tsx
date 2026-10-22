@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import type { Me } from './me';
@@ -40,7 +41,9 @@ export function Shell({ me, role, children }: { me: Me; role: Role; children: Re
               : 'Nền tảng — không thuộc công ty nào'}
           </span>
           <span className="flex items-center gap-2">
-            {me.name}
+            <Link href="/me" className="rounded-input px-2 py-1 hover:bg-bg-subtle">
+              {me.name}
+            </Link>
             <SignOutButton />
           </span>
         </header>
