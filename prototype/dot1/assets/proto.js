@@ -173,6 +173,7 @@
     items.push(['customers', 'Khách hàng', 'customers.html']);
     items.push(['leads', 'Lead', 'leads.html', true]);
     if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
+    if (['owner', 'admin'].includes(Proto.role())) items.push(['privacy', 'Dữ liệu cá nhân', 'privacy.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', 'overview.html']);
     if (Proto.role() === 'manager') {
