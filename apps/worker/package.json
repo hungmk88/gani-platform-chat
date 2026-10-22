@@ -16,6 +16,7 @@
     "@gani/conversations": "workspace:*",
     "@gani/db": "workspace:*",
     "@gani/domain": "workspace:*",
+    "@gani/email": "workspace:*",
     "@socket.io/redis-emitter": "5.1.0",
     "bullmq": "5.81.5",
     "ioredis": "5.11.1"
