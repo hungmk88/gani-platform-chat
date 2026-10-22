@@ -20,6 +20,7 @@ export default defineConfig({
         'src/inbound-store.ts',
         'src/invite-store.ts',
         'src/member-invite-store.ts',
+        'src/member-directory.ts',
         'src/message-store.ts',
         'src/outbox-store.ts',
         'src/tenant-tx.ts',
