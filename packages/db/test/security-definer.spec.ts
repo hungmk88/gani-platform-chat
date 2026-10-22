@@ -6,10 +6,12 @@ import { url } from './db.js';
 // ADR-004 keeps a closed list of SECURITY DEFINER functions (N125, review G-01): a new one needs a row there and an N-number. This is
 // the list as code, so a migration that adds one fails here until both are written.
 const ADR_004 = [
+  'app.accept_invite',
   'app.channel_account_for_webhook',
   'app.ensure_log_partitions',
   'app.inbound_pending_orgs',
   'app.log_default_partition_rows',
+  'app.lookup_invite',
   'app.memberships_for_user',
   'app.outbox_pending_orgs',
   'app.outbox_stats',

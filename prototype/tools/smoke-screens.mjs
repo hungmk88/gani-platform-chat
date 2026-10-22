@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#7, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -21,6 +21,7 @@ const STATES = {
   'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
+  'customers.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'customer-data.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'customer-data.html?tab=tags&x=1': ['normal', 'empty', 'aioff'],
   'workspace.html': ['normal', 'loading', 'error', 'aioff'],
@@ -221,6 +222,34 @@ check((await p.textContent('.dialog [role=alert]')).includes('Không lưu đư�
 await p.close();
 p = await open('quick-replies.html?role=sales');
 check((await p.textContent('main')).includes('không dùng Mẫu trả lời nhanh'), '#22: Sales không có quyền');
+await p.close();
+
+// #7 Danh sách khách
+p = await open('customers.html?role=sales');
+check((await p.locator('tbody tr').count()) === 5 && (await p.textContent('tbody')).includes('0900000001'), '#7: 5 khách, Sales thấy SĐT đầy đủ');
+check((await p.locator('.btn.primary').count()) === 0 && (await p.locator('tbody input[type=checkbox]').count()) === 0, '#7: Sales không nhập, không gộp');
+await p.fill('#f-q', '0004');
+await p.press('#f-q', 'Enter');
+check((await p.locator('tbody tr').count()) === 1 && (await p.textContent('tbody')).includes('Phạm Quốc Dũng'), '#7: tìm theo SĐT');
+await p.fill('#f-q', 'chau');
+await p.press('#f-q', 'Enter');
+check((await p.locator('tbody tr').count()) === 1, '#7: tìm theo tên không dấu');
+await p.locator('.btn.link', { hasText: 'Xóa bộ lọc' }).click();
+await p.selectOption('#f-tag', 'Khách sỉ');
+await p.selectOption('#f-range', '7');
+check((await p.locator('tbody tr').count()) === 1, '#7: lọc 2 điều kiện (tag + liên hệ cuối)');
+await p.selectOption('#f-owner', 'Lê Quân');
+check((await p.textContent('main')).includes('Không có khách khớp bộ lọc'), '#7: không khớp bộ lọc');
+await p.close();
+p = await open('customers.html?role=manager');
+await p.getByRole('checkbox', { name: 'Chọn Nguyễn Văn An' }).check();
+check(await p.getByRole('button', { name: 'So sánh và gộp 2 khách' }).isDisabled(), '#7: gộp cần đúng 2 khách');
+await p.getByRole('checkbox', { name: 'Chọn Trần Thị Bình' }).check();
+check(!(await p.getByRole('button', { name: 'So sánh và gộp 2 khách' }).isDisabled()), '#7: chọn 2 khách thì gộp được');
+await shot(p, 'customers', true);
+await p.close();
+p = await open('customers.html?role=marketing&state=aioff');
+check(!(await p.textContent('tbody')).includes('0900000001') && (await p.textContent('tbody')).includes('090***0001') && !(await p.textContent('tbody')).includes('Hỏi giá'), '#7: Marketing thấy SĐT che; AI tắt ẩn tag AI');
 await p.close();
 
 // #23 Dữ liệu khách
