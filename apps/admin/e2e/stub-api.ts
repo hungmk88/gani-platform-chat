@@ -319,7 +319,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   if (req.method === 'POST' && reply) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
     const key = req.headers['idempotency-key'];
-    const text = String((await json(req))['text'] ?? '').trim();
+    const raw = (await json(req))['text'];
+    const text = typeof raw === 'string' ? raw.trim() : '';
     if (typeof key !== 'string' || !text || text.length > 2000)
       return problem(res, 400, 'validation_failed', 'trace-e2e-400');
     const done = session.sent.get(key);
