@@ -166,6 +166,7 @@
     const items = [];
     if (Proto.role() === 'platform_operator') {
       items.push(['platform', 'Platform', 'platform.html']);
+      items.push(['security', 'Sự cố bảo mật', 'security.html']);
       if (Proto.get('shell', 'normal') === 'platform_session') items.push(['customers', 'Khách hàng (trong phiên)', 'customer.html']);
       return items;
     }
@@ -173,6 +174,7 @@
     items.push(['customers', 'Khách hàng', 'customers.html']);
     items.push(['leads', 'Lead', 'leads.html', true]);
     if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
+    if (['owner', 'admin'].includes(Proto.role())) items.push(['privacy', 'Dữ liệu cá nhân', 'privacy.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
     items.push(['overview', 'Tổng quan & Báo cáo', 'overview.html']);
     if (Proto.role() === 'manager') {
@@ -189,6 +191,7 @@
       items.push(['customer-data', 'Cài đặt › Dữ liệu khách', 'customer-data.html', true]);
       items.push(['workspace', 'Cài đặt › Workspace', 'workspace.html', true]);
       items.push(['audit', 'Audit log', 'audit.html', true]);
+      items.push(['security', 'Sự cố bảo mật', 'security.html', true]);
       items.push(['autonomy', 'Tự chủ & feature flag', 'autonomy.html', true]);
     }
     return items;

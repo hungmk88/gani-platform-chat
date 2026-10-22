@@ -1,0 +1,33 @@
+{
+  "name": "@gani/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "nodemailer": "10.0.15"
+  },
+  "devDependencies": {
+    "@gani/config": "workspace:*",
+    "@types/node": "22.20.5",
+    "@types/smtp-server": "3.5.13",
+    "@vitest/coverage-v8": "5.0.3",
+    "smtp-server": "3.19.17",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
