@@ -3,10 +3,14 @@ import {
   InvalidCursorError,
   listMembers,
   insertAuditLog,
+  loadMember,
+  lockActiveOwners,
+  lockMember,
   lockPendingInvite,
   newInviteToken,
   readOrgSummary,
   renewMemberInvite,
+  updateMemberRole,
   type OrgRole,
   type PendingInvite,
   type TenantTx,
@@ -21,6 +25,7 @@ import {
   Inject,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -30,8 +35,13 @@ import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
 import { InviteMailer } from './invite-mailer.js';
-import { mayInvite } from './members.permissions.js';
-import { InviteBodySchema, MemberIdSchema, MemberListQuerySchema } from './members.schemas.js';
+import { mayInvite, roleChangeRefusal } from './members.permissions.js';
+import {
+  InviteBodySchema,
+  MemberIdSchema,
+  MemberListQuerySchema,
+  RoleBodySchema,
+} from './members.schemas.js';
 import { memberView } from './members.view.js';
 
 /** 409 of an email this organisation has invited already: one pending invitation per person, which resend-invite renews. */
@@ -41,6 +51,16 @@ export class DuplicateInviteError extends Error {
   constructor() {
     super('This email has a pending invitation already.');
     this.name = 'DuplicateInviteError';
+  }
+}
+
+/** 409 when the change would leave the organisation without an active Owner (N154): two Owners demoting each other at once. */
+export class LastOwnerError extends Error {
+  readonly status = 409;
+  readonly code = 'last_owner';
+  constructor() {
+    super('The organisation must keep an active Owner.');
+    this.name = 'LastOwnerError';
   }
 }
 
@@ -80,6 +100,42 @@ export class MembersController {
       if (error instanceof InvalidCursorError) throw new ValidationFailedError(['cursor: invalid']);
       throw error;
     }
+  }
+
+  /**
+   * The role of a member (Brief P9, N154). One TenantTx: the active Owners locked first, then the member, so that two changes at once
+   * take turns and the organisation always keeps an Owner; audited with the two roles, no email. Setting a role twice changes nothing
+   * the second time, so no Idempotency-Key. The person's next request acts in the new role; their socket within 60 s (revalidate).
+   */
+  @Patch(':id/role')
+  async changeRole(
+    @Param('id', new ZodPipe(MemberIdSchema)) id: string,
+    @Body(new ZodPipe(RoleBodySchema)) body: { role: OrgRole },
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayInvite(ctx.role)) throw new ForbiddenException();
+    const member = await this.database.withTenant(ctx, async (tx) => {
+      const ownerIds = await lockActiveOwners(tx);
+      const target = await lockMember(tx, id);
+      if (!target) throw new NotFoundException();
+      const refusal = roleChangeRefusal(ctx, target, body.role, ownerIds);
+      if (refusal === 'forbidden') throw new ForbiddenException();
+      if (refusal === 'last_owner') throw new LastOwnerError();
+      if (target.role !== body.role) {
+        await updateMemberRole(tx, id, body.role);
+        await insertAuditLog(tx, {
+          id: uuidv7(),
+          actorUserId: ctx.userId,
+          action: 'member.role_changed',
+          targetType: 'org_member',
+          targetId: id,
+          detail: { from: target.role, to: body.role },
+        });
+      }
+      return loadMember(tx, id);
+    });
+    if (!member) throw new NotFoundException();
+    return memberView(member, new Date());
   }
 
   @Post('invite')

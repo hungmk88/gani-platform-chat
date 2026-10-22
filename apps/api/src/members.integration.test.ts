@@ -13,9 +13,9 @@ import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
 import { hashPassword } from './modules/auth/password.js';
 
-// GET /v1/members (N153), POST /v1/members/invite and /v1/members/{id}/resend-invite (N152) over HTTP with the whole application,
-// PostgreSQL and an SMTP server in the process. Org A: an owner, an admin (both with a second factor), a manager; org B has a pending
-// invitation of its own.
+// GET /v1/members (N153), PATCH /v1/members/{id}/role (N154), POST /v1/members/invite and …/resend-invite (N152) over HTTP with the
+// whole application, PostgreSQL and an SMTP server in the process. Org A: two owners, an admin (with a second factor), a manager; org B
+// has a pending invitation of its own.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -104,6 +104,7 @@ beforeAll(async () => {
   url = await nest.getUrl();
   const hash = await hashPassword(PW);
   for (const role of ['owner', 'admin', 'manager']) await person(role, role, hash);
+  await person('owner2', 'owner', hash);
 }, 60_000);
 
 // prettier-ignore
@@ -284,6 +285,91 @@ describe('GET /v1/members', () => {
       status: 400,
       body: { code: 'validation_failed' },
     });
+  });
+});
+
+describe('PATCH /v1/members/{id}/role', () => {
+  const memberOf = async (key: string) =>
+    (
+      (await q('SELECT id FROM org_members WHERE user_id = $1', [people[key]])).rows[0] as {
+        id: string;
+      }
+    ).id;
+  const setRole = async (who: string, id: string, role: unknown) => {
+    const res = await fetch(`${url}/v1/members/${id}/role`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie: cookies[who] ?? '', origin: ORIGIN },
+      body: JSON.stringify({ role }),
+    });
+    return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+  };
+  const roleOf = async (id: string) =>
+    ((await q('SELECT role FROM org_members WHERE id = $1', [id])).rows[0] as { role: string })
+      .role;
+
+  it('lets an Owner change a role: audited without email, and the next request acts in the new role', async () => {
+    const manager = await memberOf('manager');
+    const changed = await setRole('owner', manager, 'admin');
+    expect(changed).toMatchObject({
+      status: 200,
+      body: { id: manager, role: 'admin', status: 'active' },
+    });
+    const audit = await q(
+      'SELECT actor_user_id, detail FROM audit_logs WHERE target_id = $1 AND action = $2',
+      [manager, 'member.role_changed'],
+    );
+    expect(audit.rows).toEqual([
+      { actor_user_id: people['owner'], detail: { from: 'manager', to: 'admin' } },
+    ]);
+    // An Admin must have a second factor (N93): the gate now stops the next request until it is set up.
+    const res = await fetch(`${url}/v1/members`, { headers: { cookie: cookies['manager'] ?? '' } });
+    expect([res.status, ((await res.json()) as { code?: string }).code]).toEqual([
+      403,
+      'two_factor_setup_required',
+    ]);
+    // Back as it was, for the other tests: setting the same role again changes nothing and writes no audit.
+    expect((await setRole('admin', manager, 'manager')).status).toBe(200);
+    expect((await setRole('admin', manager, 'manager')).status).toBe(200);
+    const count = await q('SELECT count(*)::int AS n FROM audit_logs WHERE target_id = $1', [
+      manager,
+    ]);
+    expect(count.rows[0]).toEqual({ n: 2 });
+  });
+
+  it("refuses one's own role, an Admin with an Owner, other roles, invitations and strangers", async () => {
+    const [owner, admin, pending] = [
+      await memberOf('owner'),
+      await memberOf('admin'),
+      (await invite('owner', email(), 'sales')).body['id'] as string,
+    ];
+    const answers = [
+      await setRole('owner', owner, 'admin'),
+      await setRole('admin', owner, 'admin'),
+      await setRole('admin', await memberOf('manager'), 'owner'),
+      await setRole('manager', admin, 'viewer'),
+      await setRole('owner', pending, 'viewer'),
+      await setRole('owner', randomUUID(), 'viewer'),
+      await setRole('owner', admin, 'king'),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 403, 403, 403, 404, 404, 400]);
+    expect([await roleOf(owner), await roleOf(admin)]).toEqual(['owner', 'admin']);
+  });
+
+  it('never leaves the organisation without an Owner when two Owners demote each other at once', async () => {
+    const [one, two] = [await memberOf('owner'), await memberOf('owner2')];
+    const answers = await Promise.all([
+      setRole('owner', two, 'admin'),
+      setRole('owner2', one, 'admin'),
+    ]);
+    const statuses = answers.map((a) => a.status).sort();
+    expect(statuses[0]).toBe(200);
+    expect([403, 409]).toContain(statuses[1]);
+    const owners = await q(
+      "SELECT count(*)::int AS n FROM org_members WHERE org_id = $1 AND role = 'owner' AND status = 'active'",
+      [orgA],
+    );
+    expect(owners.rows[0]).toEqual({ n: 1 });
+    await q("UPDATE org_members SET role = 'owner' WHERE id = ANY($1::uuid[])", [[one, two]]);
   });
 });
 
