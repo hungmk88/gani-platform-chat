@@ -60,6 +60,8 @@ describe('WorkerMetrics', () => {
     const text = await down.scrape();
     expect(text).toContain('\noutbox_stats_up 0\n');
     expect(text).not.toMatch(/outbox_pending |secret/);
-    expect(await new WorkerMetrics().scrape()).toBe(new WorkerMetrics().render());
+    // One instance: two would each read the clock when built, and differ when built a millisecond apart.
+    const idle = new WorkerMetrics();
+    expect(await idle.scrape()).toBe(idle.render());
   });
 });
