@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#7, #10, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#7, #10, #11, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -22,6 +22,7 @@ const STATES = {
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'customers.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
+  'privacy.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'customer-import.html': ['normal', 'bad_file', 'aioff'],
   'customer-import.html?step=2&x=1': ['normal'],
   'customer-import.html?step=3&x=1': ['normal'],
@@ -253,6 +254,31 @@ await shot(p, 'customers', true);
 await p.close();
 p = await open('customers.html?role=marketing&state=aioff');
 check(!(await p.textContent('tbody')).includes('0900000001') && (await p.textContent('tbody')).includes('090***0001') && !(await p.textContent('tbody')).includes('Hỏi giá'), '#7: Marketing thấy SĐT che; AI tắt ẩn tag AI');
+await p.close();
+
+// #11 Yêu cầu dữ liệu cá nhân
+p = await open('privacy.html?role=admin');
+check((await p.locator('tbody tr').count()) === 5 && (await p.locator('nav').textContent()).includes('Dữ liệu cá nhân'), '#11: 5 yêu cầu, mục menu cho Admin');
+await p.locator('.btn.primary', { hasText: 'Ghi nhận yêu cầu' }).click();
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('Chọn khách'), '#11: ghi nhận cần khách');
+await p.keyboard.press('Escape');
+check((await p.getByRole('button', { name: 'Gửi OTP xác minh YC-0007' }).count()) === 1, '#11: yêu cầu chưa xác minh có bước OTP');
+await p.selectOption('#pr-status', 'doing');
+check((await p.locator('tbody tr').count()) === 2 && (await p.getByRole('button', { name: 'Tạo bản xuất YC-0006' }).count()) === 1, '#11: lọc trạng thái; yêu cầu xem có bản xuất');
+await p.close();
+p = await open('privacy.html?role=admin&status=doing');
+await p.getByRole('button', { name: 'Xóa dữ liệu… YC-0003' }).click();
+await p.fill('#erase-confirm', 'Pham Quoc Dung');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('Tên chưa khớp') && (await p.textContent('.dialog')).includes('Không hoàn tác được'), '#11: xóa phải gõ đúng tên khách');
+await shot(p, 'privacy', true);
+await p.close();
+p = await open('privacy.html?role=owner&status=doing');
+check((await p.textContent('tbody')).includes('Trần Thị Bình'), '#11: Owner dùng được');
+await p.close();
+p = await open('privacy.html?role=manager');
+check((await p.textContent('main')).includes('không dùng Yêu cầu dữ liệu cá nhân') && !(await p.locator('nav').textContent()).includes('Dữ liệu cá nhân'), '#11: Manager không có quyền, không có mục menu');
 await p.close();
 
 // #10 Nhập khách từ file
