@@ -387,10 +387,10 @@
       </section>
 
       <section>
-        <h2>1g. Màn S5 — Yêu cầu dữ liệu cá nhân (#11) và Sự cố bảo mật (#29), nộp 04/01</h2>
+        <h2>1g. Màn S5 — Yêu cầu dữ liệu cá nhân (#11), Sự cố bảo mật (#29) và AI nội bộ (#26), nộp 04/01</h2>
         <p class="muted">
-          Phụ lục B: #11 Owner, Admin; #29 Owner, Admin, Platform operator. P7 và P11 chưa có định nghĩa: phần chưa chốt là dữ
-          liệu tạm có nhãn chờ (U35).
+          Phụ lục B: #11, #26 Owner, Admin (chuyển AI sang Production chỉ Owner); #29 Owner, Admin, Platform operator. P7, P11
+          và E20 chưa có định nghĩa: phần chưa chốt là dữ liệu tạm có nhãn chờ (U35).
         </p>
         <div class="grid" style="margin-top: var(--sp-3)">
           <div class="card">
@@ -408,6 +408,15 @@
               <li><a href="security.html?role=admin&id=SC-0002">Sự cố đã đóng</a> · <a href="security.html?role=platform_operator">Platform operator</a></li>
               <li><a href="security.html?role=admin&state=loading">Đang tải</a> · <a href="security.html?role=admin&state=empty">Trống</a> · <a href="security.html?role=admin&state=error">Lỗi</a> · <a href="security.html?role=admin&state=aioff">AI tắt — Không áp dụng</a></li>
               <li><a href="security.html?role=manager">Manager: không có quyền</a></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><a href="ai.html?role=owner">AI nội bộ (#26)</a></h3>
+            <ul>
+              <li><a href="ai.html?role=owner">Owner: Production khóa vì chưa có văn bản pháp lý (Q1)</a> · <a href="ai.html?role=owner&state=legal_ok">đã có văn bản</a></li>
+              <li><a href="ai.html?role=admin">Admin: bật/tắt E1, L1, ngân sách; không chuyển Production</a></li>
+              <li><a href="ai.html?role=owner&state=budget_80">Ngân sách ≥ 80%</a> · <a href="ai.html?role=owner&state=budget_100">Hết ngân sách</a> · <a href="ai.html?role=owner&state=aioff">AI tắt</a></li>
+              <li><a href="ai.html?role=owner&state=loading">Đang tải</a> · <a href="ai.html?role=owner&state=error">Lỗi</a> · <a href="ai.html?role=manager">Manager: không có quyền</a></li>
             </ul>
           </div>
         </div>
