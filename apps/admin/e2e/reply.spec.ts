@@ -9,6 +9,10 @@ const waiting = CONVERSATIONS[0]!; // HUMAN_WAITING_Q, nobody
 const held = CONVERSATIONS[1]!; // HUMAN_ACTIVE, sales
 const view = (page: Page) => page.getByRole('region', { name: 'Hội thoại' });
 const box = (page: Page) => page.getByRole('textbox', { name: /Soạn tin trả lời/ });
+const claim = (page: Page) =>
+  view(page)
+    .getByRole('group', { name: 'Thao tác' })
+    .getByRole('button', { name: 'Nhận', exact: true });
 const messages = (page: Page) => view(page).getByRole('list', { name: 'Tin nhắn' });
 
 test('sales answers the conversation they hold: shown at once, then waiting to be sent', async ({
@@ -67,8 +71,8 @@ test('an empty text is not sent, and R goes to the box', async ({ page }) => {
 test('no box before the conversation is claimed; it comes with the claim', async ({ page }) => {
   await signIn(page, accountOf('sales'));
   await page.goto(`/inbox/${waiting.id}`);
-  await expect(view(page).getByRole('button', { name: 'Nhận' })).toBeVisible();
+  await expect(claim(page)).toBeVisible();
   await expect(page.getByRole('form', { name: 'Trả lời khách' })).toHaveCount(0);
-  await view(page).getByRole('button', { name: 'Nhận' }).click();
+  await claim(page).click();
   await expect(box(page)).toBeVisible();
 });
