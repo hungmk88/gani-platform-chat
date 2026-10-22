@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { UuidSchema } from '../../openapi/schemas.js';
 
+export const MemberIdSchema = UuidSchema;
 const RoleSchema = z.enum(orgMembers.role.enumValues);
 
 /** `POST /v1/members/invite`: the email is stored as the CHECK of org_members wants it (lower case, no space around). */
@@ -20,7 +21,8 @@ export const InvitationSchema = z
     status: z.literal('pending'),
     expiresAt: z.iso.datetime(),
     emailSent: z.boolean().meta({
-      description: 'False when the email could not be sent: the invitation exists all the same.',
+      description:
+        'False when the email could not be sent: the invitation exists, and resend-invite sends it again.',
     }),
   })
   .meta({ id: 'Invitation' });
