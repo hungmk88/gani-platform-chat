@@ -170,7 +170,7 @@
       return items;
     }
     if (Proto.can('inbox.view')) items.push(['inbox', 'Hộp thư', 'inbox.html']);
-    items.push(['customers', 'Khách hàng', 'customer.html']);
+    items.push(['customers', 'Khách hàng', 'customers.html']);
     items.push(['leads', 'Lead', 'leads.html', true]);
     if (Proto.can('ticket.create')) items.push(['tickets', 'Ticket', 'tickets.html', true]);
     if (Proto.can('bot.edit')) items.push(['bots', 'Tự động hóa', 'bots.html']);
