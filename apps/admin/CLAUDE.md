@@ -110,6 +110,14 @@ Trang mặc định sau đăng nhập:
 - Realtime (I1b-2): một kết nối Socket.IO `/agent` cho khung app (`src/realtime/realtime.tsx`), chỉ với vai trò đọc hội thoại; nằm trong `QueryProvider` nên đổi công ty/workspace hay đăng xuất là ngắt. `state_changed`/`assigned`/`message.created` sửa cache (`src/realtime/events.ts`: không thay bản mới bằng bản cũ). Hội thoại đang mở: `conversation.subscribe`, nối lại thì `resume` từ số tin lớn nhất (`use-conversation-realtime.ts`). Client chỉ gửi `conversationId`, không bao giờ tên phòng (T3, E2E). `session.ended` → `/login`.
 - `next start` **không** chuyển tiếp WebSocket (đã thử). Production: admin và API chung địa chỉ gốc sau reverse proxy, `REALTIME_ORIGIN` để trống. Dev/E2E: `REALTIME_ORIGIN=http://localhost:3000` (đọc lúc chạy, không cần build lại); cookie vẫn đi vì cùng tên máy, `Origin` vẫn là địa chỉ admin.
 
+## Hồ sơ cá nhân (#5)
+
+- `/me` (mọi vai trò; tên ở thanh trên là link): 3 phần theo URL `?tab=info|security|notify` (link, không phải tablist).
+- Thông tin: chỉ đọc từ `/v1/me` (tên, vai trò, công ty, workspace); đổi tên và ảnh chờ `PATCH /v1/me` (U25).
+- Bảo mật: trạng thái 2FA (`security-status`, không có nút tắt); đổi mật khẩu qua `POST /api/auth/change-password` (`revokeOtherSessions` mặc định bật). Better Auth chỉ kiểm độ dài 12–128, nên form kiểm thêm chữ + số (ADR-003) trước khi gửi (`src/profile/password.ts`). "Đăng xuất khỏi các thiết bị khác" = `POST /api/auth/revoke-other-sessions`.
+- **Không gọi `/api/auth/list-sessions`**: đường này trả token của mọi phiên cho JavaScript (giữ cho `/revoke-session`, SEC-03). Danh sách phiên của prototype #5 chờ một đường không có token.
+- Thông báo: chờ API.
+
 ## Thành viên (#19)
 
 - `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403). Hôm nay chỉ có **Mời thành viên** (`POST /v1/members/invite`, N152): `src/members/invite.ts` + `invite-form.tsx`.

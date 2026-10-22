@@ -194,6 +194,20 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     return send(res, 200, { success: true }, { 'set-cookie': setCookie(SESSION, '') });
   }
 
+  // #5 Hồ sơ cá nhân: Better Auth checks the current password and the length of the new one; the rest is the admin's (ADR-003).
+  if (req.method === 'POST' && path === '/api/auth/change-password') {
+    if (!session) return send(res, 401, { code: 'UNAUTHORIZED' });
+    const body = await json(req);
+    if (body['currentPassword'] !== GOOD) return send(res, 400, { code: 'INVALID_PASSWORD' });
+    const next = body['newPassword'];
+    if (typeof next !== 'string' || next.length < 12)
+      return send(res, 400, { code: 'PASSWORD_TOO_SHORT' });
+    return send(res, 200, { token: null, user: { id: meOf(session.email)?.id } });
+  }
+  if (req.method === 'POST' && path === '/api/auth/revoke-other-sessions') {
+    if (!session) return send(res, 401, { code: 'UNAUTHORIZED' });
+    return send(res, 200, { status: true });
+  }
   // Set-up of 2FA by a signed-in person: the password again, then the URI and the 10 codes; verify-totp turns it on.
   if (req.method === 'POST' && path === '/api/auth/two-factor/enable') {
     if (!session) return send(res, 401, { code: 'UNAUTHORIZED' });
