@@ -31,6 +31,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/conversations/{id}/transfer',
       '/v1/conversations/{id}/assign',
       '/v1/conversations/{id}/close',
+      '/v1/members/invite',
     ]);
   });
 });

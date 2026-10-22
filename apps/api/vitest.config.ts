@@ -19,6 +19,7 @@ export default defineConfig({
         'src/modules/conversations/conversation-actions.controller.ts',
         'src/modules/idempotency/idempotency.interceptor.ts',
         'src/modules/auth/invitations.ts',
+        'src/modules/members/members.controller.ts',
         'src/modules/members/members.module.ts',
       ],
     },
