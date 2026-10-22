@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
-import { accountOf, CONVERSATIONS } from './stub-api';
+import { accountOf, CONVERSATIONS, STUB_PAGE } from './stub-api';
 
 // #6 Hộp thư: the reply box (I2, N146). Sending is optimistic: the message shows at once, the API's answer replaces it.
 const waiting = CONVERSATIONS[0]!; // HUMAN_WAITING_Q, nobody
@@ -47,7 +47,9 @@ test('sales answers the conversation they hold: shown at once, then waiting to b
 test('a closed channel window keeps the draft and says why; nothing is added', async ({ page }) => {
   await signIn(page, accountOf('sales+window'));
   await page.goto(`/inbox/${held.id}`);
-  const before = await messages(page).getByRole('listitem').count();
+  // The first page of the stub's messages (STUB_PAGE): wait for it, a count read before it loads would be 0.
+  const shown = messages(page).getByRole('listitem');
+  await expect(shown).toHaveCount(STUB_PAGE);
   await box(page).fill('Anh ơi còn cần hàng không ạ?');
   await page.getByRole('button', { name: 'Gửi' }).click();
   const alert = page.getByRole('form', { name: 'Trả lời khách' }).getByRole('alert');
@@ -55,7 +57,7 @@ test('a closed channel window keeps the draft and says why; nothing is added', a
   await expect(alert).toContainText('Đã quá thời hạn trả lời miễn phí');
   await expect(alert).toContainText('Mã: trace-e2e-window');
   await expect(box(page)).toHaveValue('Anh ơi còn cần hàng không ạ?');
-  await expect(messages(page).getByRole('listitem')).toHaveCount(before);
+  await expect(shown).toHaveCount(STUB_PAGE);
 });
 
 test('an empty text is not sent, and R goes to the box', async ({ page }) => {
