@@ -83,11 +83,17 @@ Trang mặc định sau đăng nhập:
 ## E2E và axe (F4)
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
-- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+window` (gửi tin bị 422 `channel_window_closed`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+window` (gửi tin bị 422 `channel_window_closed`); token trong `INVITES` mở trang `/invite`. Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
   API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
 - `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
+
+## Nhận lời mời (#4, N151)
+
+- `/invite` nằm ngoài nhóm `(app)`, mở cho người chưa có tài khoản. Link email là `BETTER_AUTH_URL/invite#token=…` (N152): token ở fragment, trang đọc rồi **xóa khỏi thanh địa chỉ** ngay (`history.replaceState`), chỉ giữ trong bộ nhớ.
+- `POST /api/auth/invite/lookup` → email được mời + vai trò; `GET /v1/me/security-status` 200 nghĩa là đang đăng nhập: chỉ nút "Tham gia". Chưa đăng nhập: họ tên (tùy chọn), mật khẩu + nhập lại, kiểm như API (ADR-003, `src/invite.ts`), rồi `POST /api/auth/invite/accept` mở phiên. Xong thì về `/`: khung app đưa Owner/Admin sang cài 2FA.
+- Mọi từ chối token là một câu "Link không hợp lệ hoặc đã hết hạn." + link tới `/login` (không phân biệt lý do); 429 → đợi 1 phút. Tên công ty, người mời: API lookup chưa trả (N151).
 
 ## Gọi API (F5b)
 
