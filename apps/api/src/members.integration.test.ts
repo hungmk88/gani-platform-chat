@@ -13,8 +13,9 @@ import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
 import { hashPassword } from './modules/auth/password.js';
 
-// POST /v1/members/invite and /v1/members/{id}/resend-invite (N152) over HTTP with the whole application, PostgreSQL and an SMTP
-// server in the process. Org A: an owner, an admin (both with a second factor), a manager; org B has a pending invitation of its own.
+// GET /v1/members (N153), POST /v1/members/invite and /v1/members/{id}/resend-invite (N152) over HTTP with the whole application,
+// PostgreSQL and an SMTP server in the process. Org A: an owner, an admin (both with a second factor), a manager; org B has a pending
+// invitation of its own.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -225,6 +226,64 @@ describe('POST /v1/members/{id}/resend-invite', () => {
       await post('owner', `${randomUUID()}/resend-invite`),
     ];
     expect(answers.map((a) => a.status)).toEqual([403, 403, 404, 404, 404]);
+  });
+});
+
+describe('GET /v1/members', () => {
+  const list = async (who: string, query = '') => {
+    const res = await fetch(`${url}/v1/members${query}`, {
+      headers: { cookie: cookies[who] ?? '' },
+    });
+    return {
+      status: res.status,
+      body: (await res.json()) as {
+        data: Record<string, unknown>[];
+        nextCursor: string | null;
+        code?: string;
+      },
+    };
+  };
+
+  it('gives an Owner and an Admin every member and invitation of the organisation, with emails, page by page', async () => {
+    const to = email();
+    const id = (await invite('owner', to, 'viewer')).body['id'] as string;
+    await q(
+      "UPDATE org_members SET invite_expires_at = now() - interval '1 minute' WHERE id = $1",
+      [id],
+    );
+    const all: Record<string, unknown>[] = [];
+    let query = '?limit=2';
+    for (;;) {
+      const page = await list('admin', query);
+      expect(page.status).toBe(200);
+      all.push(...page.body.data);
+      if (!page.body.nextCursor) break;
+      query = `?limit=2&cursor=${page.body.nextCursor}`;
+    }
+    expect(new Set(all.map((m) => m['id'])).size).toBe(all.length);
+    expect(all.find((m) => m['userId'] === people['owner'])).toMatchObject({
+      email: `${people['owner']}@example.test`,
+      role: 'owner',
+      status: 'active',
+      twoFactorEnabled: true,
+      expiresAt: null,
+    });
+    expect(all.find((m) => m['id'] === id)).toMatchObject({
+      email: to,
+      userId: null,
+      status: 'expired',
+      role: 'viewer',
+    });
+    expect(all.some((m) => m['status'] === 'pending')).toBe(true);
+    expect((await list('owner')).body.data).toHaveLength(Math.min(all.length, 50));
+  });
+
+  it('refuses every other role, and a cursor it did not give', async () => {
+    expect(await list('manager')).toMatchObject({ status: 403, body: { code: 'forbidden' } });
+    expect(await list('owner', '?cursor=not-ours')).toMatchObject({
+      status: 400,
+      body: { code: 'validation_failed' },
+    });
   });
 });
 

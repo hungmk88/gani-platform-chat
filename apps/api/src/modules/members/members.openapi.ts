@@ -2,7 +2,13 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
-import { InvitationSchema, InviteBodySchema, MemberIdSchema } from './members.schemas.js';
+import {
+  InvitationSchema,
+  InviteBodySchema,
+  MemberIdSchema,
+  MemberListQuerySchema,
+  MemberPageSchema,
+} from './members.schemas.js';
 
 /** The paths of members.controller.ts in the OpenAPI document, for the screen /settings/members (N152). */
 export function registerMembers(registry: OpenAPIRegistry): void {
@@ -18,6 +24,24 @@ export function registerMembers(registry: OpenAPIRegistry): void {
     422: problemResponse('idempotency_key_reused: the same key with another request.'),
     503: EDGE_ERRORS[503],
   };
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/members',
+    summary:
+      'The members of the organisation and its pending invitations, with their email, oldest first (#19, N153). Owner and Admin only.',
+    tags: ['members'],
+    request: { query: MemberListQuerySchema },
+    responses: {
+      200: {
+        description: 'A page.',
+        content: { 'application/json': { schema: MemberPageSchema } },
+      },
+      400: problemResponse('validation_failed: the cursor or the limit.'),
+      401: EDGE_ERRORS[401],
+      403: problemResponse('forbidden: only an Owner or an Admin; or a refusal of the edge.'),
+      503: EDGE_ERRORS[503],
+    },
+  });
   registry.registerPath({
     method: 'post',
     path: '/v1/members/invite',
