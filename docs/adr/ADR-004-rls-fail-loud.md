@@ -45,7 +45,7 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 
 **Cho phép ở S1 (spec §3.6):**
 - `app.support_access_ok()`, `app.memberships_for_user()`: đã tạo.
-- `app.lookup_invite()`, `app.accept_invite()`: **chưa tạo**, chờ PR7 (`rls-spec-M01.md` §3.6, §3.7).
+- `app.lookup_invite(text)`, `app.accept_invite(text, uuid)`: đã tạo (`202610221000`, N147; `rls-spec-M01.md` §3.6, §3.7). `accept_invite` nhận thêm id UUIDv7 của người mới do server sinh (PostgreSQL 16 không sinh được UUIDv7).
 - View `app.org_users` (chạy bằng quyền owner, cùng mức rủi ro): đã tạo.
 
 **Đã thêm sau S1** (20/10/2026: 10 hàm `SECURITY DEFINER` có trong migration; hai hàm đầu ở trên, tám hàm dưới đây; xác nhận của cố vấn cho từng hàm chưa ghi nhận trong repo, review G-01):
@@ -61,7 +61,7 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 | `app.outbox_stats` | `202610191200` | N118 |
 | `app.purge_idempotency_keys` | `202610201200` | N134 |
 
-`packages/db/test/security-definer.spec.ts` so tập hàm thật (10 hàm, 20/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
+`packages/db/test/security-definer.spec.ts` so tập hàm thật (12 hàm, 22/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 
