@@ -48,6 +48,23 @@ test('an Admin cannot pick Owner; a pending invitation and an email that did not
   await expectAccessible(page);
 });
 
+test('an invitation whose email did not go is sent again: new expiry, one key', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/members');
+  const form = await invite(page, 'khong-gui@example.test');
+  await expect(form.getByRole('status')).toContainText('chưa gửi được email');
+  const posted = page.waitForRequest((r) => r.url().endsWith('/resend-invite'));
+  await form.getByRole('button', { name: 'Gửi lại lời mời' }).click();
+  expect((await posted).headers()['idempotency-key']).toBeTruthy();
+  await expect(form.getByRole('status')).toHaveText(
+    /^Đã gửi lời mời tới khong-gui@example\.test\. Link dùng được đến .*30\/10\/2026/,
+  );
+  await expect(form.getByRole('button', { name: 'Gửi lại lời mời' })).toHaveCount(0);
+  await expectAccessible(page);
+});
+
 test('a Manager gets the forbidden page', async ({ page }) => {
   await signIn(page, accountOf('manager'));
   await page.goto('/settings/members');
