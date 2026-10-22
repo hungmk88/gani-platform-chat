@@ -92,6 +92,8 @@ describe('the script', () => {
       },
       encoding: 'utf8',
     });
+    // The script loads the BUILT API (dist/): a missing build is said here, not as a JSON error below.
+    expect(run.stderr).toBe('');
     expect(run.status).toBe(1);
     expect(JSON.parse(run.stdout.trim())).toMatchObject({
       event: 'platform_operator_bootstrap_refused',
