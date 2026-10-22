@@ -189,6 +189,9 @@ importers:
       '@gani/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@gani/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@socket.io/redis-emitter':
         specifier: 5.1.0
         version: 5.1.0
