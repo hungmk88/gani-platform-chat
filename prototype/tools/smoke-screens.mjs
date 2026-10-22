@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#7, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#7, #10, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -22,6 +22,9 @@ const STATES = {
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'customers.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
+  'customer-import.html': ['normal', 'bad_file', 'aioff'],
+  'customer-import.html?step=2&x=1': ['normal'],
+  'customer-import.html?step=3&x=1': ['normal'],
   'customer-data.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'customer-data.html?tab=tags&x=1': ['normal', 'empty', 'aioff'],
   'workspace.html': ['normal', 'loading', 'error', 'aioff'],
@@ -250,6 +253,33 @@ await shot(p, 'customers', true);
 await p.close();
 p = await open('customers.html?role=marketing&state=aioff');
 check(!(await p.textContent('tbody')).includes('0900000001') && (await p.textContent('tbody')).includes('090***0001') && !(await p.textContent('tbody')).includes('Hỏi giá'), '#7: Marketing thấy SĐT che; AI tắt ẩn tag AI');
+await p.close();
+
+// #10 Nhập khách từ file
+p = await open('customers.html?role=admin');
+await p.locator('a.btn', { hasText: 'Nhập từ file' }).click();
+await p.waitForSelector('[aria-current=step]');
+check((await p.textContent('[aria-current=step]')).includes('Chọn file'), '#10: mở từ #7, bước 1');
+await p.getByRole('button', { name: 'Dùng file ví dụ (prototype)' }).click();
+check((await p.textContent('main')).includes('+84912345678') && (await p.textContent('main')).includes('SĐT không hợp lệ') && (await p.textContent('main')).includes('Trùng khách'), '#10: xem trước SĐT +84, dòng lỗi, dòng trùng');
+await p.getByRole('combobox', { name: 'Nhập cột Email vào' }).selectOption('name');
+await p.getByRole('button', { name: 'Tiếp tục' }).click();
+check((await p.textContent('[role=alert]')).includes('Mỗi trường chỉ nhận từ một cột'), '#10: một trường chỉ ghép một cột');
+await p.getByRole('combobox', { name: 'Nhập cột Email vào' }).selectOption('email');
+await p.getByRole('radio', { name: 'Bỏ qua dòng trùng' }).check();
+await p.getByRole('button', { name: 'Tiếp tục' }).click();
+check((await p.textContent('main')).includes('18 — bỏ qua'), '#10: bước 3 theo lựa chọn khi trùng');
+await p.getByRole('button', { name: 'Nhập 96 khách' }).click();
+await p.waitForSelector('text=Đã nhập xong.');
+check((await p.locator('a.btn', { hasText: 'Xem danh sách khách' }).count()) === 1, '#10: xong có lối về danh sách và file dòng lỗi');
+await shot(p, 'customer-import', true);
+await p.close();
+p = await open('customer-import.html?role=admin&state=bad_file');
+await p.getByRole('button', { name: 'Dùng file ví dụ (prototype)' }).click();
+check((await p.textContent('[role=alert]')).includes('Không đọc được file') && (await p.textContent('[aria-current=step]')).includes('Chọn file'), '#10: file hỏng ở lại bước 1, có mã lỗi');
+await p.close();
+p = await open('customer-import.html?role=manager');
+check((await p.textContent('main')).includes('không dùng Nhập khách từ file'), '#10: Manager không có quyền');
 await p.close();
 
 // #23 Dữ liệu khách
