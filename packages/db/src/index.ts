@@ -10,6 +10,7 @@ export * from './delivery-store.js';
 export * from './idempotency-store.js';
 export * from './inbound-store.js';
 export * from './invite-store.js';
+export * from './member-invite-store.js';
 export * from './message-store.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, shareTeam, type MemberContext } from './member-context.js';
