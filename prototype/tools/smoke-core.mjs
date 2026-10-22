@@ -12,7 +12,7 @@ const STATES = {
   'bots.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'config_error', 'missing_greeting', 'published_view'],
   'login.html': ['normal', 'loading', 'error', 'aioff'],
   'reset.html': ['normal', 'sent', 'set', 'weak', 'done', 'expired', 'aioff'],
-  'invite.html': ['normal', 'expired', 'invalid', 'used', 'timeout', 'aioff'],
+  'invite.html': ['normal', 'signed_in', 'invalid', 'rate_limited', 'aioff'],
   'me.html': ['normal', 'tfa_on', 'loading', 'error', 'aioff'],
   'me.html?tab=security&x=1': ['normal', 'tfa_on'],
   'me.html?tab=notify&x=1': ['normal'],
@@ -194,8 +194,11 @@ p = await open('invite.html?role=admin');
 check((await p.textContent('main')).includes('bắt buộc xác thực 2 lớp'), 'Lời mời vai trò Admin: báo bước cài 2FA');
 await shot(p, 'invite-admin');
 await p.close();
-p = await open('invite.html?role=sales&state=used');
-check((await p.textContent('main')).includes('Đã chấp nhận, kiểm tra email để đặt mật khẩu'), 'Link đã dùng: câu N31');
+p = await open('invite.html?role=sales&state=invalid');
+check((await p.textContent('main')).includes('Link không hợp lệ hoặc đã hết hạn.') && (await p.locator('a.btn', { hasText: 'Đến trang đăng nhập' }).count()) === 1, 'Link không dùng được: một câu cho mọi lý do (N151)');
+await p.close();
+p = await open('invite.html?role=sales&state=signed_in');
+check((await p.locator('#p1').count()) === 0 && (await p.locator('.btn.primary', { hasText: 'Tham gia' }).count()) === 1, 'Đã đăng nhập đúng email: chỉ bấm Tham gia, không đặt mật khẩu');
 await p.close();
 
 // #5 Hồ sơ cá nhân

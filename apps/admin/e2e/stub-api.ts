@@ -3,7 +3,7 @@
 // Each email is one case: `<role>@e2e.test` signs straight in, `<role>+2fa@` asks for a code, `<role>+setup@` must set up 2FA,
 // `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
 // `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
-// `+stale@` gets version_conflict on every other action.
+// `+stale@` gets version_conflict on every other action, `+window@` has the channel's free window closed when answering.
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -88,13 +88,16 @@ const SESSION = 'e2e_session';
 const PENDING = 'e2e_two_factor'; // Better Auth's cookie between the password and the code
 
 type StubConversation = (typeof CONVERSATIONS)[number];
+type StubMessage = (typeof MESSAGES)[number] & { deliveryStatus?: 'pending' };
 interface Session {
   readonly email: string;
   mustSetUp: boolean;
   twoFactorEnabled: boolean;
   /** This session's own copy, so an action of one test never shows in another. */
   readonly conversations: StubConversation[];
-  readonly messages: (typeof MESSAGES)[number][];
+  readonly messages: StubMessage[];
+  /** Idempotency-Key → the message it made, so sending again gives the first answer back (N134). */
+  readonly sent: Map<string, StubMessage>;
 }
 const sessions = new Map<string, Session>();
 const pending = new Map<string, string>(); // pending id → email
@@ -142,6 +145,7 @@ function open(email: string): string {
     twoFactorEnabled: kind === '2fa',
     conversations: structuredClone(CONVERSATIONS),
     messages: structuredClone(MESSAGES),
+    sent: new Map(),
   });
   return setCookie(SESSION, id);
 }
@@ -309,6 +313,52 @@ async function route(req: IncomingMessage, res: ServerResponse) {
         version: c.version + 1,
       });
     return send(res, 200, c);
+  }
+  // Answering the customer (N146): only while a person holds it, sales/support their own, inside the channel's free window.
+  const reply = /^\/v1\/conversations\/([^/]+)\/messages$/.exec(path ?? '');
+  if (req.method === 'POST' && reply) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const key = req.headers['idempotency-key'];
+    const raw = (await json(req))['text'];
+    const text = typeof raw === 'string' ? raw.trim() : '';
+    if (typeof key !== 'string' || !text || text.length > 2000)
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    const done = session.sent.get(key);
+    if (done) return send(res, 201, done);
+    const me = meOf(session.email);
+    const c = session.conversations.find((x) => x.id === reply[1]);
+    if (!c || !me) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (!['HUMAN_ACTIVE', 'PENDING_CUSTOMER'].includes(c.state))
+      return problem(res, 409, 'conversation_not_active', 'trace-e2e-not-active');
+    if (!['owner', 'admin', 'manager'].includes(me.org?.role ?? '') && c.assignedUserId !== me.id)
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    if (session.email.includes('+window@')) {
+      res.writeHead(422, { 'content-type': 'application/problem+json' });
+      return res.end(
+        JSON.stringify({
+          status: 422,
+          code: 'channel_window_closed',
+          traceId: 'trace-e2e-window',
+          windowState: 'api_closed',
+          reason: 'window_expired',
+        }),
+      );
+    }
+    const n = Math.max(...session.messages.map((m) => m.sequenceNumber)) + 1;
+    const m: StubMessage = {
+      id: `0190b000-0000-7000-8000-${String(n).padStart(12, '0')}`,
+      sequenceNumber: n,
+      senderKind: 'agent',
+      senderUserId: me.id,
+      kind: 'text',
+      body: text,
+      platformSentAt: null,
+      createdAt: new Date().toISOString(),
+      deliveryStatus: 'pending',
+    };
+    if (c.id === CONVERSATIONS[1]?.id) session.messages.push(m);
+    session.sent.set(key, m);
+    return send(res, 201, m);
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {

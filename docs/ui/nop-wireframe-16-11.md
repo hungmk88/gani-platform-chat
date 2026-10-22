@@ -16,7 +16,7 @@ Mở `prototype/dot1/index.html` bằng trình duyệt; thanh đen trên cùng m
 | 5 | Đăng nhập (#1) | `login.html` | Đang tải nút, lỗi chung; khóa 30 phút sau 5 lần sai dùng cùng câu lỗi chung, vì API không phân biệt (CEO duyệt 21/10) | Đủ | — |
 | 6 | Xác thực 2 lớp (#2) | `twofa.html` | Đang tải, mã sai, khóa tạm, cài 2FA bắt buộc, 10 mã dự phòng | Đủ; thêm cài lại sau khi Admin đặt lại | U25 câu 2 (mã dự phòng khi đang khóa) |
 | 7 | Quên mật khẩu (#3) | `reset.html` | Đã gửi (cùng một câu), link hết hạn/đã dùng, mật khẩu yếu | Đủ (bố cục) | **PR7**: duyệt lại chi tiết |
-| 8 | Nhận lời mời (#4) | `invite.html` | Link hết hạn, đã dùng (N31), quá thời gian → gửi link email | Đủ (bố cục) | **PR7**: duyệt lại chi tiết |
+| 8 | Nhận lời mời (#4) | `invite.html` | Link hết hạn, đã dùng (N31), quá thời gian → gửi link email. **N151 (22/10) thay:** nhận một bước (token + mật khẩu + tên, tạo phiên luôn), mọi từ chối là cùng một câu, không còn link email đặt mật khẩu | Đủ theo N151: bình thường, đã đăng nhập đúng email, link không dùng được, thử quá nhiều lần | Tên công ty và người mời: API lookup chỉ trả email và vai trò |
 | 9 | Hồ sơ cá nhân (#5) | `me.html` | 2FA bật/chưa bật, không nút tắt; phiên chỉ có thời điểm tạo + hạn; "Phiên này" | Đủ | U25 câu 1 (`PATCH /v1/me`) |
 
 Dòng 10 (Widget) thuộc Đợt 2: nộp 22/02/2027, duyệt 01/03/2027.

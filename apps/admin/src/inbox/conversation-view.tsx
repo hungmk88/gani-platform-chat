@@ -7,6 +7,8 @@ import { useApiPages, useApiQuery } from '../query/provider';
 import type { Role } from '../nav';
 import { useConversationRealtime } from '../realtime/use-conversation-realtime';
 import { RetryAction } from '../retry-button';
+import { canReply, DELIVERY_LABEL, isLocal } from './composer';
+import { ReplyBox } from './reply-box';
 import { ConversationActions } from './conversation-actions';
 import { HOLD_LABEL, holderOf, STATE_LABEL } from './list';
 import { inReadingOrder, KIND_LABEL, messagesPath, senderOf } from './messages';
@@ -34,7 +36,7 @@ function Failure({
   );
 }
 
-/** The middle column of the Inbox (#6, I1b): the conversation and its messages, read only. What a customer sent is plain text. */
+/** The middle column of the Inbox (#6, I1b, I2): the conversation, its messages and the reply box. What a customer sent is plain text. */
 export function ConversationView({ id, role, meId }: { id: string; role: Role; meId: string }) {
   const conversation = useApiQuery<Conversation>(
     ['conversation', id],
@@ -120,6 +122,11 @@ export function ConversationView({ id, role, meId }: { id: string; role: Role; m
                   <time dateTime={m.platformSentAt ?? m.createdAt}>
                     {TIME.format(new Date(m.platformSentAt ?? m.createdAt))}
                   </time>
+                  {isLocal(m)
+                    ? ' · Đang gửi…'
+                    : m.deliveryStatus
+                      ? ` · ${DELIVERY_LABEL[m.deliveryStatus]}`
+                      : null}
                 </span>
                 {KIND_LABEL[m.kind] ? (
                   <span className="text-12 text-text-muted">{KIND_LABEL[m.kind]}</span>
@@ -131,6 +138,7 @@ export function ConversationView({ id, role, meId }: { id: string; role: Role; m
           </ol>
         </>
       )}
+      {canReply(c, role, meId) ? <ReplyBox conversationId={c.id} meId={meId} /> : null}
       <p className="text-12 text-text-muted">Không áp dụng AI ở khung này.</p>
     </section>
   );
