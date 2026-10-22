@@ -1,6 +1,6 @@
 /* global document */
 /* Smoke test prototype phần 2: các sửa lỗi sau phần 1, phần bổ sung theo Phụ lục C (#3, #13, SLA tạm dừng, "Không áp dụng"),
-   màn sprint sau (#7, #10, #11, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #30) và bàn phím ở ngăn kéo.
+   màn sprint sau (#7, #10, #11, #14, #15, #16, #19, #20, #21, #22, #23, #24, #25, #27, #28, #29, #30) và bàn phím ở ngăn kéo.
    Chạy: xem README.md. Thoát 0 khi mọi kiểm tra đạt. */
 import { createRunner } from './lib.mjs';
 
@@ -22,6 +22,7 @@ const STATES = {
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
   'customers.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
+  'security.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'privacy.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'customer-import.html': ['normal', 'bad_file', 'aioff'],
   'customer-import.html?step=2&x=1': ['normal'],
@@ -254,6 +255,32 @@ await shot(p, 'customers', true);
 await p.close();
 p = await open('customers.html?role=marketing&state=aioff');
 check(!(await p.textContent('tbody')).includes('0900000001') && (await p.textContent('tbody')).includes('090***0001') && !(await p.textContent('tbody')).includes('Hỏi giá'), '#7: Marketing thấy SĐT che; AI tắt ẩn tag AI');
+await p.close();
+
+// #29 Sự cố bảo mật
+p = await open('security.html?role=admin');
+check((await p.locator('tbody tr').count()) === 2 && (await p.textContent('#sc-detail')).includes('SC-0003'), '#29: 2 sự cố, mở sẵn sự cố đang xử lý');
+await p.locator('.page-head .btn.primary', { hasText: 'Mở sự cố' }).click();
+await p.fill('#sc-title', 'Lộ danh sách, liên hệ 0912345678');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('Bỏ SĐT, email'), '#29: chặn SĐT trong tóm tắt (quy tắc 5)');
+await p.fill('#sc-title', 'Lộ file xuất khách lên nhóm chat chung');
+await p.locator('.dialog .btn.primary').click();
+await p.waitForSelector('.toast');
+check((await p.textContent('.toast')).includes('Đã mở SC-0004'), '#29: mở sự cố');
+await p.locator('.btn.primary', { hasText: 'Đóng sự cố…' }).click();
+await p.fill('#sc-cause', 'Nguyên nhân đã rõ, đã khắc phục xong');
+await p.locator('.dialog .btn.primary').click();
+check((await p.textContent('.dialog [role=alert]')).includes('Hoàn tất các bước còn lại'), '#29: chưa xong các bước thì không đóng được');
+await p.keyboard.press('Escape');
+check((await p.locator('[role=group] a', { hasText: 'Thu hồi phiên' }).getAttribute('href')).startsWith('members.html'), '#29: thao tác nhanh dẫn tới Thành viên');
+await shot(p, 'security', true);
+await p.close();
+p = await open('security.html?role=platform_operator&id=SC-0002');
+check((await p.textContent('main')).includes('Platform operator') && (await p.locator('nav').textContent()).includes('Sự cố bảo mật') && (await p.locator('.btn.primary', { hasText: 'Đóng sự cố' }).count()) === 0, '#29: platform operator mở được; sự cố đã đóng chỉ xem');
+await p.close();
+p = await open('security.html?role=manager');
+check((await p.textContent('main')).includes('không dùng Sự cố bảo mật'), '#29: Manager không có quyền');
 await p.close();
 
 // #11 Yêu cầu dữ liệu cá nhân
