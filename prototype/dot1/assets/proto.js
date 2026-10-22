@@ -166,6 +166,7 @@
     const items = [];
     if (Proto.role() === 'platform_operator') {
       items.push(['platform', 'Platform', 'platform.html']);
+      items.push(['security', 'Sự cố bảo mật', 'security.html']);
       if (Proto.get('shell', 'normal') === 'platform_session') items.push(['customers', 'Khách hàng (trong phiên)', 'customer.html']);
       return items;
     }
@@ -190,6 +191,7 @@
       items.push(['customer-data', 'Cài đặt › Dữ liệu khách', 'customer-data.html', true]);
       items.push(['workspace', 'Cài đặt › Workspace', 'workspace.html', true]);
       items.push(['audit', 'Audit log', 'audit.html', true]);
+      items.push(['security', 'Sự cố bảo mật', 'security.html', true]);
       items.push(['autonomy', 'Tự chủ & feature flag', 'autonomy.html', true]);
     }
     return items;
