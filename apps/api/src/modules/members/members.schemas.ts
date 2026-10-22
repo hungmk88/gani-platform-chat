@@ -1,7 +1,7 @@
 import { orgMembers } from '@gani/db';
 import { z } from 'zod';
 
-import { UuidSchema } from '../../openapi/schemas.js';
+import { CursorQuerySchema, cursorPage, UuidSchema } from '../../openapi/schemas.js';
 
 export const MemberIdSchema = UuidSchema;
 const RoleSchema = z.enum(orgMembers.role.enumValues);
@@ -26,3 +26,27 @@ export const InvitationSchema = z
     }),
   })
   .meta({ id: 'Invitation' });
+
+/** `GET /v1/members` (N153): `?cursor=&limit=` like every list (P9). */
+export const MemberListQuerySchema = CursorQuerySchema;
+
+/** A member of the organisation, or a pending invitation, as the screen of an Owner or an Admin shows it (#19, N12, N153). */
+export const MemberSchema = z
+  .object({
+    id: UuidSchema,
+    userId: UuidSchema.nullable().meta({ description: 'Null for an invitation not taken yet.' }),
+    name: z.string().nullable(),
+    email: z.email(),
+    role: RoleSchema,
+    status: z.enum(['active', 'suspended', 'pending', 'expired']).meta({
+      description:
+        '`pending`: invited, link still valid; `expired`: invited, link past its 7 days (resend-invite renews it).',
+    }),
+    twoFactorEnabled: z.boolean(),
+    expiresAt: z.iso
+      .datetime()
+      .nullable()
+      .meta({ description: 'The end of the invitation link; null for a member.' }),
+  })
+  .meta({ id: 'Member' });
+export const MemberPageSchema = cursorPage(MemberSchema, 'MemberPage');

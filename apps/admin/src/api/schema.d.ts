@@ -1087,6 +1087,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The members of the organisation and its pending invitations, with their email, oldest first (#19, N153). Owner and Admin only. */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MemberPage"];
+                    };
+                };
+                /** @description validation_failed: the cursor or the limit. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/members/invite": {
         parameters: {
             query?: never;
@@ -1415,6 +1490,34 @@ export interface components {
             version: number;
             /** @enum {string} */
             outcome: "resolved" | "no_response" | "spam";
+        };
+        MemberPage: {
+            data: components["schemas"]["Member"][];
+            nextCursor: string | null;
+        };
+        Member: {
+            id: components["schemas"]["Uuid"];
+            /**
+             * Format: uuid
+             * @description Null for an invitation not taken yet.
+             */
+            userId: string | null;
+            name: string | null;
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "manager" | "sales" | "support" | "marketing" | "viewer";
+            /**
+             * @description `pending`: invited, link still valid; `expired`: invited, link past its 7 days (resend-invite renews it).
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "pending" | "expired";
+            twoFactorEnabled: boolean;
+            /**
+             * Format: date-time
+             * @description The end of the invitation link; null for a member.
+             */
+            expiresAt: string | null;
         };
         Invitation: {
             id: components["schemas"]["Uuid"];

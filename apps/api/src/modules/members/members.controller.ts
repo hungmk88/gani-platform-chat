@@ -1,5 +1,7 @@
 import {
   createMemberInvite,
+  InvalidCursorError,
+  listMembers,
   insertAuditLog,
   lockPendingInvite,
   newInviteToken,
@@ -14,20 +16,23 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
   HttpCode,
   Inject,
   NotFoundException,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 
-import { ZodPipe } from '../../openapi/zod-pipe.js';
+import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
 import { InviteMailer } from './invite-mailer.js';
 import { mayInvite } from './members.permissions.js';
-import { InviteBodySchema, MemberIdSchema } from './members.schemas.js';
+import { InviteBodySchema, MemberIdSchema, MemberListQuerySchema } from './members.schemas.js';
+import { memberView } from './members.view.js';
 
 /** 409 of an email this organisation has invited already: one pending invitation per person, which resend-invite renews. */
 export class DuplicateInviteError extends Error {
@@ -51,6 +56,31 @@ export class MembersController {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(InviteMailer) private readonly mailer: InviteMailer,
   ) {}
+
+  /**
+   * The members and pending invitations of the organisation, with their email (#19, N153). Only an Owner or an Admin: the email is
+   * PII, and N12 leaves the check of the role to the service, before app.org_member_directory is read.
+   */
+  @Get()
+  async list(
+    @Query(new ZodPipe(MemberListQuerySchema)) q: { cursor?: string | undefined; limit: number },
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayInvite(ctx.role)) throw new ForbiddenException();
+    try {
+      const page = await this.database.withTenant(ctx, (tx) =>
+        listMembers(tx, {
+          limit: q.limit,
+          ...(q.cursor === undefined ? {} : { cursor: q.cursor }),
+        }),
+      );
+      const now = new Date();
+      return { data: page.rows.map((row) => memberView(row, now)), nextCursor: page.nextCursor };
+    } catch (error) {
+      if (error instanceof InvalidCursorError) throw new ValidationFailedError(['cursor: invalid']);
+      throw error;
+    }
+  }
 
   @Post('invite')
   @HttpCode(201)
