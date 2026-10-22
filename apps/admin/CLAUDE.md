@@ -83,7 +83,7 @@ Trang mặc định sau đăng nhập:
 ## E2E và axe (F4)
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
-- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+window` (gửi tin bị 422 `channel_window_closed`); token trong `INVITES` mở trang `/invite`. Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+window` (gửi tin bị 422 `channel_window_closed`); token trong `INVITES` mở trang `/invite`; mời thành viên: `da-moi@` (409 đã có lời mời), `khong-gui@` (`emailSent: false`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
   API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
@@ -124,3 +124,10 @@ Trang mặc định sau đăng nhập:
 - **Không gọi `/api/auth/list-sessions`**: đường này trả token của mọi phiên cho JavaScript (giữ cho `/revoke-session`, SEC-03). Danh sách phiên của prototype #5 chờ một đường không có token.
 - Thông báo: chờ API.
 
+## Thành viên (#19)
+
+- `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403). Hôm nay chỉ có **Mời thành viên** (`POST /v1/members/invite`, N152): `src/members/invite.ts` + `invite-form.tsx`.
+- Vai trò mời được theo Phụ lục B như `members.permissions.ts` của API: Owner mọi vai trò, Admin mọi vai trò trừ Owner. Email gửi đi đã cắt khoảng trắng, chữ thường (như API lưu).
+- Chờ máy chủ (tạo thành viên), không lạc quan. Một `Idempotency-Key` cho một cặp email + vai trò: bấm lại sau lỗi dùng lại khóa, API trả câu cũ và không gửi email lần hai.
+- Hạn link lấy từ `expiresAt` của API (U1, không ghi cứng 7 ngày). `emailSent: false` → nói lời mời đã tạo nhưng email chưa đi. 409 `duplicate_resource` → "Email này đang có lời mời chờ nhận."
+- Danh sách, đổi vai trò, giới hạn tải, đặt lại 2FA, gửi lại lời mời: chờ API (`GET /v1/members`, `resend-invite`, N152 mục c).
