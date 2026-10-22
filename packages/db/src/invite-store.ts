@@ -47,32 +47,20 @@ export async function lookupInvite(pool: pg.Pool, token: string): Promise<Invite
     : null;
 }
 
-/**
- * Accepts the invitation of `token` once, in a transaction of its own. `newUserId` is a UUIDv7 the caller makes, used only when the
- * person has no account yet. `signedInUserId` is the person of an AUTHENTICATED session when there is one (it becomes
- * app.auth_user_id, like withAuthUser), never a value from a request. Any refusal is InvalidInviteError; a database error is thrown as
- * it is.
- */
-export async function acceptInvite(
+/** One transaction of auth_role that knows who is signed in (empty: nobody), with every refusal turned into InvalidInviteError. */
+async function inInviteTransaction<T>(
   pool: pg.Pool,
-  token: string,
-  newUserId: string,
-  signedInUserId: string | null = null,
-): Promise<AcceptedInvite> {
-  const id = assertUuid(newUserId, 'newUserId');
+  signedInUserId: string | null,
+  fn: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
   const signedIn = signedInUserId === null ? '' : assertUuid(signedInUserId, 'signedInUserId');
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query("SELECT set_config('app.auth_user_id', $1, true)", [signedIn]);
-    const { rows } = await client.query<{ user_id: string; org_id: string; role: string }>(
-      'SELECT user_id, org_id, role FROM app.accept_invite($1, $2)',
-      [token, id],
-    );
+    const result = await fn(client);
     await client.query('COMMIT');
-    const [row] = rows;
-    if (!row) throw new InvalidInviteError();
-    return { userId: row.user_id, orgId: row.org_id, role: row.role };
+    return result;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
     if (error instanceof InvalidInviteError || (error as { code?: unknown }).code === 'IV001')
@@ -81,4 +69,71 @@ export async function acceptInvite(
   } finally {
     client.release();
   }
+}
+
+async function accept(client: pg.PoolClient, token: string, newUserId: string) {
+  const { rows } = await client.query<{ user_id: string; org_id: string; role: string }>(
+    'SELECT user_id, org_id, role FROM app.accept_invite($1, $2)',
+    [token, assertUuid(newUserId, 'newUserId')],
+  );
+  const [row] = rows;
+  if (!row) throw new InvalidInviteError();
+  return { userId: row.user_id, orgId: row.org_id, role: row.role };
+}
+
+/**
+ * Accepts the invitation of `token` once, in a transaction of its own. `newUserId` is a UUIDv7 the caller makes, used only when the
+ * person has no account yet. `signedInUserId` is the person of an AUTHENTICATED session when there is one (it becomes
+ * app.auth_user_id, like withAuthUser), never a value from a request. Any refusal is InvalidInviteError; a database error is thrown as
+ * it is.
+ */
+export function acceptInvite(
+  pool: pg.Pool,
+  token: string,
+  newUserId: string,
+  signedInUserId: string | null = null,
+): Promise<AcceptedInvite> {
+  return inInviteTransaction(pool, signedInUserId, (client) => accept(client, token, newUserId));
+}
+
+export interface NewPassword {
+  /** An Argon2id hash made by the caller (the API's hashPassword): never a password. */
+  readonly passwordHash: string;
+  /** UUIDv7 of the accounts row (rule 2). */
+  readonly accountId: string;
+  /** Shown to colleagues; empty keeps what is there (nothing, for a new person). */
+  readonly displayName?: string;
+}
+
+/**
+ * The one step of a person who is not signed in (N151, prototype #4): accept the invitation, give the person their password and make
+ * them `active`, in ONE transaction. Either all of it happens or none of it: no `pending_password` person is left between two
+ * requests. A person who already has a password must sign in first (accept_invite refuses an `active` account without a session).
+ */
+export function acceptInviteWithPassword(
+  pool: pg.Pool,
+  token: string,
+  newUserId: string,
+  password: NewPassword,
+): Promise<AcceptedInvite> {
+  return inInviteTransaction(pool, null, async (client) => {
+    const accepted = await accept(client, token, newUserId);
+    await client.query(
+      `INSERT INTO public.accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $3, 'credential', $4)`,
+      [
+        assertUuid(password.accountId, 'accountId'),
+        accepted.userId,
+        accepted.userId,
+        password.passwordHash,
+      ],
+    );
+    // The trigger on users sets email_verified_at with this change (the link came by email).
+    const name = password.displayName?.trim() ?? '';
+    await client.query(
+      `UPDATE public.users SET status = 'active', display_name = coalesce(nullif($2, ''), display_name), updated_at = now()
+       WHERE id = $1 AND status = 'pending_password'`,
+      [accepted.userId, name],
+    );
+    return accepted;
+  });
 }
