@@ -55,6 +55,8 @@ const PAGES = [
   'quick-replies.html?role=admin&state=empty',
   'customers.html?role=manager',
   'customers.html?role=marketing&state=aioff',
+  'ai.html?role=owner',
+  'ai.html?role=admin&state=budget_100',
   'security.html?role=admin',
   'security.html?role=platform_operator&id=SC-0002',
   'privacy.html?role=admin',
