@@ -429,6 +429,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     invitations.set(key, invitation);
     return send(res, 201, invitation);
   }
+  // Sending an invitation again (N152): a new link, 7 more days from the stub's "now", and this time the email goes.
+  const resend = /^\/v1\/members\/([^/]+)\/resend-invite$/.exec(path ?? '');
+  if (req.method === 'POST' && resend) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const key = req.headers['idempotency-key'];
+    if (typeof key !== 'string') return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    const done = invitations.get(key);
+    if (done) return send(res, 200, done);
+    const first = [...invitations.values()].find((i) => (i as { id: string }).id === resend[1]) as
+      Record<string, unknown> | undefined;
+    if (!first) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    const renewed = { ...first, expiresAt: '2026-10-30T03:00:00.000Z', emailSent: true };
+    invitations.set(key, renewed);
+    return send(res, 200, renewed);
+  }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
     const body = await json(req);

@@ -130,4 +130,5 @@ Trang mặc định sau đăng nhập:
 - Vai trò mời được theo Phụ lục B như `members.permissions.ts` của API: Owner mọi vai trò, Admin mọi vai trò trừ Owner. Email gửi đi đã cắt khoảng trắng, chữ thường (như API lưu).
 - Chờ máy chủ (tạo thành viên), không lạc quan. Một `Idempotency-Key` cho một cặp email + vai trò: bấm lại sau lỗi dùng lại khóa, API trả câu cũ và không gửi email lần hai.
 - Hạn link lấy từ `expiresAt` của API (U1, không ghi cứng 7 ngày). `emailSent: false` → nói lời mời đã tạo nhưng email chưa đi. 409 `duplicate_resource` → "Email này đang có lời mời chờ nhận."
-- Danh sách, đổi vai trò, giới hạn tải, đặt lại 2FA, gửi lại lời mời: chờ API (`GET /v1/members`, `resend-invite`, N152 mục c).
+- Email chưa đi (`emailSent: false`) → nút phụ **Gửi lại lời mời** (`POST /v1/members/{id}/resend-invite`, id của câu trả lời vừa nhận): một khóa cho một lời mời tới khi thành công; link mới, hạn mới theo API, link cũ hết dùng. 404 → "Lời mời này không còn chờ nhận".
+- Danh sách, đổi vai trò, giới hạn tải, đặt lại 2FA, gửi lại lời mời từ danh sách: chờ `GET /v1/members` (N152 mục c).
