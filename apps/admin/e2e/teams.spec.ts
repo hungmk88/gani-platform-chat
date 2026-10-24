@@ -5,7 +5,8 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 import { TEAMS } from './stub-teams';
 
-// #20 Team (N160): the teams of the workspace being worked in, and making one (one Idempotency-Key per name and description).
+// #20 Team (N160): the teams of the workspace being worked in, making one (one Idempotency-Key per name and description),
+// changing and ending one.
 test('an Admin sees the teams of the workspace and makes one: the slug is the API one', async ({
   page,
 }) => {
@@ -34,6 +35,54 @@ test('an Admin sees the teams of the workspace and makes one: the slug is the AP
   await expect(form.getByLabel('Tên team')).toHaveValue('');
   await expect(list.getByRole('row')).toHaveCount(2 + TEAMS.length);
   await expect(list.getByRole('row').nth(2)).toContainText('Đại lý miền Nam');
+});
+
+test('an Owner changes a team, makes it the default, then ends the old default', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/teams');
+  const list = page.getByRole('region', { name: 'Team của workspace' });
+  await expect(list.getByRole('button', { name: 'Kết thúc team Sales B2B' })).toHaveCount(0); // the default stays
+
+  await list.getByRole('button', { name: 'Sửa team CSKH' }).click();
+  const dialog = page.getByRole('dialog', { name: /Sửa team/ });
+  await dialog.getByLabel('Tên team').fill(' Chăm sóc khách ');
+  await dialog.getByLabel(/Mô tả/).fill('  ');
+  await dialog.getByLabel(/Team mặc định của workspace/).check();
+  await expectAccessible(page);
+  const patched = page.waitForRequest((r) => r.method() === 'PATCH');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  expect((await patched).postDataJSON()).toEqual({
+    name: 'Chăm sóc khách',
+    description: null,
+    isDefault: true,
+  });
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã lưu team Chăm sóc khách.');
+  await expect(list.getByRole('row', { name: /Chăm sóc khách/ })).toContainText('Mặc định');
+  await expect(list.getByRole('row', { name: /Sales B2B/ })).not.toContainText('Mặc định');
+
+  await list.getByRole('button', { name: 'Kết thúc team Sales B2B' }).click();
+  const end = page.getByRole('dialog', { name: /Kết thúc team Sales B2B/ });
+  await expect(end).toContainText('2 người rời team này.');
+  await expectAccessible(page);
+  const deleted = page.waitForRequest((r) => r.method() === 'DELETE');
+  await end.getByRole('button', { name: 'Kết thúc team' }).click();
+  expect((await deleted).url()).toMatch(new RegExp(`/v1/teams/${TEAMS[1]!.id}$`));
+  await expect(end).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã kết thúc team Sales B2B.');
+  await expect(list.getByRole('row')).toHaveCount(2);
+
+  let sent = false;
+  page.on('request', (r) => {
+    if (r.method() === 'PATCH') sent = true;
+  });
+  await list.getByRole('button', { name: 'Sửa team Chăm sóc khách' }).click();
+  await expect(dialog.getByLabel(/Team mặc định của workspace/)).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog).toBeHidden();
+  expect(sent).toBe(false); // nothing changed
 });
 
 test('a Manager gets the forbidden page, as the menu', async ({ page }) => {

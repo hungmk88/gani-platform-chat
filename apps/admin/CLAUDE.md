@@ -143,7 +143,9 @@ Trang mặc định sau đăng nhập:
 - `/settings/teams`, Owner và Admin như menu (Phụ lục B); API cho Manager đọc team của mình, chờ cùng quyết định với `/settings/workspace`. Team của **workspace đang chọn** ở thanh trên (`useScope().workspaceId`, T1).
 - Danh sách `GET /v1/teams?workspaceId=` (A4, N160; theo tên): tên + mã, nhãn "Mặc định", mô tả, số người (`src/teams/teams.ts` + `team-list.tsx`).
 - **Tạo team** (`POST /v1/teams`): tên 1–100, mô tả tối đa 500 (không bắt buộc, trống là không có), cắt khoảng trắng như API (`teamDraftOf`). Chờ máy chủ, một `Idempotency-Key` cho một cặp tên + mô tả; xong thì team vào danh sách theo tên (`withTeam`). Mã (slug) do API sinh.
-- Sửa, xóa, đặt mặc định, người của team: chờ A4-T2b; kênh team phụ trách: chờ API (N160 "Để sau"). API giả: `e2e/stub-teams.ts`.
+- **Sửa** (`PATCH /v1/teams/{id}`, A4-T2b): hộp thoại tên, mô tả (xóa trắng là bỏ mô tả), "Team mặc định của workspace". Chỉ gửi trường đổi thật (`teamChangeOf`); không đổi gì thì đóng, không gọi API. Chỉ **đặt** mặc định, không bỏ: team mặc định thì ô bị khóa (đặt team khác làm mặc định để đổi), workspace luôn còn một; xong thì cờ chuyển sang team mới trong danh sách (`withChanged`). Chờ máy chủ, không `Idempotency-Key`.
+- **Kết thúc** (`DELETE /v1/teams/{id}`): hộp thoại hỏi lại (số người rời team), chờ máy chủ; xong thì team ra khỏi danh sách (`withoutTeam`). Team mặc định không có nút này; 409 `team_in_use` (nếu đổi cùng lúc) nói phải đặt team khác làm mặc định trước (`src/teams/team-dialogs.tsx`).
+- Người của team: chờ A4-T2c; kênh team phụ trách: chờ API (N160 "Để sau"). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao).
 
 ## Thành viên (#19)
 

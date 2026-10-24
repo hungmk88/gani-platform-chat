@@ -967,6 +967,27 @@
           "name"
         ],
         "additionalProperties": false
+      },
+      "TeamChange": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -3253,6 +3274,178 @@
           },
           "422": {
             "description": "idempotency_key_reused: the same key with another request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/teams/{id}": {
+      "patch": {
+        "summary": "Change the name, the description, or make the team the default one of its workspace (the old default loses the flag).",
+        "tags": [
+          "teams"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The team as it now is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, nothing to change, or a field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin changes teams (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live team with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "End a team and its memberships (N160). The default team of a workspace stays.",
+        "tags": [
+          "teams"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Ended."
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin changes teams (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live team with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "team_in_use: the default team of its workspace.",
             "content": {
               "application/problem+json": {
                 "schema": {
