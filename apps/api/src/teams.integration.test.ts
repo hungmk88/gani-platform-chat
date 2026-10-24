@@ -217,3 +217,50 @@ describe('PATCH/DELETE /v1/teams/{id}', () => {
     expect(b.rows).toEqual([{ name: 'B', live: true }]);
   });
 });
+
+describe('GET/PUT /v1/teams/{id}/members', () => {
+  const ids = (answer: Answer) =>
+    (answer.body['data'] as { id?: string; memberId?: string }[]).map((x) => x.id ?? x.memberId);
+
+  it('sets the people of a team from the workspace; a Manager sees only their own teams', async () => {
+    const [mine, other] = [
+      String((await make('Của Manager')).body['id']),
+      String((await make('Khác')).body['id']),
+    ];
+    const put = await call('admin', 'PUT', `/${mine}/members`, {
+      memberIds: [memberOf['manager'], memberOf['sales']],
+    });
+    expect(put.status).toBe(200);
+    expect(ids(put).sort()).toEqual([memberOf['manager'], memberOf['sales']].sort());
+    expect(ids(await call('manager', 'GET', `?workspaceId=${W}`))).toEqual([mine]);
+    expect(ids(await call('manager', 'GET', `/${mine}/members`)).sort()).toEqual(ids(put).sort());
+    // The same list again changes nothing and is not audited; one person less is.
+    expect(
+      (
+        await call('owner', 'PUT', `/${mine}/members`, {
+          memberIds: [memberOf['sales'], memberOf['manager']],
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      ids(await call('owner', 'PUT', `/${mine}/members`, { memberIds: [memberOf['manager']] })),
+    ).toEqual([memberOf['manager']]);
+    expect((await audits(mine)).slice(1)).toEqual([
+      { action: 'team.members_changed', detail: { added: 2, removed: 0 } },
+      { action: 'team.members_changed', detail: { added: 0, removed: 1 } },
+    ]);
+    const answers = [
+      await call('manager', 'GET', `/${other}/members`),
+      await call('sales', 'GET', `/${mine}/members`),
+      await call('manager', 'PUT', `/${mine}/members`, { memberIds: [] }),
+      await call('admin', 'PUT', `/${mine}/members`, { memberIds: [memberOf['outsider']] }),
+      await call('admin', 'PUT', `/${mine}/members`, {
+        memberIds: [memberOf['sales'], memberOf['sales']],
+      }),
+      await call('owner', 'GET', `/${teamB}/members`),
+      await call('owner', 'PUT', `/${teamB}/members`, { memberIds: [] }),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([404, 403, 403, 400, 400, 404, 404]);
+    expect(ids(await call('owner', 'GET', `/${mine}/members`))).toEqual([memberOf['manager']]);
+  });
+});

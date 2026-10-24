@@ -3,8 +3,11 @@ import {
   deleteTeam,
   insertAuditLog,
   listTeams,
+  listWorkspaceMembers,
   lockTeam,
   lockWorkspace,
+  setTeamMembers,
+  teamUserIds,
   teamWorkspaceId,
   updateTeam,
   type TeamChange,
@@ -24,10 +27,11 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 
-import { ZodPipe } from '../../openapi/zod-pipe.js';
+import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { mayInvite } from '../members/members.permissions.js';
@@ -37,6 +41,7 @@ import {
   TeamCreateSchema,
   TeamIdSchema,
   TeamListQuerySchema,
+  TeamMembersBodySchema,
 } from './teams.schemas.js';
 import { teamView } from './teams.view.js';
 
@@ -140,6 +145,50 @@ export class TeamsController {
       await this.audit(tx, 'team.deleted', id, { slug: team.slug });
       return team;
     });
+  }
+
+  /** The people of a team; a Manager only of a team they are in. */
+  @Get(':id/members')
+  async members(@Param('id', new ZodPipe(TeamIdSchema)) id: string) {
+    const ctx = currentRequestContext();
+    const own = ctx.role === 'manager';
+    if (!own && !mayInvite(ctx.role)) throw new ForbiddenException();
+    const data = await this.database.withTenant(ctx, async (tx) => {
+      const workspaceId = await teamWorkspaceId(tx, id);
+      if (!workspaceId) throw new NotFoundException();
+      const users = new Set(await teamUserIds(tx, id));
+      if (own && !users.has(ctx.userId)) throw new NotFoundException();
+      return (await listWorkspaceMembers(tx, workspaceId)).filter((m) => users.has(m.userId));
+    });
+    return { data };
+  }
+
+  /** Makes `memberIds`, people of the team's workspace, the people of the team (N160). */
+  @Put(':id/members')
+  async setMembers(
+    @Param('id', new ZodPipe(TeamIdSchema)) id: string,
+    @Body(new ZodPipe(TeamMembersBodySchema)) body: { memberIds: string[] },
+  ) {
+    const ctx = currentRequestContext();
+    let data: Awaited<ReturnType<typeof listWorkspaceMembers>> = [];
+    await this.write(id, async (tx, team) => {
+      const inWorkspace = await listWorkspaceMembers(tx, team.workspaceId);
+      const byMember = new Map(inWorkspace.map((m) => [m.memberId, m.userId]));
+      const userIds = body.memberIds.map((memberId) => byMember.get(memberId));
+      if (userIds.some((user) => user === undefined))
+        throw new ValidationFailedError(['memberIds: not a member of the workspace']);
+      const { added, removed } = await setTeamMembers(tx, {
+        teamId: id,
+        userIds: userIds as string[],
+        actorUserId: ctx.userId,
+        newId: uuidv7,
+      });
+      if (added + removed > 0) await this.audit(tx, 'team.members_changed', id, { added, removed });
+      const chosen = new Set(body.memberIds);
+      data = inWorkspace.filter((m) => chosen.has(m.memberId));
+      return team;
+    });
+    return { data };
   }
 
   /** A write of an Owner or an Admin on a live team: the workspace locked, then the team, in one TenantTx. */
