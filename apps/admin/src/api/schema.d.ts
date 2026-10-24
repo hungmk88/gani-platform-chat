@@ -1347,6 +1347,115 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/members/{id}/2fa/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn off the second factor of a member and end every session of theirs (Q-U20-1, N155). Owner or Admin, never their own, an Admin never an Owner's. An Owner or an Admin must enrol again at the next sign-in. */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
+                    "Idempotency-Key": string;
+                };
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TwoFactorResetBody"];
+                };
+            };
+            responses: {
+                /** @description The member, without a second factor. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
+                };
+                /** @description validation_failed: the id, the reason or the Idempotency-Key header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: not an Owner or an Admin, their own, or an Admin and an Owner; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no member with this id in the organisation (an invitation is not a member yet). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description shared_account: the person is also in another organisation, or a platform operator; idempotency_in_progress. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_key_reused: the same key with another request. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/members/invite": {
         parameters: {
             query?: never;
@@ -1712,6 +1821,9 @@ export interface components {
         };
         CapacityBody: {
             maxConcurrentConversations: number;
+        };
+        TwoFactorResetBody: {
+            reason: string;
         };
         Invitation: {
             id: components["schemas"]["Uuid"];

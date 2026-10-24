@@ -63,3 +63,9 @@ export const CapacityBodySchema = z
   .object({ maxConcurrentConversations: z.int().min(1).max(100) })
   .strict()
   .meta({ id: 'CapacityBody' });
+
+/** `POST /v1/members/{id}/2fa/reset` (N155): why, for the audit; written by an Owner or an Admin, kept out of every log. */
+export const TwoFactorResetBodySchema = z
+  .object({ reason: z.string().trim().min(1).max(500) })
+  .strict()
+  .meta({ id: 'TwoFactorResetBody' });

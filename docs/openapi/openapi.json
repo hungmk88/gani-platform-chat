@@ -670,6 +670,20 @@
         ],
         "additionalProperties": false
       },
+      "TwoFactorResetBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "Invitation": {
         "type": "object",
         "properties": {
@@ -2191,6 +2205,127 @@
           },
           "404": {
             "description": "not_found: no member with this id in the organisation (an invitation is not a member yet).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/members/{id}/2fa/reset": {
+      "post": {
+        "summary": "Turn off the second factor of a member and end every session of theirs (Q-U20-1, N155). Owner or Admin, never their own, an Admin never an Owner's. An Owner or an Admin must enrol again at the next sign-in.",
+        "tags": [
+          "members"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorResetBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The member, without a second factor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, the reason or the Idempotency-Key header.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: not an Owner or an Admin, their own, or an Admin and an Owner; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no member with this id in the organisation (an invitation is not a member yet).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "shared_account: the person is also in another organisation, or a platform operator; idempotency_in_progress.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reused: the same key with another request.",
             "content": {
               "application/problem+json": {
                 "schema": {

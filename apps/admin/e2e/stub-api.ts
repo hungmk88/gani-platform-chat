@@ -3,7 +3,7 @@
 // Each email is one case: `<role>@e2e.test` signs straight in, `<role>+2fa@` asks for a code, `<role>+setup@` must set up 2FA,
 // `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
 // `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
-// `+stale@` gets version_conflict on every other action, `+window@` has the channel's free window closed when answering;
+// `+stale@` gets version_conflict on every other action, `+many@` has MANY conversations waiting, `+window@` has the channel's free window closed when answering;
 // the tokens of INVITES open #4 Nhận lời mời.
 // Inviting a member: `da-moi@` and `khong-gui@` (e2e/stub-members.ts).
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
@@ -13,7 +13,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
-import { routeMembers } from './stub-members';
+import { MEMBERS, routeMembers } from './stub-members';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
@@ -31,6 +31,9 @@ export const STATUS_DOWN_TRACE = 'trace-e2e-status-down';
 export const INBOX_DOWN_TRACE = 'trace-e2e-inbox-down';
 /** The page size of the stub's conversation list, small so that "Tải thêm" is tested. */
 export const STUB_PAGE = 3;
+/** `<role>+many@`: this many conversations waiting in the queue, by pages of MANY_PAGE, for the virtualised list. */
+export const MANY = 600;
+export const MANY_PAGE = 200;
 /** Links of #4 Nhận lời mời (N151): the token of each case → whom it invites; any other token is refused like an expired one. */
 export const INVITES = {
   sales: { token: 'e2e-invite-sales-0000000000000', invitedEmail: 'sales@e2e.test', role: 'sales' },
@@ -156,7 +159,12 @@ function open(email: string): string {
     email,
     mustSetUp: kind === 'setup',
     twoFactorEnabled: kind === '2fa',
-    conversations: structuredClone(CONVERSATIONS),
+    conversations: email.includes('+many@')
+      ? Array.from({ length: MANY }, (_, n) => ({
+          ...CONVERSATIONS[0]!,
+          id: `0190d000-0000-7000-8000-${String(n).padStart(12, '0')}`,
+        }))
+      : structuredClone(CONVERSATIONS),
     messages: structuredClone(MESSAGES),
     sent: new Map(),
   });
@@ -297,8 +305,9 @@ async function route(req: IncomingMessage, res: ServerResponse) {
             (q.get('hold') !== 'true' || c.afterHoursHold),
         );
     const from = Number(q.get('cursor') ?? 0);
-    const next = from + STUB_PAGE < seen.length ? String(from + STUB_PAGE) : null;
-    return send(res, 200, { data: seen.slice(from, from + STUB_PAGE), nextCursor: next });
+    const size = session.email.includes('+many@') ? MANY_PAGE : STUB_PAGE;
+    const next = from + size < seen.length ? String(from + size) : null;
+    return send(res, 200, { data: seen.slice(from, from + size), nextCursor: next });
   }
   const one = /^\/v1\/conversations\/([^/]+)(\/messages)?$/.exec(path ?? '');
   if (req.method === 'GET' && one) {
@@ -316,6 +325,24 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     return send(res, 200, { data: own.slice(from, from + STUB_PAGE), nextCursor: next });
   }
   // The actions of the Inbox (P9, P14): Idempotency-Key required, the version read, the FSM's from-states.
+  // Assigning (T16/T21, Phụ lục B row 16): Owner, Admin, Manager; to an active member of MEMBERS who may hold it, not its holder.
+  // The Admin of MEMBERS is not in this conversation's workspace here, so picking them answers 422 invalid_assignee.
+  const assign = /^\/v1\/conversations\/([^/]+)\/assign$/.exec(path ?? '');
+  if (req.method === 'POST' && assign) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const { version, toUserId } = await json(req);
+    const me = meOf(session.email);
+    const c = session.conversations.find((x) => x.id === assign[1]);
+    if (!c || !me) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (!['owner', 'admin', 'manager'].includes(me.org?.role ?? ''))
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    if (version !== c.version) return problem(res, 409, 'version_conflict', 'trace-e2e-version');
+    const to = MEMBERS.find((m) => m.userId === toUserId && m.status === 'active');
+    if (!to || toUserId === c.assignedUserId || to.userId === 'user-admin')
+      return problem(res, 422, 'invalid_assignee', 'trace-e2e-422');
+    Object.assign(c, { state: 'HUMAN_ACTIVE', assignedUserId: to.userId, version: c.version + 1 });
+    return send(res, 200, c);
+  }
   const act = /^\/v1\/conversations\/([^/]+)\/(claim|wait-customer|close)$/.exec(path ?? '');
   if (req.method === 'POST' && act) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');

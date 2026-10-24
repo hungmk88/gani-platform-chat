@@ -11,6 +11,7 @@ import {
   MemberPageSchema,
   MemberSchema,
   RoleBodySchema,
+  TwoFactorResetBodySchema,
 } from './members.schemas.js';
 
 /** The paths of members.controller.ts in the OpenAPI document, for the screen /settings/members (N152). */
@@ -93,6 +94,37 @@ export function registerMembers(registry: OpenAPIRegistry): void {
       404: problemResponse(
         'not_found: no member with this id in the organisation (an invitation is not a member yet).',
       ),
+      503: EDGE_ERRORS[503],
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/members/{id}/2fa/reset',
+    summary:
+      "Turn off the second factor of a member and end every session of theirs (Q-U20-1, N155). Owner or Admin, never their own, an Admin never an Owner's. An Owner or an Admin must enrol again at the next sign-in.",
+    tags: ['members'],
+    request: {
+      params: z.object({ id: MemberIdSchema }),
+      headers: IdempotencyHeadersSchema,
+      body: { content: { 'application/json': { schema: TwoFactorResetBodySchema } } },
+    },
+    responses: {
+      200: {
+        description: 'The member, without a second factor.',
+        content: { 'application/json': { schema: MemberSchema } },
+      },
+      400: problemResponse('validation_failed: the id, the reason or the Idempotency-Key header.'),
+      401: EDGE_ERRORS[401],
+      403: problemResponse(
+        'forbidden: not an Owner or an Admin, their own, or an Admin and an Owner; or a refusal of the edge.',
+      ),
+      404: problemResponse(
+        'not_found: no member with this id in the organisation (an invitation is not a member yet).',
+      ),
+      409: problemResponse(
+        'shared_account: the person is also in another organisation, or a platform operator; idempotency_in_progress.',
+      ),
+      422: problemResponse('idempotency_key_reused: the same key with another request.'),
       503: EDGE_ERRORS[503],
     },
   });

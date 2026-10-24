@@ -1,7 +1,9 @@
 'use client';
 
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { components } from '../api/schema';
 import type { Role } from '../nav';
@@ -25,9 +27,15 @@ import {
 type Page = components['schemas']['ConversationPage'];
 
 const button = 'rounded-input border border-border-strong px-3 py-1';
+/** A row's height before it is measured (two lines and padding), and the rows drawn beyond the screen each way. */
+const ROW_ESTIMATE = 64;
+const OVERSCAN = 10;
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70';
 
-/** The list column of the Inbox (#6): filters in the URL, pages by cursor, the four states of the screen. */
+/**
+ * The list column of the Inbox (#6): filters in the URL, pages by cursor, the four states of the screen. The rows are virtualised
+ * against the page's scroll (CLAUDE.md "500+ hội thoại ảo hóa"): only those near the screen are in the DOM, each measured once drawn.
+ */
 export function ConversationList({ role, meId }: { role: Role; meId: string }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,6 +47,20 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
   };
 
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
+  const listRef = useRef<HTMLUListElement>(null);
+  // Where the list starts on the page: the virtualiser counts rows from there, not from the top of the window.
+  const [margin, setMargin] = useState(0);
+  const shown = rows.length > 0;
+  useLayoutEffect(() => {
+    if (shown && listRef.current)
+      setMargin(listRef.current.getBoundingClientRect().top + window.scrollY);
+  }, [shown]);
+  const virtual = useWindowVirtualizer({
+    count: rows.length,
+    estimateSize: () => ROW_ESTIMATE,
+    overscan: OVERSCAN,
+    scrollMargin: margin,
+  });
   const query = paramsOf(filter).toString();
   const empty = emptyOf(filter, role);
 
@@ -109,29 +131,46 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
         </div>
       ) : (
         <>
-          <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
-            {rows.map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/inbox/${c.id}${query ? `?${query}` : ''}`}
-                  aria-current={pathname === `/inbox/${c.id}` ? 'page' : undefined}
-                  className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-bg-subtle aria-[current=page]:bg-bg-subtle"
+          <ul
+            ref={listRef}
+            className="relative rounded-card border border-border"
+            style={{ height: virtual.getTotalSize() }}
+          >
+            {virtual.getVirtualItems().map((item) => {
+              const c = rows[item.index]!;
+              return (
+                <li
+                  key={c.id}
+                  ref={virtual.measureElement}
+                  data-index={item.index}
+                  aria-setsize={rows.length}
+                  aria-posinset={item.index + 1}
+                  className={`absolute left-0 top-0 w-full ${item.index < rows.length - 1 ? 'border-b border-border' : ''}`}
+                  style={{
+                    transform: `translateY(${item.start - margin}px)`,
+                  }}
                 >
-                  <span className="flex flex-col gap-1">
-                    <span className="font-semibold">
-                      {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
-                    </span>
-                    <span className="text-12 text-text-muted">{holderOf(c, meId)}</span>
-                  </span>
-                  <time
-                    dateTime={c.lastMessageAt ?? c.createdAt}
-                    className="text-12 text-text-muted"
+                  <Link
+                    href={`/inbox/${c.id}${query ? `?${query}` : ''}`}
+                    aria-current={pathname === `/inbox/${c.id}` ? 'page' : undefined}
+                    className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-bg-subtle aria-[current=page]:bg-bg-subtle"
                   >
-                    {whenOf(c)}
-                  </time>
-                </Link>
-              </li>
-            ))}
+                    <span className="flex flex-col gap-1">
+                      <span className="font-semibold">
+                        {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
+                      </span>
+                      <span className="text-12 text-text-muted">{holderOf(c, meId)}</span>
+                    </span>
+                    <time
+                      dateTime={c.lastMessageAt ?? c.createdAt}
+                      className="text-12 text-text-muted"
+                    >
+                      {whenOf(c)}
+                    </time>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           {list.hasNextPage ? (
             <button

@@ -7,6 +7,8 @@ import { useApiPages, useApiQuery } from '../query/provider';
 import type { Role } from '../nav';
 import { useConversationRealtime } from '../realtime/use-conversation-realtime';
 import { RetryAction } from '../retry-button';
+import { AssignAction } from './assign-action';
+import { assignsFromList, canAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
 import { ConversationActions } from './conversation-actions';
@@ -86,6 +88,7 @@ export function ConversationView({ id, role, meId }: { id: string; role: Role; m
         <span className="text-12 text-text-muted">Phụ trách: {holderOf(c, meId)}</span>
       </header>
       <ConversationActions c={c} role={role} meId={meId} />
+      {assignsFromList(role) && canAssign(c) ? <AssignAction key={c.id} c={c} /> : null}
       {messages.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
           Đang tải tin nhắn…
