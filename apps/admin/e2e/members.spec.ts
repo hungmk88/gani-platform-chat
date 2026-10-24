@@ -209,7 +209,7 @@ test('an Admin sets the load limit of a member and of themselves; an invitation 
   const list = page.getByRole('region', { name: 'Danh sách thành viên' });
   await expect(list.getByRole('row', { name: /sales@e2e\.test/ })).toContainText('8 hội thoại');
   await expect(list.getByRole('row', { name: /owner@e2e\.test/ })).toContainText(
-    'Theo mặc định workspace',
+    'Theo mặc định workspace (5)',
   );
   await expect(
     list.getByRole('button', { name: 'Đổi giới hạn tải của Người thử owner' }),
