@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "tenant:create-org": "node scripts/tenant.mjs create-org",
+    "tenant:create-workspace": "node scripts/tenant.mjs create-workspace",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts"
