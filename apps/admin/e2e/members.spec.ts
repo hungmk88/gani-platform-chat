@@ -3,8 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
+import { MEMBERS, MEMBERS_PAGE } from './stub-members';
 
-// #19 Thành viên: inviting (N152). The stub answers 409 for `da-moi@`, emailSent false for `khong-gui@`.
+// #19 Thành viên: inviting (N152) and the list (N153). The stub answers 409 for `da-moi@`, emailSent false for `khong-gui@`.
 async function invite(page: Page, email: string, role?: string) {
   const form = page.getByRole('form', { name: 'Mời thành viên' });
   await form.getByLabel('Email').fill(email);
@@ -71,4 +72,49 @@ test('a Manager gets the forbidden page', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),
   ).toBeVisible();
+});
+
+test('the list: members then invitations, by pages, 2FA required said, an expired invitation sent again', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  const rows = list.getByRole('row');
+  await expect(rows).toHaveCount(1 + MEMBERS_PAGE);
+  await expect(list.getByRole('row', { name: /owner@e2e\.test/ })).toContainText('(bạn)');
+  await expect(list.getByRole('row', { name: /admin@e2e\.test/ })).toContainText(
+    'Bắt buộc, chưa cài',
+  );
+  await expect(list.getByRole('row', { name: /support@e2e\.test/ })).toContainText('Tạm khóa');
+  await list.getByRole('button', { name: 'Tải thêm' }).click();
+  await expect(rows).toHaveCount(1 + MEMBERS.length);
+  await expect(list.getByRole('row', { name: /moi@example\.test/ })).toContainText(
+    /Chờ nhận lời mời.*Hạn .*28\/10\/2026/,
+  );
+  const expired = list.getByRole('row', { name: /cu@example\.test/ });
+  await expect(expired).toContainText('Lời mời hết hạn');
+  const posted = page.waitForRequest((r) => r.url().endsWith(`/${MEMBERS[5]!.id}/resend-invite`));
+  await expired.getByRole('button', { name: 'Gửi lại lời mời cho cu@example.test' }).click();
+  expect((await posted).headers()['idempotency-key']).toBeTruthy();
+  await expect(list.getByRole('status')).toHaveText('Đã gửi lại lời mời tới cu@example.test.');
+  await expect(expired).toContainText(/Chờ nhận lời mời.*Hạn .*30\/10\/2026/);
+  await expectAccessible(page);
+});
+
+test('an Admin cannot send an Owner invitation again, and a new invitation joins the list', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  await list.getByRole('button', { name: 'Tải thêm' }).click();
+  await expect(list.getByRole('button', { name: /^Gửi lại lời mời cho/ })).toHaveCount(1);
+  await expect(
+    list.getByRole('button', { name: 'Gửi lại lời mời cho moi@example.test' }),
+  ).toBeVisible();
+  const reloaded = page.waitForResponse((r) => r.url().includes('/v1/members?'));
+  await invite(page, 'ban-moi@example.test', 'Support');
+  await reloaded;
+  await expect(list.getByRole('row', { name: /ban-moi@example\.test/ })).toContainText('Support');
 });
