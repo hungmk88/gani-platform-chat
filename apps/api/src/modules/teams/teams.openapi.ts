@@ -1,7 +1,11 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { z } from 'zod';
+
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
+  TeamChangeSchema,
   TeamCreateSchema,
+  TeamIdSchema,
   TeamListQuerySchema,
   TeamListSchema,
   TeamSchema,
@@ -16,10 +20,12 @@ export function registerTeams(registry: OpenAPIRegistry): void {
   const reader = problemResponse(
     'forbidden: an Owner, an Admin, or a Manager for their own teams; or a refusal of the edge.',
   );
+  const noTeam = problemResponse('not_found: no live team with this id in the organisation.');
   const one = (description: string) => ({
     description,
     content: { 'application/json': { schema: TeamSchema } },
   });
+  const params = z.object({ id: TeamIdSchema });
 
   registry.registerPath({
     method: 'get',
@@ -56,6 +62,39 @@ export function registerTeams(registry: OpenAPIRegistry): void {
       404: problemResponse('not_found: no workspace with this id in the organisation.'),
       409: problemResponse('idempotency_in_progress'),
       422: problemResponse('idempotency_key_reused: the same key with another request.'),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/teams/{id}',
+    summary:
+      'Change the name, the description, or make the team the default one of its workspace (the old default loses the flag).',
+    tags: ['teams'],
+    request: {
+      params,
+      body: { content: { 'application/json': { schema: TeamChangeSchema } } },
+    },
+    responses: {
+      200: one('The team as it now is.'),
+      400: problemResponse('validation_failed: the id, nothing to change, or a field.'),
+      403: writer,
+      404: noTeam,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/teams/{id}',
+    summary: 'End a team and its memberships (N160). The default team of a workspace stays.',
+    tags: ['teams'],
+    request: { params },
+    responses: {
+      204: { description: 'Ended.' },
+      400: problemResponse('validation_failed: the id.'),
+      403: writer,
+      404: noTeam,
+      409: problemResponse('team_in_use: the default team of its workspace.'),
       ...edge,
     },
   });
