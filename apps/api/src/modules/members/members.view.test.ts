@@ -14,6 +14,7 @@ const entry = (over: Partial<MemberEntry>): MemberEntry => ({
   twoFactorEnabled: false,
   inviteExpiresAt: null,
   createdAt: NOW,
+  maxConcurrentConversations: null,
   ...over,
 });
 
@@ -28,6 +29,7 @@ describe('memberView', () => {
       status: 'active',
       twoFactorEnabled: false,
       expiresAt: null,
+      maxConcurrentConversations: null,
     });
   });
 

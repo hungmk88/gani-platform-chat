@@ -47,9 +47,19 @@ export const MemberSchema = z
       .datetime()
       .nullable()
       .meta({ description: 'The end of the invitation link; null for a member.' }),
+    maxConcurrentConversations: z.int().nullable().meta({
+      description:
+        "The member's own limit of conversations at once (C9); null: the workspace's default applies.",
+    }),
   })
   .meta({ id: 'Member' });
 export const MemberPageSchema = cursorPage(MemberSchema, 'MemberPage');
 
 /** `PATCH /v1/members/{id}/role` (N154). */
 export const RoleBodySchema = z.object({ role: RoleSchema }).strict().meta({ id: 'RoleBody' });
+
+/** `PATCH /v1/members/{id}/capacity` (C9, N156): the member's own limit of conversations at once. */
+export const CapacityBodySchema = z
+  .object({ maxConcurrentConversations: z.int().min(1).max(100) })
+  .strict()
+  .meta({ id: 'CapacityBody' });

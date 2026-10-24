@@ -13,5 +13,6 @@ export function memberView(entry: MemberEntry, now: Date) {
     status: expired ? ('expired' as const) : entry.status,
     twoFactorEnabled: entry.twoFactorEnabled,
     expiresAt: entry.inviteExpiresAt?.toISOString() ?? null,
+    maxConcurrentConversations: entry.maxConcurrentConversations,
   };
 }

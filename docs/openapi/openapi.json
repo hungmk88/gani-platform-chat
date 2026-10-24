@@ -614,6 +614,13 @@
             ],
             "format": "date-time",
             "description": "The end of the invitation link; null for a member."
+          },
+          "maxConcurrentConversations": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The member's own limit of conversations at once (C9); null: the workspace's default applies."
           }
         },
         "required": [
@@ -624,7 +631,8 @@
           "role",
           "status",
           "twoFactorEnabled",
-          "expiresAt"
+          "expiresAt",
+          "maxConcurrentConversations"
         ]
       },
       "RoleBody": {
@@ -645,6 +653,20 @@
         },
         "required": [
           "role"
+        ],
+        "additionalProperties": false
+      },
+      "CapacityBody": {
+        "type": "object",
+        "properties": {
+          "maxConcurrentConversations": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "maxConcurrentConversations"
         ],
         "additionalProperties": false
       },
@@ -2079,6 +2101,96 @@
           },
           "409": {
             "description": "last_owner: the organisation would be left without an active Owner.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/members/{id}/capacity": {
+      "patch": {
+        "summary": "Set a member's own limit of conversations at once (C9, N156), 1 to 100. Owner or Admin, for any member (themselves too).",
+        "tags": [
+          "members"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapacityBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The member, with the new limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id or the limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: not an Owner or an Admin; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no member with this id in the organisation (an invitation is not a member yet).",
             "content": {
               "application/problem+json": {
                 "schema": {

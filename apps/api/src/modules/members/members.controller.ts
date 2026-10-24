@@ -10,6 +10,7 @@ import {
   newInviteToken,
   readOrgSummary,
   renewMemberInvite,
+  setAgentCapacity,
   updateMemberRole,
   type OrgRole,
   type PendingInvite,
@@ -37,6 +38,7 @@ import { currentRequestContext, type RequestContext } from '../request-context/r
 import { InviteMailer } from './invite-mailer.js';
 import { mayInvite, roleChangeRefusal } from './members.permissions.js';
 import {
+  CapacityBodySchema,
   InviteBodySchema,
   MemberIdSchema,
   MemberListQuerySchema,
@@ -132,6 +134,38 @@ export class MembersController {
           detail: { from: target.role, to: body.role },
         });
       }
+      return loadMember(tx, id);
+    });
+    if (!member) throw new NotFoundException();
+    return memberView(member, new Date());
+  }
+
+  /**
+   * The member's own limit of conversations at once (C9, N156), on the screen of members: an Owner or an Admin, for anyone with an
+   * account here (themselves too). One TenantTx: the member locked, the limit set, audited with the two values. Setting it twice
+   * changes nothing the second time, so no Idempotency-Key (as for the role, N154).
+   */
+  @Patch(':id/capacity')
+  async changeCapacity(
+    @Param('id', new ZodPipe(MemberIdSchema)) id: string,
+    @Body(new ZodPipe(CapacityBodySchema)) body: { maxConcurrentConversations: number },
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayInvite(ctx.role)) throw new ForbiddenException();
+    const member = await this.database.withTenant(ctx, async (tx) => {
+      const target = await lockMember(tx, id);
+      if (!target) throw new NotFoundException();
+      const to = body.maxConcurrentConversations;
+      const from = await setAgentCapacity(tx, { id: uuidv7(), userId: target.userId, max: to });
+      if (from !== to)
+        await insertAuditLog(tx, {
+          id: uuidv7(),
+          actorUserId: ctx.userId,
+          action: 'member.capacity_changed',
+          targetType: 'org_member',
+          targetId: id,
+          detail: { from, to },
+        });
       return loadMember(tx, id);
     });
     if (!member) throw new NotFoundException();

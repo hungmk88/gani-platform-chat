@@ -33,6 +33,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/conversations/{id}/close',
       '/v1/members',
       '/v1/members/{id}/role',
+      '/v1/members/{id}/capacity',
       '/v1/members/invite',
       '/v1/members/{id}/resend-invite',
     ]);
