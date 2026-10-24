@@ -1,5 +1,5 @@
-// The list of #19 Thành viên (`GET /v1/members`, N153): members and invitations as the table says them. Team, own load limit,
-// last sign-in, role change and 2FA reset are not in the API yet (N153 "Để sau"), so the table has no column for them.
+// The list of #19 Thành viên (`GET /v1/members`, N153): members and invitations as the table says them, and who may change whose
+// role (N154). Team, own load limit, last sign-in and 2FA reset are not in the API yet (N153 "Để sau"): no column for them.
 import type { InfiniteData } from '@tanstack/react-query';
 
 import type { ApiError } from '../api/errors';
