@@ -87,6 +87,7 @@ Trang mặc định sau đăng nhập:
   API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
+- Ngân sách "Kiểm chứng" (`e2e/perf.spec.ts`, đồng hồ của trình duyệt, bản build + API giả): Hộp thư hiện nội dung chính < 2,5 giây; mở hội thoại từ danh sách P95 < 500ms (21 lần). Bắt phần FE thêm vào (bundle, render, gọi nối tiếp), không đo API thật. Đo khi viết: tải 270–700ms, mở P95 180–260ms.
 - `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
 
 ## Nhận lời mời (#4, N151)
