@@ -4,19 +4,20 @@ import { useState } from 'react';
 
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
-import { TeamDialog } from './team-dialogs';
+import { EndTeamDialog, TeamDialog } from './team-dialogs';
 import { teamsPath, type Team, type TeamList } from './teams';
 
 const badge = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
 const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
- * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed from its row
- * (`TeamDialog`).
+ * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed (`TeamDialog`) or
+ * ended (`EndTeamDialog`) from its row.
  */
 export function TeamTable({ workspaceId }: { workspaceId: string }) {
   const list = useApiQuery<TeamList>(['teams', workspaceId], teamsPath(workspaceId));
   const [editing, setEditing] = useState<Team | null>(null);
+  const [ending, setEnding] = useState<Team | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   return (
@@ -79,6 +80,19 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                       >
                         Sửa
                       </button>
+                      {t.isDefault ? null : (
+                        <button
+                          type="button"
+                          className={button}
+                          aria-label={`Kết thúc team ${t.name}`}
+                          onClick={() => {
+                            setNotice(null);
+                            setEnding(t);
+                          }}
+                        >
+                          Kết thúc…
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -93,6 +107,14 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
           team={editing}
           onClose={() => setEditing(null)}
           onDone={(t) => setNotice(`Đã lưu team ${t.name}.`)}
+        />
+      ) : null}
+      {ending ? (
+        <EndTeamDialog
+          key={ending.id}
+          team={ending}
+          onClose={() => setEnding(null)}
+          onDone={(t) => setNotice(`Đã kết thúc team ${t.name}.`)}
         />
       ) : null}
     </section>

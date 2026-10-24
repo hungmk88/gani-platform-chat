@@ -14,6 +14,7 @@ import {
   teamDraftFrom,
   teamError,
   withChanged,
+  withoutTeam,
   type Team,
   type TeamDraft,
   type TeamList,
@@ -142,6 +143,70 @@ export function TeamDialog({
             aria-busy={save.isPending}
           >
             {save.isPending ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button type="button" className={button} onClick={() => dialog.current?.close()}>
+            Hủy
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
+/**
+ * "Kết thúc team" (#20, `DELETE /v1/teams/{id}`, N160): asked once more, waits for the server; its people leave it and it leaves the
+ * list. The default team of a workspace stays (409 team_in_use).
+ */
+export function EndTeamDialog({
+  team,
+  onClose,
+  onDone,
+}: {
+  team: Team;
+  onClose: () => void;
+  onDone: (t: Team) => void;
+}) {
+  const scope = useScope();
+  const queries = useQueryClient();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const end = useMutation<null, ApiFailure, void>({
+    mutationFn: () =>
+      unwrap(api<null>(`/v1/teams/${encodeURIComponent(team.id)}`, { method: 'DELETE' })),
+    onSuccess: () => {
+      queries.setQueryData<TeamList>(scopeKey(scope, 'teams', team.workspaceId), (l) =>
+        withoutTeam(l, team.id),
+      );
+      onDone(team);
+      dialog.current?.close();
+    },
+  });
+  useEffect(() => dialog.current?.showModal(), []);
+
+  return (
+    <dialog ref={dialog} aria-labelledby="team-end-title" onClose={onClose} className={dialogClass}>
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!end.isPending) end.mutate();
+        }}
+      >
+        <h3 id="team-end-title" className="text-16 font-semibold">
+          Kết thúc team {team.name}?
+        </h3>
+        <p>
+          {team.memberCount} người rời team này. Team không còn trong danh sách và không mở lại
+          được.
+        </p>
+        <ErrorOf failure={end.error} />
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className={primary}
+            disabled={end.isPending}
+            aria-busy={end.isPending}
+          >
+            {end.isPending ? 'Đang kết thúc…' : 'Kết thúc team'}
           </button>
           <button type="button" className={button} onClick={() => dialog.current?.close()}>
             Hủy
