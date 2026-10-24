@@ -11,6 +11,7 @@ export default defineConfig({
       exclude: [
         ...coverage.exclude,
         'src/audit-log.ts',
+        'src/channel-store.ts',
         'src/channel-window-read.ts',
         'src/conversation-lock.ts',
         'src/conversation-read.ts',

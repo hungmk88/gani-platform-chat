@@ -31,6 +31,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'refresh_token_enc',
     'refresh_token_expires_at',
     'status',
+    'team_id',
     'updated_at',
   ],
   conversations: [
