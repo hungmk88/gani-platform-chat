@@ -8,7 +8,8 @@ import type { components } from '../api/schema';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useScope } from '../query/provider';
-import { ROLE_NAME, type OrgRole } from './invite';
+import { ROLE_NAME } from '../nav';
+import type { OrgRole } from './invite';
 import { roleError, withMember, type Member } from './list';
 
 type Page = components['schemas']['MemberPage'];

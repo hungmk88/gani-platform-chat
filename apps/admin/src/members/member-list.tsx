@@ -5,12 +5,12 @@ import { useRef, useState } from 'react';
 
 import { api } from '../api/client';
 import type { components } from '../api/schema';
-import type { Role } from '../nav';
+import { ROLE_NAME, type Role } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
-import { expiryOf, invitableRoles, inviteError, ROLE_NAME, type Invitation } from './invite';
+import { expiryOf, invitableRoles, inviteError, type Invitation } from './invite';
 import {
   canChangeRole,
   canResend,
