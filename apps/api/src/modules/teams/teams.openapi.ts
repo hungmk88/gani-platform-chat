@@ -8,6 +8,8 @@ import {
   TeamIdSchema,
   TeamListQuerySchema,
   TeamListSchema,
+  TeamMemberListSchema,
+  TeamMembersBodySchema,
   TeamSchema,
 } from './teams.schemas.js';
 
@@ -25,6 +27,10 @@ export function registerTeams(registry: OpenAPIRegistry): void {
     description,
     content: { 'application/json': { schema: TeamSchema } },
   });
+  const people = {
+    description: 'The people of the team, by role.',
+    content: { 'application/json': { schema: TeamMemberListSchema } },
+  };
   const params = z.object({ id: TeamIdSchema });
 
   registry.registerPath({
@@ -95,6 +101,40 @@ export function registerTeams(registry: OpenAPIRegistry): void {
       403: writer,
       404: noTeam,
       409: problemResponse('team_in_use: the default team of its workspace.'),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/teams/{id}/members',
+    summary: 'The people of a team (N160); a Manager only of a team they are in.',
+    tags: ['teams'],
+    request: { params },
+    responses: {
+      200: people,
+      400: problemResponse('validation_failed: the id.'),
+      403: reader,
+      404: noTeam,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'put',
+    path: '/v1/teams/{id}/members',
+    summary:
+      'Set the whole list of people of a team by member id (N160); each must be a person of the team’s workspace.',
+    tags: ['teams'],
+    request: {
+      params,
+      body: { content: { 'application/json': { schema: TeamMembersBodySchema } } },
+    },
+    responses: {
+      200: people,
+      400: problemResponse(
+        'validation_failed: the id, more than 500 or the same member twice, or someone not in the team’s workspace.',
+      ),
+      403: writer,
+      404: noTeam,
       ...edge,
     },
   });

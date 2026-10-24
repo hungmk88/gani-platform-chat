@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { UuidSchema } from '../../openapi/schemas.js';
+import { WorkspaceMemberListSchema } from '../workspaces/workspaces.schemas.js';
 
 export const TeamIdSchema = UuidSchema;
 
@@ -48,3 +49,17 @@ export const TeamChangeSchema = z
   .strict()
   .refine((change) => Object.keys(change).length > 0, 'nothing to change')
   .meta({ id: 'TeamChange' });
+
+/** `PUT /v1/teams/{id}/members`: the whole list, members of the team's workspace by member id. */
+export const TeamMembersBodySchema = z
+  .object({
+    memberIds: z
+      .array(UuidSchema)
+      .max(500)
+      .refine((ids) => new Set(ids).size === ids.length, 'no member twice'),
+  })
+  .strict()
+  .meta({ id: 'TeamMembersBody' });
+
+/** The people of a team: the same shape as those of a workspace. */
+export const TeamMemberListSchema = WorkspaceMemberListSchema;
