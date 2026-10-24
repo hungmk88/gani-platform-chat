@@ -128,6 +128,11 @@ Trang mặc định sau đăng nhập:
 - **Không gọi `/api/auth/list-sessions`**: đường này trả token của mọi phiên cho JavaScript (giữ cho `/revoke-session`, SEC-03). Danh sách phiên của prototype #5 chờ một đường không có token.
 - Thông báo: chờ API.
 
+## Workspace (#21)
+
+- `/settings/workspace`, chỉ Owner và Admin như API (N157; Manager xem được hay không còn chờ anh chốt) → vai trò khác trang 403. `GET /v1/workspaces` (theo tên, không cursor): bảng tên + mã, mẫu (lời thường), múi giờ, giới hạn tải mặc định (`src/workspaces/workspace.ts` + `workspace-table.tsx`).
+- Sửa tên, múi giờ, giới hạn tải mặc định (`PATCH /v1/workspaces/{id}`): PR sau. Giờ làm việc, ngày nghỉ, SLA, cách phân bổ (prototype #21, spec-M8 §3.3–3.5): chờ API. API giả: `e2e/stub-workspaces.ts`.
+
 ## Thành viên (#19)
 
 - `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403): **Mời thành viên** (`POST /v1/members/invite`, N152; `src/members/invite.ts` + `invite-form.tsx`), rồi **Danh sách** (`GET /v1/members`, N153; `src/members/list.ts` + `member-list.tsx`).

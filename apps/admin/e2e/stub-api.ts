@@ -14,6 +14,7 @@ import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
 import { MEMBERS, routeMembers } from './stub-members';
+import { routeWorkspaces } from './stub-workspaces';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
@@ -431,11 +432,12 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     session.sent.set(key, m);
     return send(res, 201, m);
   }
-  // #19 Thành viên (N152, N153): e2e/stub-members.ts.
-  if (path?.startsWith('/v1/members')) {
+  // #19 Thành viên (N152–N156) and #21 Workspace (N157): e2e/stub-members.ts, e2e/stub-workspaces.ts.
+  if (path?.startsWith('/v1/members') || path?.startsWith('/v1/workspaces')) {
     const sid = cookie(req, SESSION) ?? '';
     const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
     if (await routeMembers(req, res, path, who, { send, problem, json })) return;
+    if (routeWorkspaces(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
