@@ -1,26 +1,18 @@
 // Inviting a member on #19 Thành viên (N152): who may invite which role (Phụ lục B, as members.permissions.ts of the API), the email
-// as the API stores it, and what each answer of `POST /v1/members/invite` says. The list of members waits for `GET /v1/members`.
+// as the API stores it, and what each answer of `POST /v1/members/invite` and of resend-invite says.
 import type { ApiError } from '../api/errors';
 import type { components } from '../api/schema';
-import type { Role } from '../nav';
+import { ROLES, type Role } from '../nav';
 
 export type Invitation = components['schemas']['Invitation'];
 export type OrgRole = components['schemas']['InviteBody']['role'];
 
-/** The roles of a company in the order of the menu of the form, with the names people read (prototype, Phụ lục B). */
-export const ROLE_NAME: Readonly<Record<OrgRole, string>> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  manager: 'Manager',
-  sales: 'Sales',
-  support: 'Support',
-  marketing: 'Marketing',
-  viewer: 'Viewer',
-};
+/** The roles of a company, in the order of ROLES (src/nav.ts): every role but platform_operator. */
+const ORG_ROLES = ROLES.filter((r): r is OrgRole => r !== 'platform_operator');
 
 /** Phụ lục B "Mời thành viên, đổi vai trò": an Owner invites any role, an Admin any but Owner, nobody else invites. */
 export function invitableRoles(actor: Role): OrgRole[] {
-  const all = Object.keys(ROLE_NAME) as OrgRole[];
+  const all = [...ORG_ROLES];
   if (actor === 'owner') return all;
   if (actor === 'admin') return all.filter((r) => r !== 'owner');
   return [];

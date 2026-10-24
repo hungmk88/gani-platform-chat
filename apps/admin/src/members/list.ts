@@ -1,7 +1,8 @@
-// The list of #19 Thành viên (`GET /v1/members`, N153): members and invitations as the table says them. Team, own load limit,
-// last sign-in, role change and 2FA reset are not in the API yet (N153 "Để sau"), so the table has no column for them.
+// The list of #19 Thành viên (`GET /v1/members`, N153): members and invitations as the table says them, and who may change whose
+// role (N154). Team, own load limit, last sign-in and 2FA reset are not in the API yet (N153 "Để sau"): no column for them.
 import type { InfiniteData } from '@tanstack/react-query';
 
+import type { ApiError } from '../api/errors';
 import type { components } from '../api/schema';
 import type { Role } from '../nav';
 import { invitableRoles, type Invitation } from './invite';
@@ -60,4 +61,42 @@ export function withRenewed(
       ),
     })),
   };
+}
+
+/**
+ * Who may change whose role (Phụ lục B, N154): an Owner anyone's but their own, an Admin anyone's but an Owner's and never to
+ * Owner (`invitableRoles`). An invitation is not a member yet: it is invited again instead.
+ */
+export const canChangeRole = (
+  actor: Role,
+  meId: string,
+  m: Pick<Member, 'status' | 'role' | 'userId'>,
+): boolean =>
+  (m.status === 'active' || m.status === 'suspended') &&
+  m.userId !== meId &&
+  invitableRoles(actor).includes(m.role);
+
+/** The pages with one member replaced by the API's answer (a role changed). */
+export function withMember(
+  pages: InfiniteData<MemberPage> | undefined,
+  member: Member,
+): InfiniteData<MemberPage> | undefined {
+  if (!pages) return pages;
+  return {
+    ...pages,
+    pages: pages.pages.map((p) => ({
+      ...p,
+      data: p.data.map((m) => (m.id === member.id ? member : m)),
+    })),
+  };
+}
+
+/** The refusals of `PATCH /v1/members/{id}/role` in words of the screen; `last_owner` (N154) is not in the P9 table. */
+export function roleError(error: ApiError): string {
+  if (error.code === 'last_owner')
+    return 'Công ty phải còn ít nhất một Owner đang hoạt động. Thêm Owner khác trước.';
+  if (error.code === 'forbidden') return 'Bạn không đổi được vai trò này.';
+  if (error.code === 'not_found')
+    return 'Không tìm thấy thành viên này. Tải lại trang rồi thử lại.';
+  return error.message;
 }

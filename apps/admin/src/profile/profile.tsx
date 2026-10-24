@@ -3,21 +3,10 @@
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 
-import type { Role } from '../nav';
+import { ROLE_NAME, type Role } from '../nav';
 import { passwordProblem, readChangePassword } from './password';
 import { TABS, type Tab } from './tabs';
 
-/** The names of the roles as people read them (prototype, Phụ lục B). */
-const ROLE_NAME: Readonly<Record<Role, string>> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  manager: 'Manager',
-  sales: 'Sales',
-  support: 'Support',
-  marketing: 'Marketing',
-  viewer: 'Viewer',
-  platform_operator: 'Platform operator',
-};
 const input = 'rounded-input border border-border-strong px-3 py-2';
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70';
 const button = 'rounded-input border border-border-strong px-4 py-2 disabled:opacity-70';

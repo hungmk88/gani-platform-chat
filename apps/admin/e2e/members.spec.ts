@@ -118,3 +118,42 @@ test('an Admin cannot send an Owner invitation again, and a new invitation joins
   await reloaded;
   await expect(list.getByRole('row', { name: /ban-moi@example\.test/ })).toContainText('Support');
 });
+
+test('an Owner changes the role of an Admin in a dialog; never their own, never an invitation', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  await expect(list.getByRole('row', { name: /owner@e2e\.test/ }).getByRole('button')).toHaveCount(
+    0,
+  );
+  await list.getByRole('button', { name: 'Đổi vai trò của Người thử admin' }).click();
+  const dialog = page.getByRole('dialog', { name: /Đổi vai trò/ });
+  await dialog.getByLabel('Vai trò mới').selectOption({ label: 'Manager' });
+  await expectAccessible(page);
+  const patched = page.waitForRequest((r) => r.method() === 'PATCH');
+  await dialog.getByRole('button', { name: 'Lưu vai trò' }).click();
+  expect((await patched).postDataJSON()).toEqual({ role: 'manager' });
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText(
+    'Đã đổi vai trò của Người thử admin thành Manager.',
+  );
+  await expect(list.getByRole('row', { name: /admin@e2e\.test/ })).toContainText('Manager');
+  await list.getByRole('button', { name: 'Tải thêm' }).click();
+  await expect(list.getByRole('button', { name: /^Đổi vai trò của/ })).toHaveCount(3);
+});
+
+test('an Admin changes no Owner and cannot pick Owner', async ({ page }) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  await expect(list.getByRole('row', { name: /owner@e2e\.test/ }).getByRole('button')).toHaveCount(
+    0,
+  );
+  await list.getByRole('button', { name: 'Đổi vai trò của Người thử sales' }).click();
+  const dialog = page.getByRole('dialog', { name: /Đổi vai trò/ });
+  await expect(dialog.getByRole('option', { name: 'Owner' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Hủy' }).click();
+  await expect(dialog).toBeHidden();
+});

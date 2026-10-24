@@ -13,6 +13,18 @@ export const ROLES = [
 ] as const;
 export type Role = (typeof ROLES)[number];
 
+/** The names of the roles as people read them (prototype, Phụ lục B), in the order of ROLES: the order of every role menu. */
+export const ROLE_NAME: Readonly<Record<Role, string>> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  manager: 'Manager',
+  sales: 'Sales',
+  support: 'Support',
+  marketing: 'Marketing',
+  viewer: 'Viewer',
+  platform_operator: 'Platform operator',
+};
+
 export interface NavItem {
   readonly href: string;
   readonly label: string;
