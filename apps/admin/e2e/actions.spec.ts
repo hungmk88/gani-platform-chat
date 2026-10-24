@@ -111,3 +111,15 @@ test('a Manager has no "Gán lại" until the list of recipients (U31)', async (
   await expect(page.getByText(/Phụ trách:/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gán lại' })).toHaveCount(0);
 });
+
+test('an Admin sees who holds it by name, from the members', async ({ page }) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto(`/inbox/${held.id}`);
+  await expect(view(page).getByText('Phụ trách: Người thử sales')).toBeVisible();
+});
+
+test('a Manager, who cannot read the members, sees it in words (U30)', async ({ page }) => {
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/inbox/${held.id}`);
+  await expect(view(page).getByText('Phụ trách: Người khác')).toBeVisible();
+});
