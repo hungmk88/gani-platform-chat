@@ -8,8 +8,7 @@ import { assertUuid } from './validate.js';
 
 // Teams of a workspace for /settings/teams (A4, spec-M8 §3.1, endpoint-M8 §1, N160). Row-level security keeps them to the
 // transaction's organisation; who may read or change them is the caller's check. Nothing is deleted: a team and its memberships end
-// with deleted_at. The caller locks the workspace (lockWorkspace) before it makes a team or changes the default one, so two of those
-// in one workspace take turns.
+// with deleted_at. A write locks the workspace (lockWorkspace) and then the team (lockTeam), always in that order (teamWorkspaceId).
 
 export interface TeamRow {
   readonly id: string;
@@ -233,4 +232,17 @@ export async function setTeamMembers(
       })),
     );
   return { added: back.length + fresh.length, removed: leave.length };
+}
+
+/**
+ * The workspace of the live team `id`, read without a lock, or null. A write takes the workspace's lock first and the team's second
+ * (lockWorkspace, then lockTeam), always in that order: two teams of one workspace made default at once would otherwise each hold
+ * their own row and wait for the other's.
+ */
+export async function teamWorkspaceId(tx: TenantTx, id: string): Promise<string | null> {
+  const [row] = await tx
+    .select({ workspaceId: teams.workspaceId })
+    .from(teams)
+    .where(and(eq(teams.id, assertUuid(id, 'id')), isNull(teams.deletedAt)));
+  return row?.workspaceId ?? null;
 }

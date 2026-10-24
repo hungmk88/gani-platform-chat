@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { UuidSchema } from '../../openapi/schemas.js';
 
+export const TeamIdSchema = UuidSchema;
+
 const name = z.string().trim().min(1).max(100);
 /** Blank is no description. */
 const description = z
@@ -35,3 +37,14 @@ export const TeamCreateSchema = z
   .object({ workspaceId: UuidSchema, name, description: description.optional() })
   .strict()
   .meta({ id: 'TeamCreate' });
+
+/** `PATCH /v1/teams/{id}`: at least one field; `isDefault: true` takes the flag from the workspace's old default. */
+export const TeamChangeSchema = z
+  .object({
+    name: name.optional(),
+    description: description.nullable().optional(),
+    isDefault: z.boolean().optional(),
+  })
+  .strict()
+  .refine((change) => Object.keys(change).length > 0, 'nothing to change')
+  .meta({ id: 'TeamChange' });

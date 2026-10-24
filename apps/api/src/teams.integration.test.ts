@@ -151,3 +151,69 @@ describe('GET/POST /v1/teams', () => {
     expect(b.rows[0]).toEqual({ n: 1 });
   });
 });
+
+describe('PATCH/DELETE /v1/teams/{id}', () => {
+  it('changes a team, moves the default flag, and audits only real changes', async () => {
+    const [a, b] = [
+      String((await make('Miền Bắc')).body['id']),
+      String((await make('Miền Nam')).body['id']),
+    ];
+    expect(
+      (await call('admin', 'PATCH', `/${a}`, { isDefault: true, description: ' Khách sỉ ' })).body,
+    ).toMatchObject({
+      isDefault: true,
+      description: 'Khách sỉ',
+    });
+    expect((await call('admin', 'PATCH', `/${b}`, { isDefault: true })).status).toBe(200);
+    expect((await call('admin', 'PATCH', `/${b}`, { isDefault: true })).status).toBe(200);
+    const list = (await call('owner', 'GET', `?workspaceId=${W}`)).body['data'] as {
+      id: string;
+      isDefault: boolean;
+    }[];
+    expect(list.filter((t) => t.isDefault).map((t) => t.id)).toEqual([b]);
+    expect(await audits(b)).toEqual([
+      { action: 'team.created', detail: { slug: 'mien-nam' } },
+      { action: 'team.updated', detail: { isDefaultFrom: 'false', isDefaultTo: 'true' } },
+    ]);
+  });
+
+  // Two requests at once seldom overlap in the narrow window the lock order guards (the workspace's lock, then the team's): this is
+  // a smoke test of the outcome, not a proof of the order.
+  it('answers both when two teams are made the default at once, and leaves one default', async () => {
+    const [x, y] = [String((await make('X')).body['id']), String((await make('Y')).body['id'])];
+    const answers = await Promise.all([
+      call('owner', 'PATCH', `/${x}`, { isDefault: true }),
+      call('admin', 'PATCH', `/${y}`, { isDefault: true }),
+    ]);
+    expect(answers.map((a) => a.status)).toEqual([200, 200]);
+    const defaults = await q(
+      'SELECT count(*)::int AS n FROM teams WHERE workspace_id = $1 AND is_default AND deleted_at IS NULL',
+      [W],
+    );
+    expect(defaults.rows[0]).toEqual({ n: 1 });
+  });
+
+  it('ends a team but not the default one, and refuses other roles, other orgs and bad requests', async () => {
+    const list = (await call('owner', 'GET', `?workspaceId=${W}`)).body['data'] as {
+      id: string;
+      isDefault: boolean;
+    }[];
+    const def = list.find((t) => t.isDefault)!.id;
+    const plain = list.find((t) => !t.isDefault)!.id;
+    const answers = [
+      await call('owner', 'DELETE', `/${def}`),
+      await call('owner', 'DELETE', `/${plain}`),
+      await call('owner', 'DELETE', `/${plain}`),
+      await call('manager', 'PATCH', `/${def}`, { name: 'M' }),
+      await call('manager', 'DELETE', `/${def}`),
+      await call('owner', 'PATCH', `/${teamB}`, { name: 'X' }),
+      await call('owner', 'DELETE', `/${teamB}`),
+      await call('owner', 'PATCH', `/${def}`, {}),
+      await call('owner', 'PATCH', `/${def}`, { slug: 'x' }),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([409, 204, 404, 403, 403, 404, 404, 400, 400]);
+    expect(answers[0]?.body['code']).toBe('team_in_use');
+    const b = await q('SELECT name, deleted_at IS NULL AS live FROM teams WHERE id = $1', [teamB]);
+    expect(b.rows).toEqual([{ name: 'B', live: true }]);
+  });
+});
