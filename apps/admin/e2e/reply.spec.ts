@@ -63,6 +63,7 @@ test('a closed channel window keeps the draft and says why; nothing is added', a
 test('an empty text is not sent, and R goes to the box', async ({ page }) => {
   await signIn(page, accountOf('manager'));
   await page.goto(`/inbox/${held.id}`);
+  await expect(box(page)).toBeVisible(); // R is heard once the box is there: pressed earlier, the key goes nowhere
   await page.locator('body').press('r');
   await expect(box(page)).toBeFocused();
   await box(page).fill('   ');
