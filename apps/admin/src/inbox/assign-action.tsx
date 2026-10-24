@@ -9,7 +9,8 @@ import { membersPath } from '../members/list';
 import { ROLE_NAME } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
-import { useApiPages, useScope } from '../query/provider';
+import { useApiPages, useApiQuery, useScope } from '../query/provider';
+import type { WorkspaceMemberList } from '../workspaces/workspace-members';
 import { assigneesOf } from './assign';
 import type { Conversation } from './list';
 
@@ -32,7 +33,7 @@ export function AssignAction({ c }: { c: Conversation }) {
 }
 
 /**
- * Pick a member, then `POST …/assign` with the version last read, waiting for the server (CLAUDE.md "chuyển"). One Idempotency-Key
+ * Pick a member of the conversation's workspace, then `POST …/assign` with the version last read, waiting for the server (CLAUDE.md "chuyển"). One Idempotency-Key
  * per person picked, kept when the same is sent again after a failure. 422 invalid_assignee and 409 version_conflict say their
  * sentence of the P9 table; a conflict reads the conversation again.
  */
@@ -42,8 +43,18 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
   const dialog = useRef<HTMLDialogElement>(null);
   const last = useRef<{ to: string; key: string } | null>(null);
   const members = useApiPages<MemberPage>(['members'], membersPath);
+  // The people of the conversation's workspace (N159); if they cannot be read, everyone is offered and the API checks.
+  const people = useApiQuery<WorkspaceMemberList>(
+    ['workspaces', c.workspaceId, 'members'],
+    `/v1/workspaces/${encodeURIComponent(c.workspaceId)}/members`,
+  );
+  const inWorkspace = people.data ? new Set(people.data.data.map((p) => p.memberId)) : null;
   const holder: string | null = c.assignedUserId; // null dropped by the generated type (CLAUDE.md)
-  const options = assigneesOf(members.data?.pages.flatMap((p) => p.data) ?? [], holder);
+  const options = assigneesOf(
+    members.data?.pages.flatMap((p) => p.data) ?? [],
+    holder,
+    inWorkspace,
+  );
   const [to, setTo] = useState('');
   const assign = useMutation<Conversation, ApiFailure, { to: string; key: string }>({
     mutationFn: ({ to, key }) =>
@@ -92,12 +103,14 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
         <h3 id="assign-title" className="text-16 font-semibold">
           Gán lại hội thoại
         </h3>
-        {members.isPending ? (
+        {members.isPending || people.isPending ? (
           <p role="status" aria-busy="true" className="text-text-muted">
             Đang tải thành viên…
           </p>
         ) : options.length === 0 && !members.hasNextPage ? (
-          <p>Chưa có ai khác nhận được hội thoại này. Mời thành viên ở Cài đặt › Thành viên.</p>
+          <p>
+            Chưa có ai khác nhận được hội thoại này. Thêm người vào workspace ở Cài đặt › Workspace.
+          </p>
         ) : (
           <label className="flex flex-col gap-1">
             Người nhận
@@ -126,7 +139,9 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
           </button>
         ) : null}
         <p className="text-12 text-text-muted">
-          Người nhận phải thuộc workspace của hội thoại; hệ thống kiểm lại khi gán.
+          {inWorkspace
+            ? 'Chỉ hiện người thuộc workspace của hội thoại.'
+            : 'Người nhận phải thuộc workspace của hội thoại; hệ thống kiểm lại khi gán.'}
         </p>
         {error ? (
           <div role="alert">
