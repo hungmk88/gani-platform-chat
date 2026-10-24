@@ -11,10 +11,13 @@ import { scopeKey } from '../query/keys';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { expiryOf, invitableRoles, inviteError, type Invitation } from './invite';
+import { CapacityDialog } from './capacity-dialog';
 import {
   canChangeRole,
   canResetTwoFactor,
   canResend,
+  canSetCapacity,
+  capacityOf,
   membersPath,
   STATUS,
   twoFactorOf,
@@ -38,7 +41,7 @@ const badge = 'rounded-input px-2 py-1 text-12';
  * The members and invitations of the company (#19, `GET /v1/members`, N153), oldest first, by cursor. An invitation not taken can
  * be sent again from its row (`resend-invite`, waiting for the server); its row then shows the new expiry. One key per invitation
  * until it succeeds, as in the invite form. A member's role is changed (`RoleDialog`, N154) and their second factor reset
- * (`ResetDialog`, N155) from its row, each in a dialog.
+ * (`ResetDialog`, N155) from its row, each in a dialog, and so is their own load limit (`CapacityDialog`, N156).
  */
 export function MemberList({ role, meId }: { role: Role; meId: string }) {
   const scope = useScope();
@@ -46,6 +49,7 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
   const again = useRef<{ id: string; key: string } | null>(null);
   const [editing, setEditing] = useState<Member | null>(null);
   const [resetting, setResetting] = useState<Member | null>(null);
+  const [limiting, setLimiting] = useState<Member | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const done = (text: string) => {
     resend.reset();
@@ -118,7 +122,7 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
             <table className="w-full text-left">
               <thead className="bg-bg-subtle">
                 <tr>
-                  {['Thành viên', 'Vai trò', '2FA', 'Trạng thái'].map((t) => (
+                  {['Thành viên', 'Vai trò', '2FA', 'Trạng thái', 'Giới hạn tải'].map((t) => (
                     <th key={t} scope="col" className="p-2 font-semibold">
                       {t}
                     </th>
@@ -155,6 +159,7 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
                           <div className="text-12 text-text-muted">Hạn {expiryOf(m.expiresAt)}</div>
                         ) : null}
                       </td>
+                      <td className="p-2">{capacityOf(m)}</td>
                       <td className="p-2">
                         <div className="flex flex-wrap gap-2">
                           {canChangeRole(role, meId, m) ? (
@@ -175,6 +180,16 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
                               onClick={() => setResetting(m)}
                             >
                               Đặt lại 2FA…
+                            </button>
+                          ) : null}
+                          {canSetCapacity(role, m) ? (
+                            <button
+                              type="button"
+                              className={button}
+                              aria-label={`Đổi giới hạn tải của ${m.name ?? m.email}`}
+                              onClick={() => setLimiting(m)}
+                            >
+                              Giới hạn tải
                             </button>
                           ) : null}
                           {canResend(role, m) ? (
@@ -233,9 +248,15 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
           }
         />
       ) : null}
-      <p className="text-12 text-text-muted">
-        Team, giới hạn tải riêng và lần đăng nhập cuối: chờ API (N153).
-      </p>
+      {limiting ? (
+        <CapacityDialog
+          key={limiting.id}
+          member={limiting}
+          onClose={() => setLimiting(null)}
+          onDone={(m) => done(`Đã đặt giới hạn tải của ${m.name ?? m.email}: ${capacityOf(m)}.`)}
+        />
+      ) : null}
+      <p className="text-12 text-text-muted">Team và lần đăng nhập cuối: chờ API (N153).</p>
     </section>
   );
 }

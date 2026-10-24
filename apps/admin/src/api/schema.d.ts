@@ -1259,6 +1259,94 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/members/{id}/capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set a member's own limit of conversations at once (C9, N156), 1 to 100. Owner or Admin, for any member (themselves too). */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CapacityBody"];
+                };
+            };
+            responses: {
+                /** @description The member, with the new limit. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
+                };
+                /** @description validation_failed: the id or the limit. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: not an Owner or an Admin; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no member with this id in the organisation (an invitation is not a member yet). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/v1/members/{id}/2fa/reset": {
         parameters: {
             query?: never;
@@ -1724,10 +1812,15 @@ export interface components {
              * @description The end of the invitation link; null for a member.
              */
             expiresAt: string | null;
+            /** @description The member's own limit of conversations at once (C9); null: the workspace's default applies. */
+            maxConcurrentConversations: number | null;
         };
         RoleBody: {
             /** @enum {string} */
             role: "owner" | "admin" | "manager" | "sales" | "support" | "marketing" | "viewer";
+        };
+        CapacityBody: {
+            maxConcurrentConversations: number;
         };
         TwoFactorResetBody: {
             reason: string;

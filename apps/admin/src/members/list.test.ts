@@ -5,6 +5,10 @@ import {
   canChangeRole,
   canResend,
   canResetTwoFactor,
+  canSetCapacity,
+  capacityError,
+  capacityOf,
+  capacityValue,
   membersPath,
   reasonProblem,
   resetError,
@@ -24,6 +28,7 @@ const member = (over: Partial<Member>): Member => ({
   status: 'active',
   twoFactorEnabled: false,
   expiresAt: null,
+  maxConcurrentConversations: null,
   ...over,
 });
 
@@ -124,5 +129,34 @@ describe('canResetTwoFactor, reasonProblem and resetError', () => {
     expect(resetError(errorOf(403, { code: 'forbidden' }))).toMatch(/không đặt lại được/);
     expect(resetError(errorOf(404, { code: 'not_found' }))).toMatch(/Không tìm thấy/);
     expect(resetError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
+  });
+});
+
+describe('canSetCapacity, capacityOf, capacityValue and capacityError', () => {
+  it('lets an Owner or an Admin set the limit of anyone with an account, themselves and an Owner too', () => {
+    expect(canSetCapacity('owner', member({}))).toBe(true);
+    expect(canSetCapacity('admin', member({ role: 'owner', status: 'suspended' }))).toBe(true);
+    expect(canSetCapacity('admin', member({ status: 'pending', userId: null }))).toBe(false);
+    expect(canSetCapacity('manager', member({}))).toBe(false);
+  });
+
+  it('says the limit, the default of the workspace, or nothing for an invitation', () => {
+    expect(capacityOf(member({ maxConcurrentConversations: 8 }))).toBe('8 hội thoại');
+    expect(capacityOf(member({}))).toBe('Theo mặc định workspace');
+    expect(capacityOf(member({ status: 'expired', maxConcurrentConversations: 3 }))).toBe('—');
+  });
+
+  it('takes a whole number of 1 to 100', () => {
+    expect(capacityValue(' 12 ')).toBe(12);
+    expect(capacityValue('100')).toBe(100);
+    for (const bad of ['', '0', '101', '2.5', 'abc'])
+      expect(capacityValue(bad)).toMatch(/1 đến 100/);
+  });
+
+  it('says a refusal, a value refused and a member gone in words of the screen', () => {
+    expect(capacityError(errorOf(403, { code: 'forbidden' }))).toMatch(/giới hạn tải/);
+    expect(capacityError(errorOf(400, { code: 'validation_failed' }))).toMatch(/1 đến 100/);
+    expect(capacityError(errorOf(404, { code: 'not_found' }))).toMatch(/Không tìm thấy/);
+    expect(capacityError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
   });
 });
