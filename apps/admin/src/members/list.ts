@@ -1,5 +1,6 @@
 // The list of #19 Thành viên (`GET /v1/members`, N153): members and invitations as the table says them, and who may change whose
-// role (N154) or reset whose second factor (N155). Team, own load limit and last sign-in are not in the API yet (N153 "Để sau").
+// role (N154), reset whose second factor (N155) or set whose own load limit (N156). Team and last sign-in are not in the API yet
+// (N153 "Để sau").
 import type { InfiniteData } from '@tanstack/react-query';
 
 import type { ApiError } from '../api/errors';
@@ -123,6 +124,42 @@ export function resetError(error: ApiError): string {
   if (error.code === 'shared_account')
     return 'Người này còn thuộc công ty khác hoặc là quản trị nền tảng: nhờ quản trị nền tảng đặt lại.';
   if (error.code === 'forbidden') return 'Bạn không đặt lại được 2FA của người này.';
+  if (error.code === 'not_found') return roleError(error);
+  return error.message;
+}
+
+/**
+ * C9, N156: an Owner or an Admin sets the own limit of conversations at once of anyone with an account here, themselves and an
+ * Owner too (it is not a right of security). An invitation is not a member yet.
+ */
+export const canSetCapacity = (actor: Role, m: Pick<Member, 'status' | 'userId'>): boolean =>
+  (actor === 'owner' || actor === 'admin') &&
+  (m.status === 'active' || m.status === 'suspended') &&
+  m.userId !== null;
+
+export const MAX_CAPACITY = 100;
+
+/** The cell of the limit: nothing for an invitation, the workspace's default when none is set (null, N156). */
+export function capacityOf(m: Pick<Member, 'status' | 'maxConcurrentConversations'>): string {
+  if (m.status === 'pending' || m.status === 'expired') return '—';
+  return m.maxConcurrentConversations === null
+    ? 'Theo mặc định workspace'
+    : `${m.maxConcurrentConversations} hội thoại`;
+}
+
+/** The limit typed, or why it cannot be sent: a whole number of 1 to 100 (CapacityBody of the API). */
+export function capacityValue(raw: string): number | string {
+  const n = Number(raw.trim());
+  if (!raw.trim() || !Number.isInteger(n) || n < 1 || n > MAX_CAPACITY)
+    return `Nhập số nguyên từ 1 đến ${MAX_CAPACITY}.`;
+  return n;
+}
+
+/** The refusals of `PATCH /v1/members/{id}/capacity` in words of the screen. */
+export function capacityError(error: ApiError): string {
+  if (error.code === 'forbidden') return 'Bạn không đổi được giới hạn tải của người này.';
+  if (error.code === 'validation_failed')
+    return `Giới hạn phải là số nguyên từ 1 đến ${MAX_CAPACITY}.`;
   if (error.code === 'not_found') return roleError(error);
   return error.message;
 }

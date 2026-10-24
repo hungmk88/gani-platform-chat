@@ -125,9 +125,11 @@ test('an Owner changes the role of an Admin in a dialog; never their own, never 
   await signIn(page, accountOf('owner'));
   await page.goto('/settings/members');
   const list = page.getByRole('region', { name: 'Danh sách thành viên' });
-  await expect(list.getByRole('row', { name: /owner@e2e\.test/ }).getByRole('button')).toHaveCount(
-    0,
-  );
+  await expect(
+    list
+      .getByRole('row', { name: /owner@e2e\.test/ })
+      .getByRole('button', { name: /^Đổi vai trò/ }),
+  ).toHaveCount(0);
   await list.getByRole('button', { name: 'Đổi vai trò của Người thử admin' }).click();
   const dialog = page.getByRole('dialog', { name: /Đổi vai trò/ });
   await dialog.getByLabel('Vai trò mới').selectOption({ label: 'Manager' });
@@ -148,9 +150,11 @@ test('an Admin changes no Owner and cannot pick Owner', async ({ page }) => {
   await signIn(page, accountOf('admin'));
   await page.goto('/settings/members');
   const list = page.getByRole('region', { name: 'Danh sách thành viên' });
-  await expect(list.getByRole('row', { name: /owner@e2e\.test/ }).getByRole('button')).toHaveCount(
-    0,
-  );
+  await expect(
+    list
+      .getByRole('row', { name: /owner@e2e\.test/ })
+      .getByRole('button', { name: /^Đổi vai trò/ }),
+  ).toHaveCount(0);
   await list.getByRole('button', { name: 'Đổi vai trò của Người thử sales' }).click();
   const dialog = page.getByRole('dialog', { name: /Đổi vai trò/ });
   await expect(dialog.getByRole('option', { name: 'Owner' })).toHaveCount(0);
@@ -195,4 +199,39 @@ test('an Admin cannot reset the 2FA of an Owner', async ({ page }) => {
   await expect(list.getByRole('button', { name: 'Đặt lại 2FA của Người thử owner' })).toHaveCount(
     0,
   );
+});
+
+test('an Admin sets the load limit of a member and of themselves; an invitation has none', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  await expect(list.getByRole('row', { name: /sales@e2e\.test/ })).toContainText('8 hội thoại');
+  await expect(list.getByRole('row', { name: /owner@e2e\.test/ })).toContainText(
+    'Theo mặc định workspace',
+  );
+  await expect(
+    list.getByRole('button', { name: 'Đổi giới hạn tải của Người thử owner' }),
+  ).toBeVisible();
+  await list.getByRole('button', { name: 'Đổi giới hạn tải của Người thử admin' }).click();
+  const dialog = page.getByRole('dialog', { name: /Giới hạn tải/ });
+  const field = dialog.getByLabel(/Số hội thoại giữ cùng lúc/);
+  await field.fill('0');
+  await dialog.getByRole('button', { name: 'Lưu giới hạn' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText(/1 đến 100/);
+  await field.fill('12');
+  await expectAccessible(page);
+  const patched = page.waitForRequest((r) => r.url().endsWith('/capacity'));
+  await dialog.getByRole('button', { name: 'Lưu giới hạn' }).click();
+  const req = await patched;
+  expect(req.method()).toBe('PATCH');
+  expect(req.postDataJSON()).toEqual({ maxConcurrentConversations: 12 });
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText(
+    'Đã đặt giới hạn tải của Người thử admin: 12 hội thoại.',
+  );
+  await expect(list.getByRole('row', { name: /admin@e2e\.test/ })).toContainText('12 hội thoại');
+  await list.getByRole('button', { name: 'Tải thêm' }).click();
+  await expect(list.getByRole('button', { name: /^Đổi giới hạn tải của/ })).toHaveCount(4);
 });
