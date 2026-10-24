@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { homeFor, navFor, ROLES, type Role } from './nav';
+import { builtFor, homeFor, menuItemAt, navFor, ROLES, type Role } from './nav';
 
 const hrefs = (role: Role) => navFor(role).flatMap((g) => g.items.map((i) => i.href));
 
@@ -67,5 +67,21 @@ describe('homeFor', () => {
   ])('%s starts at %s', (role, home) => {
     expect(homeFor(role)).toBe(home);
     expect(hrefs(role)).toContain(home);
+  });
+});
+
+describe('menuItemAt and builtFor', () => {
+  it('finds an item of the menu of the role, not of another role, not an unknown path', () => {
+    expect(menuItemAt('owner', '/overview')).toEqual({ href: '/overview', label: 'Tổng quan' });
+    expect(menuItemAt('owner', '/settings/teams')?.label).toBe('Team');
+    expect(menuItemAt('sales', '/settings/teams')).toBeUndefined();
+    expect(menuItemAt('platform_operator', '/platform')?.label).toBe('Platform');
+    expect(menuItemAt('owner', '/khong-co')).toBeUndefined();
+  });
+
+  it('sends those who hold conversations to the inbox, the others to their profile', () => {
+    expect(builtFor('manager').href).toBe('/inbox');
+    expect(builtFor('viewer').href).toBe('/me');
+    expect(builtFor('platform_operator').href).toBe('/me');
   });
 });

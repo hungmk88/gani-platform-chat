@@ -92,3 +92,17 @@ export function homeFor(role: Role): string {
   if (role === 'platform_operator') return '/platform';
   return role === 'sales' || role === 'support' ? '/inbox' : '/overview';
 }
+
+/** The item of the menu this role may open at `path`, if any: a screen of the menu not built yet says so instead of a 404. */
+export function menuItemAt(role: Role, path: string): NavItem | undefined {
+  return navFor(role)
+    .flatMap((g) => g.items)
+    .find((i) => i.href === path);
+}
+
+/** A screen that is built, for the one action of a screen that is not: the inbox for those who hold conversations, else the profile. */
+export function builtFor(role: Role): NavItem {
+  return AGENTS.includes(role)
+    ? { href: '/inbox', label: 'Mở Hộp thư' }
+    : { href: '/me', label: 'Mở hồ sơ cá nhân' };
+}
