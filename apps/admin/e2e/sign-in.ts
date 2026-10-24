@@ -10,5 +10,9 @@ export async function signIn(page: Page, email: string, password = GOOD) {
   // Wait for the answer: a test that goes elsewhere right after must not race the session cookie.
   const answered = page.waitForResponse('**/api/auth/sign-in/email');
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
-  await answered;
+  if (!(await answered).ok()) return; // a refusal keeps the form
+  // Signed in, the form sends the browser on (to "/", then the page of the role, or to the code): a test that goes elsewhere
+  // before that is over has its own navigation aborted (net::ERR_ABORTED), which a busy machine makes common.
+  await page.waitForURL((url) => url.pathname !== '/login');
+  await page.waitForLoadState('networkidle');
 }

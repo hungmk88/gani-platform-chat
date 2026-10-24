@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { errorOf } from '../api/errors';
-import { teamDraftOf, teamError, teamsPath, withTeam, type Team } from './teams';
+import {
+  teamChangeOf,
+  teamDraftFrom,
+  teamDraftOf,
+  teamError,
+  teamsPath,
+  withChanged,
+  withTeam,
+  type Team,
+} from './teams';
 
 const team = (over: Partial<Team> = {}): Team => ({
   id: 't1',
@@ -52,5 +61,41 @@ describe('withTeam and teamError', () => {
     expect(teamError(errorOf(404, { code: 'not_found' }))).toMatch(/Không tìm thấy/);
     expect(teamError(errorOf(400, { code: 'validation_failed' }))).toMatch(/1–100/);
     expect(teamError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
+  });
+});
+
+describe('teamChangeOf', () => {
+  it('sends only what differs; a blank description is none; a team is only ever made the default', () => {
+    const t = team({ description: 'Khách sỉ' });
+    expect(teamChangeOf(t, teamDraftFrom(t))).toEqual({});
+    expect(teamChangeOf(t, { ...teamDraftFrom(t), name: ' Sales sỉ ', description: '  ' })).toEqual(
+      {
+        name: 'Sales sỉ',
+        description: null,
+      },
+    );
+    expect(teamChangeOf(t, { ...teamDraftFrom(t), isDefault: true })).toEqual({ isDefault: true });
+    const d = team({ isDefault: true });
+    expect(teamChangeOf(d, { ...teamDraftFrom(d), isDefault: false })).toEqual({});
+  });
+
+  it('says a missing or long name and a long description', () => {
+    const d = teamDraftFrom(team());
+    expect(teamChangeOf(team(), { ...d, name: ' ' })).toBe('Nhập tên team.');
+    expect(teamChangeOf(team(), { ...d, description: 'x'.repeat(501) })).toMatch(/500 ký tự/);
+  });
+});
+
+describe('withChanged', () => {
+  it('puts a changed team in place by name, and moves the default flag to it', () => {
+    const list = {
+      data: [team({ id: 'a', name: 'CSKH' }), team({ id: 'b', name: 'Sales', isDefault: true })],
+    };
+    const next = withChanged(list, team({ id: 'a', name: 'Xuất khẩu', isDefault: true }));
+    expect(next?.data.map((t) => [t.name, t.isDefault])).toEqual([
+      ['Sales', false],
+      ['Xuất khẩu', true],
+    ]);
+    expect(withChanged(undefined, team())).toBeUndefined();
   });
 });

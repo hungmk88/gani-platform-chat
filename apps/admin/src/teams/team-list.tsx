@@ -1,20 +1,30 @@
 'use client';
 
+import { useState } from 'react';
+
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
-import { teamsPath, type TeamList } from './teams';
+import { TeamDialog } from './team-dialogs';
+import { teamsPath, type Team, type TeamList } from './teams';
 
 const badge = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
+const button = 'rounded-input border border-border-strong px-3 py-1';
 
-/** The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name. */
+/**
+ * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed from its row
+ * (`TeamDialog`).
+ */
 export function TeamTable({ workspaceId }: { workspaceId: string }) {
   const list = useApiQuery<TeamList>(['teams', workspaceId], teamsPath(workspaceId));
+  const [editing, setEditing] = useState<Team | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   return (
     <section aria-labelledby="teams-title" className="flex flex-col gap-3">
       <h2 id="teams-title" className="text-16 font-semibold">
         Team của workspace
       </h2>
+      {notice ? <p role="status">{notice}</p> : null}
       {list.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
           Đang tải team…
@@ -39,6 +49,9 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                     {t}
                   </th>
                 ))}
+                <th scope="col" className="p-2">
+                  <span className="sr-only">Thao tác</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -53,12 +66,35 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                   </td>
                   <td className="p-2">{t.description ?? '—'}</td>
                   <td className="p-2">{t.memberCount}</td>
+                  <td className="p-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={button}
+                        aria-label={`Sửa team ${t.name}`}
+                        onClick={() => {
+                          setNotice(null);
+                          setEditing(t);
+                        }}
+                      >
+                        Sửa
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {editing ? (
+        <TeamDialog
+          key={editing.id}
+          team={editing}
+          onClose={() => setEditing(null)}
+          onDone={(t) => setNotice(`Đã lưu team ${t.name}.`)}
+        />
+      ) : null}
     </section>
   );
 }
