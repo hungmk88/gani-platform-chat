@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
+import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
 import { problemResponse as problem, UuidSchema } from './schemas.js';
 
 // The contract the front end builds on (Brief P18): generated from the Zod schemas the API validates with, so the two cannot drift.
@@ -97,6 +98,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerPlatform,
   registerConversations,
   registerMembers,
+  registerWorkspaces,
 ];
 
 export function buildOpenApiDocument() {
