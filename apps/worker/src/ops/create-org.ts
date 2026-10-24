@@ -8,9 +8,9 @@ import type { EmailMessage } from '@gani/email';
 // token goes out by email only, after the commit (a rolled back invitation is never mailed); the table keeps its SHA-256.
 // Run twice with the same slug, the second run is refused and makes nothing.
 
-const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const APP_ENVS = new Set(['development', 'test', 'staging', 'production']);
+export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const APP_ENVS = new Set(['development', 'test', 'staging', 'production']);
 /** Spec RLS M01 §3.7, U1: an invitation lives 7 days. */
 export const INVITE_DAYS = 7;
 
@@ -40,7 +40,8 @@ export interface CreateOrgInput {
   readonly adminUrl: string;
 }
 
-const flag = (argv: readonly string[], name: string): string => {
+/** The value after `--name` in `argv`, or '' when absent. */
+export const flag = (argv: readonly string[], name: string): string => {
   const at = argv.indexOf(`--${name}`);
   return at >= 0 ? (argv[at + 1] ?? '') : '';
 };
