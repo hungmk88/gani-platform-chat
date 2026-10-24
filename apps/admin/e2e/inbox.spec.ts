@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
-import { accountOf, INBOX_DOWN_TRACE, STUB_PAGE } from './stub-api';
+import { accountOf, INBOX_DOWN_TRACE, MANY, MANY_PAGE, STUB_PAGE } from './stub-api';
 
 // #6 Hộp thư, the list column (I1a), against the stub's six conversations of apps/admin/e2e/stub-api.ts.
 const list = (page: Page) =>
@@ -78,4 +78,22 @@ test('a role that sees no conversation gets the forbidden page', async ({ page }
   await expect(
     page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),
   ).toBeVisible();
+});
+
+test('600 conversations: only the rows near the screen are in the page, scrolling reaches the last', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('sales+many'));
+  await page.goto('/inbox');
+  const column = page.getByRole('region', { name: 'Danh sách hội thoại' });
+  const more = column.getByRole('button', { name: 'Tải thêm' });
+  for (let loaded = MANY_PAGE; loaded < MANY; loaded += MANY_PAGE) {
+    await expect(column.locator(`li[aria-setsize="${loaded}"]`).first()).toBeAttached();
+    await more.click();
+  }
+  await expect(more).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(column.locator(`li[aria-posinset="${MANY}"]`)).toBeVisible();
+  expect(await column.getByRole('listitem').count()).toBeLessThan(100);
+  await expectAccessible(page);
 });
