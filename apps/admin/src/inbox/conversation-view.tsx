@@ -12,7 +12,8 @@ import { assignsFromList, canAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
 import { ConversationActions } from './conversation-actions';
-import { HOLD_LABEL, holderOf, STATE_LABEL } from './list';
+import { Holder } from './holder';
+import { HOLD_LABEL, STATE_LABEL } from './list';
 import { inReadingOrder, KIND_LABEL, messagesPath, senderOf } from './messages';
 
 type Conversation = components['schemas']['Conversation'];
@@ -85,7 +86,9 @@ export function ConversationView({ id, role, meId }: { id: string; role: Role; m
         <h2 className="text-16 font-semibold">
           {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
         </h2>
-        <span className="text-12 text-text-muted">Phụ trách: {holderOf(c, meId)}</span>
+        <span className="text-12 text-text-muted">
+          Phụ trách: <Holder c={c} meId={meId} named={assignsFromList(role)} />
+        </span>
       </header>
       <ConversationActions c={c} role={role} meId={meId} />
       {assignsFromList(role) && canAssign(c) ? <AssignAction key={c.id} c={c} /> : null}

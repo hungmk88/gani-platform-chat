@@ -28,3 +28,14 @@ export function assigneesOf(
       : [],
   );
 }
+
+/** Who holds it, by name, for those who read the members (Owner, Admin): "Tôi", the name, or the words of `holderOf` otherwise. */
+export function holderNameOf(
+  members: readonly Member[],
+  holder: string | null,
+  meId: string,
+): string | null {
+  if (holder === null || holder === meId) return null;
+  const m = members.find((x) => x.userId === holder);
+  return m ? (m.name ?? m.email) : null;
+}
