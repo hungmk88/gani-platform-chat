@@ -1,7 +1,10 @@
 import {
   insertAuditLog,
+  listWorkspaceMembers,
   listWorkspaces,
   lockWorkspace,
+  membersById,
+  setWorkspaceMembers,
   updateWorkspace,
   type WorkspaceChange,
 } from '@gani/db';
@@ -15,13 +18,18 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Put,
 } from '@nestjs/common';
 
-import { ZodPipe } from '../../openapi/zod-pipe.js';
+import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { mayInvite } from '../members/members.permissions.js';
 import { currentRequestContext } from '../request-context/request-context.js';
-import { WorkspaceChangeSchema, WorkspaceIdSchema } from './workspaces.schemas.js';
+import {
+  WorkspaceChangeSchema,
+  WorkspaceIdSchema,
+  WorkspaceMembersBodySchema,
+} from './workspaces.schemas.js';
 import { workspaceView } from './workspaces.view.js';
 
 /**
@@ -75,5 +83,54 @@ export class WorkspacesController {
       return after;
     });
     return workspaceView(row);
+  }
+
+  /** The people of a workspace (N159), by role. */
+  @Get(':id/members')
+  async members(@Param('id', new ZodPipe(WorkspaceIdSchema)) id: string) {
+    const ctx = currentRequestContext();
+    if (!mayInvite(ctx.role)) throw new ForbiddenException();
+    const data = await this.database.withTenant(ctx, async (tx) => {
+      if (!(await lockWorkspace(tx, id))) throw new NotFoundException();
+      return listWorkspaceMembers(tx, id);
+    });
+    return { data };
+  }
+
+  /**
+   * Makes `memberIds` the people of a workspace (N159): the others leave it, the new ones join. One TenantTx: the workspace locked, the
+   * ids checked (members of the organisation, active or suspended), the list set, audited with the counts. Their next request sees it;
+   * their socket within 60 s (revalidate). Setting the same list again changes nothing, so no Idempotency-Key.
+   */
+  @Put(':id/members')
+  async setMembers(
+    @Param('id', new ZodPipe(WorkspaceIdSchema)) id: string,
+    @Body(new ZodPipe(WorkspaceMembersBodySchema)) body: { memberIds: string[] },
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayInvite(ctx.role)) throw new ForbiddenException();
+    const data = await this.database.withTenant(ctx, async (tx) => {
+      if (!(await lockWorkspace(tx, id))) throw new NotFoundException();
+      const people = await membersById(tx, body.memberIds);
+      if (people.size !== body.memberIds.length)
+        throw new ValidationFailedError(['memberIds: not a member of the organisation']);
+      const { added, removed } = await setWorkspaceMembers(tx, {
+        workspaceId: id,
+        userIds: [...people.values()],
+        actorUserId: ctx.userId,
+        newId: uuidv7,
+      });
+      if (added + removed > 0)
+        await insertAuditLog(tx, {
+          id: uuidv7(),
+          actorUserId: ctx.userId,
+          action: 'workspace.members_changed',
+          targetType: 'workspace',
+          targetId: id,
+          detail: { added, removed },
+        });
+      return listWorkspaceMembers(tx, id);
+    });
+    return { data };
   }
 }

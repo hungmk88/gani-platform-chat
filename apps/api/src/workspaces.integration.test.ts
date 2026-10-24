@@ -11,8 +11,8 @@ import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
 import { hashPassword } from './modules/auth/password.js';
 
-// GET /v1/workspaces and PATCH /v1/workspaces/{id} (N157) over HTTP with the whole application and PostgreSQL. Org A: an owner, an
-// admin (with a second factor), a manager; two workspaces and a deleted one. Org B: one workspace.
+// GET /v1/workspaces, PATCH /v1/workspaces/{id} (N157) and GET/PUT /v1/workspaces/{id}/members (N159) over HTTP with the whole application and PostgreSQL. Org A: an owner, an
+// admin (with a second factor), a manager, a sales agent; two workspaces and a deleted one. Org B: one workspace.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -25,6 +25,7 @@ const [sales, service, gone, ofB] = [randomUUID(), randomUUID(), randomUUID(), r
 const PW = randomBytes(18).toString('base64url');
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const people: Record<string, string> = {};
+const memberOf: Record<string, string> = {};
 const cookies: Record<string, string> = {};
 let app: NestExpressApplication | undefined;
 let url = '';
@@ -35,7 +36,7 @@ async function person(key: string, role: string, hash: string) {
   const id = (people[key] = randomUUID());
   await q(`INSERT INTO users (id, email, status, email_verified_at, display_name) VALUES ($1, $2, 'active', now(), 'T')`, [id, `${id}@example.test`]);
   await q(`INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $3, 'credential', $4)`, [randomUUID(), id, id, hash]);
-  await q(`INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, $4, 'active')`, [randomUUID(), orgA, id, role]);
+  await q(`INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, $4, 'active')`, [(memberOf[key] = randomUUID()), orgA, id, role]);
   const res = await fetch(`${url}/api/auth/sign-in/email`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: ORIGIN, 'x-forwarded-for': [...randomBytes(4)].join('.') },
@@ -73,7 +74,7 @@ beforeAll(async () => {
   await nest.listen(0, '127.0.0.1');
   url = await nest.getUrl();
   const hash = await hashPassword(PW);
-  for (const role of ['owner', 'admin', 'manager']) await person(role, role, hash);
+  for (const role of ['owner', 'admin', 'manager', 'sales']) await person(role, role, hash);
 }, 60_000);
 
 // prettier-ignore
@@ -81,7 +82,7 @@ afterAll(async () => {
   await app?.close();
   const users = Object.values(people);
   for (const [text, ids] of [
-    ['audit_logs WHERE org_id', [orgA, orgB]], ['workspaces WHERE org_id', [orgA, orgB]], ['sessions WHERE user_id', users],
+    ['audit_logs WHERE org_id', [orgA, orgB]], ['workspace_members WHERE org_id', [orgA, orgB]], ['workspaces WHERE org_id', [orgA, orgB]], ['sessions WHERE user_id', users],
     ['org_members WHERE org_id', [orgA, orgB]], ['accounts WHERE user_id', users], ['users WHERE id', users],
     ['organizations WHERE id', [orgA, orgB]],
   ] as const)
@@ -167,5 +168,87 @@ describe('PATCH /v1/workspaces/{id}', () => {
       { name: 'Bán sỉ', slug: 'b2b', template: 'b2b_sales' },
       { name: 'B', slug: 'bb', template: 'service' },
     ]);
+  });
+});
+
+describe('GET/PUT /v1/workspaces/{id}/members', () => {
+  async function setMembers(who: string, id: string, body: unknown) {
+    const res = await fetch(`${url}/v1/workspaces/${id}/members`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie: cookies[who] ?? '', origin: ORIGIN },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json()) as { data?: { memberId: string }[] } };
+  }
+  const membersOf = async (who: string, id: string) => {
+    const res = await fetch(`${url}/v1/workspaces/${id}/members`, {
+      headers: { cookie: cookies[who] ?? '' },
+    });
+    return {
+      status: res.status,
+      ids: ((await res.json()) as { data?: { memberId: string }[] }).data?.map((m) => m.memberId),
+    };
+  };
+  const workspacesOf = async (who: string) =>
+    (
+      (await (await fetch(`${url}/v1/me`, { headers: { cookie: cookies[who] ?? '' } })).json()) as {
+        workspaces: { id: string }[];
+      }
+    ).workspaces.map((w) => w.id);
+  const audits = async () =>
+    (
+      await q('SELECT detail FROM audit_logs WHERE target_id = $1 AND action = $2 ORDER BY id', [
+        service,
+        'workspace.members_changed',
+      ])
+    ).rows as unknown[];
+
+  it('sets the people of a workspace: they see it from their next request, and lose it when taken out', async () => {
+    expect(await membersOf('owner', service)).toEqual({ status: 200, ids: [] });
+    const put = await setMembers('admin', service, {
+      memberIds: [memberOf['sales'], memberOf['owner']],
+    });
+    expect(put.status).toBe(200);
+    expect(put.body.data?.map((m) => m.memberId).sort()).toEqual(
+      [memberOf['owner'], memberOf['sales']].sort(),
+    );
+    expect(await workspacesOf('sales')).toEqual([service]);
+    expect((await setMembers('owner', service, { memberIds: [memberOf['owner']] })).status).toBe(
+      200,
+    );
+    expect((await setMembers('owner', service, { memberIds: [memberOf['owner']] })).status).toBe(
+      200,
+    );
+    expect(await workspacesOf('sales')).toEqual([]);
+    expect(await audits()).toEqual([
+      { detail: { added: 2, removed: 0 } },
+      { detail: { added: 0, removed: 1 } },
+    ]);
+  });
+
+  it('refuses other roles, workspaces of another org, deleted or unknown ones, and ids that are not members', async () => {
+    const pending = randomUUID();
+    // prettier-ignore
+    await q(`INSERT INTO org_members (id, org_id, role, status, invited_email, invite_token_hash, invite_expires_at)
+      VALUES ($1, $2, 'sales', 'pending', $3, $4, now() + interval '1 day')`, [pending, orgA, `${pending}@example.test`, randomBytes(32)]);
+    const one = { memberIds: [memberOf['owner']] };
+    const answers = [
+      (await membersOf('manager', sales)).status,
+      (await setMembers('manager', sales, one)).status,
+      (await setMembers('owner', ofB, one)).status,
+      (await setMembers('owner', gone, one)).status,
+      (await setMembers('owner', randomUUID(), one)).status,
+      (await setMembers('owner', sales, { memberIds: [pending] })).status,
+      (await setMembers('owner', sales, { memberIds: [randomUUID()] })).status,
+      (await setMembers('owner', sales, { memberIds: [memberOf['owner'], memberOf['owner']] }))
+        .status,
+      (await setMembers('owner', sales, { memberIds: ['x'] })).status,
+    ];
+    expect(answers).toEqual([403, 403, 404, 404, 404, 400, 400, 400, 400]);
+    const rows = await q(
+      'SELECT count(*)::int AS n FROM workspace_members WHERE workspace_id = ANY($1::uuid[])',
+      [[sales, ofB]],
+    );
+    expect(rows.rows[0]).toEqual({ n: 0 });
   });
 });

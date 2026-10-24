@@ -39,6 +39,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/members/{id}/resend-invite',
       '/v1/workspaces',
       '/v1/workspaces/{id}',
+      '/v1/workspaces/{id}/members',
     ]);
   });
 });
