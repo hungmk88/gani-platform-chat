@@ -81,7 +81,7 @@ test('a stale version is refused with its sentence and nothing changes', async (
   await expect(view(page).getByRole('heading', { name: 'Nhân viên đang xử lý' })).toBeVisible();
 });
 
-test('an Owner assigns a held conversation from the members: a refusal is said, another pick works', async ({
+test('an Owner assigns among the people of the workspace: a refusal is said, another pick works', async ({
   page,
 }) => {
   await signIn(page, accountOf('owner'));
@@ -89,11 +89,25 @@ test('an Owner assigns a held conversation from the members: a refusal is said, 
   await page.getByRole('button', { name: 'Gán lại' }).click();
   const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
   const pick = dialog.getByLabel('Người nhận');
+  // The workspace has its Owner and Sales (the holder): the Admin of the company is not offered.
+  await expect(pick.getByRole('option')).toHaveText(['Người thử owner (Owner)']);
+  await expect(dialog).toContainText('Chỉ hiện người thuộc workspace của hội thoại.');
+  await expectAccessible(page);
+  await dialog.getByRole('button', { name: 'Hủy' }).click();
+
+  // Once in the workspace the Admin is offered; the stub still refuses them (422), as the API would for one it cannot take.
+  await page.goto('/settings/workspace');
+  await page.getByRole('button', { name: 'Người trong workspace Workspace thử' }).click();
+  const people = page.getByRole('dialog', { name: /Người trong workspace/ });
+  await people.getByRole('checkbox', { name: /Người thử admin/ }).check();
+  await people.getByRole('button', { name: 'Lưu người trong workspace' }).click();
+  await expect(people).toBeHidden();
+  await page.goto(`/inbox/${held.id}`);
+  await page.getByRole('button', { name: 'Gán lại' }).click();
   await expect(pick.getByRole('option')).toHaveText([
     'Người thử owner (Owner)',
     'Người thử admin (Admin)',
   ]);
-  await expectAccessible(page);
   await pick.selectOption({ label: 'Người thử admin (Admin)' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Không chuyển được cho người này.');
