@@ -121,5 +121,29 @@ export async function routeMembers(
     invitations.set(key, renewed);
     return send(res, 200, renewed);
   }
+  // Changing a role (N154): Owner and Admin, never one's own; an Admin never to or from Owner; an invitation is not a member (404);
+  // the company keeps an active Owner (409 last_owner). The stub answers the member in its new role without keeping it.
+  const changing = /^\/v1\/members\/([^/]+)\/role$/.exec(path);
+  if (req.method === 'PATCH' && changing) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const to = (await json(req))['role'];
+    if (typeof to !== 'string') return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    const actor = session.role;
+    const m = MEMBERS.find((x) => x.id === changing[1] && x.userId);
+    if (actor !== 'owner' && actor !== 'admin')
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    if (!m) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (
+      m.userId === `user-${actor}` ||
+      (actor === 'admin' && (m.role === 'owner' || to === 'owner'))
+    )
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    const owners = MEMBERS.filter(
+      (x) => x.role === 'owner' && x.status === 'active' && x.id !== m.id,
+    );
+    if (m.role === 'owner' && to !== 'owner' && owners.length === 0)
+      return problem(res, 409, 'last_owner', 'trace-e2e-409');
+    return send(res, 200, { ...m, role: to });
+  }
   return false;
 }

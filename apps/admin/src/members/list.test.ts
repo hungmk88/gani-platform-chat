@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { canResend, membersPath, twoFactorOf, withRenewed, type Member } from './list';
+import { errorOf } from '../api/errors';
+import {
+  canChangeRole,
+  canResend,
+  membersPath,
+  roleError,
+  twoFactorOf,
+  withMember,
+  withRenewed,
+  type Member,
+} from './list';
 
 const member = (over: Partial<Member>): Member => ({
   id: 'm1',
@@ -60,5 +70,32 @@ describe('withRenewed', () => {
     expect(next?.pages[0]?.data[1]).toMatchObject({ status: 'pending', expiresAt: 'new' });
     expect(next?.pages[0]?.data[0]).toBe(pages.pages[0]?.data[0]);
     expect(withRenewed(undefined, { id: 'm2', expiresAt: 'new' })).toBeUndefined();
+  });
+});
+
+describe('canChangeRole', () => {
+  it('lets an Owner change anyone but themselves, an Admin anyone but an Owner, never an invitation', () => {
+    expect(canChangeRole('owner', 'u9', member({ role: 'admin' }))).toBe(true);
+    expect(canChangeRole('owner', 'u9', member({ role: 'owner', status: 'suspended' }))).toBe(true);
+    expect(canChangeRole('owner', 'u1', member({}))).toBe(false);
+    expect(canChangeRole('admin', 'u9', member({}))).toBe(true);
+    expect(canChangeRole('admin', 'u9', member({ role: 'owner' }))).toBe(false);
+    expect(canChangeRole('owner', 'u9', member({ status: 'pending', userId: null }))).toBe(false);
+    expect(canChangeRole('manager', 'u9', member({}))).toBe(false);
+  });
+});
+
+describe('withMember and roleError', () => {
+  it('puts the answer of the API in place of its row', () => {
+    const pages = { pageParams: [null], pages: [{ data: [member({})], nextCursor: null }] };
+    expect(withMember(pages, member({ role: 'manager' }))?.pages[0]?.data[0]?.role).toBe('manager');
+    expect(withMember(undefined, member({}))).toBeUndefined();
+  });
+
+  it('says the last Owner, a refusal and a member gone in words of the screen', () => {
+    expect(roleError(errorOf(409, { code: 'last_owner' }))).toMatch(/ít nhất một Owner/);
+    expect(roleError(errorOf(403, { code: 'forbidden' }))).toBe('Bạn không đổi được vai trò này.');
+    expect(roleError(errorOf(404, { code: 'not_found' }))).toMatch(/Không tìm thấy/);
+    expect(roleError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
   });
 });
