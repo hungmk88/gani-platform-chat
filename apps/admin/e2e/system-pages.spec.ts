@@ -27,6 +27,30 @@ test('an unknown path of a signed-in person is the 404 inside the frame', async 
   await expectAccessible(page);
 });
 
+// A screen of the menu not built yet (most wait for their API) says so, with one way to a screen that is: never the 404, whose "Về
+// trang chính" would lead back to /overview, the home of Owner, Admin and Manager.
+test('the home of a Manager, not built yet, says so and opens the inbox', async ({ page }) => {
+  await signIn(page, accountOf('manager'));
+  await expect(page).toHaveURL('/overview');
+  await expect(
+    page.getByRole('heading', { name: 'Tổng quan: màn này chưa có trong bản hiện tại.' }),
+  ).toBeVisible();
+  await expectAccessible(page);
+  await page.getByRole('link', { name: 'Mở Hộp thư' }).click();
+  await expect(page).toHaveURL('/inbox');
+});
+
+test('a Viewer goes to the profile; an item outside the menu of the role is still the 404', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('viewer'));
+  await page.goto('/leads');
+  await expect(page.getByRole('heading', { name: /^Lead: màn này chưa có/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Mở hồ sơ cá nhân' })).toHaveAttribute('href', '/me');
+  const res = await page.goto('/settings/teams');
+  expect(res?.status()).toBe(404);
+});
+
 // An error of the frame comes back on "/" as well, so its one action asks again instead of going home (no loop).
 test('an error of the frame offers "Thử lại", not a way home', async ({ page }) => {
   await signIn(page, accountOf('manager+status-down'));
