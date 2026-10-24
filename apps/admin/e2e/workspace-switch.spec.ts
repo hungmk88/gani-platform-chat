@@ -9,13 +9,14 @@ import { accountOf } from './stub-api';
 test('T1: changing the workspace asks the new one, drops the old list and its realtime connection', async ({
   page,
 }) => {
+  await signIn(page, accountOf('sales+multi'));
+  // Counted from here: the page of the role opened its own connection, which the browser drops on leaving without a close event.
   const sockets: { url: string; closed: boolean }[] = [];
   page.on('websocket', (ws) => {
     const s = { url: ws.url(), closed: false };
     sockets.push(s);
     ws.on('close', () => (s.closed = true));
   });
-  await signIn(page, accountOf('sales+multi'));
   const first = page.waitForRequest((r) => r.url().includes('/v1/conversations?'));
   await page.goto('/inbox');
   expect(new URL((await first).url()).searchParams.get('workspaceId')).toBe('ws-e2e');
