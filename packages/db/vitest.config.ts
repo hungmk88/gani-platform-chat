@@ -25,6 +25,7 @@ export default defineConfig({
         'src/member-role-store.ts',
         'src/member-two-factor-store.ts',
         'src/message-store.ts',
+        'src/workspace-member-store.ts',
         'src/workspace-store.ts',
         'src/outbox-store.ts',
         'src/tenant-tx.ts',
