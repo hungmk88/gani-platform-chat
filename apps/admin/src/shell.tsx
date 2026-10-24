@@ -5,9 +5,24 @@ import type { Me } from './me';
 import { NavLink } from './nav-link';
 import { navFor, type Role } from './nav';
 import { SignOutButton } from './sign-out';
+import { WorkspaceSwitcher } from './workspace-switcher';
 
-/** The frame of every screen: the menu of the role on the left, the company and the person on top (Brief UI Phần 2). */
-export function Shell({ me, role, children }: { me: Me; role: Role; children: ReactNode }) {
+/**
+ * The frame of every screen: the menu of the role on the left, the company, the workspace being worked in (a choice when there are
+ * several, T1) and the person on top (Brief UI Phần 2).
+ */
+export function Shell({
+  me,
+  role,
+  workspaceId,
+  children,
+}: {
+  me: Me;
+  role: Role;
+  workspaceId: string | null;
+  children: ReactNode;
+}) {
+  const current = me.workspaces.find((w) => w.id === workspaceId);
   return (
     <div className="flex min-h-screen">
       <nav
@@ -35,10 +50,19 @@ export function Shell({ me, role, children }: { me: Me; role: Role; children: Re
       </nav>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between gap-4 border-b border-border px-4 py-2">
-          <span className="text-text-muted">
-            {me.org
-              ? `${me.org.name} · ${me.workspaces.map((w) => w.name).join(', ')}`
-              : 'Nền tảng — không thuộc công ty nào'}
+          <span className="flex items-center gap-2 text-text-muted">
+            {me.org ? (
+              <>
+                {me.org.name} ·{' '}
+                {current && me.workspaces.length > 1 ? (
+                  <WorkspaceSwitcher workspaces={me.workspaces} current={current.id} />
+                ) : (
+                  (current?.name ?? 'Chưa có workspace')
+                )}
+              </>
+            ) : (
+              'Nền tảng — không thuộc công ty nào'
+            )}
           </span>
           <span className="flex items-center gap-2">
             <Link href="/me" className="rounded-input px-2 py-1 hover:bg-bg-subtle">

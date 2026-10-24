@@ -184,7 +184,12 @@ function meOf(email: string): Me | null {
     org: operator
       ? null
       : { id: 'org-e2e', name: 'Công ty thử', role: role as Exclude<Role, 'platform_operator'> },
-    workspaces: operator ? [] : [{ id: 'ws-e2e', name: 'Workspace thử' }],
+    workspaces: operator
+      ? []
+      : [
+          { id: 'ws-e2e', name: 'Workspace thử' },
+          ...(email.includes('+multi@') ? [{ id: 'ws-e2e-2', name: 'Workspace hai' }] : []),
+        ],
   };
 }
 
@@ -303,7 +308,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
             (q.get('assignee') !== 'me' || c.assignedUserId === me?.id) &&
             (q.get('assignee') !== 'none' || c.assignedUserId === null) &&
             (!q.get('state') || c.state === q.get('state')) &&
-            (q.get('hold') !== 'true' || c.afterHoursHold),
+            (q.get('hold') !== 'true' || c.afterHoursHold) &&
+            (!q.get('workspaceId') || c.workspaceId === q.get('workspaceId')),
         );
     const from = Number(q.get('cursor') ?? 0);
     const size = session.email.includes('+many@') ? MANY_PAGE : STUB_PAGE;

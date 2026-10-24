@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { components } from '../api/schema';
 import type { Role } from '../nav';
-import { useApiPages } from '../query/provider';
+import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import {
   ASSIGNEE_LABEL,
@@ -40,7 +40,10 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const filter = filterOf(useSearchParams());
-  const list = useApiPages<Page>(['conversations', filter], (cursor) => listPath(filter, cursor));
+  const scope = useScope();
+  const list = useApiPages<Page>(['conversations', filter], (cursor) =>
+    listPath(filter, cursor, scope.workspaceId),
+  );
   const go = (f: ListFilter) => {
     const q = paramsOf(f).toString();
     router.replace(q ? `${pathname}?${q}` : pathname);
