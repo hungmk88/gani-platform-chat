@@ -21,6 +21,7 @@ const member = (over: Partial<Member>): Member => ({
   status: 'active',
   twoFactorEnabled: false,
   expiresAt: null,
+  maxConcurrentConversations: null,
   ...over,
 });
 

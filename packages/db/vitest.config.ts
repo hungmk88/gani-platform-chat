@@ -20,6 +20,7 @@ export default defineConfig({
         'src/inbound-store.ts',
         'src/invite-store.ts',
         'src/member-invite-store.ts',
+        'src/member-capacity-store.ts',
         'src/member-directory.ts',
         'src/member-role-store.ts',
         'src/member-two-factor-store.ts',

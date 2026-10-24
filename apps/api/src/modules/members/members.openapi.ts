@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
+  CapacityBodySchema,
   InvitationSchema,
   InviteBodySchema,
   MemberIdSchema,
@@ -69,6 +70,30 @@ export function registerMembers(registry: OpenAPIRegistry): void {
         'not_found: no member with this id in the organisation (an invitation is not a member yet).',
       ),
       409: problemResponse('last_owner: the organisation would be left without an active Owner.'),
+      503: EDGE_ERRORS[503],
+    },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/members/{id}/capacity',
+    summary:
+      "Set a member's own limit of conversations at once (C9, N156), 1 to 100. Owner or Admin, for any member (themselves too).",
+    tags: ['members'],
+    request: {
+      params: z.object({ id: MemberIdSchema }),
+      body: { content: { 'application/json': { schema: CapacityBodySchema } } },
+    },
+    responses: {
+      200: {
+        description: 'The member, with the new limit.',
+        content: { 'application/json': { schema: MemberSchema } },
+      },
+      400: problemResponse('validation_failed: the id or the limit.'),
+      401: EDGE_ERRORS[401],
+      403: problemResponse('forbidden: not an Owner or an Admin; or a refusal of the edge.'),
+      404: problemResponse(
+        'not_found: no member with this id in the organisation (an invitation is not a member yet).',
+      ),
       503: EDGE_ERRORS[503],
     },
   });
