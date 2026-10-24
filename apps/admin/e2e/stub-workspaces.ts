@@ -3,7 +3,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { Workspace } from '../src/workspaces/workspace';
-import type { Edge } from './stub-members';
+import { MEMBERS, type Edge } from './stub-members';
 
 /** The company of every session, by name; `ws-e2e` is the one `GET /v1/me` lists. */
 export const WORKSPACES: readonly Workspace[] = [
@@ -28,6 +28,7 @@ export const WORKSPACES: readonly Workspace[] = [
 ];
 
 const copies = new Map<string, Workspace[]>(); // session → its workspaces
+const people = new Map<string, Map<string, string[]>>(); // session → workspace id → its member ids
 
 /** Answers a route of /v1/workspaces and says true, or says false for any other path. `session` is null when signed out. */
 export async function routeWorkspaces(
@@ -45,6 +46,33 @@ export async function routeWorkspaces(
   copies.set(session.sid, mine);
   if (req.method === 'GET' && path === '/v1/workspaces')
     return (edge.send(res, 200, { data: mine }), true);
+  // The people of a workspace (N159): `ws-e2e` starts with the Owner and Sales of MEMBERS; a PUT takes members of the company
+  // (active or suspended), not an invitation, each once, at most 500, and sets the whole list.
+  const staff = /^\/v1\/workspaces\/([^/]+)\/members$/.exec(path)?.[1];
+  if (staff) {
+    if (!mine.some((x) => x.id === staff))
+      return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    const lists = people.get(session.sid) ?? new Map<string, string[]>();
+    people.set(session.sid, lists);
+    const start = staff === 'ws-e2e' ? [MEMBERS[0]!.id, MEMBERS[2]!.id] : [];
+    if (req.method === 'PUT') {
+      const ids = (await edge.json(req))['memberIds'];
+      const ok =
+        Array.isArray(ids) &&
+        ids.length <= 500 &&
+        new Set(ids).size === ids.length &&
+        ids.every((i) => MEMBERS.some((m) => m.id === i && m.userId));
+      if (!ok) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+      lists.set(staff, ids as string[]);
+    } else if (req.method !== 'GET') return false;
+    const ids = lists.get(staff) ?? start;
+    const data = MEMBERS.filter((m) => ids.includes(m.id)).map((m) => ({
+      memberId: m.id,
+      userId: m.userId!,
+      role: m.role,
+    }));
+    return (edge.send(res, 200, { data }), true);
+  }
   // Changing one (N157): name 1–100 trimmed, a time zone this runtime knows, a limit of 1 to 100; at least one, nothing else.
   const id = /^\/v1\/workspaces\/([^/]+)$/.exec(path)?.[1];
   const w = mine.find((x) => x.id === id);

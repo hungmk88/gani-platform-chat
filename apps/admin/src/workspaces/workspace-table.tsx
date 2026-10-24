@@ -4,18 +4,21 @@ import { useState } from 'react';
 
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { MembersDialog } from './members-dialog';
 import { WorkspaceDialog } from './workspace-dialog';
 import { TEMPLATE, type Workspace, type WorkspaceList } from './workspace';
 
 const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
- * The workspaces of the company (#21, `GET /v1/workspaces`, N157), by name, each changed in a dialog (`WorkspaceDialog`). Only
+ * The workspaces of the company (#21, `GET /v1/workspaces`, N157), by name, each changed in a dialog (`WorkspaceDialog`), its people
+ * picked in another (`MembersDialog`, N159). Only
  * Owner and Admin come here (the page checks), as the API allows.
  */
 export function WorkspaceTable() {
   const list = useApiQuery<WorkspaceList>(['workspaces'], '/v1/workspaces');
   const [editing, setEditing] = useState<Workspace | null>(null);
+  const [staffing, setStaffing] = useState<Workspace | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   if (list.isPending)
@@ -79,6 +82,17 @@ export function WorkspaceTable() {
                     }}
                   >
                     Sửa
+                  </button>{' '}
+                  <button
+                    type="button"
+                    className={button}
+                    aria-label={`Người trong workspace ${w.name}`}
+                    onClick={() => {
+                      setNotice(null);
+                      setStaffing(w);
+                    }}
+                  >
+                    Người
                   </button>
                 </td>
               </tr>
@@ -92,6 +106,14 @@ export function WorkspaceTable() {
           workspace={editing}
           onClose={() => setEditing(null)}
           onDone={(w) => setNotice(`Đã lưu workspace ${w.name}.`)}
+        />
+      ) : null}
+      {staffing ? (
+        <MembersDialog
+          key={staffing.id}
+          workspace={staffing}
+          onClose={() => setStaffing(null)}
+          onDone={(n) => setNotice(`Đã lưu: workspace ${staffing.name} có ${n} người.`)}
         />
       ) : null}
     </div>

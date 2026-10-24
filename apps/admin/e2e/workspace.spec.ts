@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
+import { MEMBERS } from './stub-members';
 import { WORKSPACES } from './stub-workspaces';
 
 // #21 Workspace (N157): the workspaces of the company, Owner and Admin only, each changed in a dialog that sends only what changed.
@@ -73,4 +74,37 @@ test('a dialog where nothing changed sends nothing and closes', async ({ page })
   await dialog.getByRole('button', { name: 'Lưu' }).click();
   await expect(dialog).toBeHidden();
   expect(patched).toBe(false);
+});
+
+test('an Admin picks the people of a workspace: members of the company only, the whole list sent', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/workspace');
+  await page.getByRole('button', { name: 'Người trong workspace Workspace thử' }).click();
+  const dialog = page.getByRole('dialog', { name: /Người trong workspace/ });
+  const people = dialog.getByRole('group');
+  await expect(people).toContainText('Đã chọn 2 / 4 người');
+  await expect(dialog.getByRole('checkbox')).toHaveCount(4); // the invitations are not offered
+  await expect(dialog.getByRole('checkbox', { name: /Người thử owner/ })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: /Người thử admin/ })).not.toBeChecked();
+  await dialog.getByRole('checkbox', { name: /Người thử admin/ }).check();
+  await dialog.getByRole('checkbox', { name: /Người thử sales/ }).uncheck();
+  await expectAccessible(page);
+  const put = page.waitForRequest((r) => r.method() === 'PUT');
+  await dialog.getByRole('button', { name: 'Lưu người trong workspace' }).click();
+  const { memberIds } = (await put).postDataJSON() as { memberIds: string[] };
+  expect([...memberIds].sort()).toEqual([MEMBERS[0]!.id, MEMBERS[1]!.id].sort());
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status')).toHaveText('Đã lưu: workspace Workspace thử có 2 người.');
+  await page.getByRole('button', { name: 'Người trong workspace Workspace thử' }).click();
+  await expect(dialog.getByRole('checkbox', { name: /Người thử admin/ })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: /Người thử sales/ })).not.toBeChecked();
+  let sent = false;
+  page.on('request', (r) => {
+    if (r.method() === 'PUT') sent = true;
+  });
+  await dialog.getByRole('button', { name: 'Lưu người trong workspace' }).click();
+  await expect(dialog).toBeHidden();
+  expect(sent).toBe(false); // nothing changed
 });
