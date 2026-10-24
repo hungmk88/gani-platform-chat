@@ -4,7 +4,10 @@ import { errorOf } from '../api/errors';
 import {
   canChangeRole,
   canResend,
+  canResetTwoFactor,
   membersPath,
+  reasonProblem,
+  resetError,
   roleError,
   twoFactorOf,
   withMember,
@@ -98,5 +101,29 @@ describe('withMember and roleError', () => {
     expect(roleError(errorOf(403, { code: 'forbidden' }))).toBe('Bạn không đổi được vai trò này.');
     expect(roleError(errorOf(404, { code: 'not_found' }))).toMatch(/Không tìm thấy/);
     expect(roleError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
+  });
+});
+
+describe('canResetTwoFactor, reasonProblem and resetError', () => {
+  it('follows the role rule, and only for a member who has a second factor', () => {
+    expect(canResetTwoFactor('owner', 'u9', member({ twoFactorEnabled: true }))).toBe(true);
+    expect(canResetTwoFactor('owner', 'u9', member({}))).toBe(false);
+    expect(canResetTwoFactor('owner', 'u1', member({ twoFactorEnabled: true }))).toBe(false);
+    expect(
+      canResetTwoFactor('admin', 'u9', member({ role: 'owner', twoFactorEnabled: true })),
+    ).toBe(false);
+  });
+
+  it('asks a reason of 1 to 500 characters', () => {
+    expect(reasonProblem('  ')).toMatch(/bắt buộc/);
+    expect(reasonProblem('x'.repeat(501))).toMatch(/500/);
+    expect(reasonProblem(' Mất điện thoại ')).toBeNull();
+  });
+
+  it('says a shared account, a refusal and a member gone in words of the screen', () => {
+    expect(resetError(errorOf(409, { code: 'shared_account' }))).toMatch(/quản trị nền tảng/);
+    expect(resetError(errorOf(403, { code: 'forbidden' }))).toMatch(/không đặt lại được/);
+    expect(resetError(errorOf(404, { code: 'not_found' }))).toMatch(/Không tìm thấy/);
+    expect(resetError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
   });
 });

@@ -13,6 +13,7 @@ import { RetryAction } from '../retry-button';
 import { expiryOf, invitableRoles, inviteError, type Invitation } from './invite';
 import {
   canChangeRole,
+  canResetTwoFactor,
   canResend,
   membersPath,
   STATUS,
@@ -20,6 +21,7 @@ import {
   withRenewed,
   type Member,
 } from './list';
+import { ResetDialog } from './reset-dialog';
 import { RoleDialog } from './role-dialog';
 
 type Page = components['schemas']['MemberPage'];
@@ -35,14 +37,20 @@ const badge = 'rounded-input px-2 py-1 text-12';
 /**
  * The members and invitations of the company (#19, `GET /v1/members`, N153), oldest first, by cursor. An invitation not taken can
  * be sent again from its row (`resend-invite`, waiting for the server); its row then shows the new expiry. One key per invitation
- * until it succeeds, as in the invite form. A member's role is changed from its row in a dialog (`RoleDialog`, N154).
+ * until it succeeds, as in the invite form. A member's role is changed (`RoleDialog`, N154) and their second factor reset
+ * (`ResetDialog`, N155) from its row, each in a dialog.
  */
 export function MemberList({ role, meId }: { role: Role; meId: string }) {
   const scope = useScope();
   const queries = useQueryClient();
   const again = useRef<{ id: string; key: string } | null>(null);
   const [editing, setEditing] = useState<Member | null>(null);
-  const [changed, setChanged] = useState<Member | null>(null);
+  const [resetting, setResetting] = useState<Member | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const done = (text: string) => {
+    resend.reset();
+    setNotice(text);
+  };
   const list = useApiPages<Page>(['members'], membersPath);
   const resend = useMutation<Invitation, ApiFailure, { member: Member; key: string }>({
     mutationFn: ({ member, key }) =>
@@ -61,7 +69,7 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
   });
   const sendAgain = (member: Member) => {
     if (resend.isPending) return;
-    setChanged(null);
+    setNotice(null);
     const key = again.current?.id === member.id ? again.current.key : crypto.randomUUID();
     again.current = { id: member.id, key };
     resend.mutate({ member, key });
@@ -103,10 +111,8 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
           ) : null}
           {resend.isSuccess ? (
             <p role="status">Đã gửi lại lời mời tới {resend.variables.member.email}.</p>
-          ) : changed ? (
-            <p role="status">
-              Đã đổi vai trò của {changed.name ?? changed.email} thành {ROLE_NAME[changed.role]}.
-            </p>
+          ) : notice ? (
+            <p role="status">{notice}</p>
           ) : null}
           <div className="overflow-x-auto rounded-card border border-border">
             <table className="w-full text-left">
@@ -161,6 +167,16 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
                               Đổi vai trò
                             </button>
                           ) : null}
+                          {canResetTwoFactor(role, meId, m) ? (
+                            <button
+                              type="button"
+                              className={button}
+                              aria-label={`Đặt lại 2FA của ${m.name ?? m.email}`}
+                              onClick={() => setResetting(m)}
+                            >
+                              Đặt lại 2FA…
+                            </button>
+                          ) : null}
                           {canResend(role, m) ? (
                             <button
                               type="button"
@@ -200,14 +216,25 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
           member={editing}
           roles={invitableRoles(role)}
           onClose={() => setEditing(null)}
-          onDone={(m) => {
-            resend.reset();
-            setChanged(m);
-          }}
+          onDone={(m) =>
+            done(`Đã đổi vai trò của ${m.name ?? m.email} thành ${ROLE_NAME[m.role]}.`)
+          }
+        />
+      ) : null}
+      {resetting ? (
+        <ResetDialog
+          key={resetting.id}
+          member={resetting}
+          onClose={() => setResetting(null)}
+          onDone={(m) =>
+            done(
+              `Đã đặt lại 2FA của ${m.name ?? m.email}. Mọi phiên đăng nhập của họ đã bị thu hồi.`,
+            )
+          }
         />
       ) : null}
       <p className="text-12 text-text-muted">
-        Team, giới hạn tải riêng, lần đăng nhập cuối và đặt lại 2FA: chờ API (N153).
+        Team, giới hạn tải riêng và lần đăng nhập cuối: chờ API (N153).
       </p>
     </section>
   );

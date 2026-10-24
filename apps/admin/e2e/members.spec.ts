@@ -157,3 +157,42 @@ test('an Admin changes no Owner and cannot pick Owner', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Hủy' }).click();
   await expect(dialog).toBeHidden();
 });
+
+test('an Owner resets the 2FA of a member with a reason; a shared account is said', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  await expect(list.getByRole('button', { name: 'Đặt lại 2FA của Người thử admin' })).toHaveCount(
+    0,
+  );
+  await list.getByRole('button', { name: 'Đặt lại 2FA của Người thử sales' }).click();
+  const dialog = page.getByRole('dialog', { name: /Đặt lại 2FA/ });
+  await dialog.getByRole('button', { name: 'Đặt lại 2FA' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText(/bắt buộc/);
+  await dialog.getByLabel(/Lý do/).fill('Mất điện thoại');
+  await expectAccessible(page);
+  const posted = page.waitForRequest((r) => r.url().endsWith('/2fa/reset'));
+  await dialog.getByRole('button', { name: 'Đặt lại 2FA' }).click();
+  const req = await posted;
+  expect(req.postDataJSON()).toEqual({ reason: 'Mất điện thoại' });
+  expect(req.headers()['idempotency-key']).toBeTruthy();
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText(/^Đã đặt lại 2FA của Người thử sales\./);
+  await expect(list.getByRole('row', { name: /sales@e2e\.test/ })).toContainText('Chưa bật');
+  await list.getByRole('button', { name: 'Đặt lại 2FA của Người thử support' }).click();
+  await dialog.getByLabel(/Lý do/).fill('Nhờ đặt lại');
+  await dialog.getByRole('button', { name: 'Đặt lại 2FA' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('quản trị nền tảng');
+});
+
+test('an Admin cannot reset the 2FA of an Owner', async ({ page }) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/members');
+  const list = page.getByRole('region', { name: 'Danh sách thành viên' });
+  await expect(list.getByRole('button', { name: 'Đặt lại 2FA của Người thử sales' })).toBeVisible();
+  await expect(list.getByRole('button', { name: 'Đặt lại 2FA của Người thử owner' })).toHaveCount(
+    0,
+  );
+});
