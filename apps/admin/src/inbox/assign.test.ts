@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Member } from '../members/list';
-import { assigneesOf, assignsFromList, canAssign } from './assign';
+import { assigneesOf, assignsFromList, canAssign, holderNameOf } from './assign';
 
 const member = (over: Partial<Member>): Member => ({
   id: 'm1',
@@ -12,6 +12,7 @@ const member = (over: Partial<Member>): Member => ({
   status: 'active',
   twoFactorEnabled: false,
   expiresAt: null,
+  maxConcurrentConversations: null,
   ...over,
 });
 
@@ -42,5 +43,19 @@ describe('assigneesOf', () => {
     );
     expect(out.map((o) => o.userId)).toEqual(['u2']);
     expect(assigneesOf([member({})], null).map((o) => o.userId)).toEqual(['u1']);
+  });
+});
+
+describe('holderNameOf', () => {
+  it('names the holder from the members, and leaves me, nobody and a stranger to holderOf', () => {
+    const members = [
+      member({ userId: 'u2', name: 'Hà Linh' }),
+      member({ userId: 'u3', name: null }),
+    ];
+    expect(holderNameOf(members, 'u2', 'u1')).toBe('Hà Linh');
+    expect(holderNameOf(members, 'u3', 'u1')).toBe('tranthu@example.test');
+    expect(holderNameOf(members, 'u1', 'u1')).toBeNull();
+    expect(holderNameOf(members, null, 'u1')).toBeNull();
+    expect(holderNameOf(members, 'u9', 'u1')).toBeNull();
   });
 });

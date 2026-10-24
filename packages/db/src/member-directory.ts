@@ -1,5 +1,5 @@
 import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
-import { boolean, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { cursorString, decodeCursor, encodeCursor } from './cursor.js';
 import type { Page } from './conversation-read.js';
@@ -22,6 +22,7 @@ const directory = pgSchema('app')
     twoFactorEnabled: boolean('two_factor_enabled').notNull(),
     inviteExpiresAt: timestamp('invite_expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    maxConcurrentConversations: integer('max_concurrent_conversations'),
   })
   .existing();
 
@@ -37,6 +38,8 @@ export interface MemberEntry {
   readonly twoFactorEnabled: boolean;
   readonly inviteExpiresAt: Date | null;
   readonly createdAt: Date;
+  /** The person's own limit of conversations at once in this organisation (C9, N156); null: the workspace's default applies. */
+  readonly maxConcurrentConversations: number | null;
 }
 
 // Oldest first, `id` breaking ties. The key as text with microseconds: a JavaScript Date would round it to milliseconds and the next
@@ -55,6 +58,7 @@ const columns = {
   twoFactorEnabled: directory.twoFactorEnabled,
   inviteExpiresAt: directory.inviteExpiresAt,
   createdAt: directory.createdAt,
+  maxConcurrentConversations: directory.maxConcurrentConversations,
 };
 
 /** One row of the directory, or null when the organisation of the transaction has no such member (or it is deleted). */

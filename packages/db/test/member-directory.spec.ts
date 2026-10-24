@@ -4,7 +4,13 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createDbPool, listMembers, withTenant } from '../src/index.js';
+import {
+  createDbPool,
+  listMembers,
+  loadMember,
+  setAgentCapacity,
+  withTenant,
+} from '../src/index.js';
 import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
@@ -127,6 +133,7 @@ describe('app.org_member_directory', () => {
       'two_factor_enabled',
       'invite_expires_at',
       'created_at',
+      'max_concurrent_conversations',
     ]);
   });
 
@@ -161,5 +168,61 @@ describe('listMembers', () => {
     expect(seen).toHaveLength(4);
     expect(new Set(seen).size).toBe(4);
     expect(seen.slice(1)).toEqual(shown.map((s) => s.member));
+  });
+});
+
+describe('setAgentCapacity (C9, N156)', () => {
+  const inA = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
+    withTenant(pool, { orgId: A, workspaceIds: [] }, fn);
+
+  it("makes the person's row the first time, then changes only its limit; the directory shows it, other orgs' rows never", async () => {
+    const { member } = shown[0]!;
+    const userId = (
+      await admin.query<{ user_id: string }>('SELECT user_id FROM org_members WHERE id = $1', [
+        member,
+      ])
+    ).rows[0]!.user_id;
+    const capacity = async () =>
+      (await inA((tx) => loadMember(tx, member)))?.maxConcurrentConversations;
+    expect(await capacity()).toBeNull();
+    expect(await inA((tx) => setAgentCapacity(tx, { id: uuidv7(), userId, max: 8 }))).toBeNull();
+    expect(await inA((tx) => setAgentCapacity(tx, { id: uuidv7(), userId, max: 3 }))).toBe(8);
+    expect(await capacity()).toBe(3);
+    const rows = await admin.query('SELECT org_id FROM agent_settings WHERE user_id = $1', [
+      userId,
+    ]);
+    expect(rows.rows).toEqual([{ org_id: A }]);
+    // The seeded owner of B has a row of B's: it never shows in A, even for the same person (the join is on the member's org).
+    const ownerB = seedUsers.get(B)!;
+    await admin.query(
+      `INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, 'sales', 'active')`,
+      [uuidv7(), A, ownerB],
+    );
+    try {
+      const byUser = new Map((await rowsOf(A)).map((r) => [r.id, r]));
+      const inAOfB = (
+        await admin.query<{ id: string }>(
+          'SELECT id FROM org_members WHERE org_id = $1 AND user_id = $2',
+          [A, ownerB],
+        )
+      ).rows[0]!.id;
+      const viewed = await asApp(A, () =>
+        app.query<{ max: number | null }>(
+          'SELECT max_concurrent_conversations AS max FROM app.org_member_directory WHERE id = $1',
+          [inAOfB],
+        ),
+      );
+      expect(byUser.has(inAOfB)).toBe(true);
+      expect(viewed.rows).toEqual([{ max: null }]);
+    } finally {
+      await admin.query('DELETE FROM org_members WHERE org_id = $1 AND user_id = $2', [A, ownerB]);
+    }
+  });
+
+  it('keeps the CHECK: a limit below 1 is refused by the database', async () => {
+    const userId = seedUsers.get(A)!;
+    await expect(
+      inA((tx) => setAgentCapacity(tx, { id: uuidv7(), userId, max: 0 })),
+    ).rejects.toThrow();
   });
 });

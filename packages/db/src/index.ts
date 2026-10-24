@@ -10,6 +10,7 @@ export * from './delivery-store.js';
 export * from './idempotency-store.js';
 export * from './inbound-store.js';
 export * from './invite-store.js';
+export * from './member-capacity-store.js';
 export * from './member-invite-store.js';
 export { listMembers, loadMember, type MemberEntry } from './member-directory.js';
 export * from './member-role-store.js';
