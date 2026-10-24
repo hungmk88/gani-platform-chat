@@ -126,8 +126,10 @@ Trang mặc định sau đăng nhập:
 
 ## Thành viên (#19)
 
-- `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403). Hôm nay chỉ có **Mời thành viên** (`POST /v1/members/invite`, N152): `src/members/invite.ts` + `invite-form.tsx`.
+- `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403): **Mời thành viên** (`POST /v1/members/invite`, N152; `src/members/invite.ts` + `invite-form.tsx`), rồi **Danh sách** (`GET /v1/members`, N153; `src/members/list.ts` + `member-list.tsx`).
 - Vai trò mời được theo Phụ lục B như `members.permissions.ts` của API: Owner mọi vai trò, Admin mọi vai trò trừ Owner. Email gửi đi đã cắt khoảng trắng, chữ thường (như API lưu).
 - Chờ máy chủ (tạo thành viên), không lạc quan. Một `Idempotency-Key` cho một cặp email + vai trò: bấm lại sau lỗi dùng lại khóa, API trả câu cũ và không gửi email lần hai.
 - Hạn link lấy từ `expiresAt` của API (U1, không ghi cứng 7 ngày). `emailSent: false` → nói lời mời đã tạo nhưng email chưa đi. 409 `duplicate_resource` → "Email này đang có lời mời chờ nhận."
-- Danh sách, đổi vai trò, giới hạn tải, đặt lại 2FA, gửi lại lời mời: chờ API (`GET /v1/members`, `resend-invite`, N152 mục c).
+- Email chưa đi (`emailSent: false`) → nút phụ **Gửi lại lời mời** (`POST /v1/members/{id}/resend-invite`, id của câu trả lời vừa nhận): một khóa cho một lời mời tới khi thành công; link mới, hạn mới theo API, link cũ hết dùng. 404 → "Lời mời này không còn chờ nhận".
+- Danh sách: thành viên và lời mời, cũ trước, "Tải thêm" theo cursor; tên (hoặc "Chưa nhận lời mời") + email, vai trò, 2FA ("Bắt buộc, chưa cài" cho Owner/Admin chưa bật), trạng thái (`active`/`suspended`/`pending`/`expired`, kèm hạn của lời mời chờ). Lời mời chờ hoặc hết hạn có nút **Gửi lại lời mời** trên dòng nếu người xem được mời vai trò đó (Admin không gửi lại lời mời Owner); xong thì dòng sửa theo câu trả lời (`withRenewed`). Mời hay gửi lại từ form thì đọc lại danh sách.
+- Team, giới hạn tải riêng, lần đăng nhập cuối, đổi vai trò, đặt lại 2FA: chờ API (N153 "Để sau"). API giả của màn này nằm ở `e2e/stub-members.ts` (`MEMBERS`, trang 4 dòng).

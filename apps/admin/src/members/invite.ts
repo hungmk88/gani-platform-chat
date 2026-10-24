@@ -49,12 +49,15 @@ const EXPIRES = new Intl.DateTimeFormat('vi-VN', {
   timeZone: 'Asia/Ho_Chi_Minh',
 });
 
-/** What the person reads once the invitation exists: the expiry is the API's, never a constant here (U1). */
+/** The end of an invitation link in Vietnam time: always the API's `expiresAt`, never a constant here (U1). */
+export const expiryOf = (iso: string): string => EXPIRES.format(new Date(iso));
+
+/** What the person reads once the invitation exists. */
 export function invitedText(i: Pick<Invitation, 'email' | 'expiresAt' | 'emailSent'>): string {
-  const until = EXPIRES.format(new Date(i.expiresAt));
+  const until = expiryOf(i.expiresAt);
   return i.emailSent
     ? `Đã gửi lời mời tới ${i.email}. Link dùng được đến ${until}.`
-    : `Đã tạo lời mời cho ${i.email} nhưng chưa gửi được email. Lời mời vẫn còn đến ${until}; gửi lại khi có nút Gửi lại.`;
+    : `Đã tạo lời mời cho ${i.email} nhưng chưa gửi được email. Lời mời vẫn còn đến ${until}; bấm Gửi lại lời mời để thử lại.`;
 }
 
 /** The refusals this screen says in its own words; the rest keep the sentence of the P9 table. */
@@ -62,5 +65,7 @@ export function inviteError(error: ApiError): string {
   if (error.code === 'duplicate_resource') return 'Email này đang có lời mời chờ nhận.';
   if (error.code === 'forbidden') return 'Bạn không mời được vai trò này.';
   if (error.code === 'validation_failed') return 'Email hoặc vai trò chưa hợp lệ.';
+  if (error.code === 'not_found')
+    return 'Lời mời này không còn chờ nhận: đã được nhận hoặc đã hết hiệu lực.';
   return error.message;
 }

@@ -1,10 +1,11 @@
-import { and, asc, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
 import { boolean, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { cursorString, decodeCursor, encodeCursor } from './cursor.js';
 import type { Page } from './conversation-read.js';
 import type { OrgRole } from './schema/org-members.js';
 import type { TenantTx } from './tenant-tx.js';
+import { assertUuid } from './validate.js';
 
 // The list of the screen of members (#19, N153): app.org_member_directory (migration 202610221100), the members of the transaction's
 // organisation with their email. The view itself filters by app.current_org(); who may read it (an Owner or an Admin, N12) is the
@@ -44,6 +45,27 @@ const SORT_TEXT = sql<string>`to_char(${directory.createdAt} AT TIME ZONE 'UTC',
 const SORT_FORMAT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+const columns = {
+  id: directory.id,
+  userId: directory.userId,
+  email: directory.email,
+  displayName: directory.displayName,
+  role: directory.role,
+  status: directory.status,
+  twoFactorEnabled: directory.twoFactorEnabled,
+  inviteExpiresAt: directory.inviteExpiresAt,
+  createdAt: directory.createdAt,
+};
+
+/** One row of the directory, or null when the organisation of the transaction has no such member (or it is deleted). */
+export async function loadMember(tx: TenantTx, id: string): Promise<MemberEntry | null> {
+  const [row] = await tx
+    .select(columns)
+    .from(directory)
+    .where(eq(directory.id, assertUuid(id, 'id')));
+  return (row as MemberEntry | undefined) ?? null;
+}
+
 /** The members and pending invitations of the organisation, `limit` (1..100) at a time; `cursor` is the `nextCursor` of a page. */
 export async function listMembers(
   tx: TenantTx,
@@ -59,18 +81,7 @@ export async function listMembers(
     where.push(sql`(${directory.createdAt}, ${directory.id}) > (${at}::timestamptz, ${id}::uuid)`);
   }
   const rows = await tx
-    .select({
-      id: directory.id,
-      userId: directory.userId,
-      email: directory.email,
-      displayName: directory.displayName,
-      role: directory.role,
-      status: directory.status,
-      twoFactorEnabled: directory.twoFactorEnabled,
-      inviteExpiresAt: directory.inviteExpiresAt,
-      createdAt: directory.createdAt,
-      sortKey: SORT_TEXT,
-    })
+    .select({ ...columns, sortKey: SORT_TEXT })
     .from(directory)
     .where(and(...where))
     .orderBy(asc(directory.createdAt), asc(directory.id))

@@ -1,10 +1,12 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
 import { api } from '../api/client';
 import { ApiFailure, unwrap } from '../query/fetch';
+import { scopeKey } from '../query/keys';
+import { useScope } from '../query/provider';
 import {
   emailOf,
   invitedText,
@@ -19,10 +21,16 @@ const input = 'rounded-input border border-border-strong px-3 py-2';
 
 /**
  * "Mời thành viên" (#19, N152): `POST /v1/members/invite`, waiting for the server (it creates a member). One Idempotency-Key per
- * email and role: sending the same again after a failure reuses it, so the API answers once and sends one email.
+ * email and role: sending the same again after a failure reuses it, so the API answers once and sends one email. An invitation
+ * whose email did not go can be sent again (`POST /v1/members/{id}/resend-invite`): one key per invitation until it succeeds.
  */
 export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
+  const scope = useScope();
+  const queries = useQueryClient();
+  // The list below shows every invitation: read it again once one is made or renewed.
+  const reload = () => void queries.invalidateQueries({ queryKey: scopeKey(scope, 'members') });
   const last = useRef<{ what: string; key: string } | null>(null);
+  const again = useRef<{ id: string; key: string } | null>(null);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<OrgRole>(roles.includes('sales') ? 'sales' : roles[0]!);
   const [problem, setProblem] = useState<string | null>(null);
@@ -42,12 +50,28 @@ export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
         last.current = null;
         setDone(i);
         setEmail('');
+        reload();
       },
     },
   );
+  const resend = useMutation<Invitation, ApiFailure, { id: string; key: string }>({
+    mutationFn: ({ id, key }) =>
+      unwrap(
+        api<Invitation>(`/v1/members/${encodeURIComponent(id)}/resend-invite`, {
+          method: 'POST',
+          idempotencyKey: key,
+        }),
+      ),
+    onSuccess: (i) => {
+      again.current = null;
+      setDone(i);
+      reload();
+    },
+  });
 
   const submit = () => {
-    if (invite.isPending) return;
+    if (invite.isPending || resend.isPending) return;
+    resend.reset();
     const checked = emailOf(email);
     setDone(null);
     if (!checked.ok) return setProblem(checked.problem);
@@ -58,7 +82,14 @@ export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
     invite.mutate({ email: checked.email, role, key });
   };
 
-  const error = invite.error?.error ?? null;
+  const sendAgain = (id: string) => {
+    if (resend.isPending) return;
+    const key = again.current?.id === id ? again.current.key : crypto.randomUUID();
+    again.current = { id, key };
+    resend.mutate({ id, key });
+  };
+
+  const error = (resend.error ?? invite.error)?.error ?? null;
   return (
     <form
       aria-labelledby="invite-title"
@@ -110,6 +141,17 @@ export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
         </div>
       ) : null}
       {done ? <p role="status">{invitedText(done)}</p> : null}
+      {done && !done.emailSent ? (
+        <button
+          type="button"
+          className="self-start rounded-input border border-border-strong px-4 py-2 disabled:opacity-70"
+          disabled={resend.isPending}
+          aria-busy={resend.isPending}
+          onClick={() => sendAgain(done.id)}
+        >
+          {resend.isPending ? 'Đang gửi lại…' : 'Gửi lại lời mời'}
+        </button>
+      ) : null}
       <button
         type="submit"
         className="self-start rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70"

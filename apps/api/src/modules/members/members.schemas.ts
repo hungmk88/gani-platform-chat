@@ -50,3 +50,6 @@ export const MemberSchema = z
   })
   .meta({ id: 'Member' });
 export const MemberPageSchema = cursorPage(MemberSchema, 'MemberPage');
+
+/** `PATCH /v1/members/{id}/role` (N154). */
+export const RoleBodySchema = z.object({ role: RoleSchema }).strict().meta({ id: 'RoleBody' });

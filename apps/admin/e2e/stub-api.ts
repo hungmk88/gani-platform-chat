@@ -5,7 +5,7 @@
 // `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
 // `+stale@` gets version_conflict on every other action, `+window@` has the channel's free window closed when answering;
 // the tokens of INVITES open #4 Nhận lời mời.
-// Inviting a member: `da-moi@` already has a pending invitation (409), `khong-gui@` is invited but its email does not go.
+// Inviting a member: `da-moi@` and `khong-gui@` (e2e/stub-members.ts).
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -13,6 +13,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
+import { routeMembers } from './stub-members';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
@@ -114,7 +115,6 @@ interface Session {
 const sessions = new Map<string, Session>();
 const pending = new Map<string, string>(); // pending id → email
 const usedBackupCodes = new Set<string>();
-const invitations = new Map<string, unknown>(); // Idempotency-Key → the invitation it made (keys are random, so tests never share one)
 
 function send(
   res: ServerResponse,
@@ -404,30 +404,11 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     session.sent.set(key, m);
     return send(res, 201, m);
   }
-  // Inviting a member (N152): Owner any role, Admin any but Owner; `da-moi@` has a pending invitation, `khong-gui@` gets no email.
-  if (req.method === 'POST' && path === '/v1/members/invite') {
-    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
-    const key = req.headers['idempotency-key'];
-    const { email, role } = await json(req);
-    if (typeof key !== 'string' || typeof email !== 'string' || typeof role !== 'string')
-      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
-    const done = invitations.get(key);
-    if (done) return send(res, 201, done);
-    const actor = meOf(session.email)?.org?.role;
-    if (actor !== 'owner' && (actor !== 'admin' || role === 'owner'))
-      return problem(res, 403, 'forbidden', 'trace-e2e-403');
-    if (email.startsWith('da-moi@'))
-      return problem(res, 409, 'duplicate_resource', 'trace-e2e-409');
-    const invitation = {
-      id: randomUUID(),
-      email,
-      role,
-      status: 'pending',
-      expiresAt: '2026-10-29T03:00:00.000Z',
-      emailSent: !email.startsWith('khong-gui@'),
-    };
-    invitations.set(key, invitation);
-    return send(res, 201, invitation);
+  // #19 Thành viên (N152, N153): e2e/stub-members.ts.
+  if (path?.startsWith('/v1/members')) {
+    const sid = cookie(req, SESSION) ?? '';
+    const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
+    if (await routeMembers(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
