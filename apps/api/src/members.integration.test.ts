@@ -13,7 +13,7 @@ import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
 import { hashPassword } from './modules/auth/password.js';
 
-// GET /v1/members (N153), PATCH /v1/members/{id}/role (N154), POST /v1/members/invite and …/resend-invite (N152) over HTTP with the
+// GET /v1/members (N153), PATCH /v1/members/{id}/role (N154), POST /v1/members/{id}/2fa/reset (N155), POST /v1/members/invite and …/resend-invite (N152) over HTTP with the
 // whole application, PostgreSQL and an SMTP server in the process. Org A: two owners, an admin (with a second factor), a manager; org B
 // has a pending invitation of its own.
 const need = (name: string): string => {
@@ -370,6 +370,120 @@ describe('PATCH /v1/members/{id}/role', () => {
     );
     expect(owners.rows[0]).toEqual({ n: 1 });
     await q("UPDATE org_members SET role = 'owner' WHERE id = ANY($1::uuid[])", [[one, two]]);
+  });
+});
+
+describe('POST /v1/members/{id}/2fa/reset', () => {
+  const memberOf = async (key: string) =>
+    (
+      (
+        await q('SELECT id FROM org_members WHERE user_id = $1 AND org_id = $2', [
+          people[key],
+          orgA,
+        ])
+      ).rows[0] as { id: string }
+    ).id;
+  const reset = (
+    who: string,
+    id: string,
+    body: unknown = { reason: 'Mất điện thoại' },
+    key?: string,
+  ) => post(who, `${id}/2fa/reset`, body, key);
+  const statusOf = async (who: string) =>
+    (await fetch(`${url}/v1/members`, { headers: { cookie: cookies[who] ?? '' } })).status;
+  const enabled = async (key: string) =>
+    (
+      (await q('SELECT two_factor_enabled FROM users WHERE id = $1', [people[key]])).rows[0] as {
+        two_factor_enabled: boolean;
+      }
+    ).two_factor_enabled;
+
+  it('turns off the second factor and ends the sessions; audited with the reason, once; an Admin must enrol again', async () => {
+    await person('lost', 'admin', await hashPassword(PW));
+    const id = await memberOf('lost');
+    expect(await statusOf('lost')).toBe(200);
+    const key = randomUUID();
+    const first = await reset('owner', id, undefined, key);
+    expect(first).toMatchObject({
+      status: 200,
+      body: { id, role: 'admin', twoFactorEnabled: false },
+    });
+    expect(await reset('owner', id, undefined, key)).toEqual(first); // the same key: the first answer, nothing done twice
+    const audit = await q(
+      'SELECT actor_user_id, detail FROM audit_logs WHERE target_id = $1 AND action = $2',
+      [id, 'member.two_factor_reset'],
+    );
+    expect(audit.rows).toEqual([
+      { actor_user_id: people['owner'], detail: { reason: 'Mất điện thoại' } },
+    ]);
+    expect(await statusOf('lost')).toBe(401);
+    // Signing in again asks for no code, and the 2FA gate sends an Admin to set one up first (N93).
+    const res = await fetch(`${url}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: ORIGIN,
+        'x-forwarded-for': [...randomBytes(4)].join('.'),
+      },
+      body: JSON.stringify({ email: `${people['lost']}@example.test`, password: PW }),
+    });
+    expect(await res.json()).not.toHaveProperty('twoFactorRedirect');
+    cookies['lost'] = res.headers
+      .getSetCookie()
+      .map((x) => x.split(';')[0])
+      .join('; ');
+    const gated = await fetch(`${url}/v1/members`, { headers: { cookie: cookies['lost'] } });
+    expect([gated.status, ((await gated.json()) as { code?: string }).code]).toEqual([
+      403,
+      'two_factor_setup_required',
+    ]);
+  });
+
+  it('refuses their own, an Admin and an Owner, other roles, invitations, strangers, a shared person and a bad request', async () => {
+    await person('shared', 'sales', await hashPassword(PW));
+    await q(
+      `INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, 'viewer', 'suspended')`,
+      [randomUUID(), orgB, people['shared']],
+    );
+    const [owner, manager, shared] = [
+      await memberOf('owner'),
+      await memberOf('manager'),
+      await memberOf('shared'),
+    ];
+    const pending = (await invite('owner', email(), 'sales')).body['id'] as string;
+    const answers = [
+      await reset('owner', owner),
+      await reset('admin', owner),
+      await reset('manager', await memberOf('admin')),
+      await reset('owner', pending),
+      await reset('owner', randomUUID()),
+      await reset('owner', shared),
+      await reset('owner', manager, { reason: '  ' }),
+      await reset('owner', manager, { reason: 'x'.repeat(501) }),
+      await reset('owner', manager, {}),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 403, 403, 404, 404, 409, 400, 400, 400]);
+    expect(answers[5]?.body['code']).toBe('shared_account');
+    const noKey = await fetch(`${url}/v1/members/${manager}/2fa/reset`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: cookies['owner'] ?? '',
+        origin: ORIGIN,
+      },
+      body: JSON.stringify({ reason: 'r' }),
+    });
+    expect(noKey.status).toBe(400);
+    expect([await enabled('owner'), await enabled('admin'), await statusOf('owner')]).toEqual([
+      true,
+      true,
+      200,
+    ]);
+    const audit = await q(
+      'SELECT count(*)::int AS n FROM audit_logs WHERE target_id = ANY($1::uuid[]) AND action = $2',
+      [[owner, manager, shared], 'member.two_factor_reset'],
+    );
+    expect(audit.rows[0]).toEqual({ n: 0 });
   });
 });
 

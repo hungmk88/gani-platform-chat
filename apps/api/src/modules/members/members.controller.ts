@@ -10,6 +10,7 @@ import {
   newInviteToken,
   readOrgSummary,
   renewMemberInvite,
+  resetMemberTwoFactor,
   updateMemberRole,
   type OrgRole,
   type PendingInvite,
@@ -35,12 +36,13 @@ import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
 import { InviteMailer } from './invite-mailer.js';
-import { mayInvite, roleChangeRefusal } from './members.permissions.js';
+import { mayInvite, mayResetTwoFactor, roleChangeRefusal } from './members.permissions.js';
 import {
   InviteBodySchema,
   MemberIdSchema,
   MemberListQuerySchema,
   RoleBodySchema,
+  TwoFactorResetBodySchema,
 } from './members.schemas.js';
 import { memberView } from './members.view.js';
 
@@ -61,6 +63,16 @@ export class LastOwnerError extends Error {
   constructor() {
     super('The organisation must keep an active Owner.');
     this.name = 'LastOwnerError';
+  }
+}
+
+/** 409 when the person is also a member of another organisation or a platform operator (N155): one company cannot lower that account. */
+export class SharedAccountError extends Error {
+  readonly status = 409;
+  readonly code = 'shared_account';
+  constructor() {
+    super('This person belongs to another organisation too; ask a platform operator.');
+    this.name = 'SharedAccountError';
   }
 }
 
@@ -132,6 +144,41 @@ export class MembersController {
           detail: { from: target.role, to: body.role },
         });
       }
+      return loadMember(tx, id);
+    });
+    if (!member) throw new NotFoundException();
+    return memberView(member, new Date());
+  }
+
+  /**
+   * Turns off the second factor of a member who lost it and ends every session of theirs (Q-U20-1, N155): an Owner or an Admin, not
+   * their own, an Admin not an Owner's. One TenantTx: the member locked, the check, app.reset_member_two_factor, an audit row with the
+   * reason (never a log). An Owner or an Admin must enrol again at the next sign-in (the 2FA gate); their socket ends within 60 s.
+   */
+  @Post(':id/2fa/reset')
+  @HttpCode(200)
+  @Idempotent()
+  async resetTwoFactor(
+    @Param('id', new ZodPipe(MemberIdSchema)) id: string,
+    @Body(new ZodPipe(TwoFactorResetBodySchema)) body: { reason: string },
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayInvite(ctx.role)) throw new ForbiddenException();
+    const member = await this.database.withTenant(ctx, async (tx) => {
+      const target = await lockMember(tx, id);
+      if (!target) throw new NotFoundException();
+      if (!mayResetTwoFactor(ctx, target)) throw new ForbiddenException();
+      const result = await resetMemberTwoFactor(tx, id);
+      if (result === 'not_found') throw new NotFoundException();
+      if (result === 'shared') throw new SharedAccountError();
+      await insertAuditLog(tx, {
+        id: uuidv7(),
+        actorUserId: ctx.userId,
+        action: 'member.two_factor_reset',
+        targetType: 'org_member',
+        targetId: id,
+        detail: { reason: body.reason },
+      });
       return loadMember(tx, id);
     });
     if (!member) throw new NotFoundException();

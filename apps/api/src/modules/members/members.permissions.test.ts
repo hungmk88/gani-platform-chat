@@ -1,7 +1,7 @@
 import type { OrgRole } from '@gani/db';
 import { describe, expect, it } from 'vitest';
 
-import { mayInvite, roleChangeRefusal } from './members.permissions.js';
+import { mayInvite, mayResetTwoFactor, roleChangeRefusal } from './members.permissions.js';
 
 describe('mayInvite (Phụ lục B)', () => {
   it('lets an Owner invite every role, an Admin every role but Owner, and nobody else', () => {
@@ -49,5 +49,17 @@ describe('roleChangeRefusal (N154)', () => {
     expect(
       roleChangeRefusal({ userId: 'u-m', role: 'manager' }, member('sales'), 'viewer', ['x']),
     ).toBe('forbidden');
+  });
+});
+
+describe('mayResetTwoFactor (N155)', () => {
+  const target = (role: OrgRole) => ({ userId: 'u-target', role });
+
+  it("lets an Owner reset anyone else's, an Admin anyone's but an Owner's, and nobody their own or below Admin", () => {
+    expect(mayResetTwoFactor({ userId: 'u-o', role: 'owner' }, target('owner'))).toBe(true);
+    expect(mayResetTwoFactor({ userId: 'u-a', role: 'admin' }, target('admin'))).toBe(true);
+    expect(mayResetTwoFactor({ userId: 'u-a', role: 'admin' }, target('owner'))).toBe(false);
+    expect(mayResetTwoFactor({ userId: 'u-target', role: 'owner' }, target('owner'))).toBe(false);
+    expect(mayResetTwoFactor({ userId: 'u-m', role: 'manager' }, target('sales'))).toBe(false);
   });
 });
