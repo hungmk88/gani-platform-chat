@@ -288,7 +288,7 @@ describe('what each role may read and change, from the catalog', () => {
 
   it('keeps exactly the expected columns: a new one has to be looked at here', async () => {
     const expected =
-      'id org_id workspace_id type external_account_id display_name app_id app_secret_enc oa_secret_key_enc access_token_enc refresh_token_enc key_version access_token_expires_at refresh_token_expires_at last_refreshed_at refresh_claimed_at status last_error created_by deleted_at created_at updated_at';
+      'id org_id workspace_id type external_account_id display_name app_id app_secret_enc oa_secret_key_enc access_token_enc refresh_token_enc key_version access_token_expires_at refresh_token_expires_at last_refreshed_at refresh_claimed_at status last_error created_by deleted_at created_at updated_at team_id';
     expect(await columns()).toEqual(expected.split(' '));
   });
 
@@ -314,6 +314,7 @@ describe('what each role may read and change, from the catalog', () => {
       'last_error',
       'deleted_at',
       'updated_at',
+      'team_id',
     ]);
     for (const column of await columns()) {
       expect(await privilege('app_role', column, 'SELECT'), column).toBe(true);

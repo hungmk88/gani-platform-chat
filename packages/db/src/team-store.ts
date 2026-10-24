@@ -19,6 +19,8 @@ export interface TeamRow {
   readonly isDefault: boolean;
   /** People in the team who are still members of the organisation. */
   readonly memberCount: number;
+  /** The live channel accounts the team answers (N161), by id. */
+  readonly channelIds: readonly string[];
   readonly createdAt: Date;
 }
 
@@ -36,6 +38,9 @@ const liveMembers = sql<number>`(
   JOIN public.org_members om ON om.org_id = tm.org_id AND om.user_id = tm.user_id
   WHERE tm.org_id = teams.org_id AND tm.team_id = teams.id AND tm.deleted_at IS NULL
     AND om.deleted_at IS NULL AND om.status <> 'pending')`;
+const channelIds = sql<string[]>`ARRAY(
+  SELECT ca.id FROM public.channel_accounts ca
+  WHERE ca.org_id = teams.org_id AND ca.team_id = teams.id AND ca.deleted_at IS NULL ORDER BY ca.id)`;
 
 const columns = {
   id: teams.id,
@@ -45,6 +50,7 @@ const columns = {
   description: teams.description,
   isDefault: teams.isDefault,
   memberCount: liveMembers,
+  channelIds,
   createdAt: teams.createdAt,
 };
 // Company-wide teams (workspace_id NULL, N14) are not served yet: every query here names a workspace.

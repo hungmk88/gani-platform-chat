@@ -24,6 +24,8 @@ export const channelAccounts = pgTable('channel_accounts', {
   refreshClaimedAt: timestamp('refresh_claimed_at', { withTimezone: true }),
   status: text('status').notNull().default('disconnected'),
   lastError: text('last_error'),
+  /** The team that answers the channel (N161); none: the default team of the workspace. */
+  teamId: uuid('team_id'),
   createdBy: uuid('created_by'),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
