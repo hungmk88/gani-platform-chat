@@ -49,9 +49,12 @@ const EXPIRES = new Intl.DateTimeFormat('vi-VN', {
   timeZone: 'Asia/Ho_Chi_Minh',
 });
 
-/** What the person reads once the invitation exists: the expiry is the API's, never a constant here (U1). */
+/** The end of an invitation link in Vietnam time: always the API's `expiresAt`, never a constant here (U1). */
+export const expiryOf = (iso: string): string => EXPIRES.format(new Date(iso));
+
+/** What the person reads once the invitation exists. */
 export function invitedText(i: Pick<Invitation, 'email' | 'expiresAt' | 'emailSent'>): string {
-  const until = EXPIRES.format(new Date(i.expiresAt));
+  const until = expiryOf(i.expiresAt);
   return i.emailSent
     ? `Đã gửi lời mời tới ${i.email}. Link dùng được đến ${until}.`
     : `Đã tạo lời mời cho ${i.email} nhưng chưa gửi được email. Lời mời vẫn còn đến ${until}; bấm Gửi lại lời mời để thử lại.`;

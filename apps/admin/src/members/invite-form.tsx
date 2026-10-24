@@ -1,10 +1,12 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
 import { api } from '../api/client';
 import { ApiFailure, unwrap } from '../query/fetch';
+import { scopeKey } from '../query/keys';
+import { useScope } from '../query/provider';
 import {
   emailOf,
   invitedText,
@@ -23,6 +25,10 @@ const input = 'rounded-input border border-border-strong px-3 py-2';
  * whose email did not go can be sent again (`POST /v1/members/{id}/resend-invite`): one key per invitation until it succeeds.
  */
 export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
+  const scope = useScope();
+  const queries = useQueryClient();
+  // The list below shows every invitation: read it again once one is made or renewed.
+  const reload = () => void queries.invalidateQueries({ queryKey: scopeKey(scope, 'members') });
   const last = useRef<{ what: string; key: string } | null>(null);
   const again = useRef<{ id: string; key: string } | null>(null);
   const [email, setEmail] = useState('');
@@ -44,6 +50,7 @@ export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
         last.current = null;
         setDone(i);
         setEmail('');
+        reload();
       },
     },
   );
@@ -58,6 +65,7 @@ export function InviteForm({ roles }: { roles: readonly OrgRole[] }) {
     onSuccess: (i) => {
       again.current = null;
       setDone(i);
+      reload();
     },
   });
 
