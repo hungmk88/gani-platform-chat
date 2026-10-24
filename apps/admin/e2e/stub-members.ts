@@ -19,7 +19,7 @@ const invitedBy = new Map<string, string>(); // invitation id → the session th
 export const MEMBERS = [
   ['owner', 'Người thử owner', 'owner@e2e.test', 'owner', 'active', true],
   ['admin', 'Người thử admin', 'admin@e2e.test', 'admin', 'active', false],
-  ['sales', 'Người thử sales', 'sales@e2e.test', 'sales', 'active', false],
+  ['sales', 'Người thử sales', 'sales@e2e.test', 'sales', 'active', true],
   ['support', 'Người thử support', 'support@e2e.test', 'support', 'suspended', true],
   ['moi', null, 'moi@example.test', 'sales', 'pending', false],
   ['cu', null, 'cu@example.test', 'owner', 'expired', false],
@@ -120,6 +120,30 @@ export async function routeMembers(
     const renewed = { ...first, expiresAt: '2026-10-30T03:00:00.000Z', emailSent: true };
     invitations.set(key, renewed);
     return send(res, 200, renewed);
+  }
+  // Resetting a second factor (N155): the rules of a role change, a reason of 1 to 500 characters, an Idempotency-Key; the
+  // support member of MEMBERS is also in another company here (409 shared_account). The stub answers without keeping it.
+  const resetting = /^\/v1\/members\/([^/]+)\/2fa\/reset$/.exec(path);
+  if (req.method === 'POST' && resetting) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const key = req.headers['idempotency-key'];
+    const reason = (await json(req))['reason'];
+    if (
+      typeof key !== 'string' ||
+      typeof reason !== 'string' ||
+      !reason.trim() ||
+      reason.length > 500
+    )
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    const actor = session.role;
+    const m = MEMBERS.find((x) => x.id === resetting[1] && x.userId);
+    if (actor !== 'owner' && actor !== 'admin')
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    if (!m) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (m.userId === `user-${actor}` || (actor === 'admin' && m.role === 'owner'))
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    if (m.role === 'support') return problem(res, 409, 'shared_account', 'trace-e2e-shared');
+    return send(res, 200, { ...m, twoFactorEnabled: false });
   }
   // Changing a role (N154): Owner and Admin, never one's own; an Admin never to or from Owner; an invitation is not a member (404);
   // the company keeps an active Owner (409 last_owner). The stub answers the member in its new role without keeping it.

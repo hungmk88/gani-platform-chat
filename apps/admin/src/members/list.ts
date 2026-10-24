@@ -1,5 +1,5 @@
 // The list of #19 Thành viên (`GET /v1/members`, N153): members and invitations as the table says them, and who may change whose
-// role (N154). Team, own load limit, last sign-in and 2FA reset are not in the API yet (N153 "Để sau"): no column for them.
+// role (N154) or reset whose second factor (N155). Team, own load limit and last sign-in are not in the API yet (N153 "Để sau").
 import type { InfiniteData } from '@tanstack/react-query';
 
 import type { ApiError } from '../api/errors';
@@ -98,5 +98,31 @@ export function roleError(error: ApiError): string {
   if (error.code === 'forbidden') return 'Bạn không đổi được vai trò này.';
   if (error.code === 'not_found')
     return 'Không tìm thấy thành viên này. Tải lại trang rồi thử lại.';
+  return error.message;
+}
+
+/** Q-U20-1, N155: whoever may change the member's role may reset their second factor, once they have one; never their own. */
+export const canResetTwoFactor = (
+  actor: Role,
+  meId: string,
+  m: Pick<Member, 'status' | 'role' | 'userId' | 'twoFactorEnabled'>,
+): boolean => m.twoFactorEnabled && canChangeRole(actor, meId, m);
+
+export const MAX_REASON = 500;
+
+/** Why the reason of a reset cannot be sent, or null: required, at most 500 characters (TwoFactorResetBody of the API). */
+export function reasonProblem(raw: string): string | null {
+  const reason = raw.trim();
+  if (!reason) return 'Ghi lý do đặt lại (bắt buộc, lưu vào nhật ký).';
+  if (reason.length > MAX_REASON) return `Lý do tối đa ${MAX_REASON} ký tự.`;
+  return null;
+}
+
+/** The refusals of `POST /v1/members/{id}/2fa/reset`; `shared_account` (N155) is not in the P9 table. */
+export function resetError(error: ApiError): string {
+  if (error.code === 'shared_account')
+    return 'Người này còn thuộc công ty khác hoặc là quản trị nền tảng: nhờ quản trị nền tảng đặt lại.';
+  if (error.code === 'forbidden') return 'Bạn không đặt lại được 2FA của người này.';
+  if (error.code === 'not_found') return roleError(error);
   return error.message;
 }
