@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent, useRef } from 'react';
 
 import type { components } from '../api/schema';
-import { useApiPages } from '../query/provider';
+import { useApiPages, useScope } from '../query/provider';
 import { neighbour, openId, SHORTCUTS } from './keys';
 import { filterOf, listPath, paramsOf } from './list';
 
@@ -20,7 +20,10 @@ export function InboxKeys() {
   const router = useRouter();
   const pathname = usePathname();
   const filter = filterOf(useSearchParams());
-  const list = useApiPages<Page>(['conversations', filter], (cursor) => listPath(filter, cursor));
+  const scope = useScope();
+  const list = useApiPages<Page>(['conversations', filter], (cursor) =>
+    listPath(filter, cursor, scope.workspaceId),
+  );
   const table = useRef<HTMLDialogElement>(null);
 
   const onKey = useEffectEvent((key: string) => {

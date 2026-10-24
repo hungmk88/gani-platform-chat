@@ -18,11 +18,11 @@ describe('filterOf and paramsOf', () => {
 
 describe('listPath', () => {
   it('asks the API with its own words', () => {
-    expect(listPath(NO_FILTER, null)).toBe('/v1/conversations?assignee=any&limit=50');
-    expect(listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q' }, 'c1')).toBe(
-      '/v1/conversations?assignee=none&limit=50&state=HUMAN_WAITING_Q&cursor=c1',
+    expect(listPath(NO_FILTER, null, null)).toBe('/v1/conversations?assignee=any&limit=50');
+    expect(listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q' }, 'c1', 'w1')).toBe(
+      '/v1/conversations?assignee=none&limit=50&workspaceId=w1&state=HUMAN_WAITING_Q&cursor=c1',
     );
-    expect(listPath({ assignee: 'me', state: 'hold' }, null)).toBe(
+    expect(listPath({ assignee: 'me', state: 'hold' }, null, null)).toBe(
       '/v1/conversations?assignee=me&limit=50&hold=true',
     );
   });

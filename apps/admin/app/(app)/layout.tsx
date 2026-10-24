@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
@@ -9,6 +10,7 @@ import { QueryProvider } from '../../src/query/provider';
 import { RealtimeProvider } from '../../src/realtime/realtime';
 import { Shell } from '../../src/shell';
 import { SystemPage } from '../../src/system-page';
+import { pickWorkspace, WORKSPACE_COOKIE } from '../../src/workspace-choice';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   // Who is signed in and whether 2FA must be set up first (security-status exists today), then who they are (`GET /v1/me`).
@@ -22,9 +24,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (result.kind === 'error') return <SystemPage kind="error" traceId={result.traceId} />;
   const role = roleOf(result.me);
   if (!role) return <SystemPage kind="forbidden" />;
-  const scope: Scope = { orgId: result.me.org?.id ?? null, workspaceId: null };
+  // The workspace chosen in the top bar (T1), among the person's own: changing it changes the key of QueryProvider below.
+  const chosen = (await cookies()).get(WORKSPACE_COOKIE)?.value;
+  const scope: Scope = {
+    orgId: result.me.org?.id ?? null,
+    workspaceId: pickWorkspace(result.me.workspaces, chosen),
+  };
   const shell = (
-    <Shell me={result.me} role={role}>
+    <Shell me={result.me} role={role} workspaceId={scope.workspaceId}>
       {children}
     </Shell>
   );

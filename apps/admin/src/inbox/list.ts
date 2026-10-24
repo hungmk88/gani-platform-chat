@@ -50,9 +50,10 @@ export function paramsOf(f: ListFilter): URLSearchParams {
   return p;
 }
 
-/** `GET /v1/conversations` of a filter and a cursor (the API: assignee me|none|any, state, hold=true). */
-export function listPath(f: ListFilter, cursor: string | null): string {
+/** `GET /v1/conversations` of a filter and a cursor in the workspace being worked in (the API: assignee me|none|any, state, hold=true). */
+export function listPath(f: ListFilter, cursor: string | null, workspaceId: string | null): string {
   const p = new URLSearchParams({ assignee: f.assignee, limit: '50' });
+  if (workspaceId) p.set('workspaceId', workspaceId);
   if (f.state === 'hold') p.set('hold', 'true');
   else if (f.state !== 'all') p.set('state', f.state);
   if (cursor) p.set('cursor', cursor);
