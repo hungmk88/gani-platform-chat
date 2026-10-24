@@ -1,17 +1,26 @@
 'use client';
 
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { api } from '../api/client';
 import type { components } from '../api/schema';
-import type { Role } from '../nav';
+import { ROLE_NAME, type Role } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
-import { expiryOf, inviteError, ROLE_NAME, type Invitation } from './invite';
-import { canResend, membersPath, STATUS, twoFactorOf, withRenewed, type Member } from './list';
+import { expiryOf, invitableRoles, inviteError, type Invitation } from './invite';
+import {
+  canChangeRole,
+  canResend,
+  membersPath,
+  STATUS,
+  twoFactorOf,
+  withRenewed,
+  type Member,
+} from './list';
+import { RoleDialog } from './role-dialog';
 
 type Page = components['schemas']['MemberPage'];
 
@@ -26,12 +35,14 @@ const badge = 'rounded-input px-2 py-1 text-12';
 /**
  * The members and invitations of the company (#19, `GET /v1/members`, N153), oldest first, by cursor. An invitation not taken can
  * be sent again from its row (`resend-invite`, waiting for the server); its row then shows the new expiry. One key per invitation
- * until it succeeds, as in the invite form.
+ * until it succeeds, as in the invite form. A member's role is changed from its row in a dialog (`RoleDialog`, N154).
  */
 export function MemberList({ role, meId }: { role: Role; meId: string }) {
   const scope = useScope();
   const queries = useQueryClient();
   const again = useRef<{ id: string; key: string } | null>(null);
+  const [editing, setEditing] = useState<Member | null>(null);
+  const [changed, setChanged] = useState<Member | null>(null);
   const list = useApiPages<Page>(['members'], membersPath);
   const resend = useMutation<Invitation, ApiFailure, { member: Member; key: string }>({
     mutationFn: ({ member, key }) =>
@@ -50,6 +61,7 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
   });
   const sendAgain = (member: Member) => {
     if (resend.isPending) return;
+    setChanged(null);
     const key = again.current?.id === member.id ? again.current.key : crypto.randomUUID();
     again.current = { id: member.id, key };
     resend.mutate({ member, key });
@@ -91,6 +103,10 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
           ) : null}
           {resend.isSuccess ? (
             <p role="status">Đã gửi lại lời mời tới {resend.variables.member.email}.</p>
+          ) : changed ? (
+            <p role="status">
+              Đã đổi vai trò của {changed.name ?? changed.email} thành {ROLE_NAME[changed.role]}.
+            </p>
           ) : null}
           <div className="overflow-x-auto rounded-card border border-border">
             <table className="w-full text-left">
@@ -134,18 +150,30 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
                         ) : null}
                       </td>
                       <td className="p-2">
-                        {canResend(role, m) ? (
-                          <button
-                            type="button"
-                            className={button}
-                            aria-label={`Gửi lại lời mời cho ${m.email}`}
-                            disabled={resend.isPending}
-                            aria-busy={resend.isPending && resend.variables.member.id === m.id}
-                            onClick={() => sendAgain(m)}
-                          >
-                            Gửi lại lời mời
-                          </button>
-                        ) : null}
+                        <div className="flex flex-wrap gap-2">
+                          {canChangeRole(role, meId, m) ? (
+                            <button
+                              type="button"
+                              className={button}
+                              aria-label={`Đổi vai trò của ${m.name ?? m.email}`}
+                              onClick={() => setEditing(m)}
+                            >
+                              Đổi vai trò
+                            </button>
+                          ) : null}
+                          {canResend(role, m) ? (
+                            <button
+                              type="button"
+                              className={button}
+                              aria-label={`Gửi lại lời mời cho ${m.email}`}
+                              disabled={resend.isPending}
+                              aria-busy={resend.isPending && resend.variables.member.id === m.id}
+                              onClick={() => sendAgain(m)}
+                            >
+                              Gửi lại lời mời
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -166,8 +194,20 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
           ) : null}
         </>
       )}
+      {editing ? (
+        <RoleDialog
+          key={editing.id}
+          member={editing}
+          roles={invitableRoles(role)}
+          onClose={() => setEditing(null)}
+          onDone={(m) => {
+            resend.reset();
+            setChanged(m);
+          }}
+        />
+      ) : null}
       <p className="text-12 text-text-muted">
-        Team, giới hạn tải riêng, lần đăng nhập cuối, đổi vai trò và đặt lại 2FA: chờ API (N153).
+        Team, giới hạn tải riêng, lần đăng nhập cuối và đặt lại 2FA: chờ API (N153).
       </p>
     </section>
   );

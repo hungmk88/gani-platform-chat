@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
 import { api } from '../api/client';
+import { ROLE_NAME } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useScope } from '../query/provider';
@@ -12,7 +13,6 @@ import {
   invitedText,
   inviteError,
   MAX_EMAIL,
-  ROLE_NAME,
   type Invitation,
   type OrgRole,
 } from './invite';
