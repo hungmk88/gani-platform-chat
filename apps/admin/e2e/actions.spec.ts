@@ -80,3 +80,34 @@ test('a stale version is refused with its sentence and nothing changes', async (
   );
   await expect(view(page).getByRole('heading', { name: 'Nhân viên đang xử lý' })).toBeVisible();
 });
+
+test('an Owner assigns a held conversation from the members: a refusal is said, another pick works', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto(`/inbox/${held.id}`);
+  await page.getByRole('button', { name: 'Gán lại' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
+  const pick = dialog.getByLabel('Người nhận');
+  await expect(pick.getByRole('option')).toHaveText([
+    'Người thử owner (Owner)',
+    'Người thử admin (Admin)',
+  ]);
+  await expectAccessible(page);
+  await pick.selectOption({ label: 'Người thử admin (Admin)' });
+  await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Không chuyển được cho người này.');
+  const posted = page.waitForRequest((r) => r.url().endsWith('/assign'));
+  await pick.selectOption({ label: 'Người thử owner (Owner)' });
+  await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
+  expect((await posted).postDataJSON()).toEqual({ version: 1, toUserId: 'user-owner' });
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Phụ trách: Tôi')).toBeVisible();
+});
+
+test('a Manager has no "Gán lại" until the list of recipients (U31)', async ({ page }) => {
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/inbox/${held.id}`);
+  await expect(page.getByText(/Phụ trách:/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Gán lại' })).toHaveCount(0);
+});

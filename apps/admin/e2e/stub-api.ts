@@ -13,7 +13,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
-import { routeMembers } from './stub-members';
+import { MEMBERS, routeMembers } from './stub-members';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
@@ -316,6 +316,24 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     return send(res, 200, { data: own.slice(from, from + STUB_PAGE), nextCursor: next });
   }
   // The actions of the Inbox (P9, P14): Idempotency-Key required, the version read, the FSM's from-states.
+  // Assigning (T16/T21, Phụ lục B row 16): Owner, Admin, Manager; to an active member of MEMBERS who may hold it, not its holder.
+  // The Admin of MEMBERS is not in this conversation's workspace here, so picking them answers 422 invalid_assignee.
+  const assign = /^\/v1\/conversations\/([^/]+)\/assign$/.exec(path ?? '');
+  if (req.method === 'POST' && assign) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const { version, toUserId } = await json(req);
+    const me = meOf(session.email);
+    const c = session.conversations.find((x) => x.id === assign[1]);
+    if (!c || !me) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    if (!['owner', 'admin', 'manager'].includes(me.org?.role ?? ''))
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    if (version !== c.version) return problem(res, 409, 'version_conflict', 'trace-e2e-version');
+    const to = MEMBERS.find((m) => m.userId === toUserId && m.status === 'active');
+    if (!to || toUserId === c.assignedUserId || to.userId === 'user-admin')
+      return problem(res, 422, 'invalid_assignee', 'trace-e2e-422');
+    Object.assign(c, { state: 'HUMAN_ACTIVE', assignedUserId: to.userId, version: c.version + 1 });
+    return send(res, 200, c);
+  }
   const act = /^\/v1\/conversations\/([^/]+)\/(claim|wait-customer|close)$/.exec(path ?? '');
   if (req.method === 'POST' && act) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
