@@ -138,6 +138,13 @@ Trang mặc định sau đăng nhập:
 - **Người trong workspace** (`GET/PUT /v1/workspaces/{id}/members`, N159): nút "Người" trên dòng, hộp thoại ô chọn cho mọi thành viên đã có tài khoản (active/suspended, không lời mời; đọc hết các trang `GET /v1/members`, tối đa 500), người của workspace đã tích sẵn (`src/workspaces/workspace-members.ts` + `members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`). Có hiệu lực từ request kế tiếp của mỗi người. 400 `validation_failed` (có người không còn là thành viên) → tải lại rồi chọn lại.
 - Giờ làm việc, ngày nghỉ, SLA, cách phân bổ (prototype #21, spec-M8 §3.3–3.5): chờ API. API giả: `e2e/stub-workspaces.ts` (mỗi phiên một bản sao).
 
+## Team (#20)
+
+- `/settings/teams`, Owner và Admin như menu (Phụ lục B); API cho Manager đọc team của mình, chờ cùng quyết định với `/settings/workspace`. Team của **workspace đang chọn** ở thanh trên (`useScope().workspaceId`, T1).
+- Danh sách `GET /v1/teams?workspaceId=` (A4, N160; theo tên): tên + mã, nhãn "Mặc định", mô tả, số người (`src/teams/teams.ts` + `team-list.tsx`).
+- **Tạo team** (`POST /v1/teams`): tên 1–100, mô tả tối đa 500 (không bắt buộc, trống là không có), cắt khoảng trắng như API (`teamDraftOf`). Chờ máy chủ, một `Idempotency-Key` cho một cặp tên + mô tả; xong thì team vào danh sách theo tên (`withTeam`). Mã (slug) do API sinh.
+- Sửa, xóa, đặt mặc định, người của team: chờ A4-T2b; kênh team phụ trách: chờ API (N160 "Để sau"). API giả: `e2e/stub-teams.ts`.
+
 ## Thành viên (#19)
 
 - `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403): **Mời thành viên** (`POST /v1/members/invite`, N152; `src/members/invite.ts` + `invite-form.tsx`), rồi **Danh sách** (`GET /v1/members`, N153; `src/members/list.ts` + `member-list.tsx`).

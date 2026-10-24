@@ -1965,6 +1965,180 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The live teams of a workspace by name (N160); a Manager sees only the teams they are in. */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUIDv7. */
+                    workspaceId: components["schemas"]["Uuid"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The teams. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamList"];
+                    };
+                };
+                /** @description validation_failed: the workspaceId. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: an Owner, an Admin, or a Manager for their own teams; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id in the organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Make a team in a workspace (N160). The slug is made from the name, without accents; a taken one gets -2, -3…. */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
+                    "Idempotency-Key": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TeamCreate"];
+                };
+            };
+            responses: {
+                /** @description The team. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Team"];
+                    };
+                };
+                /** @description validation_failed: a field or the Idempotency-Key header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin changes teams (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id in the organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_in_progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_key_reused: the same key with another request. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2181,6 +2355,26 @@ export interface components {
         };
         WorkspaceMembersBody: {
             memberIds: components["schemas"]["Uuid"][];
+        };
+        TeamList: {
+            data: components["schemas"]["Team"][];
+        };
+        Team: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            name: string;
+            slug: string;
+            description: string | null;
+            /** @description The team of the workspace that takes what no other rule sends anywhere. */
+            isDefault: boolean;
+            memberCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TeamCreate: {
+            workspaceId: components["schemas"]["Uuid"];
+            name: string;
+            description?: string;
         };
     };
     responses: never;
