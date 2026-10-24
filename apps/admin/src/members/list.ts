@@ -139,12 +139,19 @@ export const canSetCapacity = (actor: Role, m: Pick<Member, 'status' | 'userId'>
 
 export const MAX_CAPACITY = 100;
 
-/** The cell of the limit: nothing for an invitation, the workspace's default when none is set (null, N156). */
-export function capacityOf(m: Pick<Member, 'status' | 'maxConcurrentConversations'>): string {
+/**
+ * The cell of the limit: nothing for an invitation, the workspace's default when none is set (null, N156), with its number when the
+ * default of the workspace being worked in is known (`GET /v1/workspaces`, N157).
+ */
+export function capacityOf(
+  m: Pick<Member, 'status' | 'maxConcurrentConversations'>,
+  workspaceDefault: number | null = null,
+): string {
   if (m.status === 'pending' || m.status === 'expired') return '—';
-  return m.maxConcurrentConversations === null
+  if (m.maxConcurrentConversations !== null) return `${m.maxConcurrentConversations} hội thoại`;
+  return workspaceDefault === null
     ? 'Theo mặc định workspace'
-    : `${m.maxConcurrentConversations} hội thoại`;
+    : `Theo mặc định workspace (${workspaceDefault})`;
 }
 
 /** The limit typed, or why it cannot be sent: a whole number of 1 to 100 (CapacityBody of the API). */

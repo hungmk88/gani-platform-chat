@@ -17,7 +17,7 @@ export const WORKSPACES: readonly Workspace[] = [
     createdAt: '2026-10-01T03:00:00.000Z',
   },
   {
-    id: '0190c000-0000-7000-8000-0000000000a2',
+    id: 'ws-e2e', // the id of `GET /v1/me`, so the screens find the workspace being worked in
     slug: 'b2b',
     name: 'Workspace thử',
     template: 'b2b_sales',

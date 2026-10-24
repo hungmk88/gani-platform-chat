@@ -143,6 +143,8 @@ describe('canSetCapacity, capacityOf, capacityValue and capacityError', () => {
   it('says the limit, the default of the workspace, or nothing for an invitation', () => {
     expect(capacityOf(member({ maxConcurrentConversations: 8 }))).toBe('8 hội thoại');
     expect(capacityOf(member({}))).toBe('Theo mặc định workspace');
+    expect(capacityOf(member({}), 5)).toBe('Theo mặc định workspace (5)');
+    expect(capacityOf(member({ maxConcurrentConversations: 8 }), 5)).toBe('8 hội thoại');
     expect(capacityOf(member({ status: 'expired', maxConcurrentConversations: 3 }))).toBe('—');
   });
 

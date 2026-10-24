@@ -8,9 +8,10 @@ import type { components } from '../api/schema';
 import { ROLE_NAME, type Role } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
-import { useApiPages, useScope } from '../query/provider';
+import { useApiPages, useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { expiryOf, invitableRoles, inviteError, type Invitation } from './invite';
+import type { WorkspaceList } from '../workspaces/workspace';
 import { CapacityDialog } from './capacity-dialog';
 import {
   canChangeRole,
@@ -56,6 +57,10 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
     setNotice(text);
   };
   const list = useApiPages<Page>(['members'], membersPath);
+  // The default limit of the workspace being worked in, said beside a member without their own; nothing more if it fails.
+  const workspaces = useApiQuery<WorkspaceList>(['workspaces'], '/v1/workspaces');
+  const byDefault =
+    workspaces.data?.data.find((w) => w.id === scope.workspaceId)?.defaultMaxConcurrent ?? null;
   const resend = useMutation<Invitation, ApiFailure, { member: Member; key: string }>({
     mutationFn: ({ member, key }) =>
       unwrap(
@@ -159,7 +164,7 @@ export function MemberList({ role, meId }: { role: Role; meId: string }) {
                           <div className="text-12 text-text-muted">Hạn {expiryOf(m.expiresAt)}</div>
                         ) : null}
                       </td>
-                      <td className="p-2">{capacityOf(m)}</td>
+                      <td className="p-2">{capacityOf(m, byDefault)}</td>
                       <td className="p-2">
                         <div className="flex flex-wrap gap-2">
                           {canChangeRole(role, meId, m) ? (
