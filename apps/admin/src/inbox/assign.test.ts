@@ -44,6 +44,12 @@ describe('assigneesOf', () => {
     expect(out.map((o) => o.userId)).toEqual(['u2']);
     expect(assigneesOf([member({})], null).map((o) => o.userId)).toEqual(['u1']);
   });
+
+  it('keeps only the people of the workspace once they are known', () => {
+    const all = [member({}), member({ id: 'm2', userId: 'u2' })];
+    expect(assigneesOf(all, null, new Set(['m2'])).map((o) => o.userId)).toEqual(['u2']);
+    expect(assigneesOf(all, null, new Set()).map((o) => o.userId)).toEqual([]);
+  });
 });
 
 describe('holderNameOf', () => {
