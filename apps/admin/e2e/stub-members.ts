@@ -1,4 +1,5 @@
-// #19 Thành viên for the e2e stub API only (N152, N153): inviting, sending an invitation again, the list of the company.
+// #19 Thành viên for the e2e stub API only (N152–N156): inviting, sending an invitation again, the list of the company, a role,
+// a second factor reset, a load limit.
 // `da-moi@` already has a pending invitation (409), `khong-gui@` is invited but its email does not go. Never deployed.
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -36,6 +37,7 @@ export const MEMBERS = [
     : status === 'pending'
       ? '2026-10-28T03:00:00.000Z'
       : '2026-10-20T03:00:00.000Z',
+  maxConcurrentConversations: who === 'sales' ? 8 : null, // the others follow the workspace's default (N156)
 }));
 /** The page size of the stub's member list, small so that "Tải thêm" is tested. */
 export const MEMBERS_PAGE = 4;
@@ -144,6 +146,20 @@ export async function routeMembers(
       return problem(res, 403, 'forbidden', 'trace-e2e-403');
     if (m.role === 'support') return problem(res, 409, 'shared_account', 'trace-e2e-shared');
     return send(res, 200, { ...m, twoFactorEnabled: false });
+  }
+  // A member's own load limit (N156): Owner and Admin, for anyone with an account (themselves too), a whole number of 1 to 100. The
+  // stub answers the member with the limit without keeping it.
+  const limiting = /^\/v1\/members\/([^/]+)\/capacity$/.exec(path);
+  if (req.method === 'PATCH' && limiting) {
+    if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
+    const max = (await json(req))['maxConcurrentConversations'];
+    if (typeof max !== 'number' || !Number.isInteger(max) || max < 1 || max > 100)
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    if (session.role !== 'owner' && session.role !== 'admin')
+      return problem(res, 403, 'forbidden', 'trace-e2e-403');
+    const m = MEMBERS.find((x) => x.id === limiting[1] && x.userId);
+    if (!m) return problem(res, 404, 'not_found', 'trace-e2e-404');
+    return send(res, 200, { ...m, maxConcurrentConversations: max });
   }
   // Changing a role (N154): Owner and Admin, never one's own; an Admin never to or from Owner; an invitation is not a member (404);
   // the company keeps an active Owner (409 last_owner). The stub answers the member in its new role without keeping it.
