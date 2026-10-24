@@ -22,6 +22,7 @@ export default defineConfig({
         'src/modules/members/members.controller.ts',
         'src/modules/members/members.module.ts',
         'src/modules/workspaces/workspaces.controller.ts',
+        'src/modules/teams/teams.controller.ts',
       ],
     },
   },

@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
+import { registerTeams } from '../modules/teams/teams.openapi.js';
 import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
 import { problemResponse as problem, UuidSchema } from './schemas.js';
 
@@ -99,6 +100,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerConversations,
   registerMembers,
   registerWorkspaces,
+  registerTeams,
 ];
 
 export function buildOpenApiDocument() {
