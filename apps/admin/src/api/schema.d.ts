@@ -1809,6 +1809,162 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/workspaces/{id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The people of a workspace (N159), Owner or Admin. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The people of the workspace, by role. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkspaceMemberList"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin (Phụ lục B "Cài đặt workspace"); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id in the organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        /** Set the whole list of people of a workspace by member id (N159): the others leave it, the new ones join. Owner or Admin. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMembersBody"];
+                };
+            };
+            responses: {
+                /** @description The people of the workspace, by role. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkspaceMemberList"];
+                    };
+                };
+                /** @description validation_failed: the id, more than 500 or the same member twice, or an id that is not a member of the organisation. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin (Phụ lục B "Cài đặt workspace"); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id in the organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2013,6 +2169,18 @@ export interface components {
             name?: string;
             timezone?: string;
             defaultMaxConcurrent?: number;
+        };
+        WorkspaceMemberList: {
+            data: components["schemas"]["WorkspaceMember"][];
+        };
+        WorkspaceMember: {
+            memberId: components["schemas"]["Uuid"];
+            userId: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            role: "owner" | "admin" | "manager" | "sales" | "support" | "marketing" | "viewer";
+        };
+        WorkspaceMembersBody: {
+            memberIds: components["schemas"]["Uuid"][];
         };
     };
     responses: never;

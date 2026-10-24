@@ -829,6 +829,64 @@
           }
         },
         "additionalProperties": false
+      },
+      "WorkspaceMemberList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceMember"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "WorkspaceMember": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "userId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "manager",
+              "sales",
+              "support",
+              "marketing",
+              "viewer"
+            ]
+          }
+        },
+        "required": [
+          "memberId",
+          "userId",
+          "role"
+        ]
+      },
+      "WorkspaceMembersBody": {
+        "type": "object",
+        "properties": {
+          "memberIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "memberIds"
+        ],
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -2725,6 +2783,175 @@
           },
           "400": {
             "description": "validation_failed: the id, or nothing to change, or a field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin (Phụ lục B \"Cài đặt workspace\"); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no workspace with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{id}/members": {
+      "get": {
+        "summary": "The people of a workspace (N159), Owner or Admin.",
+        "tags": [
+          "workspaces"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The people of the workspace, by role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin (Phụ lục B \"Cài đặt workspace\"); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no workspace with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set the whole list of people of a workspace by member id (N159): the others leave it, the new ones join. Owner or Admin.",
+        "tags": [
+          "workspaces"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMembersBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The people of the workspace, by role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, more than 500 or the same member twice, or an id that is not a member of the organisation.",
             "content": {
               "application/problem+json": {
                 "schema": {

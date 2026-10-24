@@ -1,4 +1,4 @@
-import { workspaces } from '@gani/db';
+import { orgMembers, workspaces } from '@gani/db';
 import { z } from 'zod';
 
 import { UuidSchema } from '../../openapi/schemas.js';
@@ -44,3 +44,22 @@ export const WorkspaceChangeSchema = z
   .strict()
   .refine((change) => Object.keys(change).length > 0, 'nothing to change')
   .meta({ id: 'WorkspaceChange' });
+
+/** One person of a workspace (N159): `memberId` is the id of `GET /v1/members`. */
+export const WorkspaceMemberSchema = z
+  .object({ memberId: UuidSchema, userId: UuidSchema, role: z.enum(orgMembers.role.enumValues) })
+  .meta({ id: 'WorkspaceMember' });
+export const WorkspaceMemberListSchema = z
+  .object({ data: z.array(WorkspaceMemberSchema) })
+  .meta({ id: 'WorkspaceMemberList' });
+
+/** `PUT /v1/workspaces/{id}/members` (N159): the whole list, members of the organisation by their member id. */
+export const WorkspaceMembersBodySchema = z
+  .object({
+    memberIds: z
+      .array(UuidSchema)
+      .max(500)
+      .refine((ids) => new Set(ids).size === ids.length, 'no member twice'),
+  })
+  .strict()
+  .meta({ id: 'WorkspaceMembersBody' });

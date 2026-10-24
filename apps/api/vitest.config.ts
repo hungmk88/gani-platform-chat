@@ -21,6 +21,7 @@ export default defineConfig({
         'src/modules/auth/invitations.ts',
         'src/modules/members/members.controller.ts',
         'src/modules/members/members.module.ts',
+        'src/modules/workspaces/workspaces.controller.ts',
       ],
     },
   },

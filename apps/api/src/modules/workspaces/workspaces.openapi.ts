@@ -6,6 +6,8 @@ import {
   WorkspaceChangeSchema,
   WorkspaceIdSchema,
   WorkspaceListSchema,
+  WorkspaceMemberListSchema,
+  WorkspaceMembersBodySchema,
   WorkspaceSchema,
 } from './workspaces.schemas.js';
 
@@ -48,6 +50,47 @@ export function registerWorkspaces(registry: OpenAPIRegistry): void {
       401: EDGE_ERRORS[401],
       403: forbidden,
       404: problemResponse('not_found: no workspace with this id in the organisation.'),
+      503: EDGE_ERRORS[503],
+    },
+  });
+  const people = {
+    description: 'The people of the workspace, by role.',
+    content: { 'application/json': { schema: WorkspaceMemberListSchema } },
+  };
+  const notFound = problemResponse('not_found: no workspace with this id in the organisation.');
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/workspaces/{id}/members',
+    summary: 'The people of a workspace (N159), Owner or Admin.',
+    tags: ['workspaces'],
+    request: { params: z.object({ id: WorkspaceIdSchema }) },
+    responses: {
+      200: people,
+      400: problemResponse('validation_failed: the id.'),
+      401: EDGE_ERRORS[401],
+      403: forbidden,
+      404: notFound,
+      503: EDGE_ERRORS[503],
+    },
+  });
+  registry.registerPath({
+    method: 'put',
+    path: '/v1/workspaces/{id}/members',
+    summary:
+      'Set the whole list of people of a workspace by member id (N159): the others leave it, the new ones join. Owner or Admin.',
+    tags: ['workspaces'],
+    request: {
+      params: z.object({ id: WorkspaceIdSchema }),
+      body: { content: { 'application/json': { schema: WorkspaceMembersBodySchema } } },
+    },
+    responses: {
+      200: people,
+      400: problemResponse(
+        'validation_failed: the id, more than 500 or the same member twice, or an id that is not a member of the organisation.',
+      ),
+      401: EDGE_ERRORS[401],
+      403: forbidden,
+      404: notFound,
       503: EDGE_ERRORS[503],
     },
   });
