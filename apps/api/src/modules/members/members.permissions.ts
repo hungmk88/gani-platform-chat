@@ -19,3 +19,15 @@ export function roleChangeRefusal(
   if (role !== 'owner' && ownerIds.length === 1 && ownerIds[0] === target.id) return 'last_owner';
   return null;
 }
+
+/**
+ * May `actor` reset the second factor of the member `target` (Q-U20-1, N155)? An Owner or an Admin, never their own, and an Admin never
+ * an Owner's (as for roles, N154).
+ */
+export const mayResetTwoFactor = (
+  actor: { readonly userId: string; readonly role: OrgRole },
+  target: { readonly userId: string; readonly role: OrgRole },
+): boolean =>
+  mayInvite(actor.role) &&
+  target.userId !== actor.userId &&
+  !(actor.role === 'admin' && target.role === 'owner');
