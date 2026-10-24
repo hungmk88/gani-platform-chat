@@ -2,6 +2,7 @@ import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-ope
 import { orgMembers } from '@gani/db';
 import { z } from 'zod';
 
+import { registerChannels } from '../modules/channels/channels.openapi.js';
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
@@ -101,6 +102,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerMembers,
   registerWorkspaces,
   registerTeams,
+  registerChannels,
 ];
 
 export function buildOpenApiDocument() {
