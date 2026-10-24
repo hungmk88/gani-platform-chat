@@ -15,15 +15,21 @@ export const canAssign = (c: Pick<Conversation, 'state'>): boolean =>
 const HOLDS: readonly Member['role'][] = ['owner', 'admin', 'manager', 'sales', 'support'];
 
 /**
- * The members offered: active, of a role that may hold conversations, and not the one who holds it. Whether each is in the
- * conversation's workspace the members list does not say (N153): the API answers 422 for one who is not.
+ * The members offered: active, of a role that may hold conversations, and not the one who holds it; when the people of the
+ * conversation's workspace are known (`GET /v1/workspaces/{id}/members`, N159), only them. Unknown (null): everyone, and the API
+ * answers 422 for one who is not in the workspace.
  */
 export function assigneesOf(
   members: readonly Member[],
   holder: string | null,
+  inWorkspace: ReadonlySet<string> | null = null,
 ): { readonly userId: string; readonly member: Member }[] {
   return members.flatMap((m) =>
-    m.status === 'active' && m.userId && m.userId !== holder && HOLDS.includes(m.role)
+    m.status === 'active' &&
+    m.userId &&
+    m.userId !== holder &&
+    HOLDS.includes(m.role) &&
+    (!inWorkspace || inWorkspace.has(m.id))
       ? [{ userId: m.userId, member: m }]
       : [],
   );
