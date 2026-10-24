@@ -131,7 +131,8 @@ Trang mặc định sau đăng nhập:
 ## Workspace (#21)
 
 - `/settings/workspace`, chỉ Owner và Admin như API (N157; Manager xem được hay không còn chờ anh chốt) → vai trò khác trang 403. `GET /v1/workspaces` (theo tên, không cursor): bảng tên + mã, mẫu (lời thường), múi giờ, giới hạn tải mặc định (`src/workspaces/workspace.ts` + `workspace-table.tsx`).
-- Sửa tên, múi giờ, giới hạn tải mặc định (`PATCH /v1/workspaces/{id}`): PR sau. Giờ làm việc, ngày nghỉ, SLA, cách phân bổ (prototype #21, spec-M8 §3.3–3.5): chờ API. API giả: `e2e/stub-workspaces.ts`.
+- **Sửa** (`PATCH /v1/workspaces/{id}`): hộp thoại tên (1–100, cắt khoảng trắng như API), múi giờ (danh sách IANA của trình duyệt, `Intl.supportedValuesOf`), giới hạn tải mặc định 1–100 (C9). Chỉ gửi trường đổi thật (`changeOf`); không đổi gì thì đóng, không gọi API (API trả 400 cho body rỗng). Chờ máy chủ, không `Idempotency-Key`; xong thì bảng lấy câu trả lời và khung app đọc lại (`router.refresh`, thanh trên có tên workspace). Mẫu và mã chọn lúc tạo (spec-M8 A2), không sửa.
+- Giờ làm việc, ngày nghỉ, SLA, cách phân bổ (prototype #21, spec-M8 §3.3–3.5): chờ API. API giả: `e2e/stub-workspaces.ts` (mỗi phiên một bản sao).
 
 ## Thành viên (#19)
 

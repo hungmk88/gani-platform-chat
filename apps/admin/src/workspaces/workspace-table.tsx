@@ -1,15 +1,22 @@
 'use client';
 
+import { useState } from 'react';
+
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
-import { TEMPLATE, type WorkspaceList } from './workspace';
+import { WorkspaceDialog } from './workspace-dialog';
+import { TEMPLATE, type Workspace, type WorkspaceList } from './workspace';
+
+const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
- * The workspaces of the company (#21, `GET /v1/workspaces`, N157), by name. Only Owner and Admin come here (the page checks), as
- * the API allows.
+ * The workspaces of the company (#21, `GET /v1/workspaces`, N157), by name, each changed in a dialog (`WorkspaceDialog`). Only
+ * Owner and Admin come here (the page checks), as the API allows.
  */
 export function WorkspaceTable() {
   const list = useApiQuery<WorkspaceList>(['workspaces'], '/v1/workspaces');
+  const [editing, setEditing] = useState<Workspace | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (list.isPending)
     return (
@@ -35,31 +42,58 @@ export function WorkspaceTable() {
       </div>
     );
   return (
-    <div className="overflow-x-auto rounded-card border border-border">
-      <table className="w-full text-left">
-        <thead className="bg-bg-subtle">
-          <tr>
-            {['Workspace', 'Mẫu', 'Múi giờ', 'Giới hạn tải mặc định'].map((t) => (
-              <th key={t} scope="col" className="p-2 font-semibold">
-                {t}
+    <div className="flex flex-col gap-3">
+      {notice ? <p role="status">{notice}</p> : null}
+      <div className="overflow-x-auto rounded-card border border-border">
+        <table className="w-full text-left">
+          <thead className="bg-bg-subtle">
+            <tr>
+              {['Workspace', 'Mẫu', 'Múi giờ', 'Giới hạn tải mặc định'].map((t) => (
+                <th key={t} scope="col" className="p-2 font-semibold">
+                  {t}
+                </th>
+              ))}
+              <th scope="col" className="p-2">
+                <span className="sr-only">Thao tác</span>
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {list.data.data.map((w) => (
-            <tr key={w.id}>
-              <td className="p-2">
-                <div>{w.name}</div>
-                <div className="text-12 text-text-muted">{w.slug}</div>
-              </td>
-              <td className="p-2">{TEMPLATE[w.template]}</td>
-              <td className="p-2">{w.timezone}</td>
-              <td className="p-2">{w.defaultMaxConcurrent} hội thoại</td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {list.data.data.map((w) => (
+              <tr key={w.id}>
+                <td className="p-2">
+                  <div>{w.name}</div>
+                  <div className="text-12 text-text-muted">{w.slug}</div>
+                </td>
+                <td className="p-2">{TEMPLATE[w.template]}</td>
+                <td className="p-2">{w.timezone}</td>
+                <td className="p-2">{w.defaultMaxConcurrent} hội thoại</td>
+                <td className="p-2">
+                  <button
+                    type="button"
+                    className={button}
+                    aria-label={`Sửa workspace ${w.name}`}
+                    onClick={() => {
+                      setNotice(null);
+                      setEditing(w);
+                    }}
+                  >
+                    Sửa
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editing ? (
+        <WorkspaceDialog
+          key={editing.id}
+          workspace={editing}
+          onClose={() => setEditing(null)}
+          onDone={(w) => setNotice(`Đã lưu workspace ${w.name}.`)}
+        />
+      ) : null}
     </div>
   );
 }
