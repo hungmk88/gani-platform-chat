@@ -22,6 +22,7 @@ export default defineConfig({
         'src/member-invite-store.ts',
         'src/member-directory.ts',
         'src/member-role-store.ts',
+        'src/member-two-factor-store.ts',
         'src/message-store.ts',
         'src/outbox-store.ts',
         'src/tenant-tx.ts',

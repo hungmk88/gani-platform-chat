@@ -13,6 +13,7 @@ export * from './invite-store.js';
 export * from './member-invite-store.js';
 export { listMembers, loadMember, type MemberEntry } from './member-directory.js';
 export * from './member-role-store.js';
+export * from './member-two-factor-store.js';
 export * from './message-store.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, shareTeam, type MemberContext } from './member-context.js';

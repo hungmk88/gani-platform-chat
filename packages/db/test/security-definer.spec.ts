@@ -17,6 +17,7 @@ const ADR_004 = [
   'app.outbox_stats',
   'app.purge_idempotency_keys',
   'app.purge_inbound_event_keys',
+  'app.reset_member_two_factor',
   'app.support_access_ok',
 ];
 
