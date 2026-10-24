@@ -66,6 +66,7 @@ describe('inviteError', () => {
       'Bạn không mời được vai trò này.',
     );
     expect(inviteError(errorOf(400, { code: 'validation_failed' }))).toMatch(/chưa hợp lệ/);
+    expect(inviteError(errorOf(404, { code: 'not_found' }))).toMatch(/không còn chờ nhận/);
     expect(inviteError(errorOf(503, {}))).toBe(errorOf(503, {}).message);
   });
 });
