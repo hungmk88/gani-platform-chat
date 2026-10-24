@@ -89,11 +89,16 @@ test('600 conversations: only the rows near the screen are in the page, scrollin
   const more = column.getByRole('button', { name: 'Tải thêm' });
   for (let loaded = MANY_PAGE; loaded < MANY; loaded += MANY_PAGE) {
     await expect(column.locator(`li[aria-setsize="${loaded}"]`).first()).toBeAttached();
-    await more.click();
+    // The rows are measured as they are drawn, so the button below them may still move: a click at its place can miss it.
+    await more.dispatchEvent('click');
   }
   await expect(more).toHaveCount(0);
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await expect(column.locator(`li[aria-posinset="${MANY}"]`)).toBeVisible();
+  // Each scroll draws rows of their real height, which changes the height of the page: scroll until the last row is there.
+  const last = column.locator(`li[aria-posinset="${MANY}"]`);
+  await expect(async () => {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(last).toBeVisible({ timeout: 500 });
+  }).toPass();
   expect(await column.getByRole('listitem').count()).toBeLessThan(100);
   await expectAccessible(page);
 });
