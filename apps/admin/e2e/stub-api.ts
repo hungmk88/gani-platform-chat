@@ -120,6 +120,7 @@ interface Session {
 const sessions = new Map<string, Session>();
 const pending = new Map<string, string>(); // pending id → email
 const usedBackupCodes = new Set<string>();
+const names = new Map<string, string>(); // session → the name it chose (PATCH /v1/me)
 
 function send(
   res: ServerResponse,
@@ -455,13 +456,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (s) agent?.lever(path.slice(7), sid, body);
     return send(res, 200, { ok: true });
   }
-  if (req.method === 'GET' && path === '/v1/me') {
+  // #5 Đổi tên (N162): only `name`, 1–100 characters once trimmed; kept per session, then answered as GET /v1/me.
+  if (req.method === 'PATCH' && path === '/v1/me' && session) {
+    const body = await json(req);
+    const name = typeof body['name'] === 'string' ? body['name'].trim() : '';
+    if (Object.keys(body).join() !== 'name' || !name || name.length > 100)
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    names.set(cookie(req, SESSION) ?? '', name);
+  }
+  if ((req.method === 'GET' || req.method === 'PATCH') && path === '/v1/me') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
     if (session.email.includes('+gate@') && !session.twoFactorEnabled)
       return problem(res, 403, 'two_factor_setup_required', 'trace-e2e-403');
     const me = meOf(session.email);
     if (!me) return problem(res, 404, 'not_found', NO_ME_TRACE);
-    return send(res, 200, me);
+    return send(res, 200, { ...me, name: names.get(cookie(req, SESSION) ?? '') ?? me.name });
   }
   return problem(res, 404, 'not_found', 'trace-e2e-404');
 }
