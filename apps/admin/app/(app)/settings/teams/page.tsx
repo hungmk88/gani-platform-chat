@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: 'Team — Gani Platform' };
 
 /**
  * #20 Team (A4, N160), Owner and Admin as the menu (Phụ lục B "Cài đặt workspace, kênh, team"); the API also lets a Manager read
- * their own teams, which waits for the same call as /settings/workspace. Making, changing and ending a team are here; its people
- * and its channels come next.
+ * their own teams, which waits for the same call as /settings/workspace. Making, changing and ending a team and picking its people
+ * are here; its channels come next.
  */
 export default async function TeamsPage() {
   const result = await getMe();
@@ -22,9 +22,7 @@ export default async function TeamsPage() {
         Team
       </h1>
       <TeamsScreen />
-      <p className="text-12 text-text-muted">
-        Chọn người của team và kênh team phụ trách: chưa có trong bản hiện tại.
-      </p>
+      <p className="text-12 text-text-muted">Kênh team phụ trách: chưa có trong bản hiện tại.</p>
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
   );

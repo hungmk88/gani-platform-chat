@@ -1,10 +1,11 @@
-// #20 Team for the e2e stub API only (N160): the teams of a workspace and making one. Each session makes its own, so tests running
-// side by side never see each other's teams. Never deployed.
+// #20 Team for the e2e stub API only (N160): the teams of a workspace, making, changing and ending one, picking its people. Each session
+// has its own copy, so tests running side by side never see each other's teams. Never deployed.
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { Team } from '../src/teams/teams';
-import type { Edge } from './stub-members';
+import { MEMBERS, type Edge } from './stub-members';
+import { peopleOf } from './stub-workspaces';
 
 /** The teams `ws-e2e` starts with, by name. */
 export const TEAMS: readonly Team[] = [
@@ -32,6 +33,12 @@ export const TEAMS: readonly Team[] = [
 
 const copies = new Map<string, Team[]>(); // session → its teams (those of TEAMS, changed or ended, and those it made)
 const byKey = new Map<string, Team>(); // Idempotency-Key → the team it made
+const people = new Map<string, Map<string, string[]>>(); // session → team id → its member ids
+/** The people each team of TEAMS starts with, as its memberCount says: Sales for CSKH, the Owner and Sales for Sales B2B. */
+const START: Record<string, string[]> = {
+  [TEAMS[0]!.id]: [MEMBERS[2]!.id],
+  [TEAMS[1]!.id]: [MEMBERS[0]!.id, MEMBERS[2]!.id],
+};
 
 /** The slug the API makes: no accents, đ → d, words joined by "-", a taken one gets -2, -3… */
 function slugOf(name: string, taken: readonly string[]): string {
@@ -58,11 +65,39 @@ export async function routeTeams(
   edge: Edge,
 ): Promise<boolean> {
   const id = /^\/v1\/teams\/([^/]+)$/.exec(path)?.[1];
-  if (path !== '/v1/teams' && !id) return false;
+  const staffOf = /^\/v1\/teams\/([^/]+)\/members$/.exec(path)?.[1];
+  if (path !== '/v1/teams' && !id && !staffOf) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   const mine = copies.get(session.sid) ?? TEAMS.map((t) => ({ ...t }));
   copies.set(session.sid, mine);
   const changes = session.role === 'owner' || session.role === 'admin';
+  if (staffOf) {
+    // The people of a team (A4-T2c): a PUT takes people of the team's workspace, each once, at most 500, and sets the whole list.
+    if (!changes) return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+    const team = mine.find((t) => t.id === staffOf);
+    if (!team) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    const lists = people.get(session.sid) ?? new Map<string, string[]>();
+    people.set(session.sid, lists);
+    if (req.method === 'PUT') {
+      const ids = (await edge.json(req))['memberIds'];
+      const staff = peopleOf(session.sid, team.workspaceId);
+      const ok =
+        Array.isArray(ids) &&
+        ids.length <= 500 &&
+        new Set(ids).size === ids.length &&
+        ids.every((i) => staff.includes(i as string));
+      if (!ok) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+      lists.set(team.id, ids as string[]);
+      team.memberCount = ids.length;
+    } else if (req.method !== 'GET') return false;
+    const ids = lists.get(team.id) ?? START[team.id] ?? [];
+    const data = MEMBERS.filter((m) => ids.includes(m.id)).map((m) => ({
+      memberId: m.id,
+      userId: m.userId!,
+      role: m.role,
+    }));
+    return (edge.send(res, 200, { data }), true);
+  }
   if (req.method === 'GET' && !id) {
     if (!changes && session.role !== 'manager')
       return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
