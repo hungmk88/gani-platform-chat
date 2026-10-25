@@ -101,7 +101,8 @@ afterAll(async () => {
   await app?.close();
   const users = Object.values(people);
   for (const [text, ids] of [
-    ['idempotency_keys WHERE org_id', [orgA, orgB]], ['audit_logs WHERE org_id', [orgA, orgB]], ['team_members WHERE org_id', [orgA, orgB]],
+    ['idempotency_keys WHERE org_id', [orgA, orgB]], ['audit_logs WHERE org_id', [orgA, orgB]], ['channel_accounts WHERE org_id', [orgA, orgB]],
+    ['team_members WHERE org_id', [orgA, orgB]],
     ['teams WHERE org_id', [orgA, orgB]], ['workspace_members WHERE org_id', [orgA, orgB]], ['workspaces WHERE org_id', [orgA, orgB]],
     ['sessions WHERE user_id', users], ['org_members WHERE org_id', [orgA, orgB]], ['accounts WHERE user_id', users],
     ['users WHERE id', users], ['organizations WHERE id', [orgA, orgB]],
@@ -262,5 +263,55 @@ describe('GET/PUT /v1/teams/{id}/members', () => {
     ];
     expect(answers.map((a) => a.status)).toEqual([404, 403, 403, 400, 400, 404, 404]);
     expect(ids(await call('owner', 'GET', `/${mine}/members`))).toEqual([memberOf['manager']]);
+  });
+});
+
+describe('PUT /v1/teams/{id}/channels', () => {
+  // prettier-ignore
+  const channel = async (org: string, workspace: string) => {
+    const id = randomUUID();
+    await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name) VALUES ($1, $2, $3, 'webchat', $4, 'C')`, [id, org, workspace, `ext-${randomBytes(6).toString('hex')}`]);
+    return id;
+  };
+  const changes = async (id: string) =>
+    (await audits(id)).filter((a) => (a as { action: string }).action === 'team.channels_changed');
+
+  it('gives a team its channels, moves one from another team, and keeps a team that answers a channel', async () => {
+    const [a, b] = [
+      String((await make('Kênh A')).body['id']),
+      String((await make('Kênh B')).body['id']),
+    ];
+    const [c1, c2] = [await channel(orgA, W), await channel(orgA, W)];
+    const put = (who: string, team: string, channelIds: string[]) =>
+      call(who, 'PUT', `/${team}/channels`, { channelIds });
+    expect((await put('admin', a, [c1, c2])).body['channelIds']).toEqual([c1, c2].sort());
+    expect((await put('owner', b, [c2])).body['channelIds']).toEqual([c2]);
+    expect((await put('owner', b, [c2])).status).toBe(200);
+    const list = (await call('owner', 'GET', `?workspaceId=${W}`)).body['data'] as {
+      id: string;
+      channelIds: string[];
+    }[];
+    expect(list.find((t) => t.id === a)?.channelIds).toEqual([c1]);
+    expect(await changes(b)).toEqual([
+      { action: 'team.channels_changed', detail: { added: 1, removed: 0, moved: 1 } },
+    ]);
+    const del = await call('owner', 'DELETE', `/${a}`);
+    expect([del.status, del.body['code']]).toEqual([409, 'team_in_use']);
+    expect((await put('owner', a, [])).body['channelIds']).toEqual([]);
+    expect((await call('owner', 'DELETE', `/${a}`)).status).toBe(204);
+    expect(await changes(a)).toEqual([
+      { action: 'team.channels_changed', detail: { added: 2, removed: 0, moved: 0 } },
+      { action: 'team.channels_changed', detail: { added: 0, removed: 1, moved: 0 } },
+    ]);
+    const answers = [
+      await put('manager', b, []),
+      await put('owner', b, [await channel(orgB, WB)]),
+      await put('owner', b, [c1, c1]),
+      await call('owner', 'PUT', `/${b}/channels`, { channelIds: [], teamId: b }),
+      await put('owner', teamB, []),
+    ];
+    expect(answers.map((x) => x.status)).toEqual([403, 400, 400, 400, 404]);
+    const owned = await q('SELECT id FROM channel_accounts WHERE team_id = $1', [b]);
+    expect(owned.rows).toEqual([{ id: c2 }]);
   });
 });

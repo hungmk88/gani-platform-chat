@@ -930,6 +930,13 @@
           "memberCount": {
             "type": "integer"
           },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "description": "The channel accounts the team answers (N161)."
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -943,6 +950,7 @@
           "description",
           "isDefault",
           "memberCount",
+          "channelIds",
           "createdAt"
         ]
       },
@@ -1002,6 +1010,22 @@
         },
         "required": [
           "memberIds"
+        ],
+        "additionalProperties": false
+      },
+      "TeamChannelsBody": {
+        "type": "object",
+        "properties": {
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "channelIds"
         ],
         "additionalProperties": false
       },
@@ -3517,7 +3541,7 @@
             }
           },
           "409": {
-            "description": "team_in_use: the default team of its workspace.",
+            "description": "team_in_use: the default team of its workspace, or a team that answers a channel.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3657,6 +3681,96 @@
           },
           "400": {
             "description": "validation_failed: the id, more than 500 or the same member twice, or someone not in the team’s workspace.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin changes teams (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live team with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/teams/{id}/channels": {
+      "put": {
+        "summary": "Set the whole list of channel accounts the team answers (N161); each must be a live channel of the team’s workspace. A channel of another team moves to this one; one left out goes back to the default team.",
+        "tags": [
+          "teams"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamChannelsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The team as it now is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, more than 200 or the same channel twice, or a channel not of the team’s workspace.",
             "content": {
               "application/problem+json": {
                 "schema": {

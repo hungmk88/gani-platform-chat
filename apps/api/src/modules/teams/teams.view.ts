@@ -9,5 +9,6 @@ export const teamView = (row: TeamRow) => ({
   description: row.description,
   isDefault: row.isDefault,
   memberCount: row.memberCount,
+  channelIds: [...row.channelIds],
   createdAt: row.createdAt.toISOString(),
 });

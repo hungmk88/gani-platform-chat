@@ -25,6 +25,9 @@ export const TeamSchema = z
       description: 'The team of the workspace that takes what no other rule sends anywhere.',
     }),
     memberCount: z.int(),
+    channelIds: z
+      .array(UuidSchema)
+      .meta({ description: 'The channel accounts the team answers (N161).' }),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'Team' });
@@ -63,3 +66,14 @@ export const TeamMembersBodySchema = z
 
 /** The people of a team: the same shape as those of a workspace. */
 export const TeamMemberListSchema = WorkspaceMemberListSchema;
+
+/** `PUT /v1/teams/{id}/channels`: the whole list, channel accounts of the team's workspace (N161). */
+export const TeamChannelsBodySchema = z
+  .object({
+    channelIds: z
+      .array(UuidSchema)
+      .max(200)
+      .refine((ids) => new Set(ids).size === ids.length, 'no channel twice'),
+  })
+  .strict()
+  .meta({ id: 'TeamChannelsBody' });
