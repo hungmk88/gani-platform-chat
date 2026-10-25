@@ -6,7 +6,7 @@ import { accountOf } from './stub-api';
 import { TEAMS } from './stub-teams';
 
 // #20 Team (N160): the teams of the workspace being worked in, making one (one Idempotency-Key per name and description),
-// changing one.
+// changing and ending one.
 test('an Admin sees the teams of the workspace and makes one: the slug is the API one', async ({
   page,
 }) => {
@@ -37,12 +37,14 @@ test('an Admin sees the teams of the workspace and makes one: the slug is the AP
   await expect(list.getByRole('row').nth(2)).toContainText('Đại lý miền Nam');
 });
 
-test('an Owner changes a team and makes it the default; a dialog with nothing changed sends nothing', async ({
+test('an Owner changes a team, makes it the default, then ends the old default', async ({
   page,
 }) => {
   await signIn(page, accountOf('owner'));
   await page.goto('/settings/teams');
   const list = page.getByRole('region', { name: 'Team của workspace' });
+  await expect(list.getByRole('button', { name: 'Kết thúc team Sales B2B' })).toHaveCount(0); // the default stays
+
   await list.getByRole('button', { name: 'Sửa team CSKH' }).click();
   const dialog = page.getByRole('dialog', { name: /Sửa team/ });
   await dialog.getByLabel('Tên team').fill(' Chăm sóc khách ');
@@ -60,6 +62,17 @@ test('an Owner changes a team and makes it the default; a dialog with nothing ch
   await expect(list.getByRole('status')).toHaveText('Đã lưu team Chăm sóc khách.');
   await expect(list.getByRole('row', { name: /Chăm sóc khách/ })).toContainText('Mặc định');
   await expect(list.getByRole('row', { name: /Sales B2B/ })).not.toContainText('Mặc định');
+
+  await list.getByRole('button', { name: 'Kết thúc team Sales B2B' }).click();
+  const end = page.getByRole('dialog', { name: /Kết thúc team Sales B2B/ });
+  await expect(end).toContainText('2 người rời team này.');
+  await expectAccessible(page);
+  const deleted = page.waitForRequest((r) => r.method() === 'DELETE');
+  await end.getByRole('button', { name: 'Kết thúc team' }).click();
+  expect((await deleted).url()).toMatch(new RegExp(`/v1/teams/${TEAMS[1]!.id}$`));
+  await expect(end).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã kết thúc team Sales B2B.');
+  await expect(list.getByRole('row')).toHaveCount(2);
 
   let sent = false;
   page.on('request', (r) => {
