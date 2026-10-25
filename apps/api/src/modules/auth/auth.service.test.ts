@@ -68,4 +68,24 @@ describe('AuthService', () => {
       expect(params).toEqual(['person-1']);
     });
   });
+
+  it('renames a person who is still there, and says so', async () => {
+    const service = (rowCount: number) => {
+      const query = vi.fn(() => Promise.resolve({ rows: [], rowCount }));
+      const create = vi.fn(() => ({
+        query,
+        end: vi.fn(),
+        on: vi.fn(),
+      })) as unknown as typeof createDbPool;
+      const env = { secret: SECRET, baseURL: 'https://app.example.test', secureCookies: true };
+      return { service: new AuthService(env, good.DATABASE_URL_AUTH, create), query };
+    };
+    const live = service(1);
+    expect(await live.service.rename('u', 'Lan')).toBe(true);
+    expect(live.query).toHaveBeenCalledWith(expect.stringContaining('deleted_at IS NULL'), [
+      'u',
+      'Lan',
+    ]);
+    expect(await service(0).service.rename('u', 'Lan')).toBe(false);
+  });
 });

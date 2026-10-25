@@ -170,3 +170,51 @@ describe('GET /v1/me', () => {
     expect(await owner.json()).toMatchObject({ code: 'two_factor_setup_required' });
   });
 });
+
+describe('PATCH /v1/me', () => {
+  const patch = (who: string | null, body: unknown, origin: string | null = ORIGIN) =>
+    fetch(`${url}/v1/me`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        ...(who ? { cookie: cookies[who] ?? '' } : {}),
+        ...(origin ? { origin } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+  it('renames the signed-in person only, trimmed, and answers as GET /v1/me', async () => {
+    const res = await patch('nameless', { name: '  Ngọc  ' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      id: people['nameless'],
+      name: 'Ngọc',
+      org: { id: orgA },
+    });
+    expect(await me('nameless')).toMatchObject({ name: 'Ngọc' });
+    expect(await me('manager')).toMatchObject({ name: 'Lan' });
+    // A name is the person's own, not an organisation's: an operator of none renames themselves too.
+    expect((await patch('operator', { name: 'Vận hành' })).status).toBe(200);
+  });
+
+  it('refuses no session, another origin, a person who must set up 2FA, and a bad name, and changes nothing', async () => {
+    const answers = [
+      await patch(null, { name: 'X' }),
+      await patch('manager', { name: 'X' }, 'https://evil.example'),
+      await patch('owner', { name: 'X' }),
+      await patch('manager', { name: '   ' }),
+      await patch('manager', { name: 'x'.repeat(101) }),
+      await patch('manager', { name: 'X', id: people['stranger'] }),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([401, 403, 403, 400, 400, 400]);
+    const names = await q(
+      'SELECT id, display_name FROM users WHERE id = ANY($1::uuid[]) ORDER BY id',
+      [[people['manager'], people['owner'], people['stranger']]],
+    );
+    expect(names.rows.map((r) => (r as { display_name: string }).display_name).sort()).toEqual([
+      'Chủ',
+      'Khác',
+      'Lan',
+    ]);
+  });
+});

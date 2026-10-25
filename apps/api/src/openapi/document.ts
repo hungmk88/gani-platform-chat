@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { registerChannels } from '../modules/channels/channels.openapi.js';
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
+import { MeChangeSchema } from '../modules/request-context/me.schemas.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
 import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
 import { problemResponse as problem, UuidSchema } from './schemas.js';
@@ -62,36 +63,51 @@ function registerPlatform(registry: OpenAPIRegistry): void {
     },
   });
   const named = z.object({ id: UuidSchema, name: z.string() });
+  const me = z
+    .object({
+      id: UuidSchema,
+      name: z.string(),
+      isPlatformOperator: z.boolean(),
+      org: named
+        .extend({ role: z.enum(orgMembers.role.enumValues) })
+        .nullable()
+        .meta({ id: 'MeOrg' }),
+      workspaces: z.array(named.meta({ id: 'MeWorkspace' })),
+    })
+    .meta({ id: 'Me' });
+  const meAnswer = {
+    description:
+      '`org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email.',
+    content: { 'application/json': { schema: me } },
+  };
+  const refusals = {
+    401: problem('unauthorized: no valid session.'),
+    403: problem('two_factor_setup_required: the second factor must be set up first (N93).'),
+    503: problem('service_unavailable: a database did not answer.'),
+  };
   registry.registerPath({
     method: 'get',
     path: '/v1/me',
     summary:
       'The signed-in person, the organisation they act in and its workspaces they belong to (U32, N145). Ask security-status first.',
     tags: ['me'],
+    responses: { 200: meAnswer, ...refusals },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/me',
+    summary: 'Change the name the signed-in person goes by (N162). Answers as GET /v1/me.',
+    tags: ['me'],
+    request: { body: { content: { 'application/json': { schema: MeChangeSchema } } } },
     responses: {
-      200: {
-        description:
-          '`org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email.',
-        content: {
-          'application/json': {
-            schema: z
-              .object({
-                id: UuidSchema,
-                name: z.string(),
-                isPlatformOperator: z.boolean(),
-                org: named
-                  .extend({ role: z.enum(orgMembers.role.enumValues) })
-                  .nullable()
-                  .meta({ id: 'MeOrg' }),
-                workspaces: z.array(named.meta({ id: 'MeWorkspace' })),
-              })
-              .meta({ id: 'Me' }),
-          },
-        },
-      },
-      401: problem('unauthorized: no valid session.'),
-      403: problem('two_factor_setup_required: the second factor must be set up first (N93).'),
-      503: problem('service_unavailable: a database did not answer.'),
+      200: meAnswer,
+      400: problem(
+        'validation_failed: the name (1–100 characters once trimmed) or an unknown field.',
+      ),
+      ...refusals,
+      403: problem(
+        'two_factor_setup_required: the second factor must be set up first (N93); or forbidden: the request did not come from the application (N136).',
+      ),
     },
   });
 }
