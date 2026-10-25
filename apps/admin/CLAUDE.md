@@ -146,6 +146,11 @@ Trang mặc định sau đăng nhập:
 - **Sửa** (`PATCH /v1/teams/{id}`, A4-T2b): hộp thoại tên, mô tả (xóa trắng là bỏ mô tả), "Team mặc định của workspace" (`src/teams/team-dialogs.tsx`). Chỉ gửi trường đổi thật (`teamChangeOf`); không đổi gì thì đóng, không gọi API. Chỉ **đặt** mặc định, không bỏ: team mặc định thì ô bị khóa (đặt team khác làm mặc định để đổi), workspace luôn còn một; xong thì cờ chuyển sang team mới trong danh sách (`withChanged`). Chờ máy chủ, không `Idempotency-Key`.
 - Kết thúc team, người của team: PR sau; kênh team phụ trách: chờ API (N160 "Để sau"). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao).
 
+## Kênh (#24)
+
+- `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc.
+- Kết nối Zalo OA, làm mới token, ngắt kết nối, lỗi gần nhất và hạn token: chờ U26; `/settings/channels/[id]` (#25) cũng chờ U26. API giả: `e2e/stub-channels.ts` (`CHANNELS`).
+
 ## Thành viên (#19)
 
 - `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403): **Mời thành viên** (`POST /v1/members/invite`, N152; `src/members/invite.ts` + `invite-form.tsx`), rồi **Danh sách** (`GET /v1/members`, N153; `src/members/list.ts` + `member-list.tsx`).
