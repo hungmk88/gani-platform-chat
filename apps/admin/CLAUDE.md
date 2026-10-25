@@ -144,7 +144,8 @@ Trang mặc định sau đăng nhập:
 - Danh sách `GET /v1/teams?workspaceId=` (A4, N160; theo tên): tên + mã, nhãn "Mặc định", mô tả, số người (`src/teams/teams.ts` + `team-list.tsx`).
 - **Tạo team** (`POST /v1/teams`): tên 1–100, mô tả tối đa 500 (không bắt buộc, trống là không có), cắt khoảng trắng như API (`teamDraftOf`). Chờ máy chủ, một `Idempotency-Key` cho một cặp tên + mô tả; xong thì team vào danh sách theo tên (`withTeam`). Mã (slug) do API sinh.
 - **Sửa** (`PATCH /v1/teams/{id}`, A4-T2b): hộp thoại tên, mô tả (xóa trắng là bỏ mô tả), "Team mặc định của workspace" (`src/teams/team-dialogs.tsx`). Chỉ gửi trường đổi thật (`teamChangeOf`); không đổi gì thì đóng, không gọi API. Chỉ **đặt** mặc định, không bỏ: team mặc định thì ô bị khóa (đặt team khác làm mặc định để đổi), workspace luôn còn một; xong thì cờ chuyển sang team mới trong danh sách (`withChanged`). Chờ máy chủ, không `Idempotency-Key`.
-- Kết thúc team, người của team: PR sau; kênh team phụ trách: chờ API (N160 "Để sau"). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao).
+- **Người của team** (`GET/PUT /v1/teams/{id}/members`, A4-T2c, N160): nút "Người" trên dòng, hộp thoại ô chọn cho **người của workspace của team** (`GET /v1/workspaces/{id}/members`, N159; tên lấy từ `GET /v1/members`, `inWorkspace`), người của team đã tích sẵn (`src/teams/team-members.ts` + `team-members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`); xong thì cột "Số người" lấy số của câu trả lời (`withCount`). 400 `validation_failed` (có người không còn thuộc workspace) → tải lại rồi chọn lại.
+- Kết thúc team: PR sau; kênh team phụ trách: chờ API (N160 "Để sau", N161). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`).
 
 ## Thành viên (#19)
 
