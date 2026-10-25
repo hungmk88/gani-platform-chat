@@ -8,6 +8,7 @@ import {
   teamError,
   teamsPath,
   withChanged,
+  withoutTeam,
   withTeam,
   type Team,
 } from './teams';
@@ -86,7 +87,7 @@ describe('teamChangeOf', () => {
   });
 });
 
-describe('withChanged', () => {
+describe('withChanged and withoutTeam', () => {
   it('puts a changed team in place by name, and moves the default flag to it', () => {
     const list = {
       data: [team({ id: 'a', name: 'CSKH' }), team({ id: 'b', name: 'Sales', isDefault: true })],
@@ -96,6 +97,11 @@ describe('withChanged', () => {
       ['Sales', false],
       ['Xuất khẩu', true],
     ]);
+    expect(withoutTeam(next, 'b')?.data.map((t) => t.id)).toEqual(['a']);
     expect(withChanged(undefined, team())).toBeUndefined();
+  });
+
+  it('says the default team that cannot be ended', () => {
+    expect(teamError(errorOf(409, { code: 'team_in_use' }))).toMatch(/team mặc định/);
   });
 });

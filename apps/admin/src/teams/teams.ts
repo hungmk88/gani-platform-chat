@@ -1,5 +1,6 @@
 // #20 Team (`/settings/teams`, A4, N160): the teams of the workspace being worked in (`GET /v1/teams?workspaceId=`), making one
-// (`POST /v1/teams`) and changing one (`PATCH /v1/teams/{id}`). Ending one and picking its people come next.
+// (`POST /v1/teams`), changing one (`PATCH /v1/teams/{id}`) and ending one (`DELETE /v1/teams/{id}`). Picking its people comes with
+// A4-T2c.
 import type { ApiError } from '../api/errors';
 import type { components } from '../api/schema';
 
@@ -76,9 +77,15 @@ export function withChanged(list: TeamList | undefined, team: Team): TeamList | 
   };
 }
 
+/** The list without a team that was ended. */
+export const withoutTeam = (list: TeamList | undefined, id: string): TeamList | undefined =>
+  list && { data: list.data.filter((t) => t.id !== id) };
+
 /** The refusals of the team routes in words of the screen. */
 export function teamError(error: ApiError): string {
   if (error.code === 'forbidden') return 'Chỉ Owner hoặc Admin tạo và sửa team.';
+  if (error.code === 'team_in_use')
+    return 'Đây là team mặc định của workspace: đặt team khác làm mặc định trước rồi mới kết thúc.';
   if (error.code === 'not_found')
     return 'Không tìm thấy team hoặc workspace này. Tải lại trang rồi thử lại.';
   if (error.code === 'validation_failed')
