@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { buildOpenApiDocument, serialiseOpenApi } from './document.js';
+import { buildPlannedDocument } from './planned.js';
 
-const committed = (): string =>
-  readFileSync(new URL('../../../../docs/openapi/openapi.json', import.meta.url), 'utf8');
+const committed = (name = 'openapi.json'): string =>
+  readFileSync(new URL(`../../../../docs/openapi/${name}`, import.meta.url), 'utf8');
 
 describe('the OpenAPI document (Brief P18)', () => {
   it('is the one committed in docs/openapi/openapi.json: run `pnpm --filter @gani/api build && pnpm --filter @gani/api openapi` after changing an endpoint', () => {
@@ -57,5 +58,24 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/customers',
       '/v1/customers/{id}',
     ]);
+  });
+});
+
+describe('the planned document (N167)', () => {
+  it('is the one committed in docs/openapi/planned.json: run `pnpm --filter @gani/api openapi` after changing a planned path', () => {
+    expect(committed('planned.json')).toBe(serialiseOpenApi(buildPlannedDocument()));
+  });
+
+  it('marks every operation planned with its sprint, uses no allOf, and shares no path with what is served', () => {
+    const doc = buildPlannedDocument();
+    const operations = Object.values(doc.paths ?? {}).flatMap((item) =>
+      Object.values(item as Record<string, Record<string, unknown>>),
+    );
+    expect(operations.length).toBeGreaterThan(0);
+    for (const op of operations)
+      expect([op['x-status'], typeof op['x-sprint']]).toEqual(['planned', 'string']);
+    expect(serialiseOpenApi(doc)).not.toContain('"allOf"');
+    const served = new Set(Object.keys(buildOpenApiDocument().paths ?? {}));
+    expect(Object.keys(doc.paths ?? {}).filter((path) => served.has(path))).toEqual([]);
   });
 });
