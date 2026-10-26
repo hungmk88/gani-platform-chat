@@ -1,4 +1,4 @@
-// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, making, changing and ending one,
+// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, making, changing, ending and previewing one,
 // counting one use. Each session has its own copy, so tests running side by side never see each other's templates. Never deployed.
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -57,7 +57,8 @@ export async function routeQuickReplies(
 ): Promise<boolean> {
   const id = /^\/v1\/quick-replies\/([^/]+)$/.exec(path)?.[1];
   const used = /^\/v1\/quick-replies\/([^/]+)\/used$/.exec(path)?.[1];
-  if (path !== '/v1/quick-replies' && !id && !used) return false;
+  const preview = /^\/v1\/quick-replies\/([^/]+)\/preview$/.exec(path)?.[1];
+  if (path !== '/v1/quick-replies' && !id && !used && !preview) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (!READERS.includes(session.role ?? ''))
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
@@ -70,6 +71,26 @@ export async function routeQuickReplies(
     if (!r) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
     r.useCount += 1;
     return (edge.send(res, 200, { useCount: r.useCount }), true);
+  }
+  if (preview) {
+    // Seen with sample values (C7c3): only who manages templates; `ws-e2e` has no contact number, so {{company_phone}} stays.
+    if (!WRITERS.includes(session.role ?? ''))
+      return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+    const r = mine.find((x) => x.id === preview);
+    if (req.method !== 'POST') return false;
+    if (!r) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    const values: Record<string, string> = {
+      customer_name: 'Nguyễn Văn A',
+      agent_name: `Người thử ${session.role ?? ''}`,
+      company_name: 'Công ty thử',
+    };
+    const unresolved = new Set<string>();
+    const text = r.body.replace(/\{\{\s*([^{}]*?)\s*\}\}/g, (whole, name: string) => {
+      if (values[name]) return values[name];
+      unresolved.add(name);
+      return whole;
+    });
+    return (edge.send(res, 200, { text, unresolved: [...unresolved] }), true);
   }
   if (id) {
     // Changing or ending one (C7b2): only Owner, Admin, Manager; a shortcut once per workspace; at least one field to change.
