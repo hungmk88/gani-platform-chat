@@ -55,6 +55,17 @@ export function assigneesAnswer(
       maxConcurrent: m.maxConcurrentConversations ?? DEFAULT_MAX,
     };
   });
+  // Conversation #4 of the stub (HUMAN_ACTIVE, Manager holds it) has a crowd, so the dialog's search box shows (SEARCH_FROM).
+  if (c.workspaceId === 'ws-e2e' && c.assignedUserId === 'user-manager')
+    for (const [n, name] of ['Lan', 'Hùng', 'Đức', 'Mai', 'Tú', 'Ngọc', 'Bảo', 'Vy'].entries())
+      data.push({
+        ...data[0]!,
+        userId: `user-crowd-${n}`,
+        name: `Nhân viên ${name}`,
+        role: 'support',
+        teamId: null,
+        teamName: null,
+      });
   // By name, no name last, as the API.
   data.sort((x, y) =>
     x.name === null ? 1 : y.name === null ? -1 : x.name.localeCompare(y.name, 'vi'),

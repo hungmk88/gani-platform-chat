@@ -7,6 +7,7 @@ import {
   assigneesPath,
   canAssign,
   holderNameOf,
+  matching,
   mayAssign,
   namesHolder,
   type Assignee,
@@ -94,5 +95,23 @@ describe('holderNameOf', () => {
     expect(holderNameOf(members, 'u1', 'u1')).toBeNull();
     expect(holderNameOf(members, null, 'u1')).toBeNull();
     expect(holderNameOf(members, 'u9', 'u1')).toBeNull();
+  });
+});
+
+describe('matching', () => {
+  const lines = [
+    { label: 'Trần Thu · Support · CSKH · đang giữ 2/5' },
+    { label: 'Đỗ Minh · Manager · Sales B2B · đã đầy 5/5' },
+    { label: 'Chưa có tên · Sales · đang giữ 0/5' },
+  ];
+  it('finds by any words of name, role or team, without accents or case', () => {
+    expect(matching(lines, 'tran').map((l) => l.label)).toEqual([lines[0]!.label]);
+    expect(matching(lines, 'do  MANAGER').map((l) => l.label)).toEqual([lines[1]!.label]);
+    expect(matching(lines, 'sales').map((l) => l.label)).toEqual([
+      lines[1]!.label,
+      lines[2]!.label,
+    ]);
+    expect(matching(lines, '   ')).toHaveLength(3);
+    expect(matching(lines, 'không ai')).toEqual([]);
   });
 });
