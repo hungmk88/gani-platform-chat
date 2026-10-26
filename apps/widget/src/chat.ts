@@ -18,7 +18,14 @@ export interface PreChat {
   readonly marketing: boolean;
 }
 
+/** The rating after the chat (Phụ lục C dòng 10): 1 to 5 stars, a remark if the customer wants. */
+export interface Rating {
+  readonly stars: 1 | 2 | 3 | 4 | 5;
+  readonly remark: string;
+}
+
 export const MAX_NAME = 100;
+export const MAX_REMARK = 500;
 export const MAX_TEXT = 2000;
 /** Tries of one message before it shows "Chưa gửi được" (CLAUDE.md: at most 5). */
 export const TRIES = 5;
