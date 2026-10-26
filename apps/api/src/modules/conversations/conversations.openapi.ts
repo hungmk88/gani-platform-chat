@@ -9,6 +9,8 @@ import {
 } from '../../openapi/schemas.js';
 import {
   AssigneeBodySchema,
+  AssigneeListSchema,
+  AssigneesQuerySchema,
   ClaimConflictSchema,
   CloseBodySchema,
   ConversationIdSchema,
@@ -65,6 +67,26 @@ export function registerConversations(registry: OpenAPIRegistry): void {
       200: { description: 'A page.', ...json(MessagePageSchema) },
       404: problemResponse('not_found'),
       ...errors,
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/conversations/{id}/assignees',
+    summary:
+      'Who "Chuyển" (`purpose=transfer`) or "Gán lại" (`purpose=assign`) would accept (U31, N168): active members of the conversation’s workspace who may hold conversations, but not its holder; a Sales/Support transfer, only those who share a team with the caller. By name; `openCount` is for the whole organisation, `maxConcurrent` the effective limit.',
+    tags: ['conversations'],
+    request: { ...byId, query: AssigneesQuerySchema },
+    responses: {
+      200: { description: 'The people, by name (no name last).', ...json(AssigneeListSchema) },
+      403: problemResponse(
+        'forbidden: the role may not do this action (assign: sales, support; any: marketing, viewer), or a Sales/Support transfer of a conversation they do not hold; or a refusal of the edge.',
+      ),
+      400: problemResponse(
+        'validation_failed: the id, or `purpose` missing or not transfer/assign.',
+      ),
+      404: problemResponse('not_found'),
+      401: EDGE_ERRORS[401],
+      503: EDGE_ERRORS[503],
     },
   });
 

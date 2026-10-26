@@ -606,6 +606,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/conversations/{id}/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who "Chuyển" (`purpose=transfer`) or "Gán lại" (`purpose=assign`) would accept (U31, N168): active members of the conversation’s workspace who may hold conversations, but not its holder; a Sales/Support transfer, only those who share a team with the caller. By name; `openCount` is for the whole organisation, `maxConcurrent` the effective limit. */
+        get: {
+            parameters: {
+                query: {
+                    purpose: "transfer" | "assign";
+                };
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The people, by name (no name last). */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssigneeList"];
+                    };
+                };
+                /** @description validation_failed: the id, or `purpose` missing or not transfer/assign. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: the role may not do this action (assign: sales, support; any: marketing, viewer), or a Sales/Support transfer of a conversation they do not hold; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversations/{id}/claim": {
         parameters: {
             query?: never;
@@ -3616,6 +3702,23 @@ export interface components {
             createdAt: string;
             /** @enum {string|null} */
             deliveryStatus?: "pending" | "sent" | "failed" | null;
+        };
+        AssigneeList: {
+            data: components["schemas"]["Assignee"][];
+        };
+        Assignee: {
+            userId: components["schemas"]["Uuid"];
+            name: string | null;
+            /** @enum {string} */
+            role: "owner" | "admin" | "manager" | "sales" | "support" | "marketing" | "viewer";
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            teamId: string | null;
+            teamName: string | null;
+            openCount: number;
+            maxConcurrent: number;
         };
         WindowClosedProblem: {
             /** @enum {string} */

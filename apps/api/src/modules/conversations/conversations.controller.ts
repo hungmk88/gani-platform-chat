@@ -1,9 +1,11 @@
 import {
   InvalidCursorError,
+  listAssigneeCandidates,
   listConversations,
   listMessages,
   loadConversationView,
   type ConversationListQuery as StoreQuery,
+  type OrgRole,
   type TenantTx,
 } from '@gani/db';
 import { Controller, ForbiddenException, Get, Inject, Param, Query } from '@nestjs/common';
@@ -13,12 +15,13 @@ import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
 import {
+  AssigneesQuerySchema,
   ConversationIdSchema,
   ConversationListQuerySchema,
   MessageListQuerySchema,
   type ConversationListQuery,
 } from './conversations.schemas.js';
-import { canSee, readScope } from './permissions.js';
+import { actionScope, canSee, mayAct, readScope } from './permissions.js';
 
 /**
  * The Inbox reads (Brief P9): the list, one conversation, its messages. Everything runs in the TenantTx of the session, so RLS
@@ -68,6 +71,37 @@ export class ConversationsController {
         ...(q.cursor === undefined ? {} : { cursor: q.cursor }),
       });
       return { data: page.rows, nextCursor: page.nextCursor };
+    });
+  }
+
+  /**
+   * Who "Chuyển" (transfer) or "Gán lại" (assign) would accept for this conversation (U31): the rule of handOver
+   * (conversation-actions.controller.ts) read ahead, so the dialog never offers someone the action answers 422 invalid_assignee. The
+   * caller is checked as the action checks them: a role without the action 403, a conversation they cannot see 404, a Sales/Support
+   * transfer of one they do not hold 403. The state and the version are the action's, not this read's.
+   */
+  @Get(':id/assignees')
+  assignees(
+    @Param('id', new ZodPipe(ConversationIdSchema)) id: string,
+    @Query(new ZodPipe(AssigneesQuerySchema)) q: { purpose: 'transfer' | 'assign' },
+  ) {
+    const ctx = currentRequestContext();
+    const scope = actionScope(ctx.role, q.purpose);
+    if (scope === 'none') throw new ForbiddenException();
+    return this.read(ctx, async (tx) => {
+      const conversation = await visible(tx, ctx, id);
+      if (!mayAct(ctx.role, ctx.userId, q.purpose, conversation)) throw new ForbiddenException();
+      const people = await listAssigneeCandidates(tx, {
+        workspaceId: conversation.workspaceId,
+        viewerId: ctx.userId,
+        teammatesOnly: q.purpose === 'transfer' && scope === 'own',
+      });
+      const data = people.filter(
+        (p) =>
+          p.userId !== conversation.assignedUserId &&
+          actionScope(p.role as OrgRole, 'claim') !== 'none',
+      );
+      return { data };
     });
   }
 

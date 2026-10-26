@@ -1,3 +1,4 @@
+import { orgMembers } from '@gani/db';
 import { CONVERSATION_OUTCOMES, CONVERSATION_STATES } from '@gani/domain';
 import { z } from 'zod';
 
@@ -79,6 +80,28 @@ export const VersionBodySchema = z
   .object({ version: z.number().int().min(0) })
   .strict()
   .meta({ id: 'VersionBody' });
+
+/** `GET /v1/conversations/{id}/assignees` (U31): for which dialog, "Chuyển" (transfer) or "Gán lại" (assign). */
+export const AssigneesQuerySchema = z.object({ purpose: z.enum(['transfer', 'assign']) }).strict();
+
+/**
+ * One person the action would accept (U31, N168). `name` is null when the person gave none. `openCount`: conversations they hold in
+ * every workspace of the organisation; `maxConcurrent`: their limit, else the workspace's default. Nothing is enforced on them yet (S4).
+ */
+export const AssigneeSchema = z
+  .object({
+    userId: UuidSchema,
+    name: z.string().nullable(),
+    role: z.enum(orgMembers.role.enumValues),
+    teamId: NullableUuidSchema,
+    teamName: z.string().nullable(),
+    openCount: z.number().int().min(0),
+    maxConcurrent: z.number().int().min(1),
+  })
+  .meta({ id: 'Assignee' });
+export const AssigneeListSchema = z
+  .object({ data: z.array(AssigneeSchema) })
+  .meta({ id: 'AssigneeList' });
 
 /** Transfer and assign: to whom. A member of the conversation's workspace who may hold conversations, or 422 invalid_assignee. */
 export const AssigneeBodySchema = z
