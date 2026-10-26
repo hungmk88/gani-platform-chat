@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { errorOf } from '../api/errors';
 import {
+  insertVariable,
   mayManageQuickReplies,
+  quickReplyChangeOf,
   quickRepliesPath,
   quickReplyDraftOf,
   quickReplyError,
@@ -74,5 +76,38 @@ describe('unknownVariables and quickReplyError', () => {
     expect(quickReplyError(errorOf(403, { code: 'forbidden' }), 'a')).toMatch(/Manager/);
     expect(quickReplyError(errorOf(400, { code: 'validation_failed' }), 'a')).toMatch(/không nhận/);
     expect(quickReplyError(errorOf(503, {}), 'a')).toBe(errorOf(503, {}).message);
+  });
+});
+
+describe('quickReplyChangeOf and insertVariable', () => {
+  const reply = {
+    id: 'r1',
+    workspaceId: 'w1',
+    shortcut: 'gia-si',
+    body: 'Giá sỉ',
+    tags: ['báo giá', 'sỉ'],
+    useCount: 0,
+    createdAt: '2026-10-26T00:00:00.000Z',
+    updatedAt: '2026-10-26T00:00:00.000Z',
+  };
+
+  it('sends only what differs, tags compared in order; nothing changed is empty', () => {
+    expect(quickReplyChangeOf(reply, 'gia-si', 'Giá sỉ', 'báo giá, sỉ')).toEqual({});
+    expect(quickReplyChangeOf(reply, '/gia', ' Giá sỉ ', 'sỉ, báo giá')).toEqual({
+      shortcut: 'gia',
+      tags: ['sỉ', 'báo giá'],
+    });
+    expect(quickReplyChangeOf(reply, 'gia-si', 'Giá mới', '')).toEqual({
+      body: 'Giá mới',
+      tags: [],
+    });
+    expect(quickReplyChangeOf(reply, 'gia-si', '{{x}}', '')).toMatch(/\{\{x\}\}/);
+  });
+
+  it('puts a variable at the caret and says where the caret goes', () => {
+    expect(insertVariable('Chào !', 5, 'customer_name')).toEqual({
+      text: 'Chào {{customer_name}}!',
+      caret: 22,
+    });
   });
 });

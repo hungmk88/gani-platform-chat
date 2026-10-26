@@ -8,16 +8,16 @@ import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useScope } from '../query/provider';
 import {
+  insertVariable,
   MAX_BODY,
   MAX_SHORTCUT,
   quickReplyDraftOf,
   quickReplyError,
-  VARIABLES,
   type QuickReply,
 } from './quick-replies';
+import { VariableButtons } from './variable-buttons';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
-const chip = 'rounded-input border border-border-strong px-2 py-1 text-12';
 
 /**
  * "Tạo mẫu" (#22, `POST /v1/quick-replies`, N163) in the workspace being worked in: checked like the API first (shortcut, only the
@@ -51,12 +51,11 @@ export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
   };
   /** Puts `{{name}}` where the caret is, or at the end. */
   const insert = (name: string) => {
-    const at = text.current?.selectionStart ?? body.length;
-    const token = `{{${name}}}`;
-    edit(setBody)(body.slice(0, at) + token + body.slice(at));
+    const next = insertVariable(body, text.current?.selectionStart ?? body.length, name);
+    edit(setBody)(next.text);
     requestAnimationFrame(() => {
       text.current?.focus();
-      text.current?.setSelectionRange(at + token.length, at + token.length);
+      text.current?.setSelectionRange(next.caret, next.caret);
     });
   };
   const submit = () => {
@@ -103,14 +102,7 @@ export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
           onChange={(e) => edit(setBody)(e.target.value)}
         />
       </label>
-      <div role="group" aria-label="Chèn biến" className="flex flex-wrap items-center gap-2">
-        <span className="text-12 text-text-muted">Chèn biến:</span>
-        {VARIABLES.map(([name, label]) => (
-          <button key={name} type="button" className={chip} onClick={() => insert(name)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <VariableButtons onInsert={insert} />
       <label className="flex flex-col gap-1">
         Tag (không bắt buộc, cách nhau bằng dấu phẩy, tối đa 10)
         <input value={tags} className={field} onChange={(e) => edit(setTags)(e.target.value)} />
