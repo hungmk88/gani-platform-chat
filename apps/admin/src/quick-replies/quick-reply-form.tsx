@@ -15,6 +15,7 @@ import {
   quickReplyError,
   type QuickReply,
 } from './quick-replies';
+import { PreviewQuickReplyDialog } from './quick-reply-preview';
 import { VariableButtons } from './variable-buttons';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
@@ -22,7 +23,8 @@ const field = 'rounded-input border border-border-strong px-3 py-2';
 /**
  * "Tạo mẫu" (#22, `POST /v1/quick-replies`, N163) in the workspace being worked in: checked like the API first (shortcut, only the
  * variables of Đợt 1, tags), then waits for the server (it makes a record), one Idempotency-Key per template, kept when the same is
- * sent again after a failure. Done, every list of the workspace is read again (the API sorts by use).
+ * sent again after a failure. Done, every list of the workspace is read again (the API sorts by use). The text can be seen with
+ * sample values before it is saved ("Xem trước", U38).
  */
 export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
   const scope = useScope();
@@ -33,6 +35,7 @@ export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
   const [body, setBody] = useState('');
   const [tags, setTags] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const create = useMutation<QuickReply, ApiFailure, { body: object; key: string }>({
     mutationFn: ({ body, key }) =>
       unwrap(api<QuickReply>('/v1/quick-replies', { method: 'POST', body, idempotencyKey: key })),
@@ -117,7 +120,15 @@ export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
         </div>
       ) : null}
       {create.isSuccess ? <p role="status">Đã tạo mẫu /{create.data.shortcut}.</p> : null}
-      <div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="rounded-input border border-border-strong px-4 py-2 disabled:opacity-70"
+          disabled={!body.trim()}
+          onClick={() => setPreviewing(true)}
+        >
+          Xem trước
+        </button>
         <button
           type="submit"
           className="rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70"
@@ -127,6 +138,12 @@ export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
           {create.isPending ? 'Đang tạo…' : 'Tạo mẫu'}
         </button>
       </div>
+      {previewing ? (
+        <PreviewQuickReplyDialog
+          source={{ kind: 'draft', workspaceId, body }}
+          onClose={() => setPreviewing(false)}
+        />
+      ) : null}
     </form>
   );
 }
