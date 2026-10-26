@@ -1,7 +1,11 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { z } from 'zod';
+
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
+  QuickReplyChangeSchema,
   QuickReplyCreateSchema,
+  QuickReplyIdSchema,
   QuickReplyListQuerySchema,
   QuickReplyListSchema,
   QuickReplySchema,
@@ -14,12 +18,16 @@ export function registerQuickReplies(registry: OpenAPIRegistry): void {
     'forbidden: only an Owner, an Admin or a Manager manages templates (Phụ lục B); or a refusal of the edge.',
   );
   const noWorkspace = problemResponse('not_found: no workspace with this id among the session’s.');
+  const noTemplate = problemResponse(
+    'not_found: no live template with this id in the session’s workspaces.',
+  );
   const one = (description: string) => ({
     description,
     content: { 'application/json': { schema: QuickReplySchema } },
   });
   const bodyRule =
     'validation_failed: a field (shortcut a-z 0-9 - _ up to 32; body up to 2000 with only {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}; up to 10 different tags).';
+  const params = z.object({ id: QuickReplyIdSchema });
 
   registry.registerPath({
     method: 'get',
@@ -59,6 +67,40 @@ export function registerQuickReplies(registry: OpenAPIRegistry): void {
         'duplicate_resource: another template of the workspace has this shortcut; idempotency_in_progress.',
       ),
       422: problemResponse('idempotency_key_reused: the same key with another request.'),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/quick-replies/{id}',
+    summary: 'Change the shortcut, the body or the tags of a template (N163).',
+    tags: ['quick-replies'],
+    request: {
+      params,
+      body: { content: { 'application/json': { schema: QuickReplyChangeSchema } } },
+    },
+    responses: {
+      200: one('The template as it now is.'),
+      400: problemResponse(`${bodyRule} Or nothing to change, or the id.`),
+      403: writer,
+      404: noTemplate,
+      409: problemResponse(
+        'duplicate_resource: another template of the workspace has this shortcut.',
+      ),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/quick-replies/{id}',
+    summary: 'End a template; its shortcut is free again (N163).',
+    tags: ['quick-replies'],
+    request: { params },
+    responses: {
+      204: { description: 'Ended.' },
+      400: problemResponse('validation_failed: the id.'),
+      403: writer,
+      404: noTemplate,
       ...edge,
     },
   });

@@ -1,13 +1,24 @@
-import { createQuickReply, listQuickReplies, QuickReplyShortcutTakenError } from '@gani/db';
+import {
+  createQuickReply,
+  deleteQuickReply,
+  listQuickReplies,
+  lockQuickReply,
+  QuickReplyShortcutTakenError,
+  updateQuickReply,
+  type QuickReplyChange,
+} from '@gani/db';
 import { uuidv7 } from '@gani/domain';
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
   Inject,
   NotFoundException,
+  Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -17,7 +28,12 @@ import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import { mayReadQuickReplies, mayWriteQuickReplies } from './quick-replies.permissions.js';
-import { QuickReplyCreateSchema, QuickReplyListQuerySchema } from './quick-replies.schemas.js';
+import {
+  QuickReplyChangeSchema,
+  QuickReplyCreateSchema,
+  QuickReplyIdSchema,
+  QuickReplyListQuerySchema,
+} from './quick-replies.schemas.js';
 import { quickReplyView } from './quick-replies.view.js';
 
 /** 409 of a shortcut that another live template of the workspace has. */
@@ -84,6 +100,31 @@ export class QuickRepliesController {
       ),
     );
     return quickReplyView(row);
+  }
+
+  @Patch(':id')
+  async change(
+    @Param('id', new ZodPipe(QuickReplyIdSchema)) id: string,
+    @Body(new ZodPipe(QuickReplyChangeSchema)) body: QuickReplyChange,
+  ) {
+    const ctx = this.allowed(mayWriteQuickReplies);
+    const row = await this.taken(() =>
+      this.database.withTenant(ctx, async (tx) => {
+        if (!(await lockQuickReply(tx, id))) throw new NotFoundException();
+        return updateQuickReply(tx, id, body);
+      }),
+    );
+    return quickReplyView(row);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@Param('id', new ZodPipe(QuickReplyIdSchema)) id: string) {
+    const ctx = this.allowed(mayWriteQuickReplies);
+    await this.database.withTenant(ctx, async (tx) => {
+      if (!(await lockQuickReply(tx, id))) throw new NotFoundException();
+      await deleteQuickReply(tx, id);
+    });
   }
 
   /** The request context of a person whose role may do this, in `workspaceId` when one is named. */

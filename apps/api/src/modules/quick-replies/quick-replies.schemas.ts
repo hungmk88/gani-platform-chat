@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { UuidSchema } from '../../openapi/schemas.js';
 import { unknownVariables } from './variables.js';
 
+export const QuickReplyIdSchema = UuidSchema;
+
 /** What is typed after "/" in the Inbox: lower case, digits, `-` and `_` (the CHECK of quick_replies). */
 const shortcut = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,31}$/);
 /** Only the variables of Đợt 1 (N163): {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}. */
@@ -47,3 +49,10 @@ export const QuickReplyCreateSchema = z
   .object({ workspaceId: UuidSchema, shortcut, body, tags: tags.optional() })
   .strict()
   .meta({ id: 'QuickReplyCreate' });
+
+/** `PATCH /v1/quick-replies/{id}`: at least one field; the workspace stays. */
+export const QuickReplyChangeSchema = z
+  .object({ shortcut: shortcut.optional(), body: body.optional(), tags: tags.optional() })
+  .strict()
+  .refine((change) => Object.keys(change).length > 0, 'nothing to change')
+  .meta({ id: 'QuickReplyChange' });

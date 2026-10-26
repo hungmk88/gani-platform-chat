@@ -168,3 +168,65 @@ describe('/v1/quick-replies', () => {
     expect(there.rows).toEqual([{ shortcut: 'khac' }]);
   });
 });
+
+describe('PATCH/DELETE /v1/quick-replies/{id}', () => {
+  it('changes and ends a template, and gives an ended shortcut back', async () => {
+    const id = String(
+      (
+        await call('manager', 'POST', '', {
+          workspaceId: W,
+          shortcut: 'tam-biet',
+          body: 'Tạm biệt',
+        })
+      ).body['id'],
+    );
+    expect((await call('manager', 'PATCH', `/${id}`, { shortcut: 'chao' })).body['code']).toBe(
+      'duplicate_resource',
+    );
+    expect(
+      (
+        await call('manager', 'PATCH', `/${id}`, {
+          body: 'Tạm biệt {{customer_name}}',
+          tags: ['cuoi'],
+        })
+      ).body,
+    ).toMatchObject({
+      shortcut: 'tam-biet',
+      body: 'Tạm biệt {{customer_name}}',
+      tags: ['cuoi'],
+    });
+    expect((await call('owner', 'DELETE', `/${id}`)).status).toBe(204);
+    expect((await call('owner', 'DELETE', `/${id}`)).status).toBe(404);
+    expect(
+      (await call('manager', 'POST', '', { workspaceId: W, shortcut: 'tam-biet', body: 'Mới' }))
+        .status,
+    ).toBe(201);
+  });
+
+  it('refuses other roles, a template of another workspace, and bad changes, and leaves it as it was', async () => {
+    const mine = String(
+      (await call('owner', 'POST', '', { workspaceId: W, shortcut: 'giu', body: 'Giữ' })).body[
+        'id'
+      ],
+    );
+    const answers = [
+      await call('sales', 'PATCH', `/${mine}`, { body: 'Đổi' }),
+      await call('sales', 'DELETE', `/${mine}`),
+      await call('owner', 'PATCH', `/${inW2}`, { body: 'Đổi' }),
+      await call('owner', 'DELETE', `/${inW2}`),
+      await call('owner', 'PATCH', `/${mine}`, {}),
+      await call('owner', 'PATCH', `/${mine}`, { body: '{{price_1}}' }),
+      await call('owner', 'PATCH', `/${mine}`, { workspaceId: W2 }),
+      await call('owner', 'PATCH', '/not-a-uuid', { body: 'X' }),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 403, 404, 404, 400, 400, 400, 400]);
+    const rows = await q(
+      'SELECT id, body, deleted_at IS NULL AS live FROM quick_replies WHERE id = ANY($1::uuid[]) ORDER BY body',
+      [[mine, inW2]],
+    );
+    expect(rows.rows).toEqual([
+      { id: mine, body: 'Giữ', live: true },
+      { id: inW2, body: 'Ở W2', live: true },
+    ]);
+  });
+});
