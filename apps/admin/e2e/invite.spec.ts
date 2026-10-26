@@ -4,7 +4,7 @@ import { homeFor } from '../src/nav';
 import { INVALID, MISMATCH, TOO_MANY, WEAK } from '../src/invite';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
-import { INVITES } from './stub-api';
+import { INVITES } from './stub-links';
 
 // #4 Nhận lời mời (N151): the link of the email, one step, then the page of the role (or the set-up of 2FA).
 const PASSWORD = 'mat khau moi 2026';
