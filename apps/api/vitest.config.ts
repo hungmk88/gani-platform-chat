@@ -26,6 +26,7 @@ export default defineConfig({
         'src/modules/teams/teams.controller.ts',
         'src/modules/channels/channels.controller.ts',
         'src/modules/quick-replies/quick-replies.controller.ts',
+        'src/modules/customers/customers.controller.ts',
       ],
     },
   },
