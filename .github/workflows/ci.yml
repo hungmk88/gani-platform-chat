@@ -73,10 +73,14 @@ jobs:
       # The Chromium of the pinned @playwright/test, cached by the runner image and that version (#350): `runner.os` alone is
       # "Linux", so the key also takes `ImageOS` (ubuntu24, ubuntu26…), a Chromium built for another image is never reused.
       # The system libraries (apt) are not in the cache: always installed, each in its own step so their times show apart.
+      # pipefail and the empty checks: a failed lookup must stop here, never become a key shared by every version (CLAUDE.md).
       - id: playwright-key
+        shell: bash
         run: |
+          v="$(pnpm --filter @gani/admin exec playwright --version | awk '{print $2}')"
+          test -n "$v" && test -n "${ImageOS:-}"
           echo "image=${ImageOS}" >> "$GITHUB_OUTPUT"
-          echo "version=$(pnpm --filter @gani/admin exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
       - id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
