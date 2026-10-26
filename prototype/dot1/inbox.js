@@ -9,15 +9,18 @@ const STATE_LABEL = {
   HUMAN_ACTIVE: 'Nhân viên đang xử lý',
   PENDING_CUSTOMER: 'Chờ khách trả lời',
   CLOSED: 'Đã đóng',
-  HOLD: 'Ngoài giờ — chờ đến giờ làm',
 };
+// Ngoài giờ là cờ `hold` (API: afterHoursHold) trên hội thoại bot đang giữ, không phải một trạng thái (spec-M8 §3.4, T18).
+const HOLD_LABEL = 'Ngoài giờ — chờ đến giờ làm';
 // Người nhận, lý do chuyển và các hộp thoại: inbox-dialogs.js (tách cho file ≤ 500 dòng, N126).
 const D = Proto.inboxDialogs;
+// Mẫu của workspace (#22), dùng nhiều nhất trước; gõ "/" + đầu tên ngắn để lọc (N163).
 const TEMPLATES = [
-  { name: 'Chào hỏi', text: 'Chào {{ten_khach}}, em là {{ten_nhan_vien}} từ {{ten_cong_ty}}. Em hỗ trợ được gì ạ?' },
-  { name: 'Xin số điện thoại', text: 'Anh/chị cho em xin số điện thoại để bộ phận kinh doanh gọi lại ạ.' },
-  { name: 'Hotline', text: 'Anh/chị cần gấp có thể gọi {{sdt_cong_ty}}, em là {{ten_nhan_vien}} ạ.' },
+  { key: 'chao-hoi', text: 'Chào {{customer_name}}, em là {{agent_name}} từ {{company_name}}. Em hỗ trợ được gì ạ?' },
+  { key: 'xin-sdt', text: 'Anh/chị cho em xin số điện thoại để bộ phận kinh doanh gọi lại ạ.' },
+  { key: 'hotline', text: 'Anh/chị cần gấp có thể gọi {{company_phone}}, em là {{agent_name}} ạ.' },
 ];
+const VAR_LABEL = { customer_name: 'Tên khách', agent_name: 'Tên nhân viên', company_name: 'Tên công ty', company_phone: 'SĐT công ty' };
 const XSS_1 = "<script>alert('xss')</script> cho hỏi giá";
 const XSS_2 = '<img src=x onerror=alert(1)>';
 
@@ -63,7 +66,7 @@ function seed() {
       ],
     },
     {
-      id: 'c6', name: 'Công ty TNHH Minh Phát', company: 'Minh Phát', state: 'HOLD', assignee: null,
+      id: 'c6', name: 'Công ty TNHH Minh Phát', company: 'Minh Phát', state: 'BOT_ACTIVE', hold: true, assignee: null,
       sla: null, unread: 1, tags: [], phone: '0280000002', lead: null,
       messages: [{ kind: 'customer', text: 'Gọi lại cho tôi sáng mai', at: '21:15' }, { kind: 'bot', text: 'Ngoài giờ làm việc. Chúng tôi đã nhận lời nhắn và sẽ gọi lại lúc 8:00.', at: '21:15' }],
     },
@@ -100,11 +103,11 @@ function canAct(c) {
   return Proto.isManagerUp() || c.assignee === ME;
 }
 function isClaimable(c) {
-  return c.state === 'HUMAN_WAITING_Q' || c.state === 'HOLD';
+  return c.state === 'HUMAN_WAITING_Q' || (c.state === 'BOT_ACTIVE' && c.hold);
 }
 function stateBadge(c) {
   const cls = c.state === 'HUMAN_WAITING_Q' ? 'warn' : c.state === 'CLOSED' ? '' : c.state === 'HUMAN_ACTIVE' ? 'ok' : 'outline';
-  return h('span', { class: `badge ${cls}` }, STATE_LABEL[c.state]);
+  return h('span', { class: `badge ${cls}` }, c.hold ? HOLD_LABEL : STATE_LABEL[c.state]);
 }
 /* SLA tạm dừng (Phụ lục C v3 dòng 1): khi chờ khách trả lời, hoặc ngoài giờ làm việc (giờ làm việc chờ Q7). */
 function slaPaused(c) {
@@ -129,7 +132,7 @@ function visibleConvs() {
   const f = db.filter;
   return db.convs.filter((c) => {
     if (!Proto.isManagerUp() && c.assignee && c.assignee !== ME) return false; // #139: Sales/Support thấy của mình + chưa ai nhận (N133)
-    if (f.state !== 'all' && c.state !== f.state) return false;
+    if (f.state === 'hold' ? !c.hold : f.state !== 'all' && c.state !== f.state) return false;
     if (f.who === 'mine' && c.assignee !== ME) return false;
     if (f.who === 'none' && c.assignee !== null) return false;
     if (f.sla === 'soon' && (slaPaused(c) || !(c.sla !== null && c.sla >= 0 && c.sla < 15))) return false;
@@ -165,7 +168,7 @@ function leftColumn() {
   return h('section', { class: 'col-left', 'aria-label': 'Bộ lọc và danh sách' },
     h('div', { class: 'filters' },
       h('div', { class: 'field full' }, h('label', { for: 'search' }, 'Tìm theo tên, SĐT (phím /)'), h('input', { id: 'search', class: 'input', type: 'search', value: db.filter.q, oninput: (e) => { db.filter.q = e.target.value; Proto.render(); document.getElementById('search').focus(); } })),
-      filterSelect('Trạng thái', 'state', [['all', 'Tất cả'], ...Object.entries(STATE_LABEL)]),
+      filterSelect('Trạng thái', 'state', [['all', 'Tất cả'], ...Object.entries(STATE_LABEL), ['hold', HOLD_LABEL]]),
       filterSelect('Người phụ trách', 'who', whoOptions),
       filterSelect('SLA', 'sla', [['all', 'Tất cả'], ['soon', 'Sắp quá hạn'], ['over', 'Quá hạn']]),
       h('div', { class: 'field' }, h('label', { for: 'f-ch' }, 'Kênh'), h('select', { id: 'f-ch', class: 'input' }, h('option', {}, 'Zalo OA'))),
@@ -236,7 +239,7 @@ function headerActions(c) {
       h('button', { class: 'btn', onclick: () => D.close(c) }, 'Đóng ', h('span', { class: 'kbd' }, 'E')),
     ];
   }
-  if (c.state === 'BOT_ACTIVE') return [h('span', { class: 'muted small' }, 'Bot đang xử lý — chưa cần người')];
+  if (c.state === 'BOT_ACTIVE') return [h('span', { class: 'muted small' }, 'Bot đang xử lý — chưa cần người')]; // ngoài giờ (hold): nhận được ở trên
   return [h('span', { class: 'muted small' }, 'Khách nhắn trong 72 giờ sẽ mở lại hội thoại này')];
 }
 
@@ -245,11 +248,13 @@ function claim(c, button) {
     if (Proto.state() === 'claimed') {
       c.assignee = 'Trần Thu';
       c.state = 'HUMAN_ACTIVE';
+      c.hold = false;
       Proto.toast('Đã được Trần Thu nhận. Hội thoại được bỏ khỏi danh sách chờ.');
       db.selected = db.convs.find((x) => isClaimable(x) && x.id !== c.id)?.id || 'c2';
     } else {
       c.assignee = ME;
       c.state = 'HUMAN_ACTIVE';
+      c.hold = false;
       c.messages.push({ kind: 'system', text: 'Bạn đã nhận hội thoại', at: 'Vừa xong' });
     }
     Proto.render();
@@ -257,8 +262,10 @@ function claim(c, button) {
 }
 
 /* Ô soạn tin (§4.5) */
+/* Biến FE biết thì điền sẵn: tên khách (hồ sơ khách, U37), tên mình, tên công ty, SĐT liên hệ của workspace (`/v1/me`, N164);
+   biến còn lại hiện ô điền dưới ô soạn, không bao giờ gửi {{…}} ra khách (N163). */
 function fillTemplate(text, c) {
-  const values = { ten_khach: c.name.startsWith('Khách Zalo') ? null : c.name, ten_nhan_vien: ME, ten_cong_ty: 'Gani Foods', sdt_cong_ty: null };
+  const values = { customer_name: c.name.startsWith('Khách Zalo') ? null : c.name, agent_name: ME, company_name: 'Gani Foods', company_phone: '028 3812 3456' };
   return text.replace(/\{\{(\w+)\}\}/g, (all, key) => values[key] || all);
 }
 
@@ -288,10 +295,24 @@ function composer(c) {
     area.style.height = 'auto';
     area.style.height = `${area.scrollHeight}px`;
     help.replaceChildren();
-    const blanks = area.value.match(/\{\{\w+\}\}/g);
-    if (blanks) help.append(h('p', { class: 'small' }, h('span', { class: 'var-blank' }, `Cần điền: ${blanks.join(', ')}`), ' — không bao giờ gửi {{…}} ra khách.'));
-    sendBtn.disabled = Boolean(blanks) || !area.value.trim();
-    if (area.value === '/' && db.mode === 'reply') help.append(h('ul', { class: 'template-list', 'aria-label': 'Mẫu trả lời nhanh' }, TEMPLATES.map((t) => h('li', {}, h('button', { onclick: () => { area.value = fillTemplate(t.text, c); refresh(); area.focus(); } }, h('strong', {}, t.name), ' — ', t.text)))));
+    const blanks = [...new Set((area.value.match(/\{\{\w+\}\}/g) ?? []).map((b) => b.slice(2, -2)))];
+    if (blanks.length) {
+      help.append(h('fieldset', { class: 'row' }, h('legend', { class: 'small' }, h('span', { class: 'var-blank' }, 'Điền vào tin trước khi gửi'), ' — không bao giờ gửi {{…}} ra khách.'),
+        blanks.map((name) => {
+          const field = h('input', { id: `fill-${name}`, class: 'input', 'aria-label': VAR_LABEL[name] ?? name });
+          field.addEventListener('change', () => { if (field.value.trim()) { area.value = area.value.split(`{{${name}}}`).join(field.value.trim()); refresh(); } });
+          return h('label', { class: 'small', for: `fill-${name}` }, `${VAR_LABEL[name] ?? name} `, field);
+        })));
+    }
+    sendBtn.disabled = blanks.length > 0 || !area.value.trim();
+    const slash = db.mode === 'reply' ? /^\/([a-z0-9_-]{0,32})$/i.exec(area.value) : null;
+    if (slash) {
+      const q = slash[1].toLowerCase();
+      const shown = TEMPLATES.filter((t) => t.key.startsWith(q));
+      help.append(shown.length
+        ? h('ul', { class: 'template-list', 'aria-label': 'Mẫu trả lời nhanh' }, shown.map((t) => h('li', {}, h('button', { onclick: () => { area.value = fillTemplate(t.text, c); refresh(); area.focus(); } }, h('strong', {}, `/${t.key}`), ' — ', t.text))))
+        : h('p', { class: 'small muted' }, `Không có mẫu nào bắt đầu bằng /${q}. Esc để viết tiếp.`));
+    }
     if (db.mode === 'note' && area.value.endsWith('@')) help.append(h('div', { class: 'row' }, D.PEOPLE.slice(0, 4).map((p) => h('button', { class: 'chip', onclick: () => { area.value += `${p.name} `; refresh(); area.focus(); } }, p.name))));
     draft.textContent = area.value ? 'Đang lưu nháp lên máy chủ…' : 'Nháp lưu trên máy chủ';
     if (area.value) setTimeout(() => { draft.textContent = 'Đã lưu nháp'; }, 600);

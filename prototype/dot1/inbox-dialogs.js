@@ -31,7 +31,7 @@
     close();
     if (s === 'handover_conflict') { Proto.toast('Hội thoại vừa thay đổi (có người thao tác trước). Đã tải lại, kiểm tra rồi làm lại.'); Proto.render(); return; }
     c.assignee = person;
-    if (c.state === 'HUMAN_WAITING_Q' || c.state === 'HOLD') c.state = 'HUMAN_ACTIVE';
+    if (c.state === 'HUMAN_WAITING_Q' || (c.state === 'BOT_ACTIVE' && c.hold)) { c.state = 'HUMAN_ACTIVE'; c.hold = false; }
     c.messages.push({ kind: 'system', text: reason ? `Đã ${verb} cho ${person} — lý do: ${reason}` : `Đã ${verb} cho ${person}`, at: 'Vừa xong' });
     Proto.toast(verb === 'chuyển' ? `Đã chuyển cho ${person}. Hội thoại rời khỏi "Của tôi".` : `Đã gán cho ${person}. Ghi audit.`);
     Proto.render();
