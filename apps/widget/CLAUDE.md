@@ -47,3 +47,12 @@ Nguồn chính: **Brief UI v1.0 Phần 3**. Widget thuộc **Đợt 2**: wirefra
 
 - Không thêm dependency nặng (React, lodash đầy đủ).
 - Không gọi API ngoài danh sách đã đăng ký.
+
+## Chạy (W1, 26/10/2026)
+
+- Preact 10 + TypeScript, build bằng Vite (`scripts/build.mjs`): `dist/loader.js` (IIFE, script thường, không có Preact) và `dist/widget.js` (ES module một file, loader `import()` khi người xem bấm nút chat hoặc 2 giây sau `load`, dùng `setTimeout` vì Safari không có `requestIdleCallback`). Bundle nằm cạnh loader (`new URL('widget.js', script.src)`).
+- `pnpm --filter @gani/widget build` chạy luôn `scripts/size.mjs`: đo gzip, vượt 5KB (loader) hoặc 35KB (bundle) thì build lỗi, CI đỏ (`pnpm build`).
+- Nhúng: `<script async src=".../loader.js" data-brand-name data-brand-color data-greeting>`. Đây là cách tạm cho W1: cấu hình thật lấy theo widget key khi có API `/v1/widget/*` (S10). Màu thương hiệu không đủ 4,5:1 với chữ trắng (hoặc sai dạng `#rrggbb`) thì widget dùng màu trung tính (`src/brand.ts`). Màn cấu hình (#33) vẫn phải chặn lưu.
+- Trang thử: `pnpm --filter @gani/widget build`, rồi mở `apps/widget/demo/index.html?brand=a|b|light` qua một máy chủ tĩnh bất kỳ, chạy từ `apps/widget`. Không mở bằng `file://`, vì `import()` cần http. Trang có CSS mạnh để thử cách ly.
+- Shadow DOM `mode: 'open'`, `:host { all: initial }`, CSS là chuỗi trong `src/styles.ts`. Lint chặn `innerHTML` và `dangerouslySetInnerHTML` (chữ thuần).
+- W1 mới có nút chat và khung chat (thương hiệu, lời chào, Thu gọn, Esc). Form trước khi chat, hội thoại, đánh giá, nút "Kết thúc & xóa trên máy này" và E2E/axe có ở W2. Chưa gọi API nào (chưa có trong OpenAPI).
