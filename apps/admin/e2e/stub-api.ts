@@ -14,6 +14,7 @@ import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
 import { MEMBERS, routeMembers } from './stub-members';
+import { routeChannels } from './stub-channels';
 import { routeTeams } from './stub-teams';
 import { routeWorkspaces } from './stub-workspaces';
 
@@ -439,13 +440,17 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     session.sent.set(key, m);
     return send(res, 201, m);
   }
-  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160): e2e/stub-{members,workspaces,teams}.ts.
-  if (path && ['/v1/members', '/v1/workspaces', '/v1/teams'].some((p) => path.startsWith(p))) {
+  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160), #24 Kênh (N161): e2e/stub-{members,workspaces,teams,channels}.ts.
+  if (
+    path &&
+    ['/v1/members', '/v1/workspaces', '/v1/teams', '/v1/channels'].some((p) => path.startsWith(p))
+  ) {
     const sid = cookie(req, SESSION) ?? '';
     const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
     if (await routeMembers(req, res, path, who, { send, problem, json })) return;
     if (await routeWorkspaces(req, res, path, who, { send, problem, json })) return;
     if (await routeTeams(req, res, path, who, { send, problem, json })) return;
+    if (routeChannels(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
