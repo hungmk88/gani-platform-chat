@@ -5,14 +5,10 @@ export const TITLE_MAX = 80; // fits the Ticket column of the list (#14); the AP
 export const TITLE_MIN = 10; // "ok", "vâng": shorter than this says nothing, so the field is left empty to be typed
 
 // One segmenter for the module, not one per call. Intl.Segmenter counts what a reader sees as one character: an emoji joined
-// by ZWJ (👨‍👩‍👧) or a Vietnamese letter with a combining mark is never cut in two. Firefox before 125 has none (Next's targets
-// include Firefox 111): there the code points are counted, which keeps surrogate pairs whole but may split a ZWJ emoji.
-const SEGMENTER =
-  typeof Intl.Segmenter === 'function'
-    ? new Intl.Segmenter('vi', { granularity: 'grapheme' })
-    : null;
-const graphemes = (s: string): string[] =>
-  SEGMENTER ? Array.from(SEGMENTER.segment(s), (g) => g.segment) : Array.from(s);
+// by ZWJ (👨‍👩‍👧) or a Vietnamese letter with a combining mark is never cut in two. Every browser the admin targets has it
+// (`browserslist` of package.json: Chrome/Edge/Firefox 125+, Safari 17.4+), so there is no other way to count.
+const SEGMENTER = new Intl.Segmenter('vi', { granularity: 'grapheme' });
+const graphemes = (s: string): string[] => Array.from(SEGMENTER.segment(s), (g) => g.segment);
 
 /** The first line that is not blank, without control characters, its spaces folded; plain text (React escapes it). */
 function firstLine(body: string): string {
