@@ -78,7 +78,8 @@ jobs:
         shell: bash
         run: |
           v="$(pnpm --filter @gani/admin exec playwright --version | awk '{print $2}')"
-          test -n "$v" && test -n "${ImageOS:-}"
+          test -n "$v"
+          test -n "${ImageOS:-}"
           echo "image=${ImageOS}" >> "$GITHUB_OUTPUT"
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "::notice title=Playwright cache key::image=${ImageOS} imageVersion=${ImageVersion:-?} playwright=$v"
