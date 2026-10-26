@@ -65,6 +65,8 @@ const PAGES = [
   'customer-import.html?role=admin',
   'customer-import.html?role=admin&step=2',
   'customer-import.html?role=admin&step=3',
+  'customer-import.html?role=admin&state=empty_file',
+  'customer-import.html?role=admin&state=error',
   'customer-data.html?role=admin',
   'customer-data.html?role=admin&tab=tags',
   'customer-data.html?role=manager&state=aioff',
@@ -91,6 +93,7 @@ const PAGES = [
   'overview.html?role=manager&state=aioff',
   'autonomy.html?role=owner',
   'autonomy.html?role=admin',
+  'autonomy.html?role=admin&state=empty',
 ];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });

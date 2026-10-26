@@ -15,9 +15,9 @@ const button = 'rounded-input border border-border-strong px-3 py-1';
 /**
  * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed (`TeamDialog`),
  * given its people (`TeamMembersDialog`) and its channels (`TeamChannelsDialog`, not the default team: what no team answers is
- * its already), or ended (`EndTeamDialog`) from its row.
+ * its already), or ended (`EndTeamDialog`) from its row. `readOnly` (a Manager): its own teams, no column of actions.
  */
-export function TeamTable({ workspaceId }: { workspaceId: string }) {
+export function TeamTable({ workspaceId, readOnly }: { workspaceId: string; readOnly: boolean }) {
   const list = useApiQuery<TeamList>(['teams', workspaceId], teamsPath(workspaceId));
   const [editing, setEditing] = useState<Team | null>(null);
   const [ending, setEnding] = useState<Team | null>(null);
@@ -44,7 +44,11 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
           <RetryAction onRetry={() => void list.refetch()} busy={list.isFetching} />
         </div>
       ) : list.data.data.length === 0 ? (
-        <p>Workspace này chưa có team nào. Tạo team đầu tiên bằng form ở trên.</p>
+        readOnly ? (
+          <p>Bạn chưa thuộc team nào của workspace này. Nhờ Owner hoặc Admin thêm bạn vào team.</p>
+        ) : (
+          <p>Workspace này chưa có team nào. Tạo team đầu tiên bằng form ở trên.</p>
+        )
       ) : (
         <div className="overflow-x-auto rounded-card border border-border">
           <table className="w-full text-left">
@@ -55,9 +59,11 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                     {t}
                   </th>
                 ))}
-                <th scope="col" className="p-2">
-                  <span className="sr-only">Thao tác</span>
-                </th>
+                {readOnly ? null : (
+                  <th scope="col" className="p-2">
+                    <span className="sr-only">Thao tác</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -72,58 +78,60 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                   </td>
                   <td className="p-2">{t.description ?? '—'}</td>
                   <td className="p-2">{t.memberCount}</td>
-                  <td className="p-2">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className={button}
-                        aria-label={`Sửa team ${t.name}`}
-                        onClick={() => {
-                          setNotice(null);
-                          setEditing(t);
-                        }}
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        className={button}
-                        aria-label={`Người của team ${t.name}`}
-                        onClick={() => {
-                          setNotice(null);
-                          setStaffing(t);
-                        }}
-                      >
-                        Người
-                      </button>
-                      {t.isDefault ? null : (
+                  {readOnly ? null : (
+                    <td className="p-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           className={button}
-                          aria-label={`Kênh của team ${t.name}`}
+                          aria-label={`Sửa team ${t.name}`}
                           onClick={() => {
                             setNotice(null);
-                            setRouting(t);
+                            setEditing(t);
                           }}
                         >
-                          Kênh
+                          Sửa
                         </button>
-                      )}
-                      {t.isDefault ? null : (
                         <button
                           type="button"
                           className={button}
-                          aria-label={`Kết thúc team ${t.name}`}
+                          aria-label={`Người của team ${t.name}`}
                           onClick={() => {
                             setNotice(null);
-                            setEnding(t);
+                            setStaffing(t);
                           }}
                         >
-                          Kết thúc…
+                          Người
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        {t.isDefault ? null : (
+                          <button
+                            type="button"
+                            className={button}
+                            aria-label={`Kênh của team ${t.name}`}
+                            onClick={() => {
+                              setNotice(null);
+                              setRouting(t);
+                            }}
+                          >
+                            Kênh
+                          </button>
+                        )}
+                        {t.isDefault ? null : (
+                          <button
+                            type="button"
+                            className={button}
+                            aria-label={`Kết thúc team ${t.name}`}
+                            onClick={() => {
+                              setNotice(null);
+                              setEnding(t);
+                            }}
+                          >
+                            Kết thúc…
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

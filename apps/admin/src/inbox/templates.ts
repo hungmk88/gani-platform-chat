@@ -2,9 +2,7 @@
 // workspace; a picked template comes in with the variables the Inbox knows already filled, the others get a field each. A text
 // still holding a {{…}} is never sent (the API answers 422 unresolved_variable).
 import type { Me } from '../me';
-import type { Role } from '../nav';
 import { VARIABLES } from '../quick-replies/quick-replies';
-import type { WorkspaceList } from '../workspaces/workspace';
 
 type Variable = (typeof VARIABLES)[number][0];
 export type Known = Partial<Record<Variable, string>>;
@@ -18,19 +16,25 @@ export function slashQuery(text: string): string | null {
   return m ? (m[1] ?? '').toLowerCase() : null;
 }
 
-/** What the Inbox knows of the person and the company (N163); the customer's name is not served yet, the workspace's phone see `phoneOf` (U37). */
+/** What the Inbox knows of the person and the company (N163); the workspace's number see `phoneOf`; the customer's name waits for N165 (U37). */
 export function knownOf(me: Pick<Me, 'name' | 'org'>): Known {
   const agent = me.name.trim();
   const company = me.org?.name.trim() ?? '';
   return { ...(agent ? { agent_name: agent } : {}), ...(company ? { company_name: company } : {}) };
 }
 
-/** Who reads `GET /v1/workspaces` (N157), so the Inbox knows {{company_phone}} for them; the other roles fill it (U37). */
-export const readsWorkspaces = (role: Role): boolean => role === 'owner' || role === 'admin';
+/** The contact number of each workspace of the person that has one (`me.workspaces[].contactPhone`, every role, N164). */
+export const phonesOf = (me: Pick<Me, 'workspaces'>): Record<string, string> =>
+  Object.fromEntries(
+    me.workspaces.flatMap((w) => {
+      const phone = w.contactPhone?.trim();
+      return phone ? [[w.id, phone]] : [];
+    }),
+  );
 
-/** {{company_phone}}: the contact number of the conversation's workspace (`contactPhone`, N163), when it is set. */
-export function phoneOf(list: WorkspaceList | undefined, workspaceId: string): Known {
-  const phone = list?.data.find((w) => w.id === workspaceId)?.contactPhone?.trim();
+/** {{company_phone}}: the number of the conversation's workspace, when it has one. */
+export function phoneOf(phones: Readonly<Record<string, string>>, workspaceId: string): Known {
+  const phone = phones[workspaceId];
   return phone ? { company_phone: phone } : {};
 }
 

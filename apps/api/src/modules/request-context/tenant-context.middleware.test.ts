@@ -175,7 +175,7 @@ describe('tenant context middleware', () => {
   });
 
   it('is 503 without the cause when a dependency fails, and 403 only for "not a member"', async () => {
-    const leak = 'connection refused to db-7.internal:5432 password=hunter2';
+    const leak = 'connection refused to db-seven.internal:5432 password=hunter2';
     const failing: Partial<TenantMiddlewareDeps>[] = [
       { member: () => Promise.reject(new Error(leak)) },
       { sessions: { resolve: () => Promise.reject(new Error(leak)) } },
@@ -191,7 +191,7 @@ describe('tenant context middleware', () => {
       expect(res.status).toBe(503);
       expect(res.headers.get('content-type')).toBe(PROBLEM_CONTENT_TYPE);
       expect(JSON.parse(text)).toMatchObject({ code: 'service_unavailable', status: 503 });
-      expect(text).not.toMatch(/hunter2|db-7|refused/);
+      expect(text).not.toMatch(/hunter2|db-seven|refused/);
     }
   });
 
