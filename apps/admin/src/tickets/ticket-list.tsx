@@ -136,7 +136,11 @@ export function TicketList({ item, go }: { item: NavItem; go: NavItem }) {
                   const [label, tone] = STATUS[t.status];
                   return (
                     <tr key={t.id}>
-                      <td className="p-2">{t.title}</td>
+                      <td className="p-2">
+                        <Link href={`/tickets/${encodeURIComponent(t.id)}`} className="underline">
+                          {t.title}
+                        </Link>
+                      </td>
                       <td className="p-2">
                         {t.customer ? (
                           (t.customer.displayName ?? 'Khách chưa có tên')

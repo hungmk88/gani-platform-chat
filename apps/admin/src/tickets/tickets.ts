@@ -62,6 +62,8 @@ export function slaText(t: Pick<Ticket, 'sla' | 'status'>): string {
   return `Hạn ${TIME.format(new Date(t.sla.dueAt))}`;
 }
 
+/** A time of the API in Viet Nam's time. */
+export const timeText = (iso: string): string => TIME.format(new Date(iso));
+
 /** When it last changed, in Viet Nam's time. */
-export const changedAt = (t: Pick<Ticket, 'updatedAt'>): string =>
-  TIME.format(new Date(t.updatedAt));
+export const changedAt = (t: Pick<Ticket, 'updatedAt'>): string => timeText(t.updatedAt);
