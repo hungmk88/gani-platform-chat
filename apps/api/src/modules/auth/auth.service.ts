@@ -1,4 +1,5 @@
 import { createDbPool, pingDb } from '@gani/db';
+import { createSmtpSender, emailPolicy, type EmailSender } from '@gani/email';
 import { Logger, type OnApplicationShutdown } from '@nestjs/common';
 
 import { errorCode } from '../database/database.service.js';
@@ -21,12 +22,18 @@ export class AuthService implements OnApplicationShutdown {
   /** BETTER_AUTH_URL: the one origin a change under /v1 may come from (N136). */
   readonly origin: string;
 
-  constructor(env: AuthEnv, url: string, create: typeof createDbPool = createDbPool) {
+  /** `sender` carries the links of "Quên mật khẩu" (N162); without it those routes do not exist (unit tests). */
+  constructor(
+    env: AuthEnv,
+    url: string,
+    create: typeof createDbPool = createDbPool,
+    private readonly sender?: EmailSender,
+  ) {
     this.origin = env.baseURL;
     this.pool = create(url, {
       onError: (error) => this.logger.warn(`auth pool error (${errorCode(error)})`),
     });
-    this.auth = createAuth({ pool: this.pool, env });
+    this.auth = createAuth({ pool: this.pool, env, ...(sender ? { sender } : {}) });
   }
 
   static fromEnv(env: Record<string, string | undefined>): AuthService {
@@ -34,7 +41,10 @@ export class AuthService implements OnApplicationShutdown {
     const url = env['DATABASE_URL_AUTH'];
     if (!url)
       throw new Error('DATABASE_URL_AUTH is not set: Better Auth signs in through auth_role');
-    return new AuthService(authEnv, url);
+    // Checked at start-up like the mailer of invitations (N149): production without SMTP_URL, EMAIL_FROM or encryption stops here.
+    const logger = new Logger(AuthService.name);
+    const sender = createSmtpSender(emailPolicy(env, (line) => logger.warn(line)));
+    return new AuthService(authEnv, url, createDbPool, sender);
   }
 
   /** Can the auth pool reach its database? Same shape as DatabaseService.ping(): never throws, never says why. */
@@ -93,6 +103,6 @@ export class AuthService implements OnApplicationShutdown {
   async onApplicationShutdown(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
-    await this.pool.end();
+    await Promise.all([this.pool.end(), this.sender?.close()]);
   }
 }

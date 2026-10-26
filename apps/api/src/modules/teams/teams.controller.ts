@@ -6,6 +6,7 @@ import {
   listWorkspaceMembers,
   lockTeam,
   lockWorkspace,
+  setTeamChannels,
   setTeamMembers,
   teamUserIds,
   teamWorkspaceId,
@@ -38,6 +39,7 @@ import { mayInvite } from '../members/members.permissions.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import {
   TeamChangeSchema,
+  TeamChannelsBodySchema,
   TeamCreateSchema,
   TeamIdSchema,
   TeamListQuerySchema,
@@ -45,12 +47,14 @@ import {
 } from './teams.schemas.js';
 import { teamView } from './teams.view.js';
 
-/** 409 of a team still in use: the default one of its workspace (endpoint-M8 §1). */
+/** 409 of a team still in use: the default one of its workspace, or one that answers a channel (endpoint-M8 §1, N161). */
 export class TeamInUseError extends Error {
   readonly status = 409;
   readonly code = 'team_in_use';
   constructor() {
-    super('This team is the default one of its workspace: make another team the default first.');
+    super(
+      'This team is the default one of its workspace or answers a channel: make another team the default, or give its channels to another team, first.',
+    );
     this.name = 'TeamInUseError';
   }
 }
@@ -140,7 +144,7 @@ export class TeamsController {
   @HttpCode(204)
   async remove(@Param('id', new ZodPipe(TeamIdSchema)) id: string) {
     await this.write(id, async (tx, team) => {
-      if (team.isDefault) throw new TeamInUseError();
+      if (team.isDefault || team.channelIds.length > 0) throw new TeamInUseError();
       await deleteTeam(tx, id);
       await this.audit(tx, 'team.deleted', id, { slug: team.slug });
       return team;
@@ -189,6 +193,26 @@ export class TeamsController {
       return team;
     });
     return { data };
+  }
+
+  /** Makes `channelIds`, channel accounts of the team's workspace, the channels the team answers; one of another team moves (N161). */
+  @Put(':id/channels')
+  async setChannels(
+    @Param('id', new ZodPipe(TeamIdSchema)) id: string,
+    @Body(new ZodPipe(TeamChannelsBodySchema)) body: { channelIds: string[] },
+  ) {
+    const team = await this.write(id, async (tx, before) => {
+      const changed = await setTeamChannels(tx, {
+        teamId: id,
+        workspaceId: before.workspaceId,
+        channelIds: body.channelIds,
+      });
+      if (!changed) throw new ValidationFailedError(['channelIds: not a channel of the workspace']);
+      if (changed.added + changed.removed === 0) return before;
+      await this.audit(tx, 'team.channels_changed', id, changed);
+      return (await lockTeam(tx, id)) as TeamRow;
+    });
+    return teamView(team);
   }
 
   /** A write of an Owner or an Admin on a live team: the workspace locked, then the team, in one TenantTx. */
