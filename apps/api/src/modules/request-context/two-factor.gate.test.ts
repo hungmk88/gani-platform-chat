@@ -154,7 +154,7 @@ describe('two-factor gate', () => {
   });
 
   it('refuses with 503, and no cause, when the session or the rule cannot be read', async () => {
-    const leak = 'connection refused to db-7.internal:5432 password=hunter2';
+    const leak = 'connection refused to db-seven.internal:5432 password=hunter2';
     const failing: Partial<TwoFactorGateDeps>[] = [
       { sessions: { resolve: () => Promise.reject(new Error(leak)) } },
       { mustSetUp: () => Promise.reject(new Error(leak)) },
@@ -165,7 +165,7 @@ describe('two-factor gate', () => {
       expect(answer.status).toBe(503);
       expect(answer.type).toBe(PROBLEM_CONTENT_TYPE);
       expect(JSON.parse(answer.body)).toMatchObject({ code: 'service_unavailable', status: 503 });
-      expect(answer.body).not.toMatch(/hunter2|db-7|refused/);
+      expect(answer.body).not.toMatch(/hunter2|db-seven|refused/);
     }
   });
 });
