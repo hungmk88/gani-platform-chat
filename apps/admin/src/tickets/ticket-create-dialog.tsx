@@ -20,6 +20,7 @@ import {
   ticketBodyOf,
   type TicketCreate,
   type TicketDraft,
+  type TicketSource,
 } from './ticket-create';
 import { PRIORITY } from './tickets';
 
@@ -31,15 +32,26 @@ const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opaci
  * "Tạo ticket" (#15(b), `POST /v1/tickets`, issue #357): title, description, priority and, for Owner/Admin only, who gets it
  * (stage 1 of `picksAssignee`). Waits for the server; then opens the new ticket. One Idempotency-Key for one body: sent again
  * unchanged after a failure it keeps its key, a changed body gets a new one. A failure never clears the form.
+ * Opened from a conversation (#358), the ticket is of the conversation's workspace, carries the conversation and its customer
+ * (none when it has no customer: `customerId` is left out, never null) and starts with a title the person edits.
  */
-export function TicketCreateDialog({ role, onClose }: { role: Role; onClose: () => void }) {
+export function TicketCreateDialog({
+  role,
+  onClose,
+  from,
+}: {
+  role: Role;
+  onClose: () => void;
+  from?: TicketSource;
+}) {
   const scope = useScope();
+  const workspaceId = from?.workspaceId ?? scope.workspaceId ?? '';
   const queries = useQueryClient();
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const last = useRef<{ what: string; key: string } | null>(null);
   const [draft, setDraft] = useState<TicketDraft>({
-    title: '',
+    title: from?.title ?? '',
     description: '',
     priority: 'normal',
     assigneeUserId: '',
@@ -67,8 +79,15 @@ export function TicketCreateDialog({ role, onClose }: { role: Role; onClose: () 
   };
   const submit = () => {
     if (create.isPending) return;
-    const body = ticketBodyOf(scope.workspaceId ?? '', draft);
-    if (typeof body === 'string') return setProblem(body);
+    const made = ticketBodyOf(workspaceId, draft);
+    if (typeof made === 'string') return setProblem(made);
+    const body: TicketCreate = from
+      ? {
+          ...made,
+          conversationId: from.conversationId,
+          ...(from.customerId ? { customerId: from.customerId } : {}),
+        }
+      : made;
     const what = JSON.stringify(body);
     const key = last.current?.what === what ? last.current.key : crypto.randomUUID();
     last.current = { what, key };
@@ -94,6 +113,7 @@ export function TicketCreateDialog({ role, onClose }: { role: Role; onClose: () 
         <h3 id="ticket-create-title" className="text-16 font-semibold">
           Tạo ticket
         </h3>
+        {from ? <p className="text-text-muted">Từ hội thoại với {from.customerName}</p> : null}
         <label className="flex flex-col gap-1">
           Tiêu đề
           <input
@@ -130,6 +150,7 @@ export function TicketCreateDialog({ role, onClose }: { role: Role; onClose: () 
         </label>
         {picksAssignee(role) ? (
           <AssigneeField
+            workspaceId={workspaceId}
             value={draft.assigneeUserId}
             onChange={(assigneeUserId) => edit({ assigneeUserId })}
           />
@@ -161,13 +182,20 @@ export function TicketCreateDialog({ role, onClose }: { role: Role; onClose: () 
 }
 
 /** Mounted for Owner/Admin only, so no other role ever asks `GET /v1/members` (stage 1 of `picksAssignee`). */
-function AssigneeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { workspaceId } = useScope();
+function AssigneeField({
+  workspaceId,
+  value,
+  onChange,
+}: {
+  workspaceId: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   const members = useApiPages<components['schemas']['MemberPage']>(['members'], membersPath);
   // The people of the workspace (N159); if they cannot be read, everyone is offered and the API checks (422 invalid_assignee).
   const people = useApiQuery<WorkspaceMemberList>(
     ['workspaces', workspaceId, 'members'],
-    `/v1/workspaces/${encodeURIComponent(workspaceId ?? '')}/members`,
+    `/v1/workspaces/${encodeURIComponent(workspaceId)}/members`,
     Boolean(workspaceId),
   );
   const inWorkspace = people.data ? new Set(people.data.data.map((p) => p.memberId)) : null;

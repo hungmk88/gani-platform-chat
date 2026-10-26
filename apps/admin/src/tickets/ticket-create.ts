@@ -37,6 +37,15 @@ export function ticketAssigneesOf(
   );
 }
 
+/** A ticket made from a conversation (#358): what the dialog fills in and sends besides the form. */
+export interface TicketSource {
+  readonly workspaceId: string;
+  readonly conversationId: string;
+  readonly customerId: string | null;
+  readonly customerName: string;
+  readonly title: string;
+}
+
 export interface TicketDraft {
   readonly title: string;
   readonly description: string;
