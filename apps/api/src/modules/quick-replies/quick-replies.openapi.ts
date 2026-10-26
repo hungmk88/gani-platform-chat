@@ -5,6 +5,7 @@ import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../op
 import {
   QuickReplyChangeSchema,
   QuickReplyCreateSchema,
+  QuickReplyDraftSchema,
   QuickReplyIdSchema,
   QuickReplyListQuerySchema,
   QuickReplyListSchema,
@@ -141,6 +142,28 @@ export function registerQuickReplies(registry: OpenAPIRegistry): void {
       400: problemResponse('validation_failed: the id.'),
       403: writer,
       404: noTemplate,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/quick-replies/preview',
+    summary:
+      'A template not saved yet, with the same sample values as `/{id}/preview` (U38). Writes nothing; the body follows the rules of a saved template.',
+    tags: ['quick-replies'],
+    request: {
+      body: { content: { 'application/json': { schema: QuickReplyDraftSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        description: 'The preview.',
+        content: { 'application/json': { schema: QuickReplyPreviewSchema } },
+      },
+      400: problemResponse(
+        'validation_failed: the workspace id, or the body (up to 2000, only {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}).',
+      ),
+      403: writer,
+      404: noWorkspace,
       ...edge,
     },
   });

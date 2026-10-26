@@ -290,3 +290,43 @@ describe('POST /v1/quick-replies/{id}/preview', () => {
     expect(answers.map((a) => a.status)).toEqual([403, 404, 400]);
   });
 });
+
+describe('POST /v1/quick-replies/preview (U38)', () => {
+  it('fills a template not saved yet with the same values, and writes nothing', async () => {
+    await q('UPDATE workspaces SET contact_phone = NULL WHERE id = $1', [W]);
+    const count = async () =>
+      (
+        await admin.query<{ n: number }>(
+          'SELECT count(*)::int AS n FROM quick_replies WHERE org_id = $1',
+          [orgA],
+        )
+      ).rows[0]?.n;
+    const before = await count();
+    const draft = { workspaceId: W, body: 'Chào {{customer_name}}, gọi {{company_phone}} nhé.' };
+    expect(await call('manager', 'POST', '/preview', draft)).toEqual({
+      status: 200,
+      body: {
+        text: 'Chào Nguyễn Văn A, gọi {{company_phone}} nhé.',
+        unresolved: ['company_phone'],
+      },
+    });
+    await q('UPDATE workspaces SET contact_phone = $1 WHERE id = $2', ['1900 1234', W]);
+    expect((await call('owner', 'POST', '/preview', draft)).body).toEqual({
+      text: 'Chào Nguyễn Văn A, gọi 1900 1234 nhé.',
+      unresolved: [],
+    });
+    expect(await count()).toEqual(before);
+  });
+
+  it('refuses sales (403), a workspace not the session’s (404), an unknown variable or a bad body (400)', async () => {
+    const answers = [
+      await call('sales', 'POST', '/preview', { workspaceId: W, body: 'x' }),
+      await call('owner', 'POST', '/preview', { workspaceId: W2, body: 'x' }),
+      await call('owner', 'POST', '/preview', { workspaceId: W, body: 'Mã {{order_id}}' }),
+      await call('owner', 'POST', '/preview', { workspaceId: W, body: '  ' }),
+      await call('owner', 'POST', '/preview', { workspaceId: 'x', body: 'x' }),
+      await call('owner', 'POST', '/preview', { workspaceId: W, body: 'x', shortcut: 'a' }),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 404, 400, 400, 400, 400]);
+  });
+});

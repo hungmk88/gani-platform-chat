@@ -60,7 +60,13 @@ export const QuickReplyChangeSchema = z
 /** `POST /v1/quick-replies/{id}/used`: the count after this use. */
 export const QuickReplyUseSchema = z.object({ useCount: z.int() }).meta({ id: 'QuickReplyUse' });
 
-/** `POST /v1/quick-replies/{id}/preview`: the text with sample values; the variables left without one, in order. */
+/** `POST /v1/quick-replies/preview` (U38): a template being typed, not yet saved; the body follows the rules of a saved one. */
+export const QuickReplyDraftSchema = z
+  .object({ workspaceId: UuidSchema, body })
+  .strict()
+  .meta({ id: 'QuickReplyDraft' });
+
+/** `POST /v1/quick-replies/{id}/preview` and `/preview`: the text with sample values; the variables left without one, in order. */
 export const QuickReplyPreviewSchema = z
   .object({ text: z.string(), unresolved: z.array(z.string()) })
   .meta({ id: 'QuickReplyPreview' });

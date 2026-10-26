@@ -1288,6 +1288,23 @@
           "unresolved"
         ]
       },
+      "QuickReplyDraft": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "workspaceId",
+          "body"
+        ],
+        "additionalProperties": false
+      },
       "CustomerPage": {
         "type": "object",
         "properties": {
@@ -4846,6 +4863,86 @@
           },
           "404": {
             "description": "not_found: no live template with this id in the session’s workspaces.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quick-replies/preview": {
+      "post": {
+        "summary": "A template not saved yet, with the same sample values as `/{id}/preview` (U38). Writes nothing; the body follows the rules of a saved template.",
+        "tags": [
+          "quick-replies"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickReplyDraft"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the workspace id, or the body (up to 2000, only {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner, an Admin or a Manager manages templates (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no workspace with this id among the session’s.",
             "content": {
               "application/problem+json": {
                 "schema": {
