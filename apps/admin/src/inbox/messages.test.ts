@@ -10,7 +10,7 @@ const m = (
   id: `m${sequenceNumber}`,
   sequenceNumber,
   senderKind: 'customer',
-  senderUserId: null as unknown as string,
+  senderUserId: null,
   kind: 'text',
   body: `tin ${sequenceNumber}`,
   platformSentAt,

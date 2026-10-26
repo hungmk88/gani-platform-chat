@@ -20,6 +20,12 @@ export const ProblemSchema = z
 
 export const UuidSchema = z.uuid().meta({ id: 'Uuid', description: 'UUIDv7.' });
 
+/**
+ * A UUIDv7 or null (U34). Inline, never a reference to `Uuid`: `UuidSchema.nullable()` is written `allOf: [Uuid, {type: [string,
+ * null]}]`, which the types generated for the admin read as `string`, losing the null.
+ */
+export const NullableUuidSchema = z.uuid().nullable().meta({ description: 'UUIDv7, or null.' });
+
 /** The header every route with @Idempotent() requires (P9, N134): the same key and request within 24 hours gets the first answer. */
 export const IdempotencyHeadersSchema = z.object({
   'Idempotency-Key': z

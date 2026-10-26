@@ -45,7 +45,7 @@ export function messageOf(d: MessageCreated): Message | null {
     id: d.messageId,
     sequenceNumber: d.sequenceNumber,
     senderKind: d.senderKind,
-    senderUserId: (d.senderUserId ?? null) as string,
+    senderUserId: d.senderUserId ?? null,
     kind: d.kind,
     body: d.body ?? null,
     platformSentAt: d.platformSentAt ?? null,

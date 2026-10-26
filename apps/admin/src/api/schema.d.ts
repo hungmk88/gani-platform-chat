@@ -3486,7 +3486,11 @@ export interface components {
             /** @enum {string} */
             state: "BOT_ACTIVE" | "HUMAN_WAITING_Q" | "HUMAN_ACTIVE" | "PENDING_CUSTOMER" | "CLOSED";
             afterHoursHold: boolean;
-            assignedUserId: components["schemas"]["Uuid"] & (string | null);
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            assignedUserId: string | null;
             version: number;
             /** @enum {string|null} */
             outcome: "resolved" | "no_response" | "spam" | "resolved_by_bot" | null;
@@ -3513,7 +3517,11 @@ export interface components {
             sequenceNumber: number;
             /** @enum {string} */
             senderKind: "customer" | "agent" | "bot" | "system";
-            senderUserId: components["schemas"]["Uuid"] & (string | null);
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            senderUserId: string | null;
             /** @enum {string} */
             kind: "text" | "image" | "file" | "sticker" | "postback" | "system";
             body: string | null;
@@ -3552,7 +3560,11 @@ export interface components {
             detail?: string;
             /** Format: uuid */
             traceId?: string;
-            assignedUserId: components["schemas"]["Uuid"] & (string | null);
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            assignedUserId: string | null;
         };
         VersionBody: {
             version: number;
@@ -3760,7 +3772,11 @@ export interface components {
         CustomerIdentity: {
             /** @enum {string} */
             type: "zalo_uid";
-            channelAccountId: components["schemas"]["Uuid"] & (string | null);
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            channelAccountId: string | null;
             /** @enum {string} */
             verification: "verified" | "unverified" | "sales_confirmed";
         };

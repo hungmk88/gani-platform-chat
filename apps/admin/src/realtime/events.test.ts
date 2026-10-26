@@ -9,7 +9,7 @@ const msg = (n: number) => ({
   id: `m${n}`,
   sequenceNumber: n,
   senderKind: 'customer' as const,
-  senderUserId: null as unknown as string,
+  senderUserId: null,
   kind: 'text' as const,
   body: `tin ${n}`,
   platformSentAt: null,

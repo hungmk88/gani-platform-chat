@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { CursorQuerySchema, cursorPage, UuidSchema } from '../../openapi/schemas.js';
+import {
+  CursorQuerySchema,
+  cursorPage,
+  NullableUuidSchema,
+  UuidSchema,
+} from '../../openapi/schemas.js';
 
 // The shapes of /v1/customers (J1, Brief P9, N165): one Zod schema validates the request and describes it in OpenAPI.
 
@@ -22,7 +27,7 @@ export const CustomerSchema = z
       z
         .object({
           type: z.enum(['zalo_uid']),
-          channelAccountId: UuidSchema.nullable(),
+          channelAccountId: NullableUuidSchema,
           verification: z.enum(['verified', 'unverified', 'sales_confirmed']),
         })
         .meta({ id: 'CustomerIdentity' }),
