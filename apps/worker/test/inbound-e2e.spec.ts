@@ -20,6 +20,10 @@ const env = (): Record<string, string> =>
     INBOUND_LEASE_S: '5',
   });
 
+// The default `stalledInterval` of BullMQ 5.81.5 (src/queue/bullmq-source.ts sets no stalled option). Revisit when BullMQ changes
+// its default.
+const STALLED_INTERVAL_MS = 30_000;
+
 /** The events the consumer handled, by id, from the logs of every worker given (a killed one included). */
 const consumedBy = (...workers: WorkerProcess[]): Map<string, unknown> =>
   new Map(workers.flatMap((w) => w.logs('event_consumed')).map((l) => [String(l['eventId']), l]));
@@ -128,8 +132,16 @@ describe('webhook event to the consumer', () => {
           'SELECT count(DISTINCT platform_message_id)::int AS n FROM messages WHERE org_id = $1',
         ),
       ).toBe(written);
-      // A job the killed worker was running comes back to the second one after two stalled checks of BullMQ (30 s apart: the first
-      // marks it, the next moves it once its lock is gone): about 65 s after the kill, measured locally (#324).
+      // A job the killed worker was running comes back to the second one through the stalled checks of BullMQ, one interval apart:
+      // the first once the `stalled-check` key of the killed worker is gone marks it, the next moves it, about 64 s after the kill
+      // (CI and locally). A check that reaches Valkey before the key of the previous check has expired (its TTL is the interval
+      // itself) does nothing, about 2.5 % of the checks measured locally, and the job comes back one interval later, about 94 s
+      // after the kill (#324). The deadline is kill + 4 × interval + 10 s, from `killedAt` taken just before the SIGKILL:
+      //   2 × interval: every check runs (mark, then move), about 64 s with the restart;
+      //   + 1 × interval: one skipped check, about 94 s;
+      //   + 1 × interval and 10 s: margin. Down to 3 × the margin is gone and the red run of #324 comes back.
+      // A green run returns as soon as every event is in, so it waits no longer than before.
+      const deadline = Date.parse(killedAt) + 4 * STALLED_INTERVAL_MS + 10_000;
       const created = await outboxIds(org, 'message.created');
       expect(created).toHaveLength(written);
       const waitedFrom = new Date().toISOString();
@@ -138,7 +150,11 @@ describe('webhook event to the consumer', () => {
           const seen = consumedBy(first, second);
           return Promise.resolve(created.every((id) => seen.has(id)));
         },
-        { timeoutMs: 75_000, label: 'the consumer to handle every message.created' },
+        // At least 5 s even when a very slow runner got here past the deadline: the events get a last look before the report.
+        {
+          timeoutMs: Math.max(deadline - Date.now(), 5_000),
+          label: 'the consumer to handle every message.created',
+        },
       ).catch(async (error: unknown) => {
         // Where the events the consumer never logged are (#324): their jobs in BullMQ, and what the workers said of them.
         const seen = consumedBy(first, second);
@@ -166,12 +182,12 @@ describe('webhook event to the consumer', () => {
         // prettier-ignore
         throw new Error(`${error instanceof Error ? error.message : String(error)}\n--- K-IN: killed ${killedAt}, restarted ${restartedAt}, waited from ${waitedFrom}; ${missing.length} of ${created.length} message.created never consumed ---\n${jobs.join('\n')}\n${said.join('\n')}`, { cause: error });
       });
-      // How long the jobs the killed worker held took to come back (BullMQ's stalled check), against the 75 s of the wait.
+      // How long the jobs the killed worker held took to come back (BullMQ's stalled check), against the deadline of the wait.
       const since = (at: unknown) =>
         ((Date.parse(String(at)) - Date.parse(killedAt)) / 1000).toFixed(1);
       const stalled = second.logs('event_job_stalled').map((l) => since(l['time']));
       await annotate(
-        `jobs taken back from the killed worker ${stalled.length} (s after the kill: ${stalled.join(', ') || '-'}), all consumed ${since(new Date().toISOString())} s after the kill`,
+        `jobs taken back from the killed worker ${stalled.length} (s after the kill: ${stalled.join(', ') || '-'}), all consumed ${since(new Date().toISOString())} s after the kill, deadline ${since(new Date(deadline).toISOString())} s`,
       );
     } finally {
       await removeInbound(admin, org);
