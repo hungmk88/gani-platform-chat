@@ -1,4 +1,6 @@
-// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first. Never deployed.
+// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, and making one. Each session
+// has its own copy, so tests running side by side never see each other's templates. Never deployed.
+import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { QuickReply } from '../src/quick-replies/quick-replies';
@@ -40,26 +42,71 @@ export const QUICK_REPLIES: readonly QuickReply[] = [
 ];
 
 const READERS = ['owner', 'admin', 'manager', 'sales', 'support'];
+const WRITERS = ['owner', 'admin', 'manager'];
+const VARIABLES = ['customer_name', 'agent_name', 'company_name', 'company_phone'];
+const copies = new Map<string, QuickReply[]>(); // session → its templates
+const byKey = new Map<string, QuickReply>(); // Idempotency-Key → the template it made
 
 /** Answers /v1/quick-replies and says true, or says false for any other path. `session` is null when signed out. */
-export function routeQuickReplies(
+export async function routeQuickReplies(
   req: IncomingMessage,
   res: ServerResponse,
   path: string,
   session: { readonly sid: string; readonly role: string | undefined } | null,
   edge: Edge,
-): boolean {
-  if (path !== '/v1/quick-replies' || req.method !== 'GET') return false;
+): Promise<boolean> {
+  if (path !== '/v1/quick-replies') return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (!READERS.includes(session.role ?? ''))
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+  const mine = copies.get(session.sid) ?? [...QUICK_REPLIES];
+  copies.set(session.sid, mine);
+  if (req.method === 'POST') {
+    // Making one (C7b1): only Owner, Admin, Manager; the checks of the API; a shortcut once per workspace.
+    if (!WRITERS.includes(session.role ?? ''))
+      return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+    const key = req.headers['idempotency-key'];
+    const done = typeof key === 'string' ? byKey.get(key) : undefined;
+    if (done) return (edge.send(res, 201, done), true);
+    const { workspaceId, shortcut, body, tags = [] } = await edge.json(req);
+    const names = typeof body === 'string' ? [...body.matchAll(/\{\{\s*([^{}]*?)\s*\}\}/g)] : [];
+    const ok =
+      typeof key === 'string' &&
+      typeof shortcut === 'string' &&
+      /^[a-z0-9][a-z0-9_-]{0,31}$/.test(shortcut) &&
+      typeof body === 'string' &&
+      body.trim() !== '' &&
+      body.length <= 2000 &&
+      names.every((m) => VARIABLES.includes(m[1] ?? '')) &&
+      Array.isArray(tags) &&
+      tags.length <= 10 &&
+      new Set(tags).size === tags.length;
+    if (!ok) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+    if (workspaceId !== 'ws-e2e')
+      return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    if (mine.some((r) => r.shortcut === shortcut))
+      return (edge.problem(res, 409, 'duplicate_resource', 'trace-e2e-409'), true);
+    const now = new Date().toISOString();
+    const made: QuickReply = {
+      id: randomUUID(),
+      workspaceId,
+      shortcut,
+      body,
+      tags: tags as string[],
+      useCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    mine.push(made);
+    byKey.set(key, made);
+    return (edge.send(res, 201, made), true);
+  }
+  if (req.method !== 'GET') return false;
   const query = new URL(req.url ?? '/', 'http://stub').searchParams;
   if (query.get('workspaceId') !== 'ws-e2e')
     return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
   const q = query.get('q') ?? '';
   const tag = query.get('tag');
-  const data = QUICK_REPLIES.filter(
-    (r) => r.shortcut.startsWith(q) && (!tag || r.tags.includes(tag)),
-  );
+  const data = mine.filter((r) => r.shortcut.startsWith(q) && (!tag || r.tags.includes(tag)));
   return (edge.send(res, 200, { data }), true);
 }
