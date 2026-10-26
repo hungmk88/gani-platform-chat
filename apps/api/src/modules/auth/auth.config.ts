@@ -1,4 +1,5 @@
 import { authSchema, createAuthDb, type createDbPool } from '@gani/db';
+import type { EmailSender } from '@gani/email';
 import { uuidv7 } from '@gani/domain';
 import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, isAPIError } from 'better-auth/api';
@@ -20,6 +21,7 @@ import { revokingAdapter } from './revoking-adapter.js';
 import { safeErrorsAdapter, safeQueryPool, storeErrorCode } from './safe-errors-adapter.js';
 import { MAX_SESSION_MS, sessionCreateBefore } from './session-hooks.js';
 import { invitations } from './invitations.js';
+import { passwordReset } from './password-reset.js';
 import { switchActiveOrg } from './switch-active-org.js';
 
 // The whole configuration of Better Auth in one place (ADR-003, N79, N81, N82, N83). It takes the checked environment, never process.env.
@@ -181,6 +183,9 @@ export function buildAuthOptions(
         // Per address; the routes also limit each token to 10 a minute themselves (N151).
         '/invite/lookup': { window: 60, max: 60 },
         '/invite/accept': { window: 60, max: 60 },
+        // Per address; one email gets at most 3 links in 15 minutes and a token 10 tries a minute (N162).
+        '/password/forgot': { window: 60, max: 5 },
+        '/password/reset': { window: 60, max: 20 },
       },
     },
     // A one-time token is marked used_at, never deleted, and the library's habit of deleting expired rows on every read is switched
@@ -202,8 +207,16 @@ export function buildAuthOptions(
   } satisfies BetterAuthOptions;
 }
 
-/** Better Auth on PostgreSQL as auth_role: `pool` is the pool of DATABASE_URL_AUTH, `env` comes from loadAuthEnv. */
-export function createAuth(args: { pool: ReturnType<typeof createDbPool>; env: AuthEnv }) {
+/**
+ * Better Auth on PostgreSQL as auth_role: `pool` is the pool of DATABASE_URL_AUTH, `env` comes from loadAuthEnv. With `sender`, the
+ * routes of "Quên mật khẩu" (N162) send their links through it.
+ */
+export function createAuth(args: {
+  pool: ReturnType<typeof createDbPool>;
+  env: AuthEnv;
+  sender?: EmailSender;
+  later?: (job: () => Promise<void>) => void;
+}) {
   const adapter = safeErrorsAdapter(
     drizzleAdapter(createAuthDb(args.pool), {
       provider: 'pg',
@@ -219,7 +232,20 @@ export function createAuth(args: { pool: ReturnType<typeof createDbPool>; env: A
       // Its own transaction (withAuthUser): the pool itself, whose errors it never prints.
       audit: accountAudit(args.pool),
       // The invitations open transactions of their own (one step, N151): they get the pool itself, whose errors they never print.
-      plugins: [switchActiveOrg(pool), invitations(args.pool, args.env.baseURL)],
+      plugins: [
+        switchActiveOrg(pool),
+        invitations(args.pool, args.env.baseURL),
+        ...(args.sender
+          ? [
+              passwordReset({
+                pool: args.pool,
+                origin: args.env.baseURL,
+                sender: args.sender,
+                ...(args.later ? { later: args.later } : {}),
+              }),
+            ]
+          : []),
+      ],
     }),
   );
 }
