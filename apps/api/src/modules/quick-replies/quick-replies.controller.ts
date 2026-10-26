@@ -5,6 +5,7 @@ import {
   listQuickReplies,
   lockQuickReply,
   QuickReplyShortcutTakenError,
+  templateValues,
   updateQuickReply,
   type QuickReplyChange,
 } from '@gani/db';
@@ -29,6 +30,7 @@ import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import { mayReadQuickReplies, mayWriteQuickReplies } from './quick-replies.permissions.js';
+import { render } from './variables.js';
 import {
   QuickReplyChangeSchema,
   QuickReplyCreateSchema,
@@ -36,6 +38,9 @@ import {
   QuickReplyListQuerySchema,
 } from './quick-replies.schemas.js';
 import { quickReplyView } from './quick-replies.view.js';
+
+/** The customer of a preview: no real person is shown. */
+const SAMPLE_CUSTOMER = 'Nguyễn Văn A';
 
 /** 409 of a shortcut that another live template of the workspace has. */
 export class ShortcutTakenError extends Error {
@@ -136,6 +141,31 @@ export class QuickRepliesController {
     const useCount = await this.database.withTenant(ctx, (tx) => countQuickReplyUse(tx, id));
     if (useCount === null) throw new NotFoundException();
     return { useCount };
+  }
+
+  /**
+   * The template as a customer would read it (endpoint-M8 §2, N163), for whoever manages templates: a sample customer name, the caller's
+   * own name, the company's name and the workspace's contact number; a variable with no value is left as written and named in
+   * `unresolved`.
+   */
+  @Post(':id/preview')
+  @HttpCode(200)
+  async preview(@Param('id', new ZodPipe(QuickReplyIdSchema)) id: string) {
+    const ctx = this.allowed(mayWriteQuickReplies);
+    return this.database.withTenant(ctx, async (tx) => {
+      const template = await lockQuickReply(tx, id);
+      if (!template) throw new NotFoundException();
+      const values = await templateValues(tx, {
+        workspaceId: template.workspaceId,
+        userId: ctx.userId,
+      });
+      return render(template.body, {
+        customer_name: SAMPLE_CUSTOMER,
+        agent_name: values.agentName,
+        company_name: values.companyName,
+        company_phone: values.companyPhone,
+      });
+    });
   }
 
   /** The request context of a person whose role may do this, in `workspaceId` when one is named. */

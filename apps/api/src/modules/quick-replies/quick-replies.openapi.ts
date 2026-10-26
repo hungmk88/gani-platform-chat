@@ -8,6 +8,7 @@ import {
   QuickReplyIdSchema,
   QuickReplyListQuerySchema,
   QuickReplyListSchema,
+  QuickReplyPreviewSchema,
   QuickReplySchema,
   QuickReplyUseSchema,
 } from './quick-replies.schemas.js';
@@ -121,6 +122,24 @@ export function registerQuickReplies(registry: OpenAPIRegistry): void {
       403: problemResponse(
         'forbidden: a role that does not answer customers; or a refusal of the edge.',
       ),
+      404: noTemplate,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/quick-replies/{id}/preview',
+    summary:
+      'The template with sample values (a sample customer, the caller’s name, the company’s name, the workspace’s contact number); the variables without one stay as written and are listed in `unresolved` (N163).',
+    tags: ['quick-replies'],
+    request: { params },
+    responses: {
+      200: {
+        description: 'The preview.',
+        content: { 'application/json': { schema: QuickReplyPreviewSchema } },
+      },
+      400: problemResponse('validation_failed: the id.'),
+      403: writer,
       404: noTemplate,
       ...edge,
     },

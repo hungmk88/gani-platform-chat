@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 
+import { organizations } from './schema/organizations.js';
 import { quickReplies } from './schema/quick-replies.js';
+import { workspaces } from './schema/workspaces.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
 import { assertUuid } from './validate.js';
@@ -150,4 +152,34 @@ export async function countQuickReplyUse(tx: TenantTx, id: string): Promise<numb
     .where(and(eq(quickReplies.id, assertUuid(id, 'id')), isNull(quickReplies.deletedAt)))
     .returning({ useCount: quickReplies.useCount });
   return row?.useCount ?? null;
+}
+
+/**
+ * What the variables of a template become in a workspace, for the preview of /settings/quick-replies (endpoint-M8 §2, N163): the name of
+ * the company, the contact number of the workspace (N163) and the name of the person `userId` (app.org_users, no email). Null where the
+ * value is not set: the preview names it as unresolved.
+ */
+export async function templateValues(
+  tx: TenantTx,
+  q: { readonly workspaceId: string; readonly userId: string },
+): Promise<{ companyName: string | null; companyPhone: string | null; agentName: string | null }> {
+  const [org] = await tx
+    .select({ name: organizations.name })
+    .from(organizations)
+    .where(isNull(organizations.deletedAt));
+  const [workspace] = await tx
+    .select({ phone: workspaces.contactPhone })
+    .from(workspaces)
+    .where(eq(workspaces.id, assertUuid(q.workspaceId, 'workspaceId')));
+  const people = await tx.execute<{ display_name: string | null }>(
+    sql`SELECT display_name FROM app.org_users WHERE user_id = ${assertUuid(q.userId, 'userId')}::uuid`,
+  );
+  const name = (
+    people.rows[0] as { display_name: string | null } | undefined
+  )?.display_name?.trim();
+  return {
+    companyName: org?.name ?? null,
+    companyPhone: workspace?.phone ?? null,
+    agentName: name || null,
+  };
 }

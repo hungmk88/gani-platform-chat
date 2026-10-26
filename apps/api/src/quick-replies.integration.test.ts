@@ -261,3 +261,32 @@ describe('POST /v1/quick-replies/{id}/used', () => {
     ]);
   });
 });
+
+describe('POST /v1/quick-replies/{id}/preview', () => {
+  it('fills sample values, the caller’s name, the company’s name and the contact number, and names what has no value', async () => {
+    const id = String(
+      (
+        await call('owner', 'POST', '', {
+          workspaceId: W,
+          shortcut: 'xem-thu',
+          body: 'Chào {{customer_name}}, em là {{ agent_name }} của {{company_name}}. Gọi {{company_phone}}.',
+        })
+      ).body['id'],
+    );
+    expect((await call('manager', 'POST', `/${id}/preview`)).body).toEqual({
+      text: 'Chào Nguyễn Văn A, em là T của T. Gọi {{company_phone}}.',
+      unresolved: ['company_phone'],
+    });
+    await q('UPDATE workspaces SET contact_phone = $1 WHERE id = $2', ['1900 1234', W]);
+    expect((await call('owner', 'POST', `/${id}/preview`)).body).toEqual({
+      text: 'Chào Nguyễn Văn A, em là T của T. Gọi 1900 1234.',
+      unresolved: [],
+    });
+    const answers = [
+      await call('sales', 'POST', `/${id}/preview`),
+      await call('owner', 'POST', `/${inW2}/preview`),
+      await call('owner', 'POST', '/not-a-uuid/preview'),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 404, 400]);
+  });
+});
