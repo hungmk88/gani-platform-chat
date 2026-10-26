@@ -70,19 +70,23 @@ jobs:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@gani/admin..." build
-      # The Chromium of the pinned @playwright/test, cached by its version in the lockfile (#350): a hit downloads no browser and
-      # only installs the system libraries it needs; a miss downloads it as before. The widget's E2E below uses the same Chromium.
-      - id: playwright-version
-        run: echo "version=$(pnpm --filter @gani/admin exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      # The Chromium of the pinned @playwright/test, cached by the runner image and that version (#350): `runner.os` alone is
+      # "Linux", so the key also takes `ImageOS` (ubuntu24, ubuntu26…), a Chromium built for another image is never reused.
+      # The system libraries (apt) are not in the cache: always installed, each in its own step so their times show apart.
+      - id: playwright-key
+        run: |
+          echo "image=${ImageOS}" >> "$GITHUB_OUTPUT"
+          echo "version=$(pnpm --filter @gani/admin exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-chromium
-      - if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm --filter @gani/admin exec playwright install --with-deps chromium
-      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+          key: ${{ runner.os }}-${{ steps.playwright-key.outputs.image }}-playwright-${{ steps.playwright-key.outputs.version }}-chromium
+      - name: Playwright system libraries (apt)
         run: pnpm --filter @gani/admin exec playwright install-deps chromium
+      - name: Playwright Chromium (only on a cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @gani/admin exec playwright install chromium
       - run: pnpm --filter @gani/admin e2e
       # The widget on its test page (apps/widget/CLAUDE.md "Kiểm chứng"), with the same Chromium: built, then E2E and axe-core.
       - run: pnpm --filter @gani/widget build
