@@ -5,6 +5,8 @@ export interface Brand {
   readonly name: string;
   readonly color: string;
   readonly greeting: string;
+  /** The company's data policy (`data-policy-url`, https only), linked from the pre-chat form; null when the page gives none. */
+  readonly policyUrl: string | null;
 }
 
 /** The colour behind the white text when the brand's own does not reach 4.5:1 with white. */
@@ -39,11 +41,22 @@ export function brandColor(color: string | undefined): string {
 const text = (value: string | undefined, max: number, fallback: string): string =>
   value?.trim().slice(0, max) || fallback;
 
-/** The brand from the data-* attributes of the embed script (`data-brand-name`, `data-brand-color`, `data-greeting`). */
+/** An https address, or null: a link the widget opens must not be `javascript:` or plain http. */
+export function httpsUrl(value: string | undefined): string | null {
+  try {
+    const url = new URL(value?.trim() ?? '');
+    return url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The brand from the data-* attributes of the embed script (`data-brand-name`, `-brand-color`, `-greeting`, `-policy-url`). */
 export function brandOf(data: Readonly<Record<string, string | undefined>>): Brand {
   return {
     name: text(data.brandName, 60, DEFAULT_NAME),
     color: brandColor(data.brandColor),
     greeting: text(data.greeting, 200, DEFAULT_GREETING),
+    policyUrl: httpsUrl(data.policyUrl),
   };
 }

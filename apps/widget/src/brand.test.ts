@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { brandColor, brandOf, contrast, NEUTRAL } from './brand';
+import { brandColor, brandOf, contrast, httpsUrl, NEUTRAL } from './brand';
 
 describe('contrast', () => {
   it('measures as WCAG 2.1 does, in either order', () => {
@@ -28,13 +28,29 @@ describe('brandOf', () => {
   it('reads the attributes of the embed script, trimmed and cut to length', () => {
     expect(
       brandOf({ brandName: ' Thương hiệu A ', brandColor: '#0f766e', greeting: 'x'.repeat(250) }),
-    ).toEqual({ name: 'Thương hiệu A', color: '#0f766e', greeting: 'x'.repeat(200) });
+    ).toEqual({
+      name: 'Thương hiệu A',
+      color: '#0f766e',
+      greeting: 'x'.repeat(200),
+      policyUrl: null,
+    });
   });
   it('has words of its own when the page gives none', () => {
     expect(brandOf({ brandName: '  ' })).toEqual({
       name: 'Hỗ trợ khách hàng',
       color: NEUTRAL,
       greeting: 'Chào bạn, mình có thể giúp gì?',
+      policyUrl: null,
     });
+  });
+});
+
+describe('httpsUrl', () => {
+  it('keeps an https address only', () => {
+    expect(httpsUrl(' https://a.vn/chinh-sach ')).toBe('https://a.vn/chinh-sach');
+    expect(httpsUrl('http://a.vn')).toBeNull();
+    expect(httpsUrl('javascript:alert(1)')).toBeNull();
+    expect(httpsUrl('/chinh-sach')).toBeNull();
+    expect(httpsUrl(undefined)).toBeNull();
   });
 });
