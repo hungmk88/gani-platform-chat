@@ -116,6 +116,24 @@ export function quickReplyChangeOf(
   };
 }
 
+export type QuickReplyPreview = components['schemas']['QuickReplyPreview'];
+
+/** `POST /v1/quick-replies/{id}/preview` (C7c3, N163): the template with a sample customer, the reader's name, the company's name and number. */
+export const previewPath = (id: string) => `/v1/quick-replies/${encodeURIComponent(id)}/preview`;
+
+/** Where each value of a variable left in a preview comes from, said to whoever manages templates. */
+const MISSING: Readonly<Record<string, string>> = {
+  agent_name: 'Tên nhân viên: tên của bạn đang trống, đặt ở Hồ sơ cá nhân.',
+  company_name: 'Tên công ty: chưa có.',
+  company_phone:
+    'SĐT công ty: workspace chưa đặt SĐT liên hệ (Cài đặt › Workspace, Owner hoặc Admin).',
+  customer_name: 'Tên khách: chưa có.',
+};
+
+/** The variables a preview left as written, each in words; in the Inbox the person sending fills them. */
+export const missingOf = (unresolved: readonly string[]): string[] =>
+  unresolved.map((n) => MISSING[n] ?? `{{${n}}}: không điền được.`);
+
 /** The refusals of the template routes in words of the screen. */
 export function quickReplyError(error: ApiError, shortcut: string): string {
   if (error.code === 'duplicate_resource')

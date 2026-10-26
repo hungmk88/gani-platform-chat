@@ -1236,6 +1236,24 @@
         "required": [
           "useCount"
         ]
+      },
+      "QuickReplyPreview": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "unresolved": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "unresolved"
+        ]
       }
     },
     "parameters": {}
@@ -4560,6 +4578,87 @@
           },
           "403": {
             "description": "forbidden: a role that does not answer customers; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live template with this id in the session’s workspaces.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quick-replies/{id}/preview": {
+      "post": {
+        "summary": "The template with sample values (a sample customer, the caller’s name, the company’s name, the workspace’s contact number); the variables without one stay as written and are listed in `unresolved` (N163).",
+        "tags": [
+          "quick-replies"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner, an Admin or a Manager manages templates (Phụ lục B); or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {
