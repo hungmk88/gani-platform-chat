@@ -99,17 +99,18 @@ afterAll(async () => {
 });
 
 describe('the lock order of POST /v1/conversations/{id}/messages', () => {
-  // N107(13): the send takes the lock of the conversation before it writes, like every transition; a close racing ten answers
-  // never deadlocks, and each answer either went in before the close or is refused after it.
-  it('keeps the lock order with a close racing ten answers: no deadlock, nothing half written', async () => {
+  // N107(13): the send takes the lock of the conversation before it writes, like every transition; a close racing the answers
+  // never deadlocks, and each answer either went in before the close or is refused after it. Eight answers, the free quota of a
+  // Zalo OA advisory message (seed 202610071110): a ninth that won the lock before the close would be 422 quota_exhausted (#351).
+  it('keeps the lock order with a close racing eight answers: no deadlock, nothing half written', async () => {
     const id = c['race'] as string;
     const { version } = await stateOf(id);
     const close = post('manager', `${id}/close`, { version, outcome: 'resolved' });
-    const answers = await Promise.all(Array.from({ length: 10 }, () => send('manager', 'race')));
+    const answers = await Promise.all(Array.from({ length: 8 }, () => send('manager', 'race')));
     const closed = await close;
     expect(closed.status).toBe(200);
     const statuses = answers.map((a) => a.status);
-    expect(statuses.every((s) => s === 201 || s === 409)).toBe(true);
+    expect(statuses.filter((s) => s !== 201 && s !== 409)).toEqual([]);
     const sent = statuses.filter((s) => s === 201).length;
     expect(await counts(id)).toEqual({ messages: sent, deliveries: sent, outbox: sent });
     const numbers = answers.filter((a) => a.status === 201).map((a) => a.body['sequenceNumber']);
