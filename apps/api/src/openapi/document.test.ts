@@ -12,6 +12,10 @@ describe('the OpenAPI document (Brief P18)', () => {
     expect(committed()).toBe(serialiseOpenApi(buildOpenApiDocument()));
   });
 
+  it('describes no field with allOf (U34): a nullable id is `type: [string, null]` + `format: uuid`, so the generated type keeps null', () => {
+    expect(serialiseOpenApi(buildOpenApiDocument())).not.toContain('"allOf"');
+  });
+
   it('is OpenAPI 3.1 with the shared Problem schema and the routes the API serves', () => {
     const doc = buildOpenApiDocument();
     expect(doc.openapi).toBe('3.1.0');

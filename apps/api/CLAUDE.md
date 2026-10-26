@@ -46,6 +46,7 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 - `claim-race.spec`: 50 agent claim cùng lúc → đúng 1 thắng.
 - `tenant-isolation.spec`, `workspace-isolation.spec` sinh từ OpenAPI.
 - Mọi endpoint mới phải có OpenAPI cập nhật trong cùng PR. OpenAPI **sinh từ Zod** (`@asteasolutions/zod-to-openapi`, quyết định 19/10/2026): schema Zod của endpoint vừa để kiểm request (`ZodPipe`, sai → 400 `validation_failed`, chỉ nêu tên trường) vừa để mô tả. Đăng ký path trong `src/openapi/document.ts` (hàm `register…` của module), rồi `pnpm --filter @gani/api build && pnpm --filter @gani/api openapi` và commit `docs/openapi/openapi.json`; `document.test.ts` đỏ khi file lệch với mã.
+- Id có thể rỗng: dùng `NullableUuidSchema`, **không** `UuidSchema.nullable()` (sinh `allOf`, kiểu FE mất `null`, U34); `document.test.ts` đỏ nếu tài liệu còn `allOf`.
 - Mã lỗi `code` dạng snake_case theo bảng P9 (N132).
 
 ## Cấm
