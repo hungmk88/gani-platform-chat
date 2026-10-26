@@ -85,7 +85,7 @@ Trang mặc định sau đăng nhập:
 ## E2E và axe (F4)
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
-- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+many` (600 hội thoại chờ, trang 200), `+window` (gửi tin bị 422 `channel_window_closed`), `+multi` (2 workspace, T1); token trong `INVITES` mở trang `/invite`; mời thành viên: `da-moi@` (409 đã có lời mời), `khong-gui@` (`emailSent: false`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+many` (600 hội thoại chờ, trang 200), `+window` (gửi tin bị 422 `channel_window_closed`), `+multi` (2 workspace, T1); token trong `INVITES` mở trang `/invite` (`e2e/stub-links.ts`); mời thành viên: `da-moi@` (409 đã có lời mời), `khong-gui@` (`emailSent: false`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
   API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
@@ -126,8 +126,8 @@ Trang mặc định sau đăng nhập:
 ## Hồ sơ cá nhân (#5)
 
 - `/me` (mọi vai trò; tên ở thanh trên là link): 3 phần theo URL `?tab=info|security|notify` (link, không phải tablist).
-- Thông tin: chỉ đọc từ `/v1/me` (tên, vai trò, công ty, workspace); đổi tên và ảnh chờ `PATCH /v1/me` (U25).
-- Bảo mật: trạng thái 2FA (`security-status`, không có nút tắt); đổi mật khẩu qua `POST /api/auth/change-password` (`revokeOtherSessions` mặc định bật). Better Auth chỉ kiểm độ dài 12–128, nên form kiểm thêm chữ + số (ADR-003) trước khi gửi (`src/profile/password.ts`). "Đăng xuất khỏi các thiết bị khác" = `POST /api/auth/revoke-other-sessions`.
+- Thông tin: đọc từ `/v1/me` (tên, vai trò, công ty, workspace). **Đổi tên** (`PATCH /v1/me {name}`, N162): 1–100 ký tự, cắt khoảng trắng như API (`src/profile/name.ts` + `name-form.tsx`); nút khóa khi tên chưa đổi; chờ máy chủ, không `Idempotency-Key`; xong thì khung app đọc lại (`router.refresh`, thanh trên có tên mới). Ảnh đại diện: để sau khi có kho file (N162).
+- Bảo mật: trạng thái 2FA (`security-status`, không có nút tắt); đổi mật khẩu qua `POST /api/auth/change-password`: API **luôn** đăng xuất các thiết bị khác (N162), nên form không có ô chọn, chỉ nói trước; vẫn gửi `revokeOtherSessions: true`. 429 (5 lần/phút) → đợi 1 phút. Better Auth chỉ kiểm độ dài 12–128, nên form kiểm thêm chữ + số (ADR-003) trước khi gửi (`src/profile/password.ts`). "Đăng xuất khỏi các thiết bị khác" = `POST /api/auth/revoke-other-sessions`.
 - **Không gọi `/api/auth/list-sessions`**: đường này trả token của mọi phiên cho JavaScript (giữ cho `/revoke-session`, SEC-03). Danh sách phiên của prototype #5 chờ một đường không có token.
 - Thông báo: chờ API.
 
@@ -145,7 +145,13 @@ Trang mặc định sau đăng nhập:
 - **Tạo team** (`POST /v1/teams`): tên 1–100, mô tả tối đa 500 (không bắt buộc, trống là không có), cắt khoảng trắng như API (`teamDraftOf`). Chờ máy chủ, một `Idempotency-Key` cho một cặp tên + mô tả; xong thì team vào danh sách theo tên (`withTeam`). Mã (slug) do API sinh.
 - **Sửa** (`PATCH /v1/teams/{id}`, A4-T2b): hộp thoại tên, mô tả (xóa trắng là bỏ mô tả), "Team mặc định của workspace" (`src/teams/team-dialogs.tsx`). Chỉ gửi trường đổi thật (`teamChangeOf`); không đổi gì thì đóng, không gọi API. Chỉ **đặt** mặc định, không bỏ: team mặc định thì ô bị khóa (đặt team khác làm mặc định để đổi), workspace luôn còn một; xong thì cờ chuyển sang team mới trong danh sách (`withChanged`). Chờ máy chủ, không `Idempotency-Key`.
 - **Kết thúc** (`DELETE /v1/teams/{id}`): hộp thoại hỏi lại (số người rời team), chờ máy chủ; xong thì team ra khỏi danh sách (`withoutTeam`). Team mặc định không có nút này; 409 `team_in_use` (nếu đổi cùng lúc) nói phải đặt team khác làm mặc định trước.
-- Người của team: PR sau; kênh team phụ trách: chờ API (N160 "Để sau"). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao).
+- **Người của team** (`GET/PUT /v1/teams/{id}/members`, A4-T2c, N160): nút "Người" trên dòng, hộp thoại ô chọn cho **người của workspace của team** (`GET /v1/workspaces/{id}/members`, N159; tên lấy từ `GET /v1/members`, `inWorkspace`), người của team đã tích sẵn (`src/teams/team-members.ts` + `team-members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`); xong thì cột "Số người" lấy số của câu trả lời (`withCount`). 400 `validation_failed` (có người không còn thuộc workspace) → tải lại rồi chọn lại.
+- Kênh team phụ trách: chờ API (N160 "Để sau", N161). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`).
+
+## Kênh (#24)
+
+- `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc.
+- Kết nối Zalo OA, làm mới token, ngắt kết nối, lỗi gần nhất và hạn token: chờ U26; `/settings/channels/[id]` (#25) cũng chờ U26. API giả: `e2e/stub-channels.ts` (`CHANNELS`).
 
 ## Thành viên (#19)
 

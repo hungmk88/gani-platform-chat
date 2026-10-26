@@ -4,7 +4,7 @@
 // `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
 // `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
 // `+stale@` gets version_conflict on every other action, `+many@` has MANY conversations waiting, `+window@` has the channel's free window closed when answering;
-// the tokens of INVITES open #4 Nhận lời mời.
+// the tokens of INVITES open #4 Nhận lời mời (e2e/stub-links.ts).
 // Inviting a member: `da-moi@` and `khong-gui@` (e2e/stub-members.ts).
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
@@ -13,7 +13,9 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
+import { routeLinks } from './stub-links';
 import { MEMBERS, routeMembers } from './stub-members';
+import { routeChannels } from './stub-channels';
 import { routeTeams } from './stub-teams';
 import { routeWorkspaces } from './stub-workspaces';
 
@@ -36,16 +38,6 @@ export const STUB_PAGE = 3;
 /** `<role>+many@`: this many conversations waiting in the queue, by pages of MANY_PAGE, for the virtualised list. */
 export const MANY = 600;
 export const MANY_PAGE = 200;
-/** Links of #4 Nhận lời mời (N151): the token of each case → whom it invites; any other token is refused like an expired one. */
-export const INVITES = {
-  sales: { token: 'e2e-invite-sales-0000000000000', invitedEmail: 'sales@e2e.test', role: 'sales' },
-  owner: {
-    token: 'e2e-invite-owner-0000000000000',
-    invitedEmail: 'owner+setup@e2e.test',
-    role: 'owner',
-  },
-  throttled: { token: 'e2e-invite-throttled-000000000', invitedEmail: '', role: '' },
-} as const;
 
 // The conversations of every workspace of the stub: who may see which is the rule of apps/api permissions.ts (canSee).
 const conversation = (n: number, state: string, assignedUserId: string | null, hold = false) => ({
@@ -120,6 +112,7 @@ interface Session {
 const sessions = new Map<string, Session>();
 const pending = new Map<string, string>(); // pending id → email
 const usedBackupCodes = new Set<string>();
+const names = new Map<string, string>(); // session → the name it chose (PATCH /v1/me)
 
 function send(
   res: ServerResponse,
@@ -215,23 +208,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     }
     return send(res, 200, { redirect: false, token: 'e2e' }, { 'set-cookie': open(email) });
   }
-  // #4 Nhận lời mời (N151): one answer for every refused token; accept opens the session of the invited person.
-  if (req.method === 'POST' && path?.startsWith('/api/auth/invite/')) {
-    const body = await json(req);
-    if (body['token'] === INVITES.throttled.token) return send(res, 429, { code: 'RATE_LIMITED' });
-    const invite = Object.values(INVITES).find((i) => i.token === body['token'] && i.role);
-    if (!invite)
-      return send(res, 404, {
-        code: 'INVITE_INVALID',
-        message: 'Link không hợp lệ hoặc đã hết hạn.',
-      });
-    const { invitedEmail, role } = invite;
-    if (path.endsWith('/lookup')) return send(res, 200, { invitedEmail, role });
-    if (session) return send(res, 200, { orgId: 'org-e2e', role });
-    if (typeof body['password'] !== 'string' || body['password'].length < 12)
-      return send(res, 400, { code: 'PASSWORD_TOO_WEAK' });
-    return send(res, 200, { orgId: 'org-e2e', role }, { 'set-cookie': open(invitedEmail) });
-  }
+  // #4 Nhận lời mời: e2e/stub-links.ts.
+  if (path && (await routeLinks(req, res, path, Boolean(session), { send, json, open }))) return;
   if (req.method === 'POST' && path === '/api/auth/sign-out') {
     sessions.delete(cookie(req, SESSION) ?? '');
     return send(res, 200, { success: true }, { 'set-cookie': setCookie(SESSION, '') });
@@ -439,13 +417,17 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     session.sent.set(key, m);
     return send(res, 201, m);
   }
-  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160): e2e/stub-{members,workspaces,teams}.ts.
-  if (path && ['/v1/members', '/v1/workspaces', '/v1/teams'].some((p) => path.startsWith(p))) {
+  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160), #24 Kênh (N161): e2e/stub-{members,workspaces,teams,channels}.ts.
+  if (
+    path &&
+    ['/v1/members', '/v1/workspaces', '/v1/teams', '/v1/channels'].some((p) => path.startsWith(p))
+  ) {
     const sid = cookie(req, SESSION) ?? '';
     const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
     if (await routeMembers(req, res, path, who, { send, problem, json })) return;
     if (await routeWorkspaces(req, res, path, who, { send, problem, json })) return;
     if (await routeTeams(req, res, path, who, { send, problem, json })) return;
+    if (routeChannels(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
@@ -455,13 +437,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (s) agent?.lever(path.slice(7), sid, body);
     return send(res, 200, { ok: true });
   }
-  if (req.method === 'GET' && path === '/v1/me') {
+  // #5 Đổi tên (N162): only `name`, 1–100 characters once trimmed; kept per session, then answered as GET /v1/me.
+  if (req.method === 'PATCH' && path === '/v1/me' && session) {
+    const body = await json(req);
+    const name = typeof body['name'] === 'string' ? body['name'].trim() : '';
+    if (Object.keys(body).join() !== 'name' || !name || name.length > 100)
+      return problem(res, 400, 'validation_failed', 'trace-e2e-400');
+    names.set(cookie(req, SESSION) ?? '', name);
+  }
+  if ((req.method === 'GET' || req.method === 'PATCH') && path === '/v1/me') {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
     if (session.email.includes('+gate@') && !session.twoFactorEnabled)
       return problem(res, 403, 'two_factor_setup_required', 'trace-e2e-403');
     const me = meOf(session.email);
     if (!me) return problem(res, 404, 'not_found', NO_ME_TRACE);
-    return send(res, 200, me);
+    return send(res, 200, { ...me, name: names.get(cookie(req, SESSION) ?? '') ?? me.name });
   }
   return problem(res, 404, 'not_found', 'trace-e2e-404');
 }

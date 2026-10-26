@@ -61,8 +61,9 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 | `app.outbox_stats` | `202610191200` | N118 |
 | `app.purge_idempotency_keys` | `202610201200` | N134 |
 | `app.reset_member_two_factor` | `202610241000` | N155 (đặt lại 2FA của thành viên công ty hiện tại; từ chối người dùng chung với công ty khác) |
+| `app.audit_own_account_event` | `202610251000` | N162 (audit đổi/đặt lại mật khẩu của chính người đang đăng nhập, mỗi công ty họ còn active; chỉ hai action) |
 
-`packages/db/test/security-definer.spec.ts` so tập hàm thật (13 hàm, 24/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
+`packages/db/test/security-definer.spec.ts` so tập hàm thật (14 hàm, 25/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 

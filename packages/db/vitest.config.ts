@@ -10,6 +10,7 @@ export default defineConfig({
       ...coverage,
       exclude: [
         ...coverage.exclude,
+        'src/account-audit-store.ts',
         'src/audit-log.ts',
         'src/channel-store.ts',
         'src/channel-window-read.ts',
@@ -30,6 +31,7 @@ export default defineConfig({
         'src/workspace-member-store.ts',
         'src/workspace-store.ts',
         'src/outbox-store.ts',
+        'src/password-reset-store.ts',
         'src/tenant-tx.ts',
         'src/member-context.ts',
         'src/org-summary.ts',

@@ -1,3 +1,4 @@
+export * from './account-audit-store.js';
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
 export * from './channel-window-read.js';
@@ -26,6 +27,7 @@ export { insertAuditLog } from './audit-log.js';
 export { readOrgSummary, type OrgSummary } from './org-summary.js';
 export * from './outbox-store.js';
 export * from './partition-store.js';
+export * from './password-reset-store.js';
 export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';
 export { agentSettings } from './schema/agent-settings.js';
