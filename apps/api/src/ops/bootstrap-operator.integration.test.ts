@@ -10,7 +10,8 @@ import { BootstrapRefusedError, bootstrapPlatformOperator } from './bootstrap-op
 
 // The bootstrap of the first platform operator (N25, N148) on PostgreSQL as migration_role. Everything happens in ONE transaction that
 // is rolled back: other test files make operators of their own at the same time, so this one first takes the flag off them inside its
-// transaction (nobody else sees that), and leaves the database as it found it.
+// transaction (nobody else sees that), and leaves the database as it found it. REPEATABLE READ (#368): every statement sees the one
+// snapshot of that first UPDATE, so an operator another file commits while the passwords hash is never seen here.
 const need = (name: string): string => {
   const value = process.env[name];
   if (!value)
@@ -33,7 +34,7 @@ describe('bootstrapPlatformOperator', () => {
     const client = await pool.connect();
     const email = `${uuidv7()}@example.test`;
     try {
-      await client.query('BEGIN');
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
       await client.query(
         'UPDATE users SET is_platform_operator = false WHERE is_platform_operator',
       );
