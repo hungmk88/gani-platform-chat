@@ -38,6 +38,21 @@ import { customerView } from './customers.view.js';
  * masked (Phụ lục B). One customer belongs to the whole company, so the list is not narrowed by workspace. A customer of another
  * organisation is a 404, as row-level security hides it.
  */
+/**
+ * What `q` searches (N165, U48): a whole email when it has an `@` (equal, any case: never a part, so it cannot spell out an address),
+ * the start of a phone number from 3 digits, a part of the name otherwise. A masked role searches by name only: it could otherwise test
+ * whether a number or an address is a customer's.
+ */
+function searchOf(
+  q: string,
+  masked: boolean,
+): { email: string } | { phonePrefix: string } | { name: string } {
+  if (masked) return { name: q };
+  if (q.includes('@')) return { email: q.toLowerCase() };
+  const prefix = phonePrefix(q);
+  return prefix === null ? { name: q } : { phonePrefix: prefix };
+}
+
 @Controller('v1/customers')
 export class CustomersController {
   constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
@@ -46,13 +61,11 @@ export class CustomersController {
   async list(@Query(new ZodPipe(CustomerListQuerySchema)) q: CustomerListQuery) {
     const ctx = currentRequestContext();
     const masked = seesCustomersMasked(ctx.role);
-    // A masked role does not search by phone: it could otherwise test whether a number is a customer's.
-    const prefix = q.q === undefined || masked ? null : phonePrefix(q.q);
     const page = await this.read(ctx, (tx) =>
       listCustomers(tx, {
         limit: q.limit,
         ...(q.cursor === undefined ? {} : { cursor: q.cursor }),
-        ...(prefix !== null ? { phonePrefix: prefix } : q.q === undefined ? {} : { name: q.q }),
+        ...(q.q === undefined ? {} : searchOf(q.q, masked)),
       }),
     );
     return { data: page.rows.map((row) => customerView(row, masked)), nextCursor: page.nextCursor };
