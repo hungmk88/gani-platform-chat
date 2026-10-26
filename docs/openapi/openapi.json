@@ -210,17 +210,12 @@
             "type": "boolean"
           },
           "assignedUserId": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Uuid"
-              },
-              {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
           },
           "version": {
             "type": "integer",
@@ -345,17 +340,12 @@
             ]
           },
           "senderUserId": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Uuid"
-              },
-              {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
           },
           "kind": {
             "type": "string",
@@ -511,17 +501,12 @@
             "format": "uuid"
           },
           "assignedUserId": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Uuid"
-              },
-              {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
           }
         },
         "required": [
@@ -1372,17 +1357,12 @@
             ]
           },
           "channelAccountId": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Uuid"
-              },
-              {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
           },
           "verification": {
             "type": "string",
