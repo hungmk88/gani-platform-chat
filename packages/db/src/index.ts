@@ -1,3 +1,4 @@
+export * from './account-audit-store.js';
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
 export * from './channel-window-read.js';
