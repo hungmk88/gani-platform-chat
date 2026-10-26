@@ -27,7 +27,7 @@ test('opening a conversation from the list takes under 500 ms at P95', async ({ 
   await signIn(page, accountOf('manager'));
   await page.goto('/inbox');
   const list = page.getByRole('region', { name: 'Danh sách hội thoại' });
-  const view = page.getByRole('region', { name: 'Hội thoại' });
+  const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
   // Three conversations of different states, so the heading of the view says which one is open.
   const order = [
     [CONVERSATIONS[1]!, 'Nhân viên đang xử lý'],

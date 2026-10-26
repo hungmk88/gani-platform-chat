@@ -34,7 +34,7 @@ test('a new message and a change of state show without reloading', async ({ page
   await lever(page, 'message', { conversationId: held.id, body: 'Khách vừa nhắn thêm.' });
   await expect(page.getByText('Khách vừa nhắn thêm.')).toBeVisible();
   await lever(page, 'state', { conversationId: held.id, to: 'PENDING_CUSTOMER' });
-  const view = page.getByRole('region', { name: 'Hội thoại' });
+  const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
   await expect(view.getByRole('heading', { name: 'Chờ khách trả lời' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Chờ khách trả lời/ }).first()).toBeVisible();
 });
