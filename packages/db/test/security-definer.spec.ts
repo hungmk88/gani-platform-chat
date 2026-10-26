@@ -10,6 +10,7 @@ const ADR_004 = [
   'app.audit_own_account_event',
   'app.channel_account_for_webhook',
   'app.ensure_log_partitions',
+  'app.held_conversation_counts',
   'app.inbound_pending_orgs',
   'app.log_default_partition_rows',
   'app.lookup_invite',
