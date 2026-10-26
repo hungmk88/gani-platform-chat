@@ -131,9 +131,8 @@ test('Sales get the contact number of the workspace from /v1/me, so {{company_ph
   expect(asked).toEqual([]);
 });
 
-// U37 (N165): written before the API, skipped until `GET /v1/conversations/{id}` returns the customer. The shape below is FE's
-// proposal (docs/ui/goi-cau-hoi-backend-30-10.md §3.3, `customer.displayName`): match it to the real field, then drop `.skip`.
-test.skip('the customer of the conversation fills {{customer_name}} when a template is picked (U37)', async ({
+// U37 (N165): the API answers the conversation with its customer (`customer.displayName`, #316); the stub has none.
+test('the customer of the conversation fills {{customer_name}} when a template is picked (U37)', async ({
   page,
 }) => {
   await page.route(`**/v1/conversations/${held.id}`, async (route) => {
@@ -142,7 +141,7 @@ test.skip('the customer of the conversation fills {{customer_name}} when a templ
     const conversation = (await response.json()) as Record<string, unknown>;
     return route.fulfill({
       response,
-      json: { ...conversation, customer: { id: 'c1', displayName: 'Chị Lan', companyName: null } },
+      json: { ...conversation, customer: { id: 'c1', displayName: 'Chị Lan' } },
     });
   });
   await signIn(page, accountOf('sales'));
