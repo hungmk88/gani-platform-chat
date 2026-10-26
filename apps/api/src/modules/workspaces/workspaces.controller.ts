@@ -49,7 +49,7 @@ export class WorkspacesController {
   }
 
   /**
-   * The name, the time zone or the default limit of conversations of a workspace. One TenantTx: the workspace locked, changed, audited
+   * The name, the time zone, the default limit of conversations or the contact number of a workspace. One TenantTx: the workspace locked, changed, audited
    * with what changed (`nameFrom`, `nameTo`, …). Setting the same values again changes nothing and writes no audit; no Idempotency-Key.
    */
   @Patch(':id')
@@ -74,10 +74,15 @@ export class WorkspacesController {
         targetType: 'workspace',
         targetId: id,
         detail: Object.fromEntries(
-          changed.flatMap((key) => [
-            [`${key}From`, before[key]],
-            [`${key}To`, after[key]],
-          ]),
+          // A phone number never goes into the log, even a company's (rule 5): only that it changed.
+          changed.flatMap((key) =>
+            key === 'contactPhone'
+              ? [['contactPhone', 'changed']]
+              : [
+                  [`${key}From`, before[key]],
+                  [`${key}To`, after[key]],
+                ],
+          ),
         ),
       });
       return after;

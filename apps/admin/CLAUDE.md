@@ -17,8 +17,9 @@ Dự án có **2 đợt** (Đợt 1 = 58 mã, go-live 15/02/2027; Đợt 2 = 77 
 2. Khách hàng — `/customers`, `/leads`, `/tickets`; `/quotes`, `/orders` (Đợt 2)
 3. Tự động hóa — `/bots`; `/automation`, `/knowledge` (Đợt 2)
 4. Tổng quan & Báo cáo — `/overview`; `/reports` (Đợt 2)
-5. Cài đặt — `/settings/{workspace, members, teams, channels, ai, autonomy, audit, security}`;
-   `/settings/widget` (Đợt 2)
+5. Cài đặt — `/settings/{workspace, members, teams, channels, quick-replies, customer-data, ai, autonomy, audit, security}`;
+   `/settings/widget` (Đợt 2). `quick-replies` (#22) cho Owner/Admin/Manager (Phụ lục B, N163); còn lại Owner/Admin
+   (`customer-data` #23: Manager cho tab Tag chờ U36).
 
 `/platform` chỉ hiện với `platform_operator`. Ẩn mục theo vai trò và theo đợt.
 
@@ -85,7 +86,7 @@ Trang mặc định sau đăng nhập:
 ## E2E và axe (F4)
 
 - `apps/admin/e2e/*.spec.ts`, Playwright + `@axe-core/playwright` (WCAG 2.1 A/AA, 0 vi phạm trên mọi màn mở ra). CI: job `admin (e2e, axe)`.
-- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+many` (600 hội thoại chờ, trang 200), `+window` (gửi tin bị 422 `channel_window_closed`), `+multi` (2 workspace, T1); token trong `INVITES` mở trang `/invite` (`e2e/stub-links.ts`); mời thành viên: `da-moi@` (409 đã có lời mời), `khong-gui@` (`emailSent: false`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
+- Chạy bản build thật với API giả `e2e/stub-api.ts` (chỉ cho test, không triển khai): mỗi email là một tình huống: `<vai trò>@e2e.test` vào thẳng, `+2fa` hỏi mã, `+setup` phải cài 2FA, `+gate` bị `/v1/me` trả 403 `two_factor_setup_required`, `+status-down` (security-status 503), `+inbox-empty`, `+inbox-down` (danh sách hội thoại trống / lỗi 500), `+claimed` (nhận trượt), `+stale` (`version_conflict`), `+many` (600 hội thoại chờ, trang 200), `+window` (gửi tin bị 422 `channel_window_closed`), `+multi` (2 workspace, T1); token trong `INVITES` mở trang `/invite`, trong `RESETS` mở `/reset-password` (`e2e/stub-links.ts`); mời thành viên: `da-moi@` (409 đã có lời mời), `khong-gui@` (`emailSent: false`). Thao tác trên hội thoại sửa bản sao riêng của phiên. API giả có cả Socket.IO `/agent` (kiểm `Origin` + cookie như API); test điều khiển nó qua `POST /__e2e/{message,state,drop,end}` với `sid` là cookie phiên của chính test. Mỗi lần đăng nhập là một phiên riêng, test chạy song song không chung trạng thái.
   API giả theo dạng Better Auth và `src/auth.ts`, `src/me.ts`; `GET /v1/me` trả đúng kiểu `Me` của OpenAPI (typecheck bắt lệch).
 - Chạy: `env -u NODE_ENV pnpm --filter @gani/admin build`, rồi `pnpm --filter @gani/admin e2e`. API giả chiếm cổng 3000, admin cổng 3001: tắt API và admin đang chạy trước.
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
@@ -97,6 +98,12 @@ Trang mặc định sau đăng nhập:
 - `/invite` nằm ngoài nhóm `(app)`, mở cho người chưa có tài khoản. Link email là `BETTER_AUTH_URL/invite#token=…` (N152): token ở fragment, trang đọc rồi **xóa khỏi thanh địa chỉ** ngay (`history.replaceState`), chỉ giữ trong bộ nhớ.
 - `POST /api/auth/invite/lookup` → email được mời + vai trò; `GET /v1/me/security-status` 200 nghĩa là đang đăng nhập: chỉ nút "Tham gia". Chưa đăng nhập: họ tên (tùy chọn), mật khẩu + nhập lại, kiểm như API (ADR-003, `src/invite.ts`), rồi `POST /api/auth/invite/accept` mở phiên. Xong thì về `/`: khung app đưa Owner/Admin sang cài 2FA.
 - Mọi từ chối token là một câu "Link không hợp lệ hoặc đã hết hạn." + link tới `/login` (không phân biệt lý do); 429 → đợi 1 phút. Tên công ty, người mời: API lookup chưa trả (N151).
+
+## Quên mật khẩu (PR7, N162)
+
+- `/forgot-password` và `/reset-password` nằm ngoài nhóm `(app)`, như `/invite`; trang đăng nhập có link "Quên mật khẩu?". Hai đường của plugin Better Auth (không có trong OpenAPI): `POST /api/auth/password/forgot {email}` **luôn 202** → một câu như nhau dù email có tài khoản hay không (`src/password-reset.ts` + `forgot-form.tsx`); 400 `INVALID_EMAIL` → "Email chưa đúng dạng."; 429 → đợi 1 phút.
+- Link email `BETTER_AUTH_URL/reset-password#token=…`: token ở fragment, đọc rồi **xóa khỏi thanh địa chỉ** ngay, chỉ giữ trong bộ nhớ (`tokenOf` của `src/invite.ts`). Mật khẩu mới + nhập lại kiểm như API (ADR-003, `isStrongPassword`), rồi `POST /api/auth/password/reset {token, password}` (`reset-form.tsx`). Xong: API thu hồi mọi phiên và **không** tạo phiên → câu "Đăng nhập lại" + link `/login`. Mọi từ chối token (404 `RESET_INVALID`) là một câu + link "Xin link mới"; 400 `PASSWORD_TOO_WEAK` nói quy tắc. Hạn link không ghi cứng (email ghi hạn).
+- API giả: `e2e/stub-links.ts` (`RESETS`, `NOT_AN_EMAIL`; cùng file với `INVITES` của #4).
 
 ## Gọi API (F5b)
 
@@ -144,13 +151,14 @@ Trang mặc định sau đăng nhập:
 - Danh sách `GET /v1/teams?workspaceId=` (A4, N160; theo tên): tên + mã, nhãn "Mặc định", mô tả, số người (`src/teams/teams.ts` + `team-list.tsx`).
 - **Tạo team** (`POST /v1/teams`): tên 1–100, mô tả tối đa 500 (không bắt buộc, trống là không có), cắt khoảng trắng như API (`teamDraftOf`). Chờ máy chủ, một `Idempotency-Key` cho một cặp tên + mô tả; xong thì team vào danh sách theo tên (`withTeam`). Mã (slug) do API sinh.
 - **Sửa** (`PATCH /v1/teams/{id}`, A4-T2b): hộp thoại tên, mô tả (xóa trắng là bỏ mô tả), "Team mặc định của workspace" (`src/teams/team-dialogs.tsx`). Chỉ gửi trường đổi thật (`teamChangeOf`); không đổi gì thì đóng, không gọi API. Chỉ **đặt** mặc định, không bỏ: team mặc định thì ô bị khóa (đặt team khác làm mặc định để đổi), workspace luôn còn một; xong thì cờ chuyển sang team mới trong danh sách (`withChanged`). Chờ máy chủ, không `Idempotency-Key`.
-- **Kết thúc** (`DELETE /v1/teams/{id}`): hộp thoại hỏi lại (số người rời team), chờ máy chủ; xong thì team ra khỏi danh sách (`withoutTeam`). Team mặc định không có nút này; 409 `team_in_use` (nếu đổi cùng lúc) nói phải đặt team khác làm mặc định trước.
+- **Kết thúc** (`DELETE /v1/teams/{id}`): hộp thoại hỏi lại (số người rời team), chờ máy chủ; xong thì team ra khỏi danh sách (`withoutTeam`). Team mặc định không có nút này; 409 `team_in_use` (team mặc định, hoặc team còn trả lời kênh, N161) nói phải đặt team khác làm mặc định hoặc bỏ kênh của team trước.
 - **Người của team** (`GET/PUT /v1/teams/{id}/members`, A4-T2c, N160): nút "Người" trên dòng, hộp thoại ô chọn cho **người của workspace của team** (`GET /v1/workspaces/{id}/members`, N159; tên lấy từ `GET /v1/members`, `inWorkspace`), người của team đã tích sẵn (`src/teams/team-members.ts` + `team-members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`); xong thì cột "Số người" lấy số của câu trả lời (`withCount`). 400 `validation_failed` (có người không còn thuộc workspace) → tải lại rồi chọn lại.
-- Kênh team phụ trách: chờ API (N160 "Để sau", N161). API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`).
+- **Kênh của team** (`GET /v1/channels?workspaceId=` + `PUT /v1/teams/{id}/channels`, A4-T3, N161): nút "Kênh" trên dòng team **không mặc định** (kênh không giao team nào đã về team mặc định), hộp thoại ô chọn mọi kênh của workspace: tên, loại, trạng thái kết nối (lời thường), team đang trả lời nếu không phải team này (`answeredBy`); kênh của team đã tích sẵn (`src/teams/team-channels.ts` + `team-channels-dialog.tsx`). Lưu = PUT cả danh sách: chọn kênh của team khác là chuyển sang, bỏ chọn là về team mặc định (`withAssigned`); không đổi gì thì đóng, không gọi API (`sameChannels`). Chờ máy chủ, không `Idempotency-Key`; cùng khóa cache `['channels', workspaceId]` với màn Kênh (#24). Kết nối kênh: chờ U26.
+- API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao, `teamsOf`; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`), `e2e/stub-channels.ts` (`CHANNELS`).
 
 ## Kênh (#24)
 
-- `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc.
+- `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc; giao kênh cho team ở `/settings/teams` (nút "Kênh").
 - Kết nối Zalo OA, làm mới token, ngắt kết nối, lỗi gần nhất và hạn token: chờ U26; `/settings/channels/[id]` (#25) cũng chờ U26. API giả: `e2e/stub-channels.ts` (`CHANNELS`).
 
 ## Thành viên (#19)

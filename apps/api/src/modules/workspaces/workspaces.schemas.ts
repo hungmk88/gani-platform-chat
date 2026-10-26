@@ -27,6 +27,10 @@ export const WorkspaceSchema = z
       description:
         'The limit of conversations at once of an agent without their own (C9); 5 unless changed.',
     }),
+    contactPhone: z.string().nullable().meta({
+      description:
+        'The number customers call: what {{company_phone}} of a quick reply becomes (N163); null until set.',
+    }),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'Workspace' });
@@ -40,6 +44,13 @@ export const WorkspaceChangeSchema = z
     name: z.string().trim().min(1).max(100).optional(),
     timezone: TimezoneSchema.optional(),
     defaultMaxConcurrent: z.int().min(1).max(100).optional(),
+    /** Null clears it. */
+    contactPhone: z
+      .string()
+      .trim()
+      .regex(/^\+?[0-9][0-9 .-]{5,19}$/)
+      .nullable()
+      .optional(),
   })
   .strict()
   .refine((change) => Object.keys(change).length > 0, 'nothing to change')

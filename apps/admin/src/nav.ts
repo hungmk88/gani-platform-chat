@@ -67,6 +67,8 @@ const MENU: readonly [string, readonly (readonly [string, string, readonly Role[
       ['/settings/members', 'Thành viên', ORG_ADMINS],
       ['/settings/teams', 'Team', ORG_ADMINS],
       ['/settings/channels', 'Kênh', ORG_ADMINS],
+      ['/settings/quick-replies', 'Mẫu trả lời nhanh', LEADS],
+      ['/settings/customer-data', 'Dữ liệu khách', ORG_ADMINS],
       ['/settings/ai', 'AI nội bộ', ORG_ADMINS],
       ['/settings/autonomy', 'Tự chủ & feature flag', ORG_ADMINS],
       ['/settings/audit', 'Audit log', ORG_ADMINS],

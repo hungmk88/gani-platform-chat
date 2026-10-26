@@ -3,11 +3,12 @@ import { expect, test } from '@playwright/test';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
+import { CHANNELS } from './stub-channels';
 import { MEMBERS } from './stub-members';
 import { TEAMS } from './stub-teams';
 
 // #20 Team (N160): the teams of the workspace being worked in, making one (one Idempotency-Key per name and description),
-// changing one, picking its people and ending one.
+// changing one, picking its people and its channels, ending one.
 test('an Admin sees the teams of the workspace and makes one: the slug is the API one', async ({
   page,
 }) => {
@@ -118,6 +119,49 @@ test('an Admin picks the people of a team among those of its workspace; the whol
   await dialog.getByRole('button', { name: 'Lưu người của team' }).click();
   await expect(dialog).toBeHidden();
   expect(sent).toBe(false); // nothing changed
+});
+
+test('an Admin gives a team its channels: one taken from the default team, one sent back to it', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/teams');
+  const list = page.getByRole('region', { name: 'Team của workspace' });
+  await expect(list.getByRole('button', { name: 'Kênh của team Sales B2B' })).toHaveCount(0); // the default team
+  await list.getByRole('button', { name: 'Kênh của team CSKH' }).click();
+  const dialog = page.getByRole('dialog', { name: /Kênh của team/ });
+  await expect(dialog.getByRole('checkbox')).toHaveCount(CHANNELS.length);
+  const zalo = dialog.getByRole('checkbox', { name: /Zalo OA Gani/ });
+  const fanpage = dialog.getByRole('checkbox', { name: /Gani Fanpage/ });
+  await expect(zalo).toBeChecked();
+  await expect(dialog.getByText('Kết nối sắp hết hạn')).toBeVisible();
+  await expect(fanpage).not.toBeChecked();
+  await expect(dialog.getByText('Đang kết nối · Đang do team mặc định trả lời')).toBeVisible();
+  await zalo.uncheck();
+  await fanpage.check();
+  await expectAccessible(page);
+  const put = page.waitForRequest((r) => r.method() === 'PUT');
+  await dialog.getByRole('button', { name: 'Lưu kênh của team' }).click();
+  expect((await put).postDataJSON()).toEqual({ channelIds: [CHANNELS[0]!.id] });
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã lưu kênh của team CSKH (1 kênh).');
+
+  await list.getByRole('button', { name: 'Kênh của team CSKH' }).click();
+  await expect(fanpage).toBeChecked();
+  await expect(zalo).not.toBeChecked();
+  await dialog.getByRole('button', { name: 'Hủy' }).click();
+  await expect(dialog).toBeHidden();
+});
+
+test('a team that still answers a channel is not ended: the refusal says why', async ({ page }) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/teams');
+  const list = page.getByRole('region', { name: 'Team của workspace' });
+  await list.getByRole('button', { name: 'Kết thúc team CSKH' }).click(); // CSKH answers the Zalo OA
+  const end = page.getByRole('dialog', { name: /Kết thúc team CSKH/ });
+  await end.getByRole('button', { name: 'Kết thúc team' }).click();
+  await expect(end.getByRole('alert')).toContainText('còn trả lời kênh');
+  await expect(list.getByRole('row', { name: /CSKH/ })).toBeVisible();
 });
 
 test('a Manager gets the forbidden page, as the menu', async ({ page }) => {

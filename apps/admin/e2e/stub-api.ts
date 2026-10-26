@@ -4,7 +4,7 @@
 // `<role>+gate@` gets 403 two_factor_setup_required from GET /v1/me (N93), `<role>+status-down@` a 503 from security-status,
 // `<role>+inbox-empty@` and `<role>+inbox-down@` an empty or failing conversation list, `+claimed@` loses every claim,
 // `+stale@` gets version_conflict on every other action, `+many@` has MANY conversations waiting, `+window@` has the channel's free window closed when answering;
-// the tokens of INVITES open #4 Nhận lời mời (e2e/stub-links.ts).
+// the tokens of INVITES open #4 Nhận lời mời, those of RESETS "Đặt lại mật khẩu" (e2e/stub-links.ts).
 // Inviting a member: `da-moi@` and `khong-gui@` (e2e/stub-members.ts).
 // Every sign-in opens its own session, as Better Auth's cookie does, so tests that run side by side never share state.
 import { randomUUID } from 'node:crypto';
@@ -208,7 +208,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     }
     return send(res, 200, { redirect: false, token: 'e2e' }, { 'set-cookie': open(email) });
   }
-  // #4 Nhận lời mời: e2e/stub-links.ts.
+  // #4 Nhận lời mời and "Quên mật khẩu": e2e/stub-links.ts.
   if (path && (await routeLinks(req, res, path, Boolean(session), { send, json, open }))) return;
   if (req.method === 'POST' && path === '/api/auth/sign-out') {
     sessions.delete(cookie(req, SESSION) ?? '');
@@ -426,8 +426,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
     if (await routeMembers(req, res, path, who, { send, problem, json })) return;
     if (await routeWorkspaces(req, res, path, who, { send, problem, json })) return;
+    if (await routeChannels(req, res, path, who, { send, problem, json })) return;
     if (await routeTeams(req, res, path, who, { send, problem, json })) return;
-    if (routeChannels(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {

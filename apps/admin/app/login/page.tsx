@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { LoginForm } from '../../src/login-form';
 
@@ -10,6 +11,9 @@ export default function Login() {
       <h1 className="text-20 font-semibold">Đăng nhập</h1>
       <p className="text-text-muted">Nền tảng chat — dùng chung cho 5 công ty.</p>
       <LoginForm />
+      <Link className="self-start underline" href="/forgot-password">
+        Quên mật khẩu?
+      </Link>
       <p className="text-12 text-text-muted">
         Owner, Admin và platform operator bắt buộc xác thực 2 lớp.
       </p>
