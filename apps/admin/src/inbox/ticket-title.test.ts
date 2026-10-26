@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Message } from './messages';
 import { titleFromMessages, titleOf, TITLE_MAX } from './ticket-title';
@@ -23,7 +23,12 @@ describe('titleOf', () => {
     ).toBeLessThanOrEqual(TITLE_MAX + 1);
     expect(cut).not.toMatch(/ …$/);
     expect(titleOf('x'.repeat(100))).toBe(`${'x'.repeat(80)}…`);
+  });
+
+  it('keeps exactly 80 characters whole, and cuts 81 with no space hard at 80', () => {
     expect(titleOf('x'.repeat(80))).toBe('x'.repeat(80));
+    expect(titleOf('😀'.repeat(80))).toBe('😀'.repeat(80)); // 80 graphemes, 160 UTF-16 units
+    expect(titleOf('x'.repeat(81))).toBe(`${'x'.repeat(80)}…`);
   });
 
   it('never cuts an emoji joined by ZWJ or a combining mark in two', () => {
@@ -71,5 +76,23 @@ describe('titleFromMessages', () => {
       '',
     );
     expect(titleFromMessages([])).toBe('');
+  });
+});
+
+describe('titleOf without Intl.Segmenter (Firefox before 125)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('counts code points: surrogate pairs stay whole, the same limits hold', async () => {
+    vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
+    vi.resetModules();
+    const { titleOf: fallback } = await import('./ticket-title');
+    expect(fallback('x'.repeat(80))).toBe('x'.repeat(80));
+    expect(fallback('x'.repeat(81))).toBe(`${'x'.repeat(80)}…`);
+    expect(fallback('ok')).toBe('');
+    expect(fallback(`${'a'.repeat(79)}😀${'b'.repeat(5)}`)).toBe(`${'a'.repeat(79)}😀…`);
+    expect(fallback(`${'Đơn hàng giao thiếu '.repeat(6)}`)).toMatch(/^Đơn hàng.*thiếu…$/);
   });
 });
