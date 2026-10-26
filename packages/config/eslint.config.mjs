@@ -50,6 +50,7 @@ export default defineConfig(
       '**/.turbo/**',
       '**/coverage/**',
       'apps/admin/src/api/schema.d.ts', // generated from docs/openapi/openapi.json
+      'apps/admin/src/api/planned.d.ts', // generated from docs/openapi/planned.json
     ],
   },
   { files: code, extends: [js.configs.recommended] },

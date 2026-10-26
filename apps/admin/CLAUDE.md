@@ -140,6 +140,12 @@ Trang mặc định sau đăng nhập:
 - **Hồ sơ khách (#8)** `/customers/[id]`, cùng vai trò với #7 (`GET /v1/customers/{id}`, `src/customers/customer-profile.tsx`): tên, SĐT, email, kênh, "Chỉ người phục vụ" (`humanOnly`, Brief §28: bot không trả lời khách này), ngày tạo/cập nhật; **Định danh**: mỗi kênh biết khách kèm mức xác thực (`VERIFICATION`: Đã xác thực, Sales xác nhận, Chưa xác thực). Khách không có hoặc của công ty khác: "Không tìm thấy khách" + link về danh sách (404, P9). Hội thoại, lead, ticket, tag, ghi chú: chờ API.
 - **Sửa hồ sơ** (`PATCH /v1/customers/{id}`): nút "Sửa hồ sơ" cho Owner/Admin/Manager/Sales/Support (`mayEditCustomers`, Phụ lục B; Marketing/Viewer không có nút), hộp thoại tên (≤ 200), SĐT, email, "Chỉ người phục vụ" (`src/customers/customer-edit.ts` + `customer-edit-dialog.tsx`). Kiểm như API trước khi gửi: SĐT viết cách thường gặp, chuyển E.164 như `toE164` của `@gani/domain`; email chữ thường. Chỉ gửi trường đổi thật (`changeOf`), ô để trống là `null` (xóa); không đổi gì thì đóng, không gọi API. Chờ máy chủ, không `Idempotency-Key`; xong thì hồ sơ lấy câu trả lời, danh sách đọc lại. API giả: `e2e/stub-customers.ts` (`CUSTOMERS`, trang 3 dòng; `/{id}`; `PATCH` sửa bản sao của phiên).
 
+## Tổng quan (#16)
+
+- `/overview`, mọi vai trò của công ty như menu (trang mặc định của Owner/Admin/Manager/Marketing/Viewer). `GET /v1/overview?workspaceId=` của **workspace đang chọn**: hợp đồng **planned S5** (`docs/openapi/planned.json`, N167; kiểu sinh ở `src/api/planned.d.ts` bằng `gen:api`, CI kiểm lệch như `schema.d.ts`).
+- 5 thẻ (U29, CEO 26/10): hội thoại đang mở, chờ nhân viên nhận (vàng khi > 0), phản hồi đầu tiên P90 hôm nay (`durationText`), quá hạn SLA (đỏ khi > 0; `null` → "Chưa tính", chờ Q7), nhân viên trực tuyến / tổng. Sales/Support: API trả `scope: me` → "Tổng quan của tôi", 4 thẻ, không thẻ nhân viên (`src/overview/overview.ts` + `overview-screen.tsx`). "Cập nhật lúc" theo `generatedAt`, nút "Làm mới".
+- **API chưa phục vụ đường này thì trả 404**: màn hiện `PendingPage` như mục menu chưa có (CEO chốt 26/10: không dữ liệu giả trên production, không cờ môi trường). API giả: `e2e/stub-overview.ts` (`+no-overview@` → 404). Các màn có file API giả riêng được gọi qua `e2e/stub-routes.ts`.
+
 ## Hồ sơ cá nhân (#5)
 
 - `/me` (mọi vai trò; tên ở thanh trên là link): 3 phần theo URL `?tab=info|security|notify` (link, không phải tablist).

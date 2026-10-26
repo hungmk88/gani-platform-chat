@@ -14,12 +14,9 @@ import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
-import { MEMBERS, routeMembers } from './stub-members';
-import { routeChannels } from './stub-channels';
-import { CUSTOMERS, routeCustomers } from './stub-customers';
-import { routeQuickReplies } from './stub-quick-replies';
-import { routeTeams } from './stub-teams';
-import { routeWorkspaces } from './stub-workspaces';
+import { CUSTOMERS } from './stub-customers';
+import { MEMBERS } from './stub-members';
+import { routeScreens } from './stub-routes';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
 export const GOOD = 'mat-khau-dung-e2e';
@@ -435,27 +432,16 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     session.sent.set(key, m);
     return send(res, 201, m);
   }
-  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160), #24 Kênh (N161), #22 Mẫu trả lời nhanh (N163),
-  // #7 Khách hàng (N165): e2e/stub-{members,workspaces,teams,channels,quick-replies,customers}.ts.
-  if (
-    path &&
-    [
-      '/v1/members',
-      '/v1/workspaces',
-      '/v1/teams',
-      '/v1/channels',
-      '/v1/quick-replies',
-      '/v1/customers',
-    ].some((p) => path.startsWith(p))
-  ) {
-    const sid = cookie(req, SESSION) ?? '';
-    const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
-    if (await routeMembers(req, res, path, who, { send, problem, json })) return;
-    if (await routeWorkspaces(req, res, path, who, { send, problem, json })) return;
-    if (await routeChannels(req, res, path, who, { send, problem, json })) return;
-    if (await routeTeams(req, res, path, who, { send, problem, json })) return;
-    if (await routeQuickReplies(req, res, path, who, { send, problem, json })) return;
-    if (await routeCustomers(req, res, path, who, { send, problem, json })) return;
+  // The screens with a stub file of their own (e2e/stub-routes.ts).
+  if (path) {
+    const who = session
+      ? {
+          sid: cookie(req, SESSION) ?? '',
+          role: meOf(session.email)?.org?.role,
+          email: session.email,
+        }
+      : null;
+    if (await routeScreens(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
