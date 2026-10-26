@@ -27,6 +27,7 @@ function matches(c, f) {
   const tags = c.tags.filter((t) => !(aiOff() && c.aiTag && t === 'Hỏi giá'));
   if (q && !(fold(c.name).includes(q) || fold(c.email).includes(q) || (digits.length >= 3 && (c.phone ?? '').includes(digits)))) return false;
   if (f.tag && !tags.includes(f.tag)) return false;
+  if (f.channel && !c.channels.includes(f.channel)) return false;
   if (f.owner && (f.owner === 'none' ? c.owner : c.owner !== f.owner)) return false;
   if (f.kind && c.kind !== f.kind) return false;
   if (f.range === '7' && c.lastDays > 7) return false;
@@ -43,11 +44,11 @@ function filters(f) {
   return h('div', { class: 'row', style: 'flex-wrap:wrap;align-items:flex-end' },
     h('div', { class: 'field' }, h('label', { for: 'f-q' }, 'Tìm khách'), search),
     select('f-tag', 'Tag', f.tag, [['', 'Mọi tag'], ...TAG_LIST.filter((t) => !(aiOff() && t === 'Hỏi giá')).map((t) => [t, t])]),
-    select('f-channel', 'Kênh', '', [['', 'Mọi kênh'], ['zalo', 'Zalo OA']]),
+    select('f-channel', 'Kênh', f.channel, [['', 'Mọi kênh'], ['Zalo OA', 'Zalo OA'], ['SĐT', 'SĐT']]),
     select('f-kind', 'Loại hình kinh doanh', f.kind, [['', 'Tất cả'], ...KINDS.map((k) => [k, k])]),
     select('f-owner', 'Người phụ trách', f.owner, [['', 'Mọi người'], ['none', 'Chưa có'], ...OWNERS.map((o) => [o, o])]),
     select('f-range', 'Liên hệ cuối', f.range, RANGES),
-    f.q || f.tag || f.kind || f.owner || f.range ? h('button', { class: 'btn link', onclick: () => { for (const k of ['q', 'tag', 'kind', 'owner', 'range']) Proto.set(k, ''); } }, 'Xóa bộ lọc') : null);
+    f.q || f.tag || f.channel || f.kind || f.owner || f.range ? h('button', { class: 'btn link', onclick: () => { for (const k of ['q', 'tag', 'channel', 'kind', 'owner', 'range']) Proto.set(k, ''); } }, 'Xóa bộ lọc') : null);
 }
 
 function mergeBar(selected) {
@@ -85,7 +86,7 @@ Proto.mount({
     if (Proto.role() === 'platform_operator' && Proto.get('shell', 'normal') !== 'platform_session') {
       return h('div', { class: 'page-body' }, Proto.noAccess('Danh sách khách ngoài phiên truy cập có lý do', 'platform.html'));
     }
-    const f = { q: Proto.get('q', ''), tag: Proto.get('tag', ''), kind: Proto.get('kind', ''), owner: Proto.get('owner', ''), range: Proto.get('range', '') };
+    const f = { q: Proto.get('q', ''), tag: Proto.get('tag', ''), channel: Proto.get('channel', ''), kind: Proto.get('kind', ''), owner: Proto.get('owner', ''), range: Proto.get('range', '') };
     const s = Proto.state();
     let body;
     if (s === 'loading') body = Proto.loading(6);
@@ -93,7 +94,7 @@ Proto.mount({
     else if (s === 'empty') body = Proto.empty('Chưa có khách nào. Khách tự xuất hiện khi nhắn qua kênh đã kết nối.', can(['owner', 'admin']) ? 'Nhập khách từ file' : null, () => { location.href = `customer-import.html?role=${Proto.role()}`; });
     else {
       const rows = CUSTOMERS.filter((c) => matches(c, f));
-      body = rows.length ? table(rows) : h('div', { class: 'state-box' }, h('p', {}, 'Không có khách khớp bộ lọc.'), h('button', { class: 'btn', onclick: () => { for (const k of ['q', 'tag', 'kind', 'owner', 'range']) Proto.set(k, ''); } }, 'Xóa bộ lọc'));
+      body = rows.length ? table(rows) : h('div', { class: 'state-box' }, h('p', {}, 'Không có khách khớp bộ lọc.'), h('button', { class: 'btn', onclick: () => { for (const k of ['q', 'tag', 'channel', 'kind', 'owner', 'range']) Proto.set(k, ''); } }, 'Xóa bộ lọc'));
     }
     const masked = !Proto.can('customer.phone.full');
     return h('div', { class: 'main' },

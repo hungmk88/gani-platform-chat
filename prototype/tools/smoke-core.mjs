@@ -102,6 +102,10 @@ p = await open('customer.html?role=manager&state=merge');
 await shot(p, 'customer-merge');
 await p.close();
 p = await open('customer.html?role=sales');
+await p.getByRole('button', { name: 'Bỏ tag Hỏi giá' }).click();
+check((await p.locator('section[aria-label="Tag và cờ"] .badge', { hasText: 'Hỏi giá' }).count()) === 0 && (await p.locator('#add-tag option', { hasText: 'Hỏi giá' }).count()) === 1, 'hồ sơ: bỏ được tag, tag quay lại danh sách gắn');
+await p.selectOption('#add-tag', 'VIP');
+check((await p.locator('section[aria-label="Tag và cờ"] .badge', { hasText: 'VIP' }).count()) === 1 && (await p.locator('#add-tag option', { hasText: 'VIP' }).count()) === 0, 'hồ sơ: gắn tag chọn từ danh sách có sẵn');
 await shot(p, 'customer');
 await p.close();
 
