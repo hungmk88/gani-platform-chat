@@ -84,6 +84,18 @@ export class AuthService implements OnApplicationShutdown {
     return row ? { name: row.name, isPlatformOperator: row.is_platform_operator } : null;
   }
 
+  /**
+   * Sets the name `userId` goes by (`PATCH /v1/me`, N162); false for a person who was deleted. Only the person of an authenticated
+   * session renames themselves: `userId` is never a request value. `auth_role` may change display_name and nothing else of a person.
+   */
+  async rename(userId: string, name: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query(
+      `UPDATE public.users SET display_name = $2, updated_at = now() WHERE id = $1 AND deleted_at IS NULL`,
+      [userId, name],
+    );
+    return rowCount === 1;
+  }
+
   twoFactorStatus(userId: string): Promise<TwoFactorStatus | null> {
     return twoFactorStatus(this.pool, userId);
   }

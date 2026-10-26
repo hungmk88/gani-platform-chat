@@ -47,7 +47,7 @@ test('a Viewer goes to the profile; an item outside the menu of the role is stil
   await page.goto('/leads');
   await expect(page.getByRole('heading', { name: /^Lead: màn này chưa có/ })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Mở hồ sơ cá nhân' })).toHaveAttribute('href', '/me');
-  const res = await page.goto('/settings/channels');
+  const res = await page.goto('/settings/ai');
   expect(res?.status()).toBe(404);
 });
 

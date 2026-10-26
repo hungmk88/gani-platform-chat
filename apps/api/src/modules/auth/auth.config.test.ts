@@ -24,7 +24,11 @@ const PW = randomBytes(18).toString('base64url');
 const PW2 = randomBytes(18).toString('base64url');
 const freshIp = () => [...randomBytes(4)].join('.');
 
-async function world(url = HTTP, tweak: (o: Options) => Options = (o) => o) {
+async function world(
+  url = HTTP,
+  tweak: (o: Options) => Options = (o) => o,
+  extras: Parameters<typeof buildAuthOptions>[2] = {},
+) {
   const env = loadAuthEnv({
     BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
     BETTER_AUTH_URL: url,
@@ -38,7 +42,7 @@ async function world(url = HTTP, tweak: (o: Options) => Options = (o) => o) {
     verification: [] as Row[],
     twoFactor: [] as Row[],
   };
-  const built: Options = buildAuthOptions(env, revokingAdapter(memoryAdapter(db)));
+  const built: Options = buildAuthOptions(env, revokingAdapter(memoryAdapter(db)), extras);
   const options = tweak(built);
   const userId = uuidv7();
   const now = new Date();
@@ -425,5 +429,68 @@ describe('two-factor', () => {
     expect(w.db.twoFactor[0]?.['backupCodes']).toMatch(/^\$ba\$2\$/);
     const only = rekey(w.options, [{ version: 2, value: fresh }]);
     expect((await verify(only, await signIn(only), totp(w.secret))).status).not.toBe(200);
+  });
+});
+
+describe("changing one's password over HTTP (N162)", () => {
+  const changeOver = (auth: Auth, from: Response, body: object, ip = freshIp()) =>
+    auth.handler(
+      new Request(`${HTTP}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: HTTP,
+          'x-forwarded-for': ip,
+          cookie: cookie(from).get('cookie') ?? '',
+        },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  it('ends every other session even when the client asks to keep them, and audits once', async () => {
+    const audit = vi.fn(() => Promise.resolve());
+    const { auth, userId } = await world(HTTP, (o) => o, { audit });
+    const [here, there] = [await signIn(auth), await signIn(auth)];
+    const res = await changeOver(auth, here, {
+      currentPassword: PW,
+      newPassword: PW2,
+      revokeOtherSessions: false,
+    });
+    expect(res.status).toBe(200);
+    expect(await auth.api.getSession({ headers: cookie(there) })).toBeNull();
+    expect(audit.mock.calls).toEqual([[userId, 'user.password_changed']]);
+  });
+
+  it('audits nothing and keeps the sessions when the current password is wrong', async () => {
+    const audit = vi.fn(() => Promise.resolve());
+    const { auth } = await world(HTTP, (o) => o, { audit });
+    const [here, there] = [await signIn(auth), await signIn(auth)];
+    const res = await changeOver(auth, here, { currentPassword: PW2, newPassword: PW2 });
+    expect(res.status).toBe(400);
+    expect(await auth.api.getSession({ headers: cookie(there) })).not.toBeNull();
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it('still answers 200 when the audit fails: the password has changed already', async () => {
+    const audit = vi.fn(() => Promise.reject(new Error('down')));
+    const { auth } = await world(HTTP, (o) => o, { audit });
+    const res = await changeOver(auth, await signIn(auth), {
+      currentPassword: PW,
+      newPassword: PW2,
+    });
+    expect(res.status).toBe(200);
+    expect(audit).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers 429 from the 6th attempt of one address within a minute', async () => {
+    const { auth } = await world();
+    const from = await signIn(auth);
+    const ip = freshIp();
+    const statuses: number[] = [];
+    for (let i = 0; i < 6; i += 1)
+      statuses.push(
+        (await changeOver(auth, from, { currentPassword: PW2, newPassword: PW2 }, ip)).status,
+      );
+    expect(statuses).toEqual([400, 400, 400, 400, 400, 429]);
   });
 });

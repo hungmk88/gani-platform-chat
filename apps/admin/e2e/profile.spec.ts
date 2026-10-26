@@ -6,7 +6,7 @@ import { accountOf, GOOD } from './stub-api';
 
 const NEXT = 'matkhau-moi-123';
 
-// #5 Hồ sơ cá nhân: the name in the header opens it; password changes are checked here first (ADR-003), then by Better Auth.
+// #5 Hồ sơ cá nhân: the name in the header opens it and can be changed (N162); password changes are checked here first (ADR-003), then by Better Auth.
 test('the name in the header opens the profile with what /v1/me says', async ({ page }) => {
   await signIn(page, accountOf('sales'));
   await page.getByRole('link', { name: 'Người thử sales' }).click();
@@ -19,6 +19,28 @@ test('the name in the header opens the profile with what /v1/me says', async ({ 
   await expect(profile.getByText('Công ty thử', { exact: true })).toBeVisible();
   await expect(profile.getByText('Workspace thử', { exact: true })).toBeVisible();
   await expect(profile.getByText('Sales', { exact: true })).toBeVisible();
+  await expectAccessible(page);
+});
+
+test('changing the name: refused blank, then sent trimmed; the top bar shows it', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('support'));
+  await page.goto('/me');
+  const form = page.getByRole('form', { name: 'Đổi tên' });
+  const save = form.getByRole('button', { name: 'Lưu tên' });
+  await expect(form.getByLabel('Tên hiển thị')).toHaveValue('Người thử support');
+  await expect(save).toBeDisabled(); // nothing changed
+  await form.getByLabel('Tên hiển thị').fill('   ');
+  await save.click();
+  await expect(form.getByRole('alert')).toHaveText('Nhập tên.');
+  await form.getByLabel('Tên hiển thị').fill('  Trần Thu ');
+  const patched = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/me'));
+  await save.click();
+  expect((await patched).postDataJSON()).toEqual({ name: 'Trần Thu' });
+  await expect(form.getByRole('status')).toHaveText('Đã lưu tên Trần Thu.');
+  await expect(page.getByRole('link', { name: 'Trần Thu' })).toBeVisible();
+  await expect(save).toBeDisabled();
   await expectAccessible(page);
 });
 

@@ -30,7 +30,7 @@ export const TEAMS: readonly Team[] = [
   },
 ];
 
-const copies = new Map<string, Team[]>(); // session → its teams (those of TEAMS, changed, and those it made)
+const copies = new Map<string, Team[]>(); // session → its teams (those of TEAMS, changed or ended, and those it made)
 const byKey = new Map<string, Team>(); // Idempotency-Key → the team it made
 
 /** The slug the API makes: no accents, đ → d, words joined by "-", a taken one gets -2, -3… */
@@ -73,7 +73,7 @@ export async function routeTeams(
     );
   }
   if (!changes) return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
-  const body = await edge.json(req);
+  const body = req.method === 'DELETE' ? {} : await edge.json(req);
   const name = typeof body['name'] === 'string' ? body['name'].trim() : undefined;
   const description =
     typeof body['description'] === 'string'
@@ -111,6 +111,13 @@ export async function routeTeams(
   }
   const team = mine.find((t) => t.id === id);
   if (!team) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+  if (req.method === 'DELETE') {
+    // Ending one (A4-T2b): the default team of a workspace stays.
+    if (team.isDefault) return (edge.problem(res, 409, 'team_in_use', 'trace-e2e-409'), true);
+    mine.splice(mine.indexOf(team), 1);
+    res.writeHead(204).end();
+    return true;
+  }
   if (req.method !== 'PATCH') return false;
   // Changing one (A4-T2b): at least one field; made the default, the old default of the workspace loses the flag.
   const keys = Object.keys(body);

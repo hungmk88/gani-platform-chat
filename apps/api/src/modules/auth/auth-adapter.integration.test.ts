@@ -19,6 +19,8 @@ const need = (name: string): string => {
 const PASSWORD = randomBytes(18).toString('base64url');
 const NEW_PASSWORD = randomBytes(18).toString('base64url');
 const user = randomUUID();
+// The person is an active member of one organisation, which sees the audit of a password change (N162).
+const org = randomUUID();
 const email = `${user}@example.test`;
 const authPool = createDbPool(need('DATABASE_URL_AUTH'), { max: 3 });
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
@@ -63,9 +65,21 @@ beforeAll(async () => {
     `INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $3, 'credential', $4)`,
     [randomUUID(), user, user, await hashPassword(PASSWORD)],
   );
+  await admin.query('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [
+    org,
+    `t-${org}`,
+    'T',
+  ]);
+  await admin.query(
+    `INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, 'sales', 'active')`,
+    [randomUUID(), org, user],
+  );
 });
 
 afterAll(async () => {
+  for (const t of ['audit_logs', 'org_members'])
+    await admin.query(`DELETE FROM ${t} WHERE org_id = $1`, [org]).catch(() => undefined);
+  await admin.query('DELETE FROM organizations WHERE id = $1', [org]).catch(() => undefined);
   for (const t of ['sessions', 'accounts'])
     await admin.query(`DELETE FROM ${t} WHERE user_id = $1`, [user]).catch(() => undefined);
   await admin.query('DELETE FROM users WHERE id = $1', [user]).catch(() => undefined);
@@ -105,5 +119,12 @@ describe('Better Auth on the real adapter, as auth_role', () => {
       [user],
     );
     expect(stored.rows[0]?.password).toMatch(/^\$argon2id\$/);
+    const audited = await admin.query(
+      'SELECT org_id, actor_user_id, action, target_id FROM audit_logs WHERE org_id = $1',
+      [org],
+    );
+    expect(audited.rows).toEqual([
+      { org_id: org, actor_user_id: user, action: 'user.password_changed', target_id: user },
+    ]);
   });
 });

@@ -7,6 +7,7 @@ import type { AdapterFactory } from 'better-auth/adapters';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { twoFactor } from 'better-auth/plugins';
 
+import { accountAudit, type AccountAudit } from './account-audit.js';
 import type { AuthEnv } from './auth.env.js';
 import { loginLockout, WRONG_CREDENTIALS, type LoginLockout } from './login-lockout.js';
 import {
@@ -44,6 +45,8 @@ const DISABLED_PATHS = [
   '/request-password-reset',
 ];
 const SIGN_IN = '/sign-in/email';
+// Changing one's password while signed in (N162): every other session always ends, whatever the client sends, and it is audited.
+const CHANGE_PASSWORD = '/change-password';
 // Where the rate limiter reads the address of the caller (review C-01, N112 pending the deployment topology). This is the default of the
 // library, written down so that the decision is visible and changing it is a diff. Known and pinned by auth.rate-limit-ip.test.ts: a
 // request with no such header, or with a chain "a, b", has no trusted address and shares ONE bucket per path; a single value is taken
@@ -77,7 +80,7 @@ export function withoutSessionToken(returned: unknown): Record<string, unknown> 
 export function buildAuthOptions(
   env: AuthEnv,
   database: Database,
-  extras: { lockout?: LoginLockout; plugins?: BetterAuthPlugin[] } = {},
+  extras: { lockout?: LoginLockout; audit?: AccountAudit; plugins?: BetterAuthPlugin[] } = {},
 ) {
   return {
     baseURL: env.baseURL,
@@ -129,6 +132,10 @@ export function buildAuthOptions(
         if (ctx.path === SIGN_IN && (await extras.lockout?.isLocked(ctx.body)) === true) {
           throw APIError.from('UNAUTHORIZED', WRONG_CREDENTIALS);
         }
+        // A stolen password must not outlive its change in another tab: the library would keep the other sessions on false.
+        if (ctx.path === CHANGE_PASSWORD && typeof ctx.body === 'object' && ctx.body !== null) {
+          return { context: { body: { ...(ctx.body as object), revokeOtherSessions: true } } };
+        }
       }),
       after: createAuthMiddleware(async (ctx) => {
         const returned = ctx.context.returned;
@@ -137,6 +144,15 @@ export function buildAuthOptions(
             if (returned.body?.code === WRONG_CREDENTIALS.code)
               await extras.lockout.failed(ctx.body);
           } else if (ctx.context.newSession) await extras.lockout.succeeded(ctx.body);
+        }
+        const userId = ctx.context.session?.user.id;
+        if (ctx.path === CHANGE_PASSWORD && extras.audit && userId && !isAPIError(returned)) {
+          // The password has changed already: a failed audit is logged by code and never turns the answer into an error.
+          await extras
+            .audit(userId, 'user.password_changed')
+            .catch((error: unknown) =>
+              authLogger.error(`password change audit failed (${storeErrorCode(error)})`),
+            );
         }
         // Only over HTTP: our own server code (getSession of the SessionResolver) keeps the whole answer.
         return ctx.request ? withoutSessionToken(returned) : undefined;
@@ -162,6 +178,8 @@ export function buildAuthOptions(
       max: 100,
       customRules: {
         '/sign-in/email': { window: 60, max: 10 },
+        // Guessing the current password needs a session, and is slowed like a sign-in (N162).
+        '/change-password': { window: 60, max: 5 },
         // Per address; the routes also limit each token to 10 a minute themselves (N151).
         '/invite/lookup': { window: 60, max: 60 },
         '/invite/accept': { window: 60, max: 60 },
@@ -211,6 +229,8 @@ export function createAuth(args: {
   return betterAuth(
     buildAuthOptions(args.env, revokingAdapter(adapter), {
       lockout: loginLockout(pool),
+      // Its own transaction (withAuthUser): the pool itself, whose errors it never prints.
+      audit: accountAudit(args.pool),
       // The invitations open transactions of their own (one step, N151): they get the pool itself, whose errors they never print.
       plugins: [
         switchActiveOrg(pool),
