@@ -31,6 +31,8 @@ export interface CustomerListQuery {
   readonly name?: string;
   /** The start of a number in E.164 (phonePrefix of @gani/domain). */
   readonly phonePrefix?: string;
+  /** A whole email, lower case: equal, never a part (U48), so a search cannot spell out an address (index customers_org_email_idx). */
+  readonly email?: string;
   readonly cursor?: string;
   /** 1..100 (P9). */
   readonly limit: number;
@@ -76,6 +78,7 @@ export async function listCustomers(
   const where: (SQL | undefined)[] = [isNull(c.deletedAt)];
   if (q.name !== undefined) where.push(ilike(c.displayName, `%${literal(q.name)}%`));
   if (q.phonePrefix !== undefined) where.push(sql`starts_with(${c.phoneE164}, ${q.phonePrefix})`);
+  if (q.email !== undefined) where.push(eq(c.email, q.email));
   if (q.cursor !== undefined)
     where.push(lt(c.id, cursorString(decodeCursor(q.cursor), 'id', UUID_FORMAT)));
   const rows = await tx

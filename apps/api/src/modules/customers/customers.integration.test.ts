@@ -139,6 +139,20 @@ describe('GET /v1/customers', () => {
     expect(ids((await get('marketing', '/v1/customers?q=0912')).body)).toEqual([]);
   });
 
+  it('finds by a whole email in any case, never by a part of one; marketing and another organisation never (U48)', async () => {
+    expect(ids((await get('sales', '/v1/customers?q=Lan.Nguyen%40Example.test')).body)).toEqual([
+      LAN,
+    ]);
+    for (const part of ['lan.nguyen%40example', '%40example.test', 'lan.nguyen%40%25'])
+      expect(ids((await get('sales', `/v1/customers?q=${part}`)).body), part).toEqual([]);
+    expect(ids((await get('marketing', '/v1/customers?q=lan.nguyen%40example.test')).body)).toEqual(
+      [],
+    );
+    expect(ids((await get('stranger', '/v1/customers?q=lan.nguyen%40example.test')).body)).toEqual(
+      [],
+    );
+  });
+
   it('refuses a bad query or cursor with 400 validation_failed', async () => {
     for (const query of ['limit=101', 'q=', 'cursor=bm90IG91cnM'])
       expect((await get('sales', `/v1/customers?${query}`)).body['code'], query).toBe(

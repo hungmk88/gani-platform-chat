@@ -40,7 +40,7 @@ export const CustomerSchema = z
 export const CustomerPageSchema = cursorPage(CustomerSchema, 'CustomerPage');
 
 export const CustomerListQuerySchema = CursorQuerySchema.extend({
-  /** A part of the name, or the start of a phone number (`0912…`, `+84 912…`, from 3 digits). */
+  /** A part of the name, the start of a phone number (`0912…`, `+84 912…`, from 3 digits), or a whole email (U48). */
   q: z.string().trim().min(1).max(100).optional(),
 });
 export type CustomerListQuery = z.output<typeof CustomerListQuerySchema>;
