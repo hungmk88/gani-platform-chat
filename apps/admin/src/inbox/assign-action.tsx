@@ -8,7 +8,7 @@ import type { components } from '../api/schema';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useApiQuery, useScope } from '../query/provider';
-import { assigneeLines, assigneesPath } from './assign';
+import { assigneeLines, assigneesPath, matching, SEARCH_FROM } from './assign';
 import type { Conversation } from './list';
 
 type AssigneeList = components['schemas']['AssigneeList'];
@@ -45,7 +45,9 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
     ['conversation', c.id, 'assignees', 'assign'],
     assigneesPath(c.id, 'assign'),
   );
-  const options = assigneeLines(people.data?.data ?? []);
+  const all = assigneeLines(people.data?.data ?? []);
+  const [query, setQuery] = useState('');
+  const options = matching(all, query);
   const [to, setTo] = useState('');
   const assign = useMutation<Conversation, ApiFailure, { to: string; key: string }>({
     mutationFn: ({ to, key }) =>
@@ -98,25 +100,46 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
           <p role="status" aria-busy="true" className="text-text-muted">
             Đang tải người nhận…
           </p>
-        ) : people.isError ? null : options.length === 0 ? (
+        ) : people.isError ? null : all.length === 0 ? (
           <p>
             Chưa có ai khác nhận được hội thoại này. Thêm người vào workspace ở Cài đặt › Workspace.
           </p>
         ) : (
-          <label className="flex flex-col gap-1">
-            Người nhận
-            <select
-              value={chosen}
-              className="rounded-input border border-border-strong px-3 py-2"
-              onChange={(e) => setTo(e.target.value)}
-            >
-              {options.map(({ userId, label }) => (
-                <option key={userId} value={userId}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            {all.length >= SEARCH_FROM ? (
+              <label className="flex flex-col gap-1">
+                Tìm người
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Tên, vai trò hoặc team"
+                  className="rounded-input border border-border-strong px-3 py-2"
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setTo('');
+                  }}
+                />
+              </label>
+            ) : null}
+            {options.length === 0 ? (
+              <p>Không ai khớp &quot;{query.trim()}&quot;.</p>
+            ) : (
+              <label className="flex flex-col gap-1">
+                Người nhận
+                <select
+                  value={chosen}
+                  className="rounded-input border border-border-strong px-3 py-2"
+                  onChange={(e) => setTo(e.target.value)}
+                >
+                  {options.map(({ userId, label }) => (
+                    <option key={userId} value={userId}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </>
         )}
         {options.some((o) => o.full) ? (
           <p className="text-12 text-text-muted">
