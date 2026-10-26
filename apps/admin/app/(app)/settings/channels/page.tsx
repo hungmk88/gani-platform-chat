@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: 'Kênh — Gani Platform' };
 
 /**
  * #24 Kênh (B1–B3), Owner and Admin as the menu and the API (Phụ lục B "Cài đặt workspace, kênh, team"): the channels of the
- * workspace being worked in, read only (N161). Connecting a Zalo OA, refreshing its token and disconnecting wait for U26.
+ * workspace being worked in, read only (N161; a team is given its channels on /settings/teams). Connecting a Zalo OA, refreshing its
+ * token and disconnecting wait for U26.
  */
 export default async function ChannelsPage() {
   const result = await getMe();
@@ -22,8 +23,8 @@ export default async function ChannelsPage() {
       </h1>
       <ChannelTable />
       <p className="text-12 text-text-muted">
-        Kết nối Zalo OA, làm mới kết nối, ngắt kết nối và đổi team trả lời: chưa có trong bản hiện
-        tại.
+        Kết nối Zalo OA, làm mới kết nối và ngắt kết nối: chưa có trong bản hiện tại. Đổi team trả
+        lời một kênh: Cài đặt › Team, nút "Kênh" của team.
       </p>
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
