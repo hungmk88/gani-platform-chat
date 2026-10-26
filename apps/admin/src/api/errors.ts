@@ -25,7 +25,7 @@ export interface ApiError {
 }
 
 // The 15 codes of Brief P9, then the codes the API serves today beyond it (two_factor_setup_required N93, invalid_assignee #147,
-// conversation_not_active N146, the Idempotency-Key answers N134, forbidden_origin N136). A code missing here falls back to its HTTP status below.
+// conversation_not_active N146, unresolved_variable N163, the Idempotency-Key answers N134, forbidden_origin N136). A code missing here falls back to its HTTP status below.
 const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   validation_failed: ['fields', 'Thông tin chưa hợp lệ. Kiểm tra các ô được đánh dấu.'],
   unauthorized: ['sign_in', 'Phiên đăng nhập đã hết. Đăng nhập lại.'],
@@ -53,6 +53,10 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   conversation_not_active: [
     'reload',
     'Hội thoại chưa có người nhận hoặc đã đóng. Nhận hội thoại rồi trả lời.',
+  ],
+  unresolved_variable: [
+    'show',
+    'Tin còn biến {{…}} chưa điền. Điền các ô dưới ô soạn rồi gửi lại.',
   ],
   idempotency_in_progress: ['wait', 'Yêu cầu trước vẫn đang xử lý. Đợi một chút.'],
   idempotency_key_reused: ['reload', 'Yêu cầu không khớp lần gửi trước. Tải lại rồi làm lại.'],

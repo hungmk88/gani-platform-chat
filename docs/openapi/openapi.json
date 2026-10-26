@@ -1225,6 +1225,17 @@
           }
         },
         "additionalProperties": false
+      },
+      "QuickReplyUse": {
+        "type": "object",
+        "properties": {
+          "useCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "useCount"
+        ]
       }
     },
     "parameters": {}
@@ -1873,11 +1884,18 @@
             }
           },
           "422": {
-            "description": "channel_window_closed with windowState and reason: nothing was written (C-N4); or idempotency_key_reused.",
+            "description": "channel_window_closed with windowState and reason: nothing was written (C-N4); unresolved_variable: the text still holds a {{…}} of a quick reply (N163); or idempotency_key_reused.",
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WindowClosedProblem"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/WindowClosedProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
                 }
               }
             }
@@ -4461,6 +4479,87 @@
           },
           "403": {
             "description": "forbidden: only an Owner, an Admin or a Manager manages templates (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live template with this id in the session’s workspaces.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quick-replies/{id}/used": {
+      "post": {
+        "summary": "Count one use of a template, called when the Inbox sends it (N163); most used come first in the list.",
+        "tags": [
+          "quick-replies"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The count after this use.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickReplyUse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: a role that does not answer customers; or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {

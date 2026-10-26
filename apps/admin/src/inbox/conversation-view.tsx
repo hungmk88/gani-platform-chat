@@ -11,6 +11,7 @@ import { AssignAction } from './assign-action';
 import { assignsFromList, canAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
+import type { Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { Holder } from './holder';
 import { HOLD_LABEL, STATE_LABEL } from './list';
@@ -40,7 +41,17 @@ function Failure({
 }
 
 /** The middle column of the Inbox (#6, I1b, I2): the conversation, its messages and the reply box. What a customer sent is plain text. */
-export function ConversationView({ id, role, meId }: { id: string; role: Role; meId: string }) {
+export function ConversationView({
+  id,
+  role,
+  meId,
+  known,
+}: {
+  id: string;
+  role: Role;
+  meId: string;
+  known: Known;
+}) {
   const conversation = useApiQuery<Conversation>(
     ['conversation', id],
     `/v1/conversations/${encodeURIComponent(id)}`,
@@ -144,7 +155,9 @@ export function ConversationView({ id, role, meId }: { id: string; role: Role; m
           </ol>
         </>
       )}
-      {canReply(c, role, meId) ? <ReplyBox conversationId={c.id} meId={meId} /> : null}
+      {canReply(c, role, meId) ? (
+        <ReplyBox conversationId={c.id} workspaceId={c.workspaceId} meId={meId} known={known} />
+      ) : null}
       <p className="text-12 text-text-muted">Không áp dụng AI ở khung này.</p>
     </section>
   );
