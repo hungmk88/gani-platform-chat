@@ -106,3 +106,41 @@ test('a platform operator gets the forbidden page', async ({ page }) => {
     page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),
   ).toBeVisible();
 });
+
+// #8 Hồ sơ khách (N165): one customer, from its row in the list; another company's or a missing one is "not found".
+test('a Sales opens a customer from the list and sees the profile and how the channels know them', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('sales'));
+  await page.goto('/customers');
+  await list(page).getByRole('link', { name: 'Nguyễn Văn An' }).click();
+  await expect(page).toHaveURL(`/customers/${CUSTOMERS[0]!.id}`);
+  await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();
+  const info = page.getByRole('region', { name: 'Thông tin' });
+  await expect(info).toContainText('0900 000 001');
+  await expect(info).toContainText('an@example.test');
+  await expect(info).toContainText('Chỉ người phục vụKhông');
+  await expect(page.getByRole('region', { name: 'Định danh' })).toContainText(
+    'Zalo OAChưa xác thực',
+  );
+  await expectAccessible(page);
+  await page.getByRole('link', { name: 'Về danh sách khách' }).click();
+  await expect(page).toHaveURL('/customers');
+});
+
+test('a Viewer sees the profile masked; a customer that is not there is "not found"', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('viewer'));
+  await page.goto(`/customers/${CUSTOMERS[3]!.id}`);
+  const info = page.getByRole('region', { name: 'Thông tin' });
+  await expect(info).toContainText('091*****03');
+  await expect(info).toContainText('c***@example.test');
+  await expect(info).toContainText('Vai trò của bạn thấy SĐT và email dạng che.');
+  await expect(page.getByRole('region', { name: 'Định danh' })).toContainText(
+    'Chưa kênh nào biết khách này.',
+  );
+  await page.goto('/customers/0190c100-0000-7000-8000-000000000099');
+  await expect(page.getByRole('heading', { name: 'Không tìm thấy khách' })).toBeVisible();
+  await expectAccessible(page);
+});

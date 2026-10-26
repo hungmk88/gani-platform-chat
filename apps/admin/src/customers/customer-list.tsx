@@ -100,7 +100,11 @@ export function CustomerList({ role }: { role: Role }) {
               <tbody className="divide-y divide-border">
                 {rows.map((c) => (
                   <tr key={c.id}>
-                    <td className="p-2">{nameOf(c)}</td>
+                    <td className="p-2">
+                      <Link href={`/customers/${c.id}`} className="underline">
+                        {nameOf(c)}
+                      </Link>
+                    </td>
                     <td className="p-2 whitespace-nowrap">{c.phone ? phoneText(c.phone) : none}</td>
                     <td className="p-2 break-all">{c.email ?? none}</td>
                     <td className="p-2">{channelsOf(c).join(', ') || none}</td>

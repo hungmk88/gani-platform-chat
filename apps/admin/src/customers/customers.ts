@@ -58,3 +58,19 @@ const DAY = new Intl.DateTimeFormat('vi-VN', {
 
 /** A date of the API as a day in Viet Nam (`26/10/2026`). */
 export const dayOf = (iso: string): string => DAY.format(new Date(iso));
+
+/** `GET /v1/customers/{id}`: one customer with how the channels know them (N165). */
+export const customerPath = (id: string): string => `/v1/customers/${encodeURIComponent(id)}`;
+
+/** How sure the platform is of an identity (phụ lục v2.1), in words, with the colour of its badge (states only, CLAUDE.md). */
+export const VERIFICATION: Readonly<
+  Record<Customer['identities'][number]['verification'], readonly ['ok' | 'warn', string]>
+> = {
+  verified: ['ok', 'Đã xác thực'],
+  sales_confirmed: ['ok', 'Sales xác nhận'],
+  unverified: ['warn', 'Chưa xác thực'],
+};
+
+/** The "chỉ người phục vụ" flag (Brief §28, `human_only`): the bot never answers this customer. */
+export const humanOnlyText = (on: boolean): string =>
+  on ? 'Có: bot không trả lời khách này' : 'Không';
