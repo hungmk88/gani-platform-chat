@@ -51,6 +51,12 @@ beforeAll(async () => {
   await customer(A, 'gone', 'Lan đã xóa', '+84912000000');
   await admin.query('UPDATE customers SET deleted_at = now() WHERE id = $1', [id['gone']]);
   await customer(B, 'theirs', 'Lan của B', '+84912999999');
+  // The same address in both organisations: a search of A never finds B's.
+  for (const key of ['lan', 'theirs'])
+    await admin.query('UPDATE customers SET email = $1 WHERE id = $2', [
+      'lan@example.test',
+      id[key],
+    ]);
 });
 
 afterAll(async () => {
@@ -82,6 +88,12 @@ describe('listCustomers', () => {
       'Trần Văn Lâm',
       'Nguyễn Thị Lan',
     ]);
+  });
+
+  it('finds by a whole email only (U48): never a part of one, nor another organisation’s', async () => {
+    expect(names(await list({ limit: 10, email: 'lan@example.test' }))).toEqual(['Nguyễn Thị Lan']);
+    for (const part of ['lan@example', '@example.test', 'lan@%'])
+      expect(names(await list({ limit: 10, email: part })), part).toEqual([]);
   });
 
   it('refuses a cursor it did not give and a limit out of 1..100', async () => {
