@@ -14,6 +14,7 @@ import { ReplyBox } from './reply-box';
 import { customerOf, phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { Holder } from './holder';
+import { TicketAction } from './ticket-action';
 import { customerNameOf, HOLD_LABEL, STATE_LABEL } from './list';
 import { inReadingOrder, KIND_LABEL, messagesPath, senderOf } from './messages';
 
@@ -114,6 +115,12 @@ export function ConversationView({
       </header>
       <ConversationActions c={c} role={role} meId={meId} />
       {assignsFromList(role) && canAssign(c) ? <AssignAction key={c.id} c={c} /> : null}
+      <TicketAction
+        key={`ticket-${c.id}`}
+        c={c}
+        role={role}
+        newestPage={messages.data?.pages[0]?.data ?? []}
+      />
       {messages.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
           Đang tải tin nhắn…
