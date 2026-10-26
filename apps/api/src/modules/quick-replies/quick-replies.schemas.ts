@@ -56,3 +56,6 @@ export const QuickReplyChangeSchema = z
   .strict()
   .refine((change) => Object.keys(change).length > 0, 'nothing to change')
   .meta({ id: 'QuickReplyChange' });
+
+/** `POST /v1/quick-replies/{id}/used`: the count after this use. */
+export const QuickReplyUseSchema = z.object({ useCount: z.int() }).meta({ id: 'QuickReplyUse' });

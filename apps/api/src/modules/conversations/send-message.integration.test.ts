@@ -247,4 +247,16 @@ describe('POST /v1/conversations/{id}/messages', () => {
     expect(second.body).toEqual(first.body);
     expect(await counts(c['again'] as string)).toEqual({ messages: 1, deliveries: 1, outbox: 1 });
   });
+
+  it('refuses a text that still holds a {{variable}} of a quick reply (422 unresolved_variable), writing nothing', async () => {
+    const id = c['mine'] as string;
+    const before = await counts(id);
+    for (const text of ['Chào {{customer_name}}', 'Gọi {{ company_phone }} nhé', '{{}}'])
+      expect((await send('sales', 'mine', text)).body, text).toMatchObject({
+        status: 422,
+        code: 'unresolved_variable',
+      });
+    expect(await counts(id)).toEqual(before);
+    expect((await send('sales', 'mine', 'Dạ {anh} cần gì ạ')).status).toBe(201);
+  });
 });

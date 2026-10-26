@@ -9,6 +9,7 @@ import {
   QuickReplyListQuerySchema,
   QuickReplyListSchema,
   QuickReplySchema,
+  QuickReplyUseSchema,
 } from './quick-replies.schemas.js';
 
 /** The paths of quick-replies.controller.ts, for the Inbox ("/") and /settings/quick-replies (C7, N163). */
@@ -100,6 +101,26 @@ export function registerQuickReplies(registry: OpenAPIRegistry): void {
       204: { description: 'Ended.' },
       400: problemResponse('validation_failed: the id.'),
       403: writer,
+      404: noTemplate,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/quick-replies/{id}/used',
+    summary:
+      'Count one use of a template, called when the Inbox sends it (N163); most used come first in the list.',
+    tags: ['quick-replies'],
+    request: { params },
+    responses: {
+      200: {
+        description: 'The count after this use.',
+        content: { 'application/json': { schema: QuickReplyUseSchema } },
+      },
+      400: problemResponse('validation_failed: the id.'),
+      403: problemResponse(
+        'forbidden: a role that does not answer customers; or a refusal of the edge.',
+      ),
       404: noTemplate,
       ...edge,
     },
