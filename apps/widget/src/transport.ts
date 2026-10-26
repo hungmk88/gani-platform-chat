@@ -1,7 +1,7 @@
 // How the widget talks to the platform. The widget API (`/v1/widget/sessions`, `/v1/widget/messages`, Brief P9, S10) is not in the
 // OpenAPI yet, so W2 runs on `demoTransport`: in the browser only, no network, a canned answer from staff (CEO 26/10: "dùng mock data
 // trước"). The real transport replaces it when the API exists; the screen only knows this interface.
-import type { Message, PreChat } from './chat';
+import type { Message, PreChat, Rating } from './chat';
 
 export interface Transport {
   /** Opens the conversation with what the pre-chat form gave. */
@@ -10,6 +10,8 @@ export interface Transport {
   send(text: string, key: string): Promise<Message>;
   /** Calls back for each message from staff. */
   onMessage(listener: (m: Message) => void): void;
+  /** The rating of the conversation, before it ends. */
+  rate(rating: Rating): Promise<void>;
   /** "Kết thúc & xóa trên máy này": ends the session and forgets it on this device. */
   end(): Promise<void>;
 }
@@ -39,6 +41,7 @@ export function demoTransport(delay = 400): Transport {
     onMessage(l) {
       listener = l;
     },
+    rate: () => later(undefined),
     end: () => later(undefined),
   };
 }

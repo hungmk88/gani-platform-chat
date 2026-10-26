@@ -5,21 +5,27 @@ import { render } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import type { Brand } from './brand';
-import { sendWithRetry, withMessage, type Message, type PreChat } from './chat';
+import { sendWithRetry, withMessage, type Message, type PreChat, type Rating } from './chat';
 import { Conversation } from './conversation';
 import { PreChatForm } from './prechat';
+import { RatingForm } from './rating';
 import { demoTransport, type Transport } from './transport';
 
 const WINDOW_ID = 'gani-chat';
 
 interface Chat {
-  readonly started: boolean;
+  /** The form before the chat, the conversation, or the rating once the customer ended it. */
+  readonly stage: 'prechat' | 'chat' | 'rating';
   readonly starting: boolean;
+  /** The chat was ended and wiped from this device: the form says thank you. */
+  readonly thanked: boolean;
   readonly messages: readonly Message[];
   readonly start: (p: PreChat) => void;
   readonly send: (text: string) => void;
   readonly retry: (m: Message) => void;
   readonly end: () => void;
+  /** After the rating (null: skipped): rates, ends the session, wipes the messages from this device. */
+  readonly finish: (rating: Rating | null) => void;
 }
 
 /** A key for one message, the same on every try (randomUUID needs https, which the pages that embed us have). */
@@ -28,10 +34,11 @@ const newKey = (): string =>
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
-/** The chat of the widget over a transport: the messages, sending with retries, ending. */
+/** The chat of the widget over a transport: the messages, sending with retries, ending with a rating. */
 function useChat(transport: Transport): Chat {
-  const [started, setStarted] = useState(false);
+  const [stage, setStage] = useState<Chat['stage']>('prechat');
   const [starting, setStarting] = useState(false);
+  const [thanked, setThanked] = useState(false);
   const [messages, setMessages] = useState<readonly Message[]>([]);
   useEffect(() => transport.onMessage((m) => setMessages((l) => withMessage(l, m))), [transport]);
   const deliver = (m: Message) => {
@@ -43,14 +50,16 @@ function useChat(transport: Transport): Chat {
     );
   };
   return {
-    started,
+    stage,
     starting,
+    thanked,
     messages,
     start: (p) => {
       setStarting(true);
+      setThanked(false);
       transport.start(p).then(
         () => {
-          setStarted(true);
+          setStage('chat');
           setStarting(false);
         },
         () => setStarting(false),
@@ -61,11 +70,16 @@ function useChat(transport: Transport): Chat {
       deliver({ id: key, from: 'customer', text, status: 'sending', key });
     },
     retry: deliver,
-    end: () => {
-      void transport.end().finally(() => {
-        setMessages([]);
-        setStarted(false);
-      });
+    end: () => setStage('rating'),
+    finish: (rating) => {
+      // A rating that does not go through is not worth keeping the customer waiting: the chat ends anyway.
+      void (rating ? transport.rate(rating).catch(() => undefined) : Promise.resolve())
+        .then(() => transport.end())
+        .finally(() => {
+          setMessages([]);
+          setStage('prechat');
+          setThanked(true);
+        });
     },
   };
 }
@@ -91,11 +105,11 @@ function ChatWindow({ brand, chat, onClose }: { brand: Brand; chat: Chat; onClos
           Thu gọn
         </button>
       </header>
-      {chat.started ? (
+      {chat.stage === 'chat' ? (
         <div class="bar">
           {ending ? (
             <>
-              <span>Xóa tin nhắn trên máy này và kết thúc?</span>
+              <span>Kết thúc và xóa tin nhắn trên máy này?</span>
               <button
                 type="button"
                 class="link"
@@ -119,10 +133,19 @@ function ChatWindow({ brand, chat, onClose }: { brand: Brand; chat: Chat; onClos
       ) : null}
       <div class="body">
         <p class="greeting">{brand.greeting}</p>
-        {chat.started ? (
+        {chat.stage === 'chat' ? (
           <Conversation messages={chat.messages} onSend={chat.send} onRetry={chat.retry} />
+        ) : chat.stage === 'rating' ? (
+          <RatingForm onDone={chat.finish} />
         ) : (
-          <PreChatForm brand={brand} busy={chat.starting} onStart={chat.start} />
+          <>
+            {chat.thanked ? (
+              <p role="status" class="small">
+                Cảm ơn bạn. Tin nhắn đã được xóa khỏi máy này.
+              </p>
+            ) : null}
+            <PreChatForm brand={brand} busy={chat.starting} onStart={chat.start} />
+          </>
         )}
       </div>
     </section>

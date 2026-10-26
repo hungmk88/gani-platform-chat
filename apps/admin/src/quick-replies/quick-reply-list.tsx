@@ -140,7 +140,7 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
       {previewing ? (
         <PreviewQuickReplyDialog
           key={previewing.id}
-          reply={previewing}
+          source={{ kind: 'saved', reply: previewing }}
           onClose={() => setPreviewing(null)}
         />
       ) : null}

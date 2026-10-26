@@ -121,6 +121,9 @@ export type QuickReplyPreview = components['schemas']['QuickReplyPreview'];
 /** `POST /v1/quick-replies/{id}/preview` (C7c3, N163): the template with a sample customer, the reader's name, the company's name and number. */
 export const previewPath = (id: string) => `/v1/quick-replies/${encodeURIComponent(id)}/preview`;
 
+/** `POST /v1/quick-replies/preview` (U38): a template not saved yet, `{workspaceId, body}`, with the same sample values; writes nothing. */
+export const DRAFT_PREVIEW_PATH = '/v1/quick-replies/preview';
+
 /** Where each value of a variable left in a preview comes from, said to whoever manages templates. */
 const MISSING: Readonly<Record<string, string>> = {
   agent_name: 'Tên nhân viên: tên của bạn đang trống, đặt ở Hồ sơ cá nhân.',

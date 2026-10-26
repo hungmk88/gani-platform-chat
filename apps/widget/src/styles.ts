@@ -43,6 +43,16 @@ textarea { resize: none; }
 .message.staff { align-self: flex-start; background: #f3f4f6; }
 .composer { display: flex; gap: 8px; align-items: flex-end; }
 .composer textarea { flex: 1; }
+.rating { display: flex; flex-direction: column; gap: 12px; }
+.rating fieldset { margin: 0; padding: 0; border: 0; }
+.rating legend { margin-bottom: 8px; font-weight: 600; }
+.rating > label { display: flex; flex-direction: column; gap: 4px; }
+.stars { display: flex; gap: 4px; }
+.star { position: relative; font-size: 20px; color: #6b7280; cursor: pointer; padding: 4px; }
+.star.on { color: #b45309; }
+.star input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.star:has(input:focus-visible) { outline: 2px solid #111827; outline-offset: 2px; border-radius: 4px; }
+.actions { display: flex; align-items: center; gap: 12px; }
 @media (max-width: 480px) {
   .root:has(.window) { inset: 0; gap: 0; }
   .window { width: 100%; max-width: none; height: 100%; max-height: none; border-radius: 0; }
