@@ -45,6 +45,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/teams/{id}/members',
       '/v1/teams/{id}/channels',
       '/v1/channels',
+      '/v1/quick-replies',
     ]);
   });
 });
