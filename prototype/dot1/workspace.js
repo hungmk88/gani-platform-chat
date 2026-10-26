@@ -1,7 +1,8 @@
 /* global document, Proto */
 /* #21 Workspace, 3 tab (danh-sach-man-M11; A2, C8, C9, C10, D4). Sprint S4, nộp wireframe 21/12/2026.
    Căn cứ: spec M8 §3.3 SLA & ưu tiên, §3.4 Giờ làm việc + trạng thái agent (U20-4/5, Q-U20-4), §3.5 Phân bổ (Q-M8-1: không theo
-   kỹ năng ở Đợt 1). Owner, Admin sửa; Manager xem (spec M8, chờ đối chiếu Phụ lục B). Giá trị lịch là tạm, chờ Q7 (U18, U20-6). */
+   kỹ năng ở Đợt 1). Chỉ Owner, Admin: Manager không vào (U39, 26/10). SĐT liên hệ là {{company_phone}} của mẫu trả lời (N163).
+   Giới hạn tải mặc định 1–100 (N157). Giá trị lịch là tạm, chờ Q7 (U18, U20-6); nghỉ trưa sửa được, chờ API C10. */
 const { h } = Proto;
 
 const TABS = [['info', 'Thông tin & giờ làm việc'], ['sla', 'SLA & ưu tiên'], ['allocation', 'Phân bổ']];
@@ -27,12 +28,17 @@ function infoTab() {
     h('th', { scope: 'row' }, day),
     h('td', {}, open ? input(`open-${day}`, open, { type: 'time', 'aria-label': `${day} mở cửa` }) : h('span', { class: 'small muted' }, 'Nghỉ')),
     h('td', {}, close ? input(`close-${day}`, close, { type: 'time', 'aria-label': `${day} đóng cửa` }) : null),
-    h('td', {}, open && day !== 'T7' ? h('span', { class: 'small' }, '12:00–13:00') : null)));
+    h('td', {}, open && day !== 'T7' ? h('span', { class: 'row' },
+      input(`lunch-from-${day}`, '12:00', { type: 'time', 'aria-label': `${day} nghỉ trưa từ` }),
+      input(`lunch-to-${day}`, '13:00', { type: 'time', 'aria-label': `${day} nghỉ trưa đến` })) : null)));
   const check = () => {
     for (const [day, open] of DAYS) {
       const o = document.getElementById(`open-${day}`)?.value;
       const c = document.getElementById(`close-${day}`)?.value;
       if (open && o && c && o >= c) return `${day}: giờ đóng cửa phải sau giờ mở cửa.`;
+      const lf = document.getElementById(`lunch-from-${day}`)?.value;
+      const lt = document.getElementById(`lunch-to-${day}`)?.value;
+      if (lf && lt && lf >= lt) return `${day}: giờ hết nghỉ trưa phải sau giờ bắt đầu.`;
     }
     return null;
   };
@@ -40,7 +46,8 @@ function infoTab() {
     h('section', { class: 'card stack' }, h('h2', {}, 'Thông tin'),
       field('ws-name', 'Tên workspace', input('ws-name', 'Gani Foods B2B')),
       h('p', { class: 'small muted' }, 'Mẫu: B2B (chọn khi tạo bằng script, không đổi ở đây — spec M8 A2).'),
-      field('ws-tz', 'Múi giờ', h('select', { id: 'ws-tz', class: 'input', disabled: !canEdit() }, h('option', {}, 'Asia/Ho_Chi_Minh (GMT+7)')))),
+      field('ws-tz', 'Múi giờ', h('select', { id: 'ws-tz', class: 'input', disabled: !canEdit() }, h('option', {}, 'Asia/Ho_Chi_Minh (GMT+7)'))),
+      field('ws-phone', 'SĐT liên hệ (không bắt buộc)', input('ws-phone', '028 3812 3456', { type: 'tel', autocomplete: 'off' }), 'Số khách gọi: điền vào {{company_phone}} của mẫu trả lời nhanh. Để trống là chưa đặt (N163).')),
     h('section', { class: 'card stack' }, h('h2', {}, 'Giờ làm việc ', pending('giá trị tạm: chờ Q7')),
       h('div', { style: 'overflow:auto' }, h('table', { class: 'plain' },
         h('thead', {}, h('tr', {}, ['Ngày', 'Mở cửa', 'Đóng cửa', 'Nghỉ trưa'].map((t) => h('th', {}, t)))),
@@ -89,18 +96,18 @@ function allocationTab() {
           h('th', { scope: 'row' }, team),
           h('td', {}, h('select', { class: 'input', disabled: !canEdit(), 'aria-label': `Cách phân bổ của ${team}` }, ['Tự động xoay vòng', 'Agent tự nhận'].map((o) => h('option', { selected: o === mode }, o))))))))),
     h('section', { class: 'card stack' }, h('h2', {}, 'Giới hạn tải'),
-      field('cap-default', 'Số hội thoại đang xử lý tối đa của mỗi agent', input('cap-default', '5', { type: 'number', min: 1, max: 50 }), 'Giới hạn riêng từng người sửa ở Cài đặt › Thành viên. Đầy tải: không được phân bổ thêm, vẫn tự nhận được kèm cảnh báo.'),
+      field('cap-default', 'Số hội thoại đang xử lý tối đa của mỗi agent', input('cap-default', '5', { type: 'number', min: 1, max: 100 }), 'Giới hạn riêng từng người sửa ở Cài đặt › Thành viên. Đầy tải: không được phân bổ thêm, vẫn tự nhận được kèm cảnh báo.'),
       h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: true, disabled: !canEdit() }), 'Ưu tiên người đã xử lý khách này lần trước (nếu đang Online, chưa đầy tải)')),
     h('p', { class: 'small muted' }, 'Phân bổ theo kỹ năng: Đợt 2 (Q-M8-1).'),
-    saveBar('Phân bổ', () => { const n = Number(document.getElementById('cap-default')?.value); return Number.isInteger(n) && n >= 1 && n <= 50 ? null : 'Giới hạn tải là số nguyên từ 1 đến 50.'; }));
+    saveBar('Phân bổ', () => { const n = Number(document.getElementById('cap-default')?.value); return Number.isInteger(n) && n >= 1 && n <= 100 ? null : 'Giới hạn tải là số nguyên từ 1 đến 100.'; }));
 }
 
 Proto.mount({
   page: 'workspace',
   states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['error', 'Lỗi'], ['aioff', 'AI tắt — Không áp dụng']],
   render: () => {
-    if (!['owner', 'admin', 'manager'].includes(Proto.role())) {
-      return h('div', { class: 'page-body' }, Proto.noAccess('Cài đặt workspace (Owner, Admin; Manager chỉ xem)', Proto.can('inbox.view') ? 'inbox.html' : 'customer.html'));
+    if (!canEdit()) {
+      return h('div', { class: 'page-body' }, Proto.noAccess('Cài đặt workspace (chỉ Owner, Admin)', Proto.can('inbox.view') ? 'inbox.html' : 'customer.html'));
     }
     const s = Proto.state();
     const tab = Proto.get('tab', 'info');

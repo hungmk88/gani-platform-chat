@@ -144,7 +144,7 @@ for (const page of ['login.html?role=sales', 'twofa.html?role=admin', 'reset.htm
 // #19 Thành viên
 p = await open('members.html?role=admin');
 check((await p.locator('tbody tr').count()) === 6 && (await p.locator('.btn.primary').count()) === 1, '#19: 6 thành viên, 1 nút chính');
-check((await p.locator('tbody tr', { hasText: 'Owner Gani' }).locator('button').count()) === 0, '#19: Admin không sửa được Owner');
+check((await p.locator('tbody tr', { hasText: 'Owner Gani' }).locator('button').allTextContents()).join('|') === 'Giới hạn tải', '#19: Admin không đổi vai trò hay 2FA của Owner, chỉ giới hạn tải (N156)');
 await p.locator('.btn.primary', { hasText: 'Mời thành viên' }).click();
 check(!(await p.locator('#inv-role option', { hasText: 'Owner' }).count()), '#19: Admin không mời được Owner');
 await p.locator('.dialog .btn.primary').click();
@@ -162,6 +162,8 @@ await p.close();
 p = await open('members.html?role=owner');
 await p.locator('.btn.primary', { hasText: 'Mời thành viên' }).click();
 check((await p.locator('#inv-role option', { hasText: 'Owner' }).count()) === 1, '#19: Owner mời được Owner');
+await p.keyboard.press('Escape');
+check((await p.locator('button[aria-label="Giới hạn tải của Admin Gani"]').count()) === 1 && (await p.locator('button[aria-label="Giới hạn tải của bạn"]').count()) === 1, '#19: giới hạn tải cho mọi thành viên, kể cả Admin và chính mình (N156)');
 await p.close();
 p = await open('members.html?role=manager');
 check((await p.textContent('main')).includes('không dùng Thành viên'), '#19: Manager không có quyền');
@@ -182,6 +184,7 @@ check((await p.textContent('.dialog')).includes('team mặc định') && (await 
 await p.keyboard.press('Escape');
 await p.getByRole('button', { name: 'Thành viên của Sales miền Nam' }).click();
 check((await p.textContent('.dialog')).includes('cũng ở Sales B2B'), '#20: một người ở nhiều team');
+check((await p.textContent('.dialog')).includes('Nguyễn Hưng · Owner'), '#20: chọn được mọi người của workspace, kể cả Owner/Admin (N160)');
 await p.keyboard.press('Escape');
 await shot(p, 'teams', true);
 await p.close();
@@ -402,8 +405,11 @@ check((await p.inputValue('#merge-into')) === 'g2' && (await p.textContent('.dia
 await p.keyboard.press('Escape');
 await shot(p, 'customer-data', true);
 await p.close();
-p = await open('customer-data.html?role=manager&state=aioff');
-check((await p.locator('[role=tab]').count()) === 1 && !(await p.textContent('tbody')).includes('Hỏi giá'), '#23: Manager chỉ tab Tag; AI tắt ẩn tag do AI gắn');
+p = await open('customer-data.html?role=admin&tab=tags&state=aioff');
+check(!(await p.textContent('tbody')).includes('Hỏi giá'), '#23: AI tắt ẩn tag do AI gắn');
+await p.close();
+p = await open('customer-data.html?role=manager');
+check((await p.textContent('main')).includes('không dùng Dữ liệu khách') && !(await p.textContent('.nav')).includes('Dữ liệu khách'), '#23: Manager không vào, không có trong menu (U36)');
 await p.close();
 p = await open('customer-data.html?role=sales');
 check((await p.textContent('main')).includes('không dùng Dữ liệu khách'), '#23: Sales không có quyền');
@@ -412,6 +418,11 @@ await p.close();
 // #21 Workspace
 p = await open('workspace.html?role=admin');
 check((await p.locator('[role=tab]').count()) === 3 && (await p.locator('.btn.primary').count()) === 1, '#21: 3 tab, 1 nút chính');
+check((await p.inputValue('#ws-phone')) !== '' && (await p.locator('#lunch-from-T2').count()) === 1, '#21: SĐT liên hệ (N163), nghỉ trưa sửa được');
+await p.fill('#lunch-to-T2', '11:00');
+await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
+check((await p.textContent('[role=alert]')).includes('T2: giờ hết nghỉ trưa phải sau giờ bắt đầu'), '#21: nghỉ trưa hợp lệ');
+await p.fill('#lunch-to-T2', '13:00');
 await p.fill('#close-T2', '07:00');
 await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
 check((await p.textContent('[role=alert]')).includes('T2: giờ đóng cửa phải sau giờ mở cửa'), '#21: giờ đóng phải sau giờ mở');
@@ -420,11 +431,11 @@ check((await p.textContent('main')).includes('Chờ khách trả lời') && (awa
 await p.locator('[role=tab]', { hasText: 'Phân bổ' }).click();
 await p.fill('#cap-default', '0');
 await p.locator('.btn.primary', { hasText: 'Lưu' }).click();
-check((await p.textContent('[role=alert]')).includes('từ 1 đến 50'), '#21: giới hạn tải 1–50');
+check((await p.textContent('[role=alert]')).includes('từ 1 đến 100'), '#21: giới hạn tải 1–100 (N157)');
 await shot(p, 'workspace', true);
 await p.close();
 p = await open('workspace.html?role=manager&tab=sla');
-check((await p.locator('.btn.primary').count()) === 0 && (await p.locator('#first-Thường').isDisabled()), '#21: Manager chỉ xem');
+check((await p.textContent('main')).includes('không dùng Cài đặt workspace') && !(await p.textContent('.nav')).includes('Workspace'), '#21: Manager không vào, không có trong menu (U39)');
 await p.close();
 p = await open('workspace.html?role=sales');
 check((await p.textContent('main')).includes('không dùng Cài đặt workspace'), '#21: Sales không có quyền');

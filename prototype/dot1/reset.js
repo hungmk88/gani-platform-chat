@@ -1,6 +1,6 @@
 /* global Proto */
-/* #3 Quên / đặt lại mật khẩu (spec M8 §3.8, Phụ lục C v3 dòng 7) — phụ thuộc PR7: duyệt bố cục, chi tiết duyệt lại khi PR7 xong.
-   Đường của thư viện đã đóng (N84); tên endpoint chốt ở PR7. */
+/* #3 Quên / đặt lại mật khẩu (spec M8 §3.8, Phụ lục C v3 dòng 7, N162): `/api/auth/password/forgot` luôn 202 (một câu như
+   nhau); link dùng một lần, hạn 30 phút; đặt lại thì mọi phiên bị thu hồi, không tự đăng nhập. */
 const { h } = Proto;
 
 const SENT = 'Nếu email có trong hệ thống, link đặt lại mật khẩu đã được gửi. Kiểm tra hộp thư (cả mục Spam).';
@@ -77,7 +77,6 @@ Proto.mountBare({
     ['aioff', 'AI tắt — Không áp dụng'],
   ],
   render: () => h('main', { class: 'card stack auth-card' },
-    h('div', { class: 'banner info', style: 'border-radius:var(--r-input)' }, 'Phụ thuộc PR7: duyệt bố cục; chi tiết duyệt lại khi PR7 xong.'),
     Proto.noAiNote(),
     body()),
 });

@@ -180,8 +180,6 @@
     if (Proto.role() === 'manager') {
       items.push(['teams', 'Cài đặt › Team (chỉ xem)', 'teams.html']);
       items.push(['quick-replies', 'Cài đặt › Mẫu trả lời nhanh', 'quick-replies.html']);
-      items.push(['customer-data', 'Cài đặt › Dữ liệu khách (Tag)', 'customer-data.html']);
-      items.push(['workspace', 'Cài đặt › Workspace (chỉ xem)', 'workspace.html']);
     }
     if (['owner', 'admin'].includes(Proto.role())) {
       items.push(['settings', 'Cài đặt › Kênh', 'channels.html']);

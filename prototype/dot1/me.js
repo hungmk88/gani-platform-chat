@@ -28,10 +28,10 @@ function infoTab() {
       h('h2', {}, 'Thông tin'),
       h('div', { class: 'row' },
         h('span', { class: 'avatar', 'aria-hidden': 'true' }, 'L'),
-        h('button', { class: 'btn', onclick: () => Proto.toast('Chọn ảnh JPG/PNG ≤ 2 MB.') }, 'Đổi ảnh')),
+        h('span', { class: 'small muted' }, 'Ảnh đại diện: để sau, khi có kho file (N162).')),
       h('div', { class: 'field' }, h('label', { for: 'name' }, 'Họ tên'), h('input', { id: 'name', class: 'input', value: 'Trần Linh' })),
       h('div', { class: 'field' }, h('label', { for: 'mail' }, 'Email (chỉ Admin đổi được)'), h('input', { id: 'mail', class: 'input', value: 'linh@example.test', readonly: true })),
-      h('p', { class: 'pending-spec' }, 'Chờ spec cuối: endpoint lưu tên/ảnh (Better Auth đã tắt /update-user).')),
+      h('p', { class: 'small muted' }, 'Lưu tên: PATCH /v1/me (N162).')),
     h('form', {
       class: 'card stack',
       onsubmit: (e) => {
