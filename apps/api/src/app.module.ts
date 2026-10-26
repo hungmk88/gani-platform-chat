@@ -6,6 +6,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { HealthModule } from './modules/health/health.module.js';
 import { HooksModule } from './modules/hooks/hooks.module.js';
 import { MembersModule } from './modules/members/members.module.js';
+import { CustomersModule } from './modules/customers/customers.module.js';
 import { QuickRepliesModule } from './modules/quick-replies/quick-replies.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RequestContextModule } from './modules/request-context/request-context.module.js';
@@ -21,6 +22,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
     HooksModule,
     MembersModule,
     QuickRepliesModule,
+    CustomersModule,
     RealtimeModule,
     RequestContextModule,
     TeamsModule,

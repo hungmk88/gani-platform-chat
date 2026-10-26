@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from '
 
 import { cursorString, cursorWhole, decodeCursor, encodeCursor } from './cursor.js';
 import { conversations } from './schema/conversations.js';
+import { customers } from './schema/customers.js';
 import { messageDeliveries } from './schema/message-deliveries.js';
 import { messages } from './schema/messages.js';
 import type { TenantTx } from './tenant-tx.js';
@@ -24,6 +25,8 @@ export interface ConversationView {
   readonly lastCustomerMessageAt: Date | null;
   readonly channelAccountId: string | null;
   readonly createdAt: Date;
+  /** Who the customer is (N165): null until the inbound worker names them; `displayName` null until someone knows it. */
+  readonly customer: { readonly id: string; readonly displayName: string | null } | null;
 }
 
 export interface ConversationListQuery {
@@ -66,13 +69,24 @@ const view = {
   lastCustomerMessageAt: conversations.lastCustomerMessageAt,
   channelAccountId: conversations.channelAccountId,
   createdAt: conversations.createdAt,
+  customerId: conversations.customerId,
+  customerName: customers.displayName,
+};
+type Row = Omit<ConversationView, 'customer'> & {
+  readonly customerId: string | null;
+  readonly customerName: string | null;
 };
 
-const withoutSortKey = (row: ConversationView & { readonly sortKey: string }): ConversationView => {
-  const { sortKey, ...rest } = row;
+const shape = ({ customerId, customerName, ...rest }: Row): ConversationView => ({
+  ...rest,
+  customer: customerId === null ? null : { id: customerId, displayName: customerName },
+});
+const withoutSortKey = ({ sortKey, ...row }: Row & { readonly sortKey: string }) => {
   void sortKey;
-  return rest;
+  return shape(row);
 };
+// The customer's name rides along (N165): same organisation by the foreign key, and RLS on customers too.
+const withCustomer = eq(customers.id, conversations.customerId);
 
 function assertLimit(limit: number): void {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
@@ -87,8 +101,9 @@ export async function loadConversationView(
   const [row] = await tx
     .select(view)
     .from(conversations)
+    .leftJoin(customers, withCustomer)
     .where(eq(conversations.id, assertUuid(id, 'id')));
-  return row ?? null;
+  return row ? shape(row) : null;
 }
 
 export async function listConversations(
@@ -117,6 +132,7 @@ export async function listConversations(
   const rows = await tx
     .select({ ...view, sortKey: SORT_TEXT })
     .from(c)
+    .leftJoin(customers, withCustomer)
     .where(and(...where))
     .orderBy(sql`${SORT_KEY} DESC`, desc(c.id))
     .limit(q.limit + 1);
