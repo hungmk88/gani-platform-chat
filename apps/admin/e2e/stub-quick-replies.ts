@@ -1,5 +1,5 @@
-// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, making, changing and ending one. Each session
-// has its own copy, so tests running side by side never see each other's templates. Never deployed.
+// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, making, changing and ending one,
+// counting one use. Each session has its own copy, so tests running side by side never see each other's templates. Never deployed.
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -56,12 +56,21 @@ export async function routeQuickReplies(
   edge: Edge,
 ): Promise<boolean> {
   const id = /^\/v1\/quick-replies\/([^/]+)$/.exec(path)?.[1];
-  if (path !== '/v1/quick-replies' && !id) return false;
+  const used = /^\/v1\/quick-replies\/([^/]+)\/used$/.exec(path)?.[1];
+  if (path !== '/v1/quick-replies' && !id && !used) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (!READERS.includes(session.role ?? ''))
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
   const mine = copies.get(session.sid) ?? QUICK_REPLIES.map((r) => ({ ...r, tags: [...r.tags] }));
   copies.set(session.sid, mine);
+  if (used) {
+    // The Inbox sent it (C7c2): every role that reads templates counts one use.
+    const r = mine.find((x) => x.id === used);
+    if (req.method !== 'POST') return false;
+    if (!r) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    r.useCount += 1;
+    return (edge.send(res, 200, { useCount: r.useCount }), true);
+  }
   if (id) {
     // Changing or ending one (C7b2): only Owner, Admin, Manager; a shortcut once per workspace; at least one field to change.
     if (!WRITERS.includes(session.role ?? ''))
