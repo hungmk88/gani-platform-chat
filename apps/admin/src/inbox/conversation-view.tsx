@@ -11,7 +11,7 @@ import { AssignAction } from './assign-action';
 import { assignsFromList, canAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
-import { readsWorkspaces, type Known } from './templates';
+import { phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { Holder } from './holder';
 import { HOLD_LABEL, STATE_LABEL } from './list';
@@ -46,11 +46,14 @@ export function ConversationView({
   role,
   meId,
   known,
+  phones,
 }: {
   id: string;
   role: Role;
   meId: string;
   known: Known;
+  /** The contact number of each workspace (`phonesOf`), for {{company_phone}} of the conversation's workspace. */
+  phones: Readonly<Record<string, string>>;
 }) {
   const conversation = useApiQuery<Conversation>(
     ['conversation', id],
@@ -160,8 +163,7 @@ export function ConversationView({
           conversationId={c.id}
           workspaceId={c.workspaceId}
           meId={meId}
-          known={known}
-          readsPhone={readsWorkspaces(role)}
+          known={{ ...known, ...phoneOf(phones, c.workspaceId) }}
         />
       ) : null}
       <p className="text-12 text-text-muted">Không áp dụng AI ở khung này.</p>

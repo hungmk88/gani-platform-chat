@@ -5,7 +5,7 @@ import {
   fill,
   knownOf,
   phoneOf,
-  readsWorkspaces,
+  phonesOf,
   slashQuery,
   unresolvedProblem,
   variablesIn,
@@ -73,21 +73,21 @@ describe('unresolvedProblem', () => {
   });
 });
 
-describe('readsWorkspaces and phoneOf', () => {
-  const list = {
-    data: [
-      { id: 'w1', contactPhone: ' 028 3812 3456 ' },
-      { id: 'w2', contactPhone: null },
+describe('phonesOf and phoneOf', () => {
+  const phones = phonesOf({
+    workspaces: [
+      { id: 'w1', name: 'B2B', contactPhone: ' 028 3812 3456 ' },
+      { id: 'w2', name: 'CSKH', contactPhone: null },
+      { id: 'w3', name: 'Lẻ', contactPhone: '  ' },
     ],
-  } as unknown as Parameters<typeof phoneOf>[0];
-
-  it('knows the number of the workspace for Owner and Admin only', () => {
-    expect(['owner', 'admin'].every((r) => readsWorkspaces(r as 'owner'))).toBe(true);
-    expect(['manager', 'sales', 'support'].some((r) => readsWorkspaces(r as 'owner'))).toBe(false);
   });
-  it('gives the number of the workspace of the conversation when it is set', () => {
-    expect(phoneOf(list, 'w1')).toEqual({ company_phone: '028 3812 3456' });
-    expect(phoneOf(list, 'w2')).toEqual({});
-    expect(phoneOf(undefined, 'w1')).toEqual({});
+
+  it('keeps the number of each workspace that has one, trimmed', () => {
+    expect(phones).toEqual({ w1: '028 3812 3456' });
+  });
+  it('gives {{company_phone}} of the workspace of the conversation when it has a number', () => {
+    expect(phoneOf(phones, 'w1')).toEqual({ company_phone: '028 3812 3456' });
+    expect(phoneOf(phones, 'w2')).toEqual({});
+    expect(phoneOf(phones, 'w9')).toEqual({});
   });
 });
