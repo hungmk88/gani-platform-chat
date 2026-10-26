@@ -426,8 +426,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
     if (await routeMembers(req, res, path, who, { send, problem, json })) return;
     if (await routeWorkspaces(req, res, path, who, { send, problem, json })) return;
+    if (await routeChannels(req, res, path, who, { send, problem, json })) return;
     if (await routeTeams(req, res, path, who, { send, problem, json })) return;
-    if (routeChannels(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {

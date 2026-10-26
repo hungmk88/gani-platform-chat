@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { TeamChannelsDialog } from './team-channels-dialog';
 import { EndTeamDialog, TeamDialog } from './team-dialogs';
 import { TeamMembersDialog } from './team-members-dialog';
 import { teamsPath, type Team, type TeamList } from './teams';
@@ -13,13 +14,15 @@ const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
  * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed (`TeamDialog`),
- * given its people (`TeamMembersDialog`) or ended (`EndTeamDialog`) from its row.
+ * given its people (`TeamMembersDialog`) and its channels (`TeamChannelsDialog`, not the default team: what no team answers is
+ * its already), or ended (`EndTeamDialog`) from its row.
  */
 export function TeamTable({ workspaceId }: { workspaceId: string }) {
   const list = useApiQuery<TeamList>(['teams', workspaceId], teamsPath(workspaceId));
   const [editing, setEditing] = useState<Team | null>(null);
   const [ending, setEnding] = useState<Team | null>(null);
   const [staffing, setStaffing] = useState<Team | null>(null);
+  const [routing, setRouting] = useState<Team | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   return (
@@ -97,6 +100,19 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                         <button
                           type="button"
                           className={button}
+                          aria-label={`Kênh của team ${t.name}`}
+                          onClick={() => {
+                            setNotice(null);
+                            setRouting(t);
+                          }}
+                        >
+                          Kênh
+                        </button>
+                      )}
+                      {t.isDefault ? null : (
+                        <button
+                          type="button"
+                          className={button}
                           aria-label={`Kết thúc team ${t.name}`}
                           onClick={() => {
                             setNotice(null);
@@ -136,6 +152,14 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
           team={staffing}
           onClose={() => setStaffing(null)}
           onDone={(n) => setNotice(`Đã lưu người của team ${staffing.name} (${n} người).`)}
+        />
+      ) : null}
+      {routing ? (
+        <TeamChannelsDialog
+          key={routing.id}
+          team={routing}
+          onClose={() => setRouting(null)}
+          onDone={(n) => setNotice(`Đã lưu kênh của team ${routing.name} (${n} kênh).`)}
         />
       ) : null}
     </section>

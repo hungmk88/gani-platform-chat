@@ -17,7 +17,7 @@ export const TEAMS: readonly Team[] = [
     description: 'Sau bán hàng, khiếu nại',
     isDefault: false,
     memberCount: 1,
-    channelIds: [],
+    channelIds: ['0190c000-0000-7000-8000-0000000000c3'], // the Zalo OA of e2e/stub-channels.ts
     createdAt: '2026-10-01T03:00:00.000Z',
   },
   {
@@ -56,6 +56,13 @@ function slugOf(name: string, taken: readonly string[]): string {
   return slug;
 }
 
+/** The teams of a session, made from TEAMS on first use; changed in place. */
+export function teamsOf(sid: string): Team[] {
+  const mine = copies.get(sid) ?? TEAMS.map((t) => ({ ...t }));
+  copies.set(sid, mine);
+  return mine;
+}
+
 const byName = (a: Team, b: Team) => a.name.localeCompare(b.name, 'vi');
 
 /** Answers a route of /v1/teams and says true, or says false for any other path. `session` is null when signed out. */
@@ -70,8 +77,7 @@ export async function routeTeams(
   const staffOf = /^\/v1\/teams\/([^/]+)\/members$/.exec(path)?.[1];
   if (path !== '/v1/teams' && !id && !staffOf) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
-  const mine = copies.get(session.sid) ?? TEAMS.map((t) => ({ ...t }));
-  copies.set(session.sid, mine);
+  const mine = teamsOf(session.sid);
   const changes = session.role === 'owner' || session.role === 'admin';
   if (staffOf) {
     // The people of a team (A4-T2c): a PUT takes people of the team's workspace, each once, at most 500, and sets the whole list.
