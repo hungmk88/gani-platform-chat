@@ -34,14 +34,18 @@ function stepper() {
 
 function chooseFile() {
   const input = h('input', { id: 'file', type: 'file', accept: '.csv,text/csv', class: 'input' });
-  input.addEventListener('change', () => (Proto.state() === 'bad_file' ? Proto.render() : go(2)));
+  const stays = () => ['bad_file', 'empty_file'].includes(Proto.state());
+  input.addEventListener('change', () => (stays() ? Proto.render() : go(2)));
   return h('div', { class: 'stack' },
     h('div', { class: 'field' }, h('label', { for: 'file' }, 'File CSV (UTF-8, dòng đầu là tiêu đề cột)'), input),
     h('div', { class: 'row' },
       h('button', { class: 'btn', onclick: () => Proto.toast('Tải file mẫu khach-hang-mau.csv (cột Tên, SĐT, Email, Công ty và các trường tùy chỉnh).') }, 'Tải file mẫu'),
-      h('button', { class: 'btn', onclick: () => (Proto.state() === 'bad_file' ? Proto.render() : go(2)) }, 'Dùng file ví dụ (prototype)')),
+      h('button', { class: 'btn', onclick: () => (stays() ? Proto.render() : go(2)) }, 'Dùng file ví dụ (prototype)')),
     Proto.state() === 'bad_file'
       ? h('div', { class: 'state-box', role: 'alert' }, h('p', {}, 'Không đọc được file: dòng 1 không có tiêu đề cột, hoặc file không phải UTF-8.'), h('p', { class: 'trace muted' }, 'Mã: 7f3a9c1e-…'), h('p', { class: 'small' }, 'Lưu lại từ Excel bằng "CSV UTF-8" rồi chọn lại.'))
+      : null,
+    Proto.state() === 'empty_file'
+      ? h('div', { class: 'state-box', role: 'alert' }, h('p', {}, 'File chỉ có dòng tiêu đề, không có khách nào để nhập.'), h('button', { class: 'btn', onclick: () => input.click() }, 'Chọn file khác'))
       : null,
     h('p', { class: 'small muted' }, 'Giới hạn: ', pending('số dòng và dung lượng tối đa: chờ Backend'), ' · Excel (.xlsx): ', pending('chờ chốt, Đợt 1 chỉ CSV theo J5')));
 }
@@ -108,12 +112,18 @@ function confirmStep() {
 
 Proto.mount({
   page: 'customers',
-  states: [['normal', 'Bình thường'], ['bad_file', 'File không đọc được'], ['aioff', 'AI tắt — Không áp dụng']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang đọc file'], ['empty_file', 'File không có dòng nào'], ['bad_file', 'File không đọc được'], ['error', 'Nhập lỗi'], ['aioff', 'AI tắt — Không áp dụng']],
   render: () => {
     if (!['owner', 'admin'].includes(Proto.role())) {
       return h('div', { class: 'page-body' }, Proto.noAccess('Nhập khách từ file (chỉ Owner, Admin)', 'customers.html'));
     }
-    const body = step() === 3 ? confirmStep() : step() === 2 ? mapColumns() : chooseFile();
+    const s = Proto.state();
+    // Đang tải: API đọc file và đoán cột (trước bước 2). Lỗi: lần nhập không chạy, chưa thêm khách nào; Thử lại dùng lại Idempotency-Key.
+    const body = s === 'loading'
+      ? h('div', { class: 'stack', role: 'status' }, h('p', {}, 'Đang đọc khach-hang.csv và kiểm tra từng dòng…'), Proto.loading(4))
+      : s === 'error'
+        ? Proto.error('Không nhập được khách. Chưa có khách nào được thêm; thử lại không tạo khách trùng.')
+        : step() === 3 ? confirmStep() : step() === 2 ? mapColumns() : chooseFile();
     return h('div', { class: 'main' },
       h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'small muted' }, h('a', { href: `customers.html?role=${Proto.role()}` }, 'Khách hàng'), ' ›'), h('h1', {}, 'Nhập khách từ file'), h('p', { class: 'small muted' }, 'Khách nhập vào hồ sơ cấp công ty, dùng chung mọi workspace.'))),
       Proto.noAiNote(),
