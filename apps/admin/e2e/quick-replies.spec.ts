@@ -6,7 +6,7 @@ import { accountOf } from './stub-api';
 import { QUICK_REPLIES } from './stub-quick-replies';
 
 // #22 Mẫu trả lời nhanh (N163): the templates of the workspace being worked in, most used first, searched and filtered by tag;
-// making one, checked like the API, with one Idempotency-Key.
+// making one, checked like the API, with one Idempotency-Key; changing one (only what changed) and removing one.
 test('a Manager sees the templates, most used first, and finds one by shortcut or tag', async ({
   page,
 }) => {
@@ -95,6 +95,40 @@ test('an Admin makes a template with a variable and tags; a wrong one is said be
   await body.fill('Xin chào');
   await form.getByRole('button', { name: 'Tạo mẫu' }).click();
   await expect(form.getByRole('alert')).toContainText('đã có mẫu khác dùng phím tắt /chao');
+});
+
+test('a Manager changes a template, only what changed is sent, then removes another', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('manager'));
+  await page.goto('/settings/quick-replies');
+  const list = page.getByRole('region', { name: 'Mẫu của workspace' });
+  await list.getByRole('button', { name: 'Sửa mẫu /gia-si' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sửa mẫu /gia-si' });
+  await expect(dialog.getByLabel('Phím tắt')).toHaveValue('gia-si');
+  await expect(dialog.getByLabel(/^Tag/)).toHaveValue('báo giá, sỉ');
+  await dialog.getByLabel('Phím tắt').fill('chao');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('phím tắt /chao');
+  await dialog.getByLabel('Phím tắt').fill('gia-si');
+  await dialog.getByLabel(/^Tag/).fill('báo giá');
+  await expectAccessible(page);
+  const patched = page.waitForRequest((r) => r.method() === 'PATCH');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  expect((await patched).postDataJSON()).toEqual({ tags: ['báo giá'] });
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã lưu mẫu /gia-si.');
+  await expect(list.getByRole('button', { name: 'Lọc theo tag sỉ' })).toHaveCount(0);
+
+  await list.getByRole('button', { name: 'Xóa mẫu /giao-hang' }).click();
+  const end = page.getByRole('dialog', { name: 'Xóa mẫu /giao-hang?' });
+  await expectAccessible(page);
+  const deleted = page.waitForRequest((r) => r.method() === 'DELETE');
+  await end.getByRole('button', { name: 'Xóa mẫu' }).click();
+  expect((await deleted).url()).toMatch(new RegExp(`/v1/quick-replies/${QUICK_REPLIES[2]!.id}$`));
+  await expect(end).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã xóa mẫu /giao-hang.');
+  await expect(list.getByRole('listitem')).toHaveCount(QUICK_REPLIES.length - 1);
 });
 
 test('Sales use the templates in the Inbox only: the page is forbidden', async ({ page }) => {

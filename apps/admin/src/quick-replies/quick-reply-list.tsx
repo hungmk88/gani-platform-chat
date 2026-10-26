@@ -8,17 +8,20 @@ import {
   MAX_QUERY,
   quickRepliesPath,
   usedText,
+  type QuickReply,
   type QuickReplyFilter,
   type QuickReplyList,
 } from './quick-replies';
+import { EditQuickReplyDialog, EndQuickReplyDialog } from './quick-reply-dialogs';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
 const tagButton = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
+const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
  * The templates of the workspace being worked in (#22, `GET /v1/quick-replies`, N163), most used first as the API sorts them: the
  * shortcut typed after "/" in the Inbox, the text as plain text, the tags and how often it was used. Searched by the start of a
- * shortcut; a tag of a row filters by that tag.
+ * shortcut; a tag of a row filters by that tag. Each is changed (`EditQuickReplyDialog`) or removed (`EndQuickReplyDialog`) from its row.
  */
 export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
   const [q, setQ] = useState('');
@@ -27,12 +30,20 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
   const path = quickRepliesPath(workspaceId, filter);
   const list = useApiQuery<QuickReplyList>(['quick-replies', workspaceId, path], path);
   const filtered = Boolean(filter.q.trim() || tag);
+  const [editing, setEditing] = useState<QuickReply | null>(null);
+  const [ending, setEnding] = useState<QuickReply | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const open = (set: (r: QuickReply) => void) => (r: QuickReply) => {
+    setNotice(null);
+    set(r);
+  };
 
   return (
     <section aria-labelledby="quick-replies-title" className="flex flex-col gap-3">
       <h2 id="quick-replies-title" className="text-16 font-semibold">
         Mẫu của workspace
       </h2>
+      {notice ? <p role="status">{notice}</p> : null}
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
           Tìm theo phím tắt
@@ -74,7 +85,25 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
             <li key={r.id} className="flex flex-col gap-2 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-semibold">/{r.shortcut}</span>
-                <span className="text-12 text-text-muted">{usedText(r.useCount)}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-12 text-text-muted">{usedText(r.useCount)}</span>
+                  <button
+                    type="button"
+                    className={button}
+                    aria-label={`Sửa mẫu /${r.shortcut}`}
+                    onClick={() => open(setEditing)(r)}
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    type="button"
+                    className={button}
+                    aria-label={`Xóa mẫu /${r.shortcut}`}
+                    onClick={() => open(setEnding)(r)}
+                  >
+                    Xóa…
+                  </button>
+                </span>
               </div>
               <p className="whitespace-pre-wrap">{r.body}</p>
               {r.tags.length ? (
@@ -97,6 +126,22 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
           ))}
         </ul>
       )}
+      {editing ? (
+        <EditQuickReplyDialog
+          key={editing.id}
+          reply={editing}
+          onClose={() => setEditing(null)}
+          onDone={(r) => setNotice(`Đã lưu mẫu /${r.shortcut}.`)}
+        />
+      ) : null}
+      {ending ? (
+        <EndQuickReplyDialog
+          key={ending.id}
+          reply={ending}
+          onClose={() => setEnding(null)}
+          onDone={(r) => setNotice(`Đã xóa mẫu /${r.shortcut}.`)}
+        />
+      ) : null}
     </section>
   );
 }

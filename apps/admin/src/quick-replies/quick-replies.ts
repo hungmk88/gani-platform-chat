@@ -1,6 +1,6 @@
 // #22 Mẫu trả lời nhanh (`/settings/quick-replies`, C7, N163): the templates of the workspace being worked in, most used first
-// (`GET /v1/quick-replies?workspaceId=&q=&tag=`; `q` is the start of a shortcut, `tag` one of the template's tags), and making one
-// (`POST /v1/quick-replies`).
+// (`GET /v1/quick-replies?workspaceId=&q=&tag=`; `q` is the start of a shortcut, `tag` one of the template's tags), making one
+// (`POST /v1/quick-replies`), changing and ending one (`PATCH`/`DELETE /v1/quick-replies/{id}`).
 import type { ApiError } from '../api/errors';
 import type { components } from '../api/schema';
 import type { Role } from '../nav';
@@ -34,6 +34,7 @@ export const usedText = (count: number): string =>
   count > 0 ? `Đã dùng ${count} lần` : 'Chưa dùng lần nào';
 
 type QuickReplyCreate = components['schemas']['QuickReplyCreate'];
+type QuickReplyChange = components['schemas']['QuickReplyChange'];
 
 export const MAX_SHORTCUT = 32;
 export const MAX_BODY = 2000;
@@ -53,6 +54,16 @@ export const VARIABLES = [
 export function unknownVariables(text: string): string[] {
   const names = [...text.matchAll(/\{\{\s*([^{}]*?)\s*\}\}/g)].map((m) => m[1] ?? '');
   return [...new Set(names)].filter((n) => !VARIABLES.some(([v]) => v === n));
+}
+
+/** `{{name}}` put into `text` at `at`, and where the caret goes after it. */
+export function insertVariable(
+  text: string,
+  at: number,
+  name: string,
+): { readonly text: string; readonly caret: number } {
+  const token = `{{${name}}}`;
+  return { text: text.slice(0, at) + token + text.slice(at), caret: at + token.length };
 }
 
 /** The tags typed with commas: trimmed, empty ones dropped, each once. */
@@ -87,12 +98,31 @@ export function quickReplyDraftOf(
   return { workspaceId, shortcut, body, ...(tags.length ? { tags } : {}) };
 }
 
-/** The refusals of `POST /v1/quick-replies` in words of the screen. */
+/** What a dialog changes, as the body of the PATCH (only what differs), or why it cannot be sent; empty: nothing changed. */
+export function quickReplyChangeOf(
+  r: QuickReply,
+  rawShortcut: string,
+  rawBody: string,
+  rawTags: string,
+): QuickReplyChange | string {
+  const draft = quickReplyDraftOf(r.workspaceId, rawShortcut, rawBody, rawTags);
+  if (typeof draft === 'string') return draft;
+  const tags = draft.tags ?? [];
+  const sameTags = tags.length === r.tags.length && tags.every((t, i) => t === r.tags[i]);
+  return {
+    ...(draft.shortcut !== r.shortcut ? { shortcut: draft.shortcut } : {}),
+    ...(draft.body !== r.body ? { body: draft.body } : {}),
+    ...(sameTags ? {} : { tags }),
+  };
+}
+
+/** The refusals of the template routes in words of the screen. */
 export function quickReplyError(error: ApiError, shortcut: string): string {
   if (error.code === 'duplicate_resource')
     return `Workspace đã có mẫu khác dùng phím tắt /${shortcut}. Chọn phím tắt khác.`;
-  if (error.code === 'forbidden') return 'Chỉ Owner, Admin hoặc Manager tạo mẫu trả lời.';
-  if (error.code === 'not_found') return 'Không tìm thấy workspace này. Tải lại trang rồi thử lại.';
+  if (error.code === 'forbidden') return 'Chỉ Owner, Admin hoặc Manager quản lý mẫu trả lời.';
+  if (error.code === 'not_found')
+    return 'Không tìm thấy mẫu hoặc workspace này (có thể vừa bị xóa). Tải lại trang rồi thử lại.';
   if (error.code === 'validation_failed')
     return 'Máy chủ không nhận mẫu này: kiểm lại phím tắt, nội dung, biến và tag.';
   return error.message;

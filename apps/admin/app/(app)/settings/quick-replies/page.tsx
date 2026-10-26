@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'Mẫu trả lời nhanh — Gani Pla
 
 /**
  * #22 Mẫu trả lời nhanh (C7, N163), Owner, Admin and Manager as the menu (Phụ lục B "Quản lý mẫu trả lời nhanh"): the templates of
- * the workspace being worked in, and making one. Changing and removing one, and the preview, come with the routes of C7b–c.
+ * the workspace being worked in: making, changing and removing one. The preview comes with the routes of C7c.
  */
 export default async function QuickRepliesPage() {
   const result = await getMe();
@@ -26,7 +26,7 @@ export default async function QuickRepliesPage() {
       </h1>
       <QuickRepliesScreen />
       <p className="text-12 text-text-muted">
-        Sửa, xóa, xem trước mẫu và dùng mẫu trong Hộp thư (gõ “/”): chưa có trong bản hiện tại.
+        Xem trước mẫu và dùng mẫu trong Hộp thư (gõ “/”): chưa có trong bản hiện tại.
       </p>
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
