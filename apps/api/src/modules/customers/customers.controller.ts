@@ -1,14 +1,34 @@
-import { InvalidCursorError, listCustomers, loadCustomer, type TenantTx } from '@gani/db';
-import { phonePrefix } from '@gani/domain';
-import { Controller, Get, Inject, NotFoundException, Param, Query } from '@nestjs/common';
+import {
+  insertAuditLog,
+  InvalidCursorError,
+  listCustomers,
+  loadCustomer,
+  updateCustomer,
+  type CustomerChange,
+  type TenantTx,
+} from '@gani/db';
+import { phonePrefix, toE164, uuidv7 } from '@gani/domain';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Inject,
+  NotFoundException,
+  Param,
+  Patch,
+  Query,
+} from '@nestjs/common';
 
 import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
-import { seesCustomersMasked } from './customers.permissions.js';
+import { mayEditCustomers, seesCustomersMasked } from './customers.permissions.js';
 import {
+  CustomerChangeSchema,
   CustomerIdSchema,
   CustomerListQuerySchema,
+  type CustomerChangeBody,
   type CustomerListQuery,
 } from './customers.schemas.js';
 import { customerView } from './customers.view.js';
@@ -46,6 +66,34 @@ export class CustomersController {
     return customerView(row, seesCustomersMasked(ctx.role));
   }
 
+  /**
+   * Change a profile (Phụ lục B "Sửa hồ sơ khách": Owner to Support). The audit row names the fields that changed, never their values
+   * (a name, a phone and an email are personal data).
+   */
+  @Patch(':id')
+  async change(
+    @Param('id', new ZodPipe(CustomerIdSchema)) id: string,
+    @Body(new ZodPipe(CustomerChangeSchema)) body: CustomerChangeBody,
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayEditCustomers(ctx.role)) throw new ForbiddenException();
+    const change = changeOf(body);
+    const row = await this.database.withTenant(ctx, async (tx) => {
+      if (!(await updateCustomer(tx, id, change))) return null;
+      await insertAuditLog(tx, {
+        id: uuidv7(),
+        actorUserId: ctx.userId,
+        action: 'customer.updated',
+        targetType: 'customer',
+        targetId: id,
+        detail: { fields: Object.keys(body).sort().join(',') },
+      });
+      return loadCustomer(tx, id);
+    });
+    if (!row) throw new NotFoundException();
+    return customerView(row, false);
+  }
+
   /** One read-only transaction of the session; a cursor this API did not give is the client's mistake (400), not a 500. */
   private async read<T>(ctx: RequestContext, fn: (tx: TenantTx) => Promise<T>): Promise<T> {
     try {
@@ -55,4 +103,19 @@ export class CustomersController {
       throw error;
     }
   }
+}
+
+/** The body as the store takes it: the phone in E.164 (400 when it is not a whole number), the email in lower case. */
+function changeOf(body: CustomerChangeBody): CustomerChange {
+  let phoneE164: string | null | undefined = body.phone;
+  if (typeof body.phone === 'string') {
+    phoneE164 = toE164(body.phone);
+    if (phoneE164 === null) throw new ValidationFailedError(['phone']);
+  }
+  return {
+    ...(body.displayName === undefined ? {} : { displayName: body.displayName }),
+    ...(phoneE164 === undefined ? {} : { phoneE164 }),
+    ...(body.email === undefined ? {} : { email: body.email?.toLowerCase() ?? null }),
+    ...(body.humanOnly === undefined ? {} : { humanOnly: body.humanOnly }),
+  };
 }

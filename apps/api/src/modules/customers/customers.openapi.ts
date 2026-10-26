@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { EDGE_ERRORS, problemResponse } from '../../openapi/schemas.js';
 import {
+  CustomerChangeSchema,
   CustomerIdSchema,
   CustomerListQuerySchema,
   CustomerPageSchema,
@@ -42,6 +43,32 @@ export function registerCustomers(registry: OpenAPIRegistry): void {
       400: problemResponse('validation_failed: the id.'),
       404: problemResponse('not_found: no live customer with this id in the organisation.'),
       ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/customers/{id}',
+    summary:
+      'Change a profile (Owner to Support, Phụ lục B "Sửa hồ sơ khách"): name, phone (any usual way, stored in E.164), email, humanOnly; null clears. The audit names the fields, never their values.',
+    tags: ['customers'],
+    request: {
+      params: z.object({ id: CustomerIdSchema }),
+      body: { content: { 'application/json': { schema: CustomerChangeSchema } } },
+    },
+    responses: {
+      200: {
+        description: 'The customer after the change.',
+        content: { 'application/json': { schema: CustomerSchema } },
+      },
+      400: problemResponse(
+        'validation_failed: the id, an unknown or empty body, a phone that is not a whole number, an email.',
+      ),
+      404: problemResponse('not_found: no live customer with this id in the organisation.'),
+      401: EDGE_ERRORS[401],
+      403: problemResponse(
+        'forbidden: Marketing and Viewer do not change profiles; or a refusal of the edge.',
+      ),
+      503: EDGE_ERRORS[503],
     },
   });
 }
