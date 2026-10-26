@@ -6,13 +6,16 @@
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/size.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "preact": "10.29.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@gani/config": "workspace:*",
+    "@playwright/test": "1.63.0",
     "@vitest/coverage-v8": "5.0.3",
     "typescript": "6.0.3",
     "vite": "8.3.5",
