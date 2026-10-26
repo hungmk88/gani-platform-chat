@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useState } from 'react';
 
-import { useApiQuery, useScope } from '../query/provider';
+import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import {
   MAX_QUERY,
@@ -20,14 +20,7 @@ const tagButton = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
  * shortcut typed after "/" in the Inbox, the text as plain text, the tags and how often it was used. Searched by the start of a
  * shortcut; a tag of a row filters by that tag.
  */
-export function QuickReplyTable() {
-  const { workspaceId } = useScope();
-  if (!workspaceId)
-    return <p>Bạn chưa thuộc workspace nào. Nhờ Owner thêm bạn ở Cài đặt › Workspace.</p>;
-  return <Templates workspaceId={workspaceId} />;
-}
-
-function Templates({ workspaceId }: { workspaceId: string }) {
+export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
   const [q, setQ] = useState('');
   const [tag, setTag] = useState<string | null>(null);
   const filter: QuickReplyFilter = { q: useDeferredValue(q), tag };
@@ -73,10 +66,7 @@ function Templates({ workspaceId }: { workspaceId: string }) {
         filtered ? (
           <p>Không có mẫu nào khớp. Đổi từ tìm hoặc bỏ lọc tag.</p>
         ) : (
-          <div className="flex flex-col gap-2">
-            <p>Workspace này chưa có mẫu trả lời nào.</p>
-            <RetryAction onRetry={() => void list.refetch()} busy={list.isFetching} />
-          </div>
+          <p>Workspace này chưa có mẫu trả lời nào. Tạo mẫu đầu tiên bằng form ở trên.</p>
         )
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
