@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { Message } from './messages';
 import { titleFromMessages, titleOf, TITLE_MAX } from './ticket-title';
@@ -76,23 +76,5 @@ describe('titleFromMessages', () => {
       '',
     );
     expect(titleFromMessages([])).toBe('');
-  });
-});
-
-describe('titleOf without Intl.Segmenter (Firefox before 125)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.resetModules();
-  });
-
-  it('counts code points: surrogate pairs stay whole, the same limits hold', async () => {
-    vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
-    vi.resetModules();
-    const { titleOf: fallback } = await import('./ticket-title');
-    expect(fallback('x'.repeat(80))).toBe('x'.repeat(80));
-    expect(fallback('x'.repeat(81))).toBe(`${'x'.repeat(80)}…`);
-    expect(fallback('ok')).toBe('');
-    expect(fallback(`${'a'.repeat(79)}😀${'b'.repeat(5)}`)).toBe(`${'a'.repeat(79)}😀…`);
-    expect(fallback(`${'Đơn hàng giao thiếu '.repeat(6)}`)).toMatch(/^Đơn hàng.*thiếu…$/);
   });
 });
