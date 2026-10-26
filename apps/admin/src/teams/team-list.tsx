@@ -5,19 +5,21 @@ import { useState } from 'react';
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { EndTeamDialog, TeamDialog } from './team-dialogs';
+import { TeamMembersDialog } from './team-members-dialog';
 import { teamsPath, type Team, type TeamList } from './teams';
 
 const badge = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
 const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
- * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed (`TeamDialog`) or
- * ended (`EndTeamDialog`) from its row.
+ * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed (`TeamDialog`),
+ * given its people (`TeamMembersDialog`) or ended (`EndTeamDialog`) from its row.
  */
 export function TeamTable({ workspaceId }: { workspaceId: string }) {
   const list = useApiQuery<TeamList>(['teams', workspaceId], teamsPath(workspaceId));
   const [editing, setEditing] = useState<Team | null>(null);
   const [ending, setEnding] = useState<Team | null>(null);
+  const [staffing, setStaffing] = useState<Team | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   return (
@@ -80,6 +82,17 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
                       >
                         Sửa
                       </button>
+                      <button
+                        type="button"
+                        className={button}
+                        aria-label={`Người của team ${t.name}`}
+                        onClick={() => {
+                          setNotice(null);
+                          setStaffing(t);
+                        }}
+                      >
+                        Người
+                      </button>
                       {t.isDefault ? null : (
                         <button
                           type="button"
@@ -115,6 +128,14 @@ export function TeamTable({ workspaceId }: { workspaceId: string }) {
           team={ending}
           onClose={() => setEnding(null)}
           onDone={(t) => setNotice(`Đã kết thúc team ${t.name}.`)}
+        />
+      ) : null}
+      {staffing ? (
+        <TeamMembersDialog
+          key={staffing.id}
+          team={staffing}
+          onClose={() => setStaffing(null)}
+          onDone={(n) => setNotice(`Đã lưu người của team ${staffing.name} (${n} người).`)}
         />
       ) : null}
     </section>

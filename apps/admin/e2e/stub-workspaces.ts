@@ -30,6 +30,12 @@ export const WORKSPACES: readonly Workspace[] = [
 const copies = new Map<string, Workspace[]>(); // session → its workspaces
 const people = new Map<string, Map<string, string[]>>(); // session → workspace id → its member ids
 
+/** The member ids of a workspace for a session: `ws-e2e` starts with the Owner and Sales of MEMBERS, the others with none. */
+export function peopleOf(sid: string, workspaceId: string): string[] {
+  const start = workspaceId === 'ws-e2e' ? [MEMBERS[0]!.id, MEMBERS[2]!.id] : [];
+  return people.get(sid)?.get(workspaceId) ?? start;
+}
+
 /** Answers a route of /v1/workspaces and says true, or says false for any other path. `session` is null when signed out. */
 export async function routeWorkspaces(
   req: IncomingMessage,
@@ -46,15 +52,14 @@ export async function routeWorkspaces(
   copies.set(session.sid, mine);
   if (req.method === 'GET' && path === '/v1/workspaces')
     return (edge.send(res, 200, { data: mine }), true);
-  // The people of a workspace (N159): `ws-e2e` starts with the Owner and Sales of MEMBERS; a PUT takes members of the company
-  // (active or suspended), not an invitation, each once, at most 500, and sets the whole list.
+  // The people of a workspace (N159, `peopleOf`): a PUT takes members of the company (active or suspended), not an invitation,
+  // each once, at most 500, and sets the whole list.
   const staff = /^\/v1\/workspaces\/([^/]+)\/members$/.exec(path)?.[1];
   if (staff) {
     if (!mine.some((x) => x.id === staff))
       return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
     const lists = people.get(session.sid) ?? new Map<string, string[]>();
     people.set(session.sid, lists);
-    const start = staff === 'ws-e2e' ? [MEMBERS[0]!.id, MEMBERS[2]!.id] : [];
     if (req.method === 'PUT') {
       const ids = (await edge.json(req))['memberIds'];
       const ok =
@@ -65,7 +70,7 @@ export async function routeWorkspaces(
       if (!ok) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
       lists.set(staff, ids as string[]);
     } else if (req.method !== 'GET') return false;
-    const ids = lists.get(staff) ?? start;
+    const ids = peopleOf(session.sid, staff);
     const data = MEMBERS.filter((m) => ids.includes(m.id)).map((m) => ({
       memberId: m.id,
       userId: m.userId!,

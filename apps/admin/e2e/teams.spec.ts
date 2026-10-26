@@ -3,10 +3,11 @@ import { expect, test } from '@playwright/test';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
+import { MEMBERS } from './stub-members';
 import { TEAMS } from './stub-teams';
 
 // #20 Team (N160): the teams of the workspace being worked in, making one (one Idempotency-Key per name and description),
-// changing and ending one.
+// changing one, picking its people and ending one.
 test('an Admin sees the teams of the workspace and makes one: the slug is the API one', async ({
   page,
 }) => {
@@ -81,6 +82,40 @@ test('an Owner changes a team, makes it the default, then ends the old default',
   await list.getByRole('button', { name: 'Sửa team Chăm sóc khách' }).click();
   await expect(dialog.getByLabel(/Team mặc định của workspace/)).toBeDisabled();
   await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog).toBeHidden();
+  expect(sent).toBe(false); // nothing changed
+});
+
+test('an Admin picks the people of a team among those of its workspace; the whole list is sent', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/teams');
+  const list = page.getByRole('region', { name: 'Team của workspace' });
+  await list.getByRole('button', { name: 'Người của team CSKH' }).click();
+  const dialog = page.getByRole('dialog', { name: /Người của team/ });
+  // `ws-e2e` has the Owner and Sales only: the Admin, not in it, cannot be picked.
+  await expect(dialog.getByRole('checkbox')).toHaveCount(2);
+  await expect(dialog.getByRole('checkbox', { name: /Người thử sales/ })).toBeChecked();
+  const owner = dialog.getByRole('checkbox', { name: /Người thử owner/ });
+  await expect(owner).not.toBeChecked();
+  await owner.check();
+  await expectAccessible(page);
+  const put = page.waitForRequest((r) => r.method() === 'PUT');
+  await dialog.getByRole('button', { name: 'Lưu người của team' }).click();
+  const { memberIds } = (await put).postDataJSON() as { memberIds: string[] };
+  expect(memberIds.sort()).toEqual([MEMBERS[0]!.id, MEMBERS[2]!.id].sort());
+  await expect(dialog).toBeHidden();
+  await expect(list.getByRole('status')).toHaveText('Đã lưu người của team CSKH (2 người).');
+  await expect(list.getByRole('row', { name: /CSKH/ }).getByRole('cell').nth(2)).toHaveText('2');
+
+  let sent = false;
+  page.on('request', (r) => {
+    if (r.method() === 'PUT') sent = true;
+  });
+  await list.getByRole('button', { name: 'Người của team CSKH' }).click();
+  await expect(owner).toBeChecked();
+  await dialog.getByRole('button', { name: 'Lưu người của team' }).click();
   await expect(dialog).toBeHidden();
   expect(sent).toBe(false); // nothing changed
 });

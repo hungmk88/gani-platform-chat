@@ -1,6 +1,6 @@
 // #20 Team (`/settings/teams`, A4, N160): the teams of the workspace being worked in (`GET /v1/teams?workspaceId=`), making one
-// (`POST /v1/teams`), changing one (`PATCH /v1/teams/{id}`) and ending one (`DELETE /v1/teams/{id}`). Picking its people comes with
-// A4-T2c.
+// (`POST /v1/teams`), changing one (`PATCH /v1/teams/{id}`) and ending one (`DELETE /v1/teams/{id}`). Its people:
+// `team-members.ts`.
 import type { ApiError } from '../api/errors';
 import type { components } from '../api/schema';
 
