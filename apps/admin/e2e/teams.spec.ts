@@ -153,6 +153,17 @@ test('an Admin gives a team its channels: one taken from the default team, one s
   await expect(dialog).toBeHidden();
 });
 
+test('a team that still answers a channel is not ended: the refusal says why', async ({ page }) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/teams');
+  const list = page.getByRole('region', { name: 'Team của workspace' });
+  await list.getByRole('button', { name: 'Kết thúc team CSKH' }).click(); // CSKH answers the Zalo OA
+  const end = page.getByRole('dialog', { name: /Kết thúc team CSKH/ });
+  await end.getByRole('button', { name: 'Kết thúc team' }).click();
+  await expect(end.getByRole('alert')).toContainText('còn trả lời kênh');
+  await expect(list.getByRole('row', { name: /CSKH/ })).toBeVisible();
+});
+
 test('a Manager gets the forbidden page, as the menu', async ({ page }) => {
   await signIn(page, accountOf('manager'));
   await page.goto('/settings/teams');

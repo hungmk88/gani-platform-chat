@@ -17,7 +17,7 @@ export const TEAMS: readonly Team[] = [
     description: 'Sau bán hàng, khiếu nại',
     isDefault: false,
     memberCount: 1,
-    channelIds: [],
+    channelIds: ['0190c000-0000-7000-8000-0000000000c3'], // the Zalo OA of e2e/stub-channels.ts
     createdAt: '2026-10-01T03:00:00.000Z',
   },
   {

@@ -28,6 +28,7 @@ const team = (id: string, name: string): Team => ({
   description: null,
   isDefault: false,
   memberCount: 0,
+  channelIds: [],
   createdAt: '2026-10-25T00:00:00.000Z',
 });
 

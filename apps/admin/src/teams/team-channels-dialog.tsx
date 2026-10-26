@@ -17,7 +17,7 @@ import {
   teamChannelsPath,
   withAssigned,
 } from './team-channels';
-import type { Team, TeamList } from './teams';
+import { withChanged, type Team, type TeamList } from './teams';
 
 const button = 'rounded-input border border-border-strong px-4 py-2 disabled:opacity-70';
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70';
@@ -49,9 +49,14 @@ export function TeamChannelsDialog({
   const save = useMutation<Team, ApiFailure, string[]>({
     mutationFn: (channelIds) =>
       unwrap(api<Team>(teamChannelsPath(team.id), { method: 'PUT', body: { channelIds } })),
-    onSuccess: (_, channelIds) => {
+    onSuccess: (t, channelIds) => {
       queries.setQueryData<ChannelList>(scopeKey(scope, 'channels', team.workspaceId), (l) =>
         withAssigned(l, team.id, channelIds),
+      );
+      // The team as the API answers it; a team a channel moved from keeps its old channelIds until the list is read again
+      // (nothing on the screen shows them).
+      queries.setQueryData<TeamList>(scopeKey(scope, 'teams', team.workspaceId), (l) =>
+        withChanged(l, t),
       );
       onDone(channelIds.length);
       dialog.current?.close();

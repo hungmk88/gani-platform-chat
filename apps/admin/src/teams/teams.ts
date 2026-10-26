@@ -84,8 +84,9 @@ export const withoutTeam = (list: TeamList | undefined, id: string): TeamList | 
 /** The refusals of the team routes in words of the screen. */
 export function teamError(error: ApiError): string {
   if (error.code === 'forbidden') return 'Chỉ Owner hoặc Admin tạo và sửa team.';
+  // The default team of its workspace, or a team that still answers a channel (N161).
   if (error.code === 'team_in_use')
-    return 'Đây là team mặc định của workspace: đặt team khác làm mặc định trước rồi mới kết thúc.';
+    return 'Team này là team mặc định hoặc còn trả lời kênh: đặt team khác làm mặc định, hoặc bỏ kênh của team (nút "Kênh") trước rồi mới kết thúc.';
   if (error.code === 'not_found')
     return 'Không tìm thấy team hoặc workspace này. Tải lại trang rồi thử lại.';
   if (error.code === 'validation_failed')

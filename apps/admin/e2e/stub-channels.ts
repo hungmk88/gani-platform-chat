@@ -43,12 +43,18 @@ export async function routeChannels(
   edge: Edge,
 ): Promise<boolean> {
   const of = /^\/v1\/teams\/([^/]+)\/channels$/.exec(path)?.[1];
-  if (path !== '/v1/channels' && !of) return false;
+  const ending = req.method === 'DELETE' ? /^\/v1\/teams\/([^/]+)$/.exec(path)?.[1] : undefined;
+  if (path !== '/v1/channels' && !of && !ending) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (session.role !== 'owner' && session.role !== 'admin')
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
   const mine = copies.get(session.sid) ?? CHANNELS.map((c) => ({ ...c }));
   copies.set(session.sid, mine);
+  // Ending a team that still answers a channel (N161): refused here; any other end goes on to e2e/stub-teams.ts.
+  if (ending) {
+    if (!mine.some((c) => c.teamId === ending)) return false;
+    return (edge.problem(res, 409, 'team_in_use', 'trace-e2e-409'), true);
+  }
   if (req.method === 'GET' && !of) {
     const ws = new URL(req.url ?? '/', 'http://stub').searchParams.get('workspaceId');
     if (ws !== 'ws-e2e') return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
@@ -67,5 +73,7 @@ export async function routeChannels(
   if (!ok) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
   for (const c of mine)
     c.teamId = ids.includes(c.id) ? team.id : c.teamId === team.id ? null : c.teamId;
+  for (const t of teamsOf(session.sid))
+    t.channelIds = mine.filter((c) => c.teamId === t.id).map((c) => c.id);
   return (edge.send(res, 200, team), true);
 }
