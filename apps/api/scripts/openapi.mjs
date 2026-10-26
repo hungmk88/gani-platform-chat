@@ -5,7 +5,14 @@ import { writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import { buildOpenApiDocument, serialiseOpenApi } from '../dist/openapi/document.js';
+import { buildPlannedDocument } from '../dist/openapi/planned.js';
 
-const target = fileURLToPath(new URL('../../../docs/openapi/openapi.json', import.meta.url));
-writeFileSync(target, serialiseOpenApi(buildOpenApiDocument()));
-console.log(`wrote ${target}`);
+// openapi.json: what the API serves. planned.json: the contract of what is not built yet (N167).
+for (const [name, build] of [
+  ['openapi.json', buildOpenApiDocument],
+  ['planned.json', buildPlannedDocument],
+]) {
+  const target = fileURLToPath(new URL(`../../../docs/openapi/${name}`, import.meta.url));
+  writeFileSync(target, serialiseOpenApi(build()));
+  console.log(`wrote ${target}`);
+}
