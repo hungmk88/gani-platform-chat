@@ -161,6 +161,12 @@ Trang mặc định sau đăng nhập:
 - `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc; giao kênh cho team ở `/settings/teams` (nút "Kênh").
 - Kết nối Zalo OA, làm mới token, ngắt kết nối, lỗi gần nhất và hạn token: chờ U26; `/settings/channels/[id]` (#25) cũng chờ U26. API giả: `e2e/stub-channels.ts` (`CHANNELS`).
 
+## Mẫu trả lời nhanh (#22)
+
+- `/settings/quick-replies`, Owner/Admin/Manager như menu (Phụ lục B "Quản lý mẫu trả lời nhanh", N163; `mayManageQuickReplies`); Sales/Support chỉ dùng mẫu trong Hộp thư (API cho đọc) → trang 403. Mẫu của **workspace đang chọn** (`GET /v1/quick-replies?workspaceId=&q=&tag=`), dùng nhiều nhất trước (API sắp xếp): `/phím tắt`, nội dung là chữ thuần (giữ xuống dòng), tag, số lần dùng (`src/quick-replies/quick-replies.ts` + `quick-reply-list.tsx`).
+- Tìm theo **đầu phím tắt** (`q`, cắt khoảng trắng, chữ thường, tối đa 32); bấm một tag của dòng là lọc theo tag đó (`tag`), bấm lại hoặc "Bỏ lọc tag" là bỏ. Mỗi bộ lọc là một khóa cache.
+- Tạo, sửa, xóa, xem trước (C7b–c) và dùng mẫu trong Hộp thư (gõ `/`, điền biến, 422 `unresolved_variable`): PR sau. API giả: `e2e/stub-quick-replies.ts` (`QUICK_REPLIES`).
+
 ## Thành viên (#19)
 
 - `/settings/members`, chỉ Owner và Admin (vai trò khác → trang 403): **Mời thành viên** (`POST /v1/members/invite`, N152; `src/members/invite.ts` + `invite-form.tsx`), rồi **Danh sách** (`GET /v1/members`, N153; `src/members/list.ts` + `member-list.tsx`).
