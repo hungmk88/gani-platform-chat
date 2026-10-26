@@ -14,6 +14,8 @@ export interface WorkspaceRow {
   readonly template: 'b2b_sales' | 'b2c_order' | 'service';
   readonly timezone: string;
   readonly defaultMaxConcurrent: number;
+  /** The number customers call ({{company_phone}} of a quick reply, N163); null until set. */
+  readonly contactPhone: string | null;
   readonly createdAt: Date;
 }
 
@@ -22,6 +24,7 @@ export interface WorkspaceChange {
   readonly name?: string;
   readonly timezone?: string;
   readonly defaultMaxConcurrent?: number;
+  readonly contactPhone?: string | null;
 }
 
 const columns = {
@@ -31,6 +34,7 @@ const columns = {
   template: workspaces.template,
   timezone: workspaces.timezone,
   defaultMaxConcurrent: workspaces.defaultMaxConcurrent,
+  contactPhone: workspaces.contactPhone,
   createdAt: workspaces.createdAt,
 };
 

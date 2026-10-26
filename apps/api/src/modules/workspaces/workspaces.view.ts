@@ -8,5 +8,6 @@ export const workspaceView = (row: WorkspaceRow) => ({
   template: row.template,
   timezone: row.timezone,
   defaultMaxConcurrent: row.defaultMaxConcurrent,
+  contactPhone: row.contactPhone,
   createdAt: row.createdAt.toISOString(),
 });

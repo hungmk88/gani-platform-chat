@@ -59,6 +59,7 @@ describe('workspace-store', () => {
         name: 'Bán sỉ miền Nam',
         timezone: 'Asia/Bangkok',
         defaultMaxConcurrent: 7,
+        contactPhone: '+84 28 1234 5678',
       });
     });
     expect(changed).toMatchObject({
@@ -68,6 +69,7 @@ describe('workspace-store', () => {
       name: 'Bán sỉ miền Nam',
       timezone: 'Asia/Bangkok',
       defaultMaxConcurrent: 7,
+      contactPhone: '+84 28 1234 5678',
     });
     expect(await inOrg(A, (tx) => lockWorkspace(tx, ofB))).toBeNull();
     expect(await inOrg(A, (tx) => lockWorkspace(tx, gone))).toBeNull();
@@ -80,8 +82,11 @@ describe('workspace-store', () => {
     expect(await nameOfB()).toBe(before);
   });
 
-  it('keeps the CHECKs: a blank name and a limit below 1 are refused', async () => {
+  it('keeps the CHECKs: a blank name, a limit below 1 and a contact number with letters are refused', async () => {
     await expect(inOrg(A, (tx) => updateWorkspace(tx, extra, { name: '  ' }))).rejects.toThrow();
+    await expect(
+      inOrg(A, (tx) => updateWorkspace(tx, extra, { contactPhone: 'gọi 1900' })),
+    ).rejects.toThrow();
     await expect(
       inOrg(A, (tx) => updateWorkspace(tx, extra, { defaultMaxConcurrent: 0 })),
     ).rejects.toThrow();

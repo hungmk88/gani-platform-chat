@@ -17,6 +17,7 @@ const ws = (over: Partial<Workspace> = {}): Workspace => ({
   template: 'b2b_sales',
   timezone: 'Asia/Ho_Chi_Minh',
   defaultMaxConcurrent: 5,
+  contactPhone: null,
   createdAt: '2026-10-01T00:00:00.000Z',
   ...over,
 });
