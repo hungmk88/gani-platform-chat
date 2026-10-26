@@ -696,6 +696,336 @@
           "reason"
         ],
         "additionalProperties": false
+      },
+      "PrivacyRequestPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivacyRequest"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "PrivacyRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "export",
+              "erase"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "done",
+              "failed"
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/PrivacyRequestCustomer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "executedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "customer",
+          "reason",
+          "requestedBy",
+          "createdAt",
+          "executedAt"
+        ]
+      },
+      "PrivacyRequestCustomer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ]
+      },
+      "PrivacyRequestCreate": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "export",
+              "erase"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "customerId",
+          "kind",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "PrivacyExport": {
+        "type": "object",
+        "properties": {
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "identities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "zalo_uid"
+                      ]
+                    },
+                    "channelName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "channelName"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "displayName",
+              "phone",
+              "email",
+              "identities"
+            ]
+          },
+          "conversations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/Uuid"
+                },
+                "channelName": {
+                  "type": "string"
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "messages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "from": {
+                        "type": "string",
+                        "enum": [
+                          "customer",
+                          "agent",
+                          "bot"
+                        ]
+                      },
+                      "text": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "at",
+                      "from",
+                      "text"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "channelName",
+                "startedAt",
+                "messages"
+              ]
+            }
+          }
+        },
+        "required": [
+          "exportedAt",
+          "customer",
+          "conversations"
+        ]
+      },
+      "PrivacyErasure": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/PrivacyRequest"
+          },
+          "erased": {
+            "type": "object",
+            "properties": {
+              "profile": {
+                "type": "boolean"
+              },
+              "identities": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "messagesRedacted": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "profile",
+              "identities",
+              "messagesRedacted"
+            ]
+          }
+        },
+        "required": [
+          "request",
+          "erased"
+        ]
+      },
+      "PromptVersionList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PromptVersion"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "PromptVersion": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "approvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "approvedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "active",
+          "approvedAt",
+          "approvedBy"
+        ]
       }
     },
     "parameters": {}
@@ -1583,6 +1913,450 @@
           },
           "409": {
             "description": "not_in_phase: L2 and above open in Đợt 2 (U29).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/privacy-requests": {
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "The requests of the organisation, newest first.",
+        "tags": [
+          "privacy"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyRequestPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the cursor.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "Record a request (`export` or `erase`) for one customer, with its reason (audited: `privacy.requested`). Nothing is done yet: see /execute.",
+        "tags": [
+          "privacy"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The request, pending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a field, or the Idempotency-Key is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such customer in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "duplicate_resource: this customer already has a pending request of this kind; or idempotency_in_progress.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/privacy-requests/{id}": {
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "One request.",
+        "tags": [
+          "privacy"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such request in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/privacy-requests/{id}/execute": {
+      "post": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "Carry out a pending request in one transaction (audited: `privacy.executed`, ids and kind only). `export` answers the customer’s data as JSON (`PrivacyExport`, served as an attachment); `erase` removes the personal data for good and answers what it removed (`PrivacyErasure`).",
+        "tags": [
+          "privacy"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The export (kind `export`) or what was erased (kind `erase`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PrivacyExport"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PrivacyErasure"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, or the Idempotency-Key is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such request in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "request_not_pending: it was already executed; or idempotency_in_progress.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ai/prompts": {
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "The versions of the prompts the internal AI uses, with when and by whom each was approved (E20). Read-only: no button edits a prompt.",
+        "tags": [
+          "ai"
+        ],
+        "responses": {
+          "200": {
+            "description": "The versions, by key then newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptVersionList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin; or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {
