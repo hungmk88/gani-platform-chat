@@ -130,3 +130,34 @@ test('Sales get the contact number of the workspace from /v1/me, so {{company_ph
   await expect(form(page).getByRole('group')).toHaveCount(0);
   expect(asked).toEqual([]);
 });
+
+// U37 (N165): written before the API, skipped until `GET /v1/conversations/{id}` returns the customer. The shape below is FE's
+// proposal (docs/ui/goi-cau-hoi-backend-30-10.md §3.3, `customer.displayName`): match it to the real field, then drop `.skip`.
+test.skip('the customer of the conversation fills {{customer_name}} when a template is picked (U37)', async ({
+  page,
+}) => {
+  await page.route(`**/v1/conversations/${held.id}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const response = await route.fetch();
+    const conversation = (await response.json()) as Record<string, unknown>;
+    return route.fulfill({
+      response,
+      json: { ...conversation, customer: { id: 'c1', displayName: 'Chị Lan', companyName: null } },
+    });
+  });
+  await signIn(page, accountOf('sales'));
+  await page.goto(`/inbox/${held.id}`);
+  await box(page).fill('/ch');
+  await picker(page)
+    .getByRole('option', { name: /^\/chao/ })
+    .click();
+  await expect(box(page)).toHaveValue(
+    'Chào Chị Lan, em là Người thử sales của Công ty thử.\nEm hỗ trợ được gì ạ?',
+  );
+  await expect(form(page).getByRole('textbox', { name: 'Tên khách' })).toHaveCount(0);
+  const message = posted(page, '/messages');
+  await box(page).press('Control+Enter');
+  expect((await message).postDataJSON()).toEqual({
+    text: 'Chào Chị Lan, em là Người thử sales của Công ty thử.\nEm hỗ trợ được gì ạ?',
+  });
+});
