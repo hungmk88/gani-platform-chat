@@ -27,10 +27,12 @@ test('an unknown path of a signed-in person is the 404 inside the frame', async 
   await expectAccessible(page);
 });
 
-// A screen of the menu not built yet (most wait for their API) says so, with one way to a screen that is: never the 404, whose "Về
-// trang chính" would lead back to /overview, the home of Owner, Admin and Manager.
-test('the home of a Manager, not built yet, says so and opens the inbox', async ({ page }) => {
-  await signIn(page, accountOf('manager'));
+// A screen of the menu not built yet, or whose API is not served yet (a 404: #16 until S5), says so, with one way to a screen that
+// is: never the 404, whose "Về trang chính" would lead back to /overview, the home of Owner, Admin and Manager.
+test('the home of a Manager, while the API has no overview yet, says so and opens the inbox', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('manager+no-overview'));
   await expect(page).toHaveURL('/overview');
   await expect(
     page.getByRole('heading', { name: 'Tổng quan: màn này chưa có trong bản hiện tại.' }),

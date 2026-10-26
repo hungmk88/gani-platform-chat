@@ -37,7 +37,7 @@ test('a Sales opens Khách hàng from the menu and pages through the customers, 
   await expect(list(page).getByRole('button', { name: 'Tải thêm' })).toHaveCount(0);
 });
 
-test('a search goes to the API: by a part of the name, by the start of a phone number, and says when nothing matches', async ({
+test('a search goes to the API: by a part of the name, the start of a phone number, a whole email, and says when nothing matches', async ({
   page,
 }) => {
   await signIn(page, accountOf('support'));
@@ -54,6 +54,12 @@ test('a search goes to the API: by a part of the name, by the start of a phone n
   await search.fill('0910');
   await expect(rows(page)).toHaveCount(2);
   await expect(rows(page).nth(1)).toContainText('Lê Minh Châu');
+
+  await search.fill('AN@example.test');
+  await expect(rows(page)).toHaveCount(2);
+  await expect(rows(page).nth(1)).toContainText('Nguyễn Văn An');
+  await search.fill('an@example');
+  await expect(list(page).getByText('Tìm theo email cần gõ đủ cả địa chỉ.')).toBeVisible();
 
   await search.fill('không có ai');
   await expect(list(page).getByText('Không có khách khớp “không có ai”.')).toBeVisible();
