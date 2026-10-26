@@ -131,6 +131,13 @@ Trang mặc định sau đăng nhập:
 - Realtime (I1b-2): một kết nối Socket.IO `/agent` cho khung app (`src/realtime/realtime.tsx`), chỉ với vai trò đọc hội thoại; nằm trong `QueryProvider` nên đổi công ty/workspace hay đăng xuất là ngắt. `state_changed`/`assigned`/`message.created` sửa cache (`src/realtime/events.ts`: không thay bản mới bằng bản cũ). Hội thoại đang mở: `conversation.subscribe`, nối lại thì `resume` từ số tin lớn nhất (`use-conversation-realtime.ts`). Client chỉ gửi `conversationId`, không bao giờ tên phòng (T3, E2E). `session.ended` → `/login`.
 - `next start` **không** chuyển tiếp WebSocket (đã thử). Production: admin và API chung địa chỉ gốc sau reverse proxy, `REALTIME_ORIGIN` để trống. Dev/E2E: `REALTIME_ORIGIN=http://localhost:3000` (đọc lúc chạy, không cần build lại); cookie vẫn đi vì cùng tên máy, `Origin` vẫn là địa chỉ admin.
 
+## Khách hàng (#7)
+
+- `/customers`, mọi vai trò của công ty (Phụ lục B; `mayReadCustomers`), platform operator trang 403 (phiên hỗ trợ ở #30, sau). Khách cấp **công ty**, dùng chung mọi workspace (N165): danh sách không lọc theo workspace đang chọn.
+- `GET /v1/customers` (mới nhất trước, cursor, "Tải thêm"): tên (chưa có thì "Khách chưa có tên"), SĐT (E.164 viết lại `0912 345 678`, `phoneText`), email, kênh (từ `identities`, Đợt 1 chỉ Zalo OA), ngày cập nhật (`src/customers/customers.ts` + `customer-list.tsx`).
+- Tìm (`q`, cắt khoảng trắng, ≤ 100): một phần tên, hoặc đầu số điện thoại từ 3 số. Marketing/Viewer: API trả SĐT, email **đã che** và chỉ tìm theo tên (`seesMasked`); màn nói vậy dưới ô tìm. Mỗi chữ tìm là một khóa cache.
+- Tag, người phụ trách, liên hệ cuối, bộ lọc kênh/tag: chờ API (J4, U47); không bịa cột. Hồ sơ khách (#8, `/customers/[id]`): PR sau. API giả: `e2e/stub-customers.ts` (`CUSTOMERS`, trang 3 dòng).
+
 ## Hồ sơ cá nhân (#5)
 
 - `/me` (mọi vai trò; tên ở thanh trên là link): 3 phần theo URL `?tab=info|security|notify` (link, không phải tablist).

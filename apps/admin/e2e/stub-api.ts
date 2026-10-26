@@ -16,6 +16,7 @@ import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
 import { MEMBERS, routeMembers } from './stub-members';
 import { routeChannels } from './stub-channels';
+import { routeCustomers } from './stub-customers';
 import { routeQuickReplies } from './stub-quick-replies';
 import { routeTeams } from './stub-teams';
 import { routeWorkspaces } from './stub-workspaces';
@@ -421,13 +422,18 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     session.sent.set(key, m);
     return send(res, 201, m);
   }
-  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160), #24 Kênh (N161), #22 Mẫu trả lời nhanh (N163):
-  // e2e/stub-{members,workspaces,teams,channels,quick-replies}.ts.
+  // #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #20 Team (N160), #24 Kênh (N161), #22 Mẫu trả lời nhanh (N163),
+  // #7 Khách hàng (N165): e2e/stub-{members,workspaces,teams,channels,quick-replies,customers}.ts.
   if (
     path &&
-    ['/v1/members', '/v1/workspaces', '/v1/teams', '/v1/channels', '/v1/quick-replies'].some((p) =>
-      path.startsWith(p),
-    )
+    [
+      '/v1/members',
+      '/v1/workspaces',
+      '/v1/teams',
+      '/v1/channels',
+      '/v1/quick-replies',
+      '/v1/customers',
+    ].some((p) => path.startsWith(p))
   ) {
     const sid = cookie(req, SESSION) ?? '';
     const who = session ? { sid, role: meOf(session.email)?.org?.role } : null;
@@ -436,6 +442,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (await routeChannels(req, res, path, who, { send, problem, json })) return;
     if (await routeTeams(req, res, path, who, { send, problem, json })) return;
     if (await routeQuickReplies(req, res, path, who, { send, problem, json })) return;
+    if (routeCustomers(req, res, path, who, { send, problem, json })) return;
   }
   // Test-only levers for the socket of /agent (realtime.spec.ts): what the worker would send, and a dropped connection.
   if (req.method === 'POST' && path?.startsWith('/__e2e/')) {
