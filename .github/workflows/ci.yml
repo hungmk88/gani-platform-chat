@@ -81,13 +81,16 @@ jobs:
           test -n "$v" && test -n "${ImageOS:-}"
           echo "image=${ImageOS}" >> "$GITHUB_OUTPUT"
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Playwright cache key::image=${ImageOS} imageVersion=${ImageVersion:-?} playwright=$v"
       - id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-${{ steps.playwright-key.outputs.image }}-playwright-${{ steps.playwright-key.outputs.version }}-chromium
       - name: Playwright system libraries (apt)
-        run: pnpm --filter @gani/admin exec playwright install-deps chromium
+        run: |
+          echo "::notice title=Playwright cache::hit=${{ steps.playwright-cache.outputs.cache-hit || 'false' }}"
+          pnpm --filter @gani/admin exec playwright install-deps chromium
       - name: Playwright Chromium (only on a cache miss)
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @gani/admin exec playwright install chromium
