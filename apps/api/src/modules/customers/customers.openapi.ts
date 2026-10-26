@@ -17,7 +17,7 @@ export function registerCustomers(registry: OpenAPIRegistry): void {
     method: 'get',
     path: '/v1/customers',
     summary:
-      'The live customers of the organisation, newest first. `q` is a part of the name, or the start of a phone number from 3 digits (not for Marketing and Viewer, who see phones and emails masked).',
+      'The live customers of the organisation, newest first. `q` is a part of the name, the start of a phone number from 3 digits, or a whole email, any case, never a part of one (U48); Marketing and Viewer, who see phones and emails masked, search by name only.',
     tags: ['customers'],
     request: { query: CustomerListQuerySchema },
     responses: {
