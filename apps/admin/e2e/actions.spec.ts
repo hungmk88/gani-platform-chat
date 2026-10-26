@@ -7,7 +7,7 @@ import { accountOf, CONVERSATIONS } from './stub-api';
 // #6 Hộp thư: Nhận, Chờ khách, Đóng (I1c), each waiting for the server; the stub copies the conversations per session.
 const waiting = CONVERSATIONS[0]!; // HUMAN_WAITING_Q, nobody
 const held = CONVERSATIONS[1]!; // HUMAN_ACTIVE, sales
-const view = (page: Page) => page.getByRole('region', { name: 'Hội thoại' });
+const view = (page: Page) => page.getByRole('region', { name: 'Hội thoại', exact: true });
 const actions = (page: Page) =>
   view(page).getByRole('group', { name: 'Thao tác' }).getByRole('button');
 

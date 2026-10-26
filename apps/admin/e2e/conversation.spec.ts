@@ -17,7 +17,7 @@ test('a row opens its conversation beside the list, keeping the filter', async (
     'aria-current',
     'page',
   );
-  const view = page.getByRole('region', { name: 'Hội thoại' });
+  const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
   await expect(view.getByRole('heading', { name: 'Nhân viên đang xử lý' })).toBeVisible();
   await expect(view.getByText('Phụ trách: Tôi')).toBeVisible();
   await expectAccessible(page);

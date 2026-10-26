@@ -7,7 +7,7 @@ import { accountOf, CONVERSATIONS, STUB_PAGE } from './stub-api';
 // #6 Hộp thư: the reply box (I2, N146). Sending is optimistic: the message shows at once, the API's answer replaces it.
 const waiting = CONVERSATIONS[0]!; // HUMAN_WAITING_Q, nobody
 const held = CONVERSATIONS[1]!; // HUMAN_ACTIVE, sales
-const view = (page: Page) => page.getByRole('region', { name: 'Hội thoại' });
+const view = (page: Page) => page.getByRole('region', { name: 'Hội thoại', exact: true });
 const box = (page: Page) => page.getByRole('textbox', { name: /Soạn tin trả lời/ });
 const claim = (page: Page) =>
   view(page)
