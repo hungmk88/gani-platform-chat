@@ -1,7 +1,7 @@
 import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Mirrors migrations 202610031830_create_conversations.sql, 202610061100_add_conversations_fsm_columns.sql and
-// 202610071310_add_conversations_channel_columns.sql.
+// 202610071310_add_conversations_channel_columns.sql (+ customer_id of 202610271000).
 // state, version, assignedUserId, afterHoursHold, closedAt and outcome belong to the ConversationStateMachine (a trigger refuses
 // any other writer, 202610061110); the rest is written by the message flow.
 export const conversations = pgTable('conversations', {
@@ -19,6 +19,8 @@ export const conversations = pgTable('conversations', {
   channelAccountId: uuid('channel_account_id'),
   externalUserId: text('external_user_id'),
   lastCustomerMessageAt: timestamp('last_customer_message_at', { withTimezone: true }),
+  // The customer of the conversation (202610271000, N165): filled by the inbound worker; NULL until then.
+  customerId: uuid('customer_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

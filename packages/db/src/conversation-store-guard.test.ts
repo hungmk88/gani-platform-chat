@@ -21,6 +21,8 @@ const WRITES = [/\bUPDATE\s+(?:public\.)?conversations\b/i, /\.update\(\s*conver
 // What the two patterns above miss (review D-03): `const c = conversations; tx.update(c)`. Only a file that imports the table can do it.
 // `message-store.ts` does, on purpose, for the marks of the conversation; the DB trigger is the lock that holds for the FSM columns.
 const MARKS = 'packages/db/src/message-store.ts';
+// `customer-store.ts` does too, for the customer of the conversation (N165): customer_id is not a column of the state machine.
+const CUSTOMER = 'packages/db/src/customer-store.ts';
 const FSM_KEYS = /\b(?:state|version|assignedUserId|afterHoursHold|closedAt|outcome)\s*:/;
 
 /** The `.update(x)` calls whose `x` is the `conversations` table or a name bound to it (`const c = conversations`). */
@@ -94,12 +96,18 @@ describe('writes through an alias of the table (review D-03)', () => {
 
   it('are only in the store and in the file that moves the marks', () => {
     const writers = files.filter((file) => aliasUpdates(sourceOf(file)).length > 0);
-    expect(writers).toEqual([STORE, MARKS].sort());
+    expect(writers).toEqual([STORE, MARKS, CUSTOMER].sort());
   });
 
   it('write no column of the state machine in the file that moves the marks', () => {
     const block = setBlock(sourceOf(MARKS));
     expect(block).toContain('lastMessageAt');
+    expect(FSM_KEYS.test(block)).toBe(false);
+  });
+
+  it('write no column of the state machine in the file that names the customer', () => {
+    const block = setBlock(sourceOf(CUSTOMER));
+    expect(block).toContain('customerId');
     expect(FSM_KEYS.test(block)).toBe(false);
   });
 

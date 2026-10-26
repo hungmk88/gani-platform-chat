@@ -77,6 +77,8 @@ export async function removeInbound(admin: Pool, org: string): Promise<void> {
     'conversations',
     'inbound_events',
     'inbound_event_keys',
+    'customer_identities',
+    'customers',
     'channel_accounts',
     'workspaces',
   ])

@@ -1,18 +1,21 @@
 import { normalizeZalo } from '@gani/channels';
 import type { ConversationStateMachine, MessageService } from '@gani/conversations';
 import {
+  customerForContact,
   findConversationForContact,
+  linkConversationCustomer,
   lockContact,
   markInboundIgnored,
   markInboundProcessed,
   type ClaimedInboundEvent,
   type TenantTx,
 } from '@gani/db';
-import { REOPEN_WINDOW_MS } from '@gani/domain';
+import { REOPEN_WINDOW_MS, uuidv7 } from '@gani/domain';
 
-// One inbound event in one transaction (inbound spec §3): normalise → lock the person → find, reopen or create the conversation →
-// store the message and let the state machine react → mark the event processed. The caller opens the transaction in the tenant of the
-// event, its workspace included (conversations and messages are filtered by workspace). Nothing here logs the payload.
+// One inbound event in one transaction (inbound spec §3): normalise → lock the person → find or make their customer (N165) → find,
+// reopen or create the conversation and name its customer → store the message and let the state machine react → mark the event
+// processed. The caller opens the transaction in the tenant of the event, its workspace included (conversations and messages are
+// filtered by workspace). Nothing here logs the payload.
 
 /** The claim of the event was lost (the lease expired and another worker took it): everything of this transaction must roll back. */
 export class InboundLeaseLostError extends Error {
@@ -57,6 +60,11 @@ export async function processInboundEvent(
   const { externalUserId } = normalized;
   // The person's lock before the conversation's (conversation-lock.ts): two messages of one person never make two conversations.
   await lockContact(tx, event.channelAccountId, externalUserId);
+  const customerId = await customerForContact(tx, {
+    channelAccountId: event.channelAccountId,
+    externalUserId,
+    newId: uuidv7,
+  });
   const found = await findConversationForContact(tx, event.channelAccountId, externalUserId);
   const expired =
     found?.state === 'CLOSED' &&
@@ -73,6 +81,8 @@ export async function processInboundEvent(
     if (created.kind !== 'changed') throw new Error('creating a conversation must change it');
     conversationId = created.conversation.id;
   }
+  // A new conversation, or one older than customers (N165): it gets its customer now; one that has a customer keeps it.
+  await linkConversationCustomer(tx, conversationId, customerId);
   // A closed conversation within 72 hours is reopened here (T14); agentOnline is false until presence exists (N107(3), S4).
   await services.messages.receiveCustomerMessage(tx, {
     conversationId,
