@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { emptyOf, filterOf, holderOf, listPath, NO_FILTER, paramsOf, whenOf } from './list';
+import {
+  customerNameOf,
+  emptyOf,
+  filterOf,
+  holderOf,
+  listPath,
+  NO_FILTER,
+  paramsOf,
+  whenOf,
+} from './list';
 
 describe('filterOf and paramsOf', () => {
   it('reads a filter from the URL and writes it back', () => {
@@ -54,5 +63,14 @@ describe('whenOf', () => {
       whenOf({ lastMessageAt: '2026-10-21T02:05:00Z', createdAt: '2026-10-20T00:00:00Z' }),
     ).toContain('09:05');
     expect(whenOf({ lastMessageAt: null, createdAt: '2026-10-20T17:30:00Z' })).toContain('00:30');
+  });
+});
+
+describe('customerNameOf', () => {
+  it('names the customer of the conversation, or says nobody has named them yet', () => {
+    expect(customerNameOf({ customer: { id: 'c1', displayName: ' Chị Lan ' } })).toBe('Chị Lan');
+    expect(customerNameOf({ customer: { id: 'c1', displayName: null } })).toBe('Khách chưa có tên');
+    expect(customerNameOf({ customer: { id: 'c1', displayName: ' ' } })).toBe('Khách chưa có tên');
+    expect(customerNameOf({ customer: null })).toBe('Khách chưa có tên');
   });
 });

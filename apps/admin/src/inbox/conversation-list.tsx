@@ -14,6 +14,7 @@ import {
   emptyOf,
   filterOf,
   HOLD_LABEL,
+  customerNameOf,
   holderOf,
   listPath,
   NO_FILTER,
@@ -159,9 +160,8 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
                     className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-bg-subtle aria-[current=page]:bg-bg-subtle"
                   >
                     <span className="flex flex-col gap-1">
-                      <span className="font-semibold">
-                        {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
-                      </span>
+                      <span className="font-semibold">{customerNameOf(c)}</span>
+                      <span>{c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}</span>
                       <span className="text-12 text-text-muted">{holderOf(c, meId)}</span>
                     </span>
                     <time

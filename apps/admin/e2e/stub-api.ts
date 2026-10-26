@@ -16,7 +16,7 @@ import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
 import { MEMBERS, routeMembers } from './stub-members';
 import { routeChannels } from './stub-channels';
-import { routeCustomers } from './stub-customers';
+import { CUSTOMERS, routeCustomers } from './stub-customers';
 import { routeQuickReplies } from './stub-quick-replies';
 import { routeTeams } from './stub-teams';
 import { routeWorkspaces } from './stub-workspaces';
@@ -42,7 +42,13 @@ export const MANY = 600;
 export const MANY_PAGE = 200;
 
 // The conversations of every workspace of the stub: who may see which is the rule of apps/api permissions.ts (canSee).
-const conversation = (n: number, state: string, assignedUserId: string | null, hold = false) => ({
+const conversation = (
+  n: number,
+  state: string,
+  assignedUserId: string | null,
+  hold = false,
+  customer: { id: string; displayName: string | null } | null = null,
+) => ({
   id: `0190a000-0000-7000-8000-00000000000${n}`,
   workspaceId: 'ws-e2e',
   state,
@@ -54,7 +60,7 @@ const conversation = (n: number, state: string, assignedUserId: string | null, h
   lastMessageAt: `2026-10-21T0${n}:05:00Z`,
   lastCustomerMessageAt: null,
   createdAt: '2026-10-20T00:00:00Z',
-  customer: null,
+  customer,
 });
 /** A message a customer could send to break a page (T2): it must show as these characters and run nothing. */
 export const HOSTILE =
@@ -84,9 +90,16 @@ export const MESSAGES = [
   message(5, 'customer', 'Gửi lúc 02:05, tới sau.', '2026-10-21T02:05:00Z'),
 ];
 export const CONVERSATIONS = [
-  conversation(1, 'HUMAN_WAITING_Q', null),
+  // #1 has a named customer (#7), #3 one nobody has named yet; the others have none linked yet (N165).
+  conversation(1, 'HUMAN_WAITING_Q', null, false, {
+    id: CUSTOMERS[0]!.id,
+    displayName: CUSTOMERS[0]!.displayName,
+  }),
   conversation(2, 'HUMAN_ACTIVE', 'user-sales'),
-  conversation(3, 'PENDING_CUSTOMER', 'user-sales'),
+  conversation(3, 'PENDING_CUSTOMER', 'user-sales', false, {
+    id: CUSTOMERS[1]!.id,
+    displayName: null,
+  }),
   conversation(4, 'HUMAN_ACTIVE', 'user-manager'),
   conversation(5, 'HUMAN_WAITING_Q', null, true),
   conversation(6, 'CLOSED', 'user-sales'),
