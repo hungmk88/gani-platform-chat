@@ -22,6 +22,14 @@ export const ConversationSchema = z
     lastMessageAt: at.nullable(),
     lastCustomerMessageAt: at.nullable(),
     createdAt: at,
+    /**
+     * The customer (N165): null until the inbound worker names them. `displayName` is null until an agent or the channel's profile gives
+     * it (the Zalo webhook carries no name): the Inbox then shows a label of its own.
+     */
+    customer: z
+      .object({ id: UuidSchema, displayName: z.string().nullable() })
+      .nullable()
+      .meta({ id: 'ConversationCustomer' }),
   })
   .meta({ id: 'Conversation' });
 

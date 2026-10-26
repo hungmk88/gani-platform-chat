@@ -53,6 +53,7 @@ const conversation = (n: number, state: string, assignedUserId: string | null, h
   lastMessageAt: `2026-10-21T0${n}:05:00Z`,
   lastCustomerMessageAt: null,
   createdAt: '2026-10-20T00:00:00Z',
+  customer: null,
 });
 /** A message a customer could send to break a page (T2): it must show as these characters and run nothing. */
 export const HOSTILE =

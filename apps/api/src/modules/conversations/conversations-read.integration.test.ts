@@ -26,6 +26,7 @@ const PW = randomBytes(18).toString('base64url');
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const people: Record<string, string> = {};
 const c: Record<string, string> = {};
+const customer = randomUUID();
 const cookies: Record<string, string> = {};
 let app: NestExpressApplication | undefined;
 let url = '';
@@ -84,6 +85,9 @@ beforeAll(async () => {
   await conversation('held', orgA, W1, { hold: true, at: '2026-10-02T00:00:00Z' });
   await conversation('otherWs', orgA, W2, { at: '2026-10-06T00:00:00Z' });
   await conversation('otherOrg', orgB, WB, { at: '2026-10-06T00:00:00Z' });
+  // The customer of 'mine' (N165): the inbound worker names it; here the fixture does.
+  await q(`INSERT INTO customers (id, org_id, display_name) VALUES ($1, $2, 'Chị Lan')`, [customer, orgA]);
+  await q('UPDATE conversations SET customer_id = $1 WHERE id = $2', [customer, c['mine']]);
   for (let n = 1; n <= 3; n++)
     await q(`INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, $5, 'customer', 'text', 'm')`, [randomUUID(), orgA, W1, c['queue'], n]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -100,7 +104,7 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['sessions WHERE user_id', users],
+    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['sessions WHERE user_id', users],
     ['workspace_members WHERE org_id', orgs], ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs],
     ['organizations WHERE id', orgs], ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
@@ -118,8 +122,9 @@ describe('GET /v1/conversations', () => {
     expect((res.body['data'] as Record<string, unknown>[])[0]).toEqual({
       id: c['mine'], workspaceId: W1, state: 'HUMAN_ACTIVE', afterHoursHold: false, assignedUserId: people['sales'], version: 0,
       outcome: null, closedAt: null, lastMessageAt: '2026-10-05T00:00:00.000Z', lastCustomerMessageAt: null, channelAccountId: null,
-      createdAt: expect.any(String) as string,
+      createdAt: expect.any(String) as string, customer: { id: customer, displayName: 'Chị Lan' },
     });
+    expect((res.body['data'] as Record<string, unknown>[])[1]?.['customer']).toBeNull();
   });
 
   it('gives sales their own and the unclaimed ones only (Phụ lục B, N133)', async () => {
@@ -148,7 +153,8 @@ describe('GET /v1/conversations', () => {
 // prettier-ignore
 describe('GET /v1/conversations/{id} and /messages', () => {
   it('answers 404 alike for what does not exist, another organisation, another workspace and what the role may not see', async () => {
-    expect((await get('manager', `/v1/conversations/${c['queue']}`)).body).toMatchObject({ id: c['queue'], state: 'HUMAN_WAITING_Q' });
+    expect((await get('manager', `/v1/conversations/${c['queue']}`)).body).toMatchObject({ id: c['queue'], state: 'HUMAN_WAITING_Q', customer: null });
+    expect((await get('sales', `/v1/conversations/${c['mine']}`)).body['customer']).toEqual({ id: customer, displayName: 'Chị Lan' });
     for (const [who, id] of [['manager', randomUUID()], ['manager', c['otherOrg']], ['manager', c['otherWs']], ['sales', c['theirs']], ['stranger', c['mine']]] as const) {
       const res = await get(who, `/v1/conversations/${String(id)}`);
       expect([res.status, res.body['code']], `${who} ${String(id)}`).toEqual([404, 'not_found']);

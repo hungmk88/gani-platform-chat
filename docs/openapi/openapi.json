@@ -263,6 +263,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/ConversationCustomer"
           }
         },
         "required": [
@@ -276,7 +279,29 @@
           "closedAt",
           "lastMessageAt",
           "lastCustomerMessageAt",
-          "createdAt"
+          "createdAt",
+          "customer"
+        ]
+      },
+      "ConversationCustomer": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
         ]
       },
       "MessagePage": {

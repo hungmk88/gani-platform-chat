@@ -77,6 +77,7 @@ describe('withState', () => {
     lastMessageAt: null,
     lastCustomerMessageAt: null,
     createdAt: 't',
+    customer: null,
   };
   it('applies a newer version only', () => {
     const d = {

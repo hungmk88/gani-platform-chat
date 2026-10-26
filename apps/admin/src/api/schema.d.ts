@@ -3266,7 +3266,12 @@ export interface components {
             lastCustomerMessageAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            customer: components["schemas"]["ConversationCustomer"];
         };
+        ConversationCustomer: {
+            id: components["schemas"]["Uuid"];
+            displayName: string | null;
+        } | null;
         MessagePage: {
             data: components["schemas"]["Message"][];
             nextCursor: string | null;
