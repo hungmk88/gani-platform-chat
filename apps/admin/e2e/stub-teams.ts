@@ -17,6 +17,7 @@ export const TEAMS: readonly Team[] = [
     description: 'Sau bán hàng, khiếu nại',
     isDefault: false,
     memberCount: 1,
+    channelIds: [],
     createdAt: '2026-10-01T03:00:00.000Z',
   },
   {
@@ -27,6 +28,7 @@ export const TEAMS: readonly Team[] = [
     description: null,
     isDefault: true,
     memberCount: 2,
+    channelIds: [],
     createdAt: '2026-10-01T03:00:00.000Z',
   },
 ];
@@ -138,6 +140,7 @@ export async function routeTeams(
       description: (description as string | null | undefined) ?? null,
       isDefault: false,
       memberCount: 0,
+      channelIds: [],
       createdAt: new Date().toISOString(),
     };
     mine.push(team);

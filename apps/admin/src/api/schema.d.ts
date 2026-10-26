@@ -2265,7 +2265,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description team_in_use: the default team of its workspace. */
+                /** @description team_in_use: the default team of its workspace, or a team that answers a channel. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -2465,6 +2465,94 @@ export interface paths {
                     };
                 };
                 /** @description validation_failed: the id, more than 500 or the same member twice, or someone not in the team’s workspace. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin changes teams (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no live team with this id in the organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/teams/{id}/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the whole list of channel accounts the team answers (N161); each must be a live channel of the team’s workspace. A channel of another team moves to this one; one left out goes back to the default team. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TeamChannelsBody"];
+                };
+            };
+            responses: {
+                /** @description The team as it now is. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Team"];
+                    };
+                };
+                /** @description validation_failed: the id, more than 200 or the same channel twice, or a channel not of the team’s workspace. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2834,6 +2922,8 @@ export interface components {
             /** @description The team of the workspace that takes what no other rule sends anywhere. */
             isDefault: boolean;
             memberCount: number;
+            /** @description The channel accounts the team answers (N161). */
+            channelIds: components["schemas"]["Uuid"][];
             /** Format: date-time */
             createdAt: string;
         };
@@ -2849,6 +2939,9 @@ export interface components {
         };
         TeamMembersBody: {
             memberIds: components["schemas"]["Uuid"][];
+        };
+        TeamChannelsBody: {
+            channelIds: components["schemas"]["Uuid"][];
         };
         ChannelList: {
             data: components["schemas"]["Channel"][];
