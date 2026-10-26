@@ -1,12 +1,20 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
+import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
+import { registerFeatureFlags } from '../modules/feature-flags/feature-flags.openapi.js';
+import { registerOverview } from '../modules/overview/overview.openapi.js';
 import { registerTickets } from '../modules/tickets/tickets.openapi.js';
 
 // The contract of what is not built yet (N167): the paths the CEO's decisions of 26/10/2026 settled (U27, U28, U29, U35), so the front
 // end can build #14/#15, #16, #27, #11, #29 now. Same tools and shared schemas as document.ts, written to docs/openapi/planned.json.
 // When an endpoint is built, its register call moves to REGISTER of document.ts: document.test.ts fails while a path is in both.
 
-const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [registerTickets];
+const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
+  registerTickets,
+  registerOverview,
+  registerFeatureFlags,
+  registerAutonomy,
+];
 
 export function buildPlannedDocument() {
   const registry = new OpenAPIRegistry();
