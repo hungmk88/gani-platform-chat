@@ -78,6 +78,10 @@ describe('withState', () => {
     lastCustomerMessageAt: null,
     createdAt: 't',
     customer: null,
+    channelAccountId: null,
+    channel: null,
+    assignee: { id: 'u1', name: null },
+    lastMessagePreview: null,
   };
   it('applies a newer version only', () => {
     const d = {

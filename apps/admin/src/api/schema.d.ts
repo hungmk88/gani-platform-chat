@@ -3674,10 +3674,28 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             customer: components["schemas"]["ConversationCustomer"];
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            channelAccountId: string | null;
+            channel: components["schemas"]["ConversationChannel"];
+            assignee: components["schemas"]["ConversationAssignee"];
+            lastMessagePreview: string | null;
         };
         ConversationCustomer: {
             id: components["schemas"]["Uuid"];
             displayName: string | null;
+        } | null;
+        ConversationChannel: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            type: "zalo_oa" | "facebook" | "webchat";
+            displayName: string;
+        } | null;
+        ConversationAssignee: {
+            id: components["schemas"]["Uuid"];
+            name: string | null;
         } | null;
         MessagePage: {
             data: components["schemas"]["Message"][];

@@ -41,6 +41,8 @@ const APP_UPDATE: Record<string, string[]> = {
     'customer_id',
     'last_customer_message_at',
     'last_message_at',
+    'last_message_kind',
+    'last_message_preview',
     'outcome',
     'state',
     'updated_at',
@@ -144,12 +146,16 @@ describe('UPDATE of app_role', () => {
 });
 
 describe('SELECT of support_role on conversations (DBM-01)', () => {
-  it('leaves out external_user_id, the Zalo id of the customer, and shows the rest', async () => {
+  it('leaves out external_user_id, the Zalo id of the customer, and the line of the Inbox (U30, N169), and shows the rest', async () => {
     const { rows } = await admin.query<{ column: string; ok: boolean }>(
       `SELECT a.attname AS column, has_column_privilege('support_role', a.attrelid, a.attnum, 'SELECT') AS ok
        FROM pg_attribute a WHERE a.attrelid = 'public.conversations'::regclass AND a.attnum > 0 AND NOT a.attisdropped`,
     );
-    expect(rows.filter((r) => !r.ok).map((r) => r.column)).toEqual(['external_user_id']);
+    expect(rows.filter((r) => !r.ok).map((r) => r.column)).toEqual([
+      'external_user_id',
+      'last_message_preview',
+      'last_message_kind',
+    ]);
     expect(rows.length).toBeGreaterThan(10);
   });
 });

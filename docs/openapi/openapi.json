@@ -261,6 +261,26 @@
           },
           "customer": {
             "$ref": "#/components/schemas/ConversationCustomer"
+          },
+          "channelAccountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ConversationChannel"
+          },
+          "assignee": {
+            "$ref": "#/components/schemas/ConversationAssignee"
+          },
+          "lastMessagePreview": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -275,7 +295,11 @@
           "lastMessageAt",
           "lastCustomerMessageAt",
           "createdAt",
-          "customer"
+          "customer",
+          "channelAccountId",
+          "channel",
+          "assignee",
+          "lastMessagePreview"
         ]
       },
       "ConversationCustomer": {
@@ -297,6 +321,54 @@
         "required": [
           "id",
           "displayName"
+        ]
+      },
+      "ConversationChannel": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "zalo_oa",
+              "facebook",
+              "webchat"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "displayName"
+        ]
+      },
+      "ConversationAssignee": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "MessagePage": {
