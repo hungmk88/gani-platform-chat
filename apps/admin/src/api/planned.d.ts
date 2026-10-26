@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Tickets of the session’s workspaces, newest first; filter by workspace, status and assignee. Sales see the ones they made. */
+        /** Tickets of the session’s workspaces, newest first; filter by workspace, status, assignee and conversation. Sales see the ones they made. */
         get: {
             parameters: {
                 query?: {
@@ -21,6 +21,8 @@ export interface paths {
                     workspaceId?: components["schemas"]["Uuid"];
                     status?: "new" | "in_progress" | "waiting_customer" | "done" | "cancelled";
                     assignee?: ("me" | "none") | components["schemas"]["Uuid"];
+                    /** @description UUIDv7. */
+                    conversationId?: components["schemas"]["Uuid"];
                 };
                 header?: never;
                 path?: never;
@@ -156,7 +158,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description invalid_assignee: not a member of the workspace who handles tickets; or idempotency_key_reused. */
+                /** @description invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52); or idempotency_key_reused. */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -334,7 +336,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description invalid_assignee: not a member of the workspace who handles tickets. */
+                /** @description invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52). */
                 422: {
                     headers: {
                         [name: string]: unknown;

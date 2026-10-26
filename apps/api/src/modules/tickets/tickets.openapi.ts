@@ -32,7 +32,7 @@ export function registerTickets(registry: OpenAPIRegistry): void {
     method: 'get',
     path: '/v1/tickets',
     summary:
-      'Tickets of the session’s workspaces, newest first; filter by workspace, status and assignee. Sales see the ones they made.',
+      'Tickets of the session’s workspaces, newest first; filter by workspace, status, assignee and conversation. Sales see the ones they made.',
     tags,
     request: { query: TicketListQuerySchema },
     responses: {
@@ -61,7 +61,7 @@ export function registerTickets(registry: OpenAPIRegistry): void {
       404: problemResponse('not_found: the workspace, customer or conversation is not visible.'),
       409: problemResponse('idempotency_in_progress: the same key is still running.'),
       422: problemResponse(
-        'invalid_assignee: not a member of the workspace who handles tickets; or idempotency_key_reused.',
+        'invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52); or idempotency_key_reused.',
       ),
       ...edge,
     },
@@ -99,7 +99,9 @@ export function registerTickets(registry: OpenAPIRegistry): void {
       409: problemResponse(
         'version_conflict: the ticket changed since it was read; or invalid_transition: this status cannot follow the current one.',
       ),
-      422: problemResponse('invalid_assignee: not a member of the workspace who handles tickets.'),
+      422: problemResponse(
+        'invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52).',
+      ),
       ...edge,
     },
   });

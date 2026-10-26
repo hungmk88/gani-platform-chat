@@ -1282,7 +1282,7 @@
       "get": {
         "x-status": "planned",
         "x-sprint": "S4",
-        "summary": "Tickets of the session’s workspaces, newest first; filter by workspace, status and assignee. Sales see the ones they made.",
+        "summary": "Tickets of the session’s workspaces, newest first; filter by workspace, status, assignee and conversation. Sales see the ones they made.",
         "tags": [
           "tickets"
         ],
@@ -1349,6 +1349,15 @@
             },
             "required": false,
             "name": "assignee",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": false,
+            "description": "UUIDv7.",
+            "name": "conversationId",
             "in": "query"
           }
         ],
@@ -1507,7 +1516,7 @@
             }
           },
           "422": {
-            "description": "invalid_assignee: not a member of the workspace who handles tickets; or idempotency_key_reused.",
+            "description": "invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52); or idempotency_key_reused.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1701,7 +1710,7 @@
             }
           },
           "422": {
-            "description": "invalid_assignee: not a member of the workspace who handles tickets.",
+            "description": "invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52).",
             "content": {
               "application/problem+json": {
                 "schema": {
