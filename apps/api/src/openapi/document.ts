@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { registerChannels } from '../modules/channels/channels.openapi.js';
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
+import { registerQuickReplies } from '../modules/quick-replies/quick-replies.openapi.js';
 import { MeChangeSchema } from '../modules/request-context/me.schemas.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
 import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
@@ -119,6 +120,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerWorkspaces,
   registerTeams,
   registerChannels,
+  registerQuickReplies,
 ];
 
 export function buildOpenApiDocument() {
