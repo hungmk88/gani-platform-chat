@@ -37,7 +37,7 @@ const copies = new Map<string, Team[]>(); // session → its teams (those of TEA
 const byKey = new Map<string, Team>(); // Idempotency-Key → the team it made
 const people = new Map<string, Map<string, string[]>>(); // session → team id → its member ids
 /** The people each team of TEAMS starts with, as its memberCount says: Sales for CSKH, the Owner and Sales for Sales B2B. */
-const START: Record<string, string[]> = {
+export const START: Record<string, string[]> = {
   [TEAMS[0]!.id]: [MEMBERS[2]!.id],
   [TEAMS[1]!.id]: [MEMBERS[0]!.id, MEMBERS[2]!.id],
 };
