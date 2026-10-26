@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 
 import { ROLE_NAME, type Role } from '../nav';
+import { NameForm } from './name-form';
 import { passwordProblem, readChangePassword } from './password';
 import { TABS, type Tab } from './tabs';
 
@@ -29,16 +30,16 @@ function ChangePassword() {
       const value = data.get(k);
       return typeof value === 'string' ? value : '';
     });
-    const others = data.get('others') === 'on';
     const problem = passwordProblem(current ?? '', next ?? '', again ?? '');
     setDone(null);
     setError(problem);
     if (problem) return;
     setBusy(true);
+    // The API signs the other devices out whatever is sent (N162); asked here as well, so an older API does the same.
     const res = await post('/api/auth/change-password', {
       currentPassword: current,
       newPassword: next,
-      revokeOtherSessions: others,
+      revokeOtherSessions: true,
     }).catch(() => null);
     const result = res
       ? await readChangePassword(res)
@@ -50,7 +51,7 @@ function ChangePassword() {
     if (result.kind === 'signed_out') return window.location.assign('/login');
     if (result.kind === 'error') return setError(result.message);
     form.reset();
-    setDone(others ? 'Đã đổi mật khẩu. Các thiết bị khác đã bị đăng xuất.' : 'Đã đổi mật khẩu.');
+    setDone('Đã đổi mật khẩu. Các thiết bị khác đã bị đăng xuất.');
   }
   return (
     <form
@@ -73,10 +74,9 @@ function ChangePassword() {
         Nhập lại mật khẩu mới
         <input name="again" type="password" autoComplete="new-password" className={input} />
       </label>
-      <label className="flex items-center gap-2">
-        <input name="others" type="checkbox" defaultChecked />
-        Đăng xuất các thiết bị khác
-      </label>
+      <p className="text-12 text-text-muted">
+        Đổi xong, mọi thiết bị khác đang đăng nhập bằng tài khoản này bị đăng xuất.
+      </p>
       {error ? <p role="alert">{error}</p> : null}
       {done ? <p role="status">{done}</p> : null}
       <button type="submit" className={primary} disabled={busy} aria-busy={busy}>
@@ -117,7 +117,7 @@ function SignOutOthers() {
   );
 }
 
-/** #5 Hồ sơ cá nhân (spec M8 §3.8): read-only information, password and other devices, notifications pending an API. */
+/** #5 Hồ sơ cá nhân (spec M8 §3.8): information and one's name, password and other devices, notifications pending an API. */
 export function Profile({
   tab,
   name,
@@ -151,7 +151,7 @@ export function Profile({
         ))}
       </nav>
       {tab === 'info' ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-6">
           <dl className="grid grid-cols-[160px_1fr] gap-2">
             <dt className="text-text-muted">Tên</dt>
             <dd>{name}</dd>
@@ -162,7 +162,8 @@ export function Profile({
             <dt className="text-text-muted">Workspace</dt>
             <dd>{workspaces.length ? workspaces.join(', ') : 'Chưa có'}</dd>
           </dl>
-          <p className="text-12 text-text-muted">Đổi tên và ảnh đại diện: chờ API (U25).</p>
+          <NameForm name={name} />
+          <p className="text-12 text-text-muted">Ảnh đại diện: chưa có trong bản hiện tại.</p>
         </div>
       ) : tab === 'security' ? (
         <div className="flex flex-col gap-6">
