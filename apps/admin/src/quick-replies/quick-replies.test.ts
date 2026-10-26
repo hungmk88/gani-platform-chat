@@ -4,6 +4,8 @@ import { errorOf } from '../api/errors';
 import {
   insertVariable,
   mayManageQuickReplies,
+  missingOf,
+  previewPath,
   quickReplyChangeOf,
   quickRepliesPath,
   quickReplyDraftOf,
@@ -109,5 +111,17 @@ describe('quickReplyChangeOf and insertVariable', () => {
       text: 'Chào {{customer_name}}!',
       caret: 22,
     });
+  });
+});
+
+describe('previewPath and missingOf', () => {
+  it('asks the preview of one template', () => {
+    expect(previewPath('a/b')).toBe('/v1/quick-replies/a%2Fb/preview');
+  });
+  it('says where each value left out comes from', () => {
+    expect(missingOf(['company_phone', 'x'])).toEqual([
+      'SĐT công ty: workspace chưa đặt SĐT liên hệ (Cài đặt › Workspace, Owner hoặc Admin).',
+      '{{x}}: không điền được.',
+    ]);
   });
 });

@@ -21,10 +21,19 @@ import {
   type QuickReplyList,
 } from '../quick-replies/quick-replies';
 import { withMessage } from '../realtime/events';
+import type { WorkspaceList } from '../workspaces/workspace';
 import { MAX_TEXT, sendingMessage, textOf, WINDOW_REASON, withoutLocal } from './composer';
 import type { Message } from './messages';
 import { optionId, PICKER_ID, TemplatePicker, VariableFields } from './template-picker';
-import { fieldsOf, fill, MAX_SHOWN, slashQuery, unresolvedProblem, type Known } from './templates';
+import {
+  fieldsOf,
+  fill,
+  MAX_SHOWN,
+  phoneOf,
+  slashQuery,
+  unresolvedProblem,
+  type Known,
+} from './templates';
 
 type MessagePage = components['schemas']['MessagePage'];
 type Pages = InfiniteData<MessagePage>;
@@ -33,7 +42,8 @@ type Pages = InfiniteData<MessagePage>;
  * The reply box (#6, I2): `POST …/messages` (N146). Sending is optimistic (CLAUDE.md): the message shows at once as "Đang
  * gửi…", the API's answer replaces it, a refusal takes it back and returns the text to the box. One Idempotency-Key per text:
  * sending the same text again after a failure reuses it, any other text gets a new one. Ctrl/⌘+Enter sends, R goes to the box.
- * "/" opens the templates of the conversation's workspace (C7c, N163): a picked one comes in with `known` filled, the variables
+ * "/" opens the templates of the conversation's workspace (C7c, N163): a picked one comes in with `known` (and the workspace's
+ * number for Owner/Admin) filled, the variables
  * left get a field each and are filled when sending; a {{…}} left blocks sending. A message sent from a template counts one use.
  */
 export function ReplyBox({
@@ -41,11 +51,14 @@ export function ReplyBox({
   workspaceId,
   meId,
   known,
+  readsPhone,
 }: {
   conversationId: string;
   workspaceId: string;
   meId: string;
   known: Known;
+  /** Owner/Admin read the workspaces, so {{company_phone}} comes filled (U37). */
+  readsPhone: boolean;
 }) {
   const scope = useScope();
   const queries = useQueryClient();
@@ -65,6 +78,7 @@ export function ReplyBox({
   const asked = useDeferredValue(q ?? '');
   const path = quickRepliesPath(workspaceId, { q: asked, tag: null });
   const templates = useApiQuery<QuickReplyList>(['quick-replies', workspaceId, path], path, open);
+  const workspaces = useApiQuery<WorkspaceList>(['workspaces'], '/v1/workspaces', readsPhone);
   const shown = open ? (templates.data?.data ?? []).slice(0, MAX_SHOWN) : [];
   const active = pointer.q === q ? Math.min(pointer.at, Math.max(shown.length - 1, 0)) : 0;
   const fields = fieldsOf(text);
@@ -137,7 +151,7 @@ export function ReplyBox({
     if (!next.trim()) template.current = null;
   };
   const pick = (r: QuickReply) => {
-    edit(fill(r.body, known));
+    edit(fill(r.body, { ...known, ...phoneOf(workspaces.data, workspaceId) }));
     template.current = r.id;
     requestAnimationFrame(() => box.current?.focus());
   };

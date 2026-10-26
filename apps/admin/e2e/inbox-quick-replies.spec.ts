@@ -4,6 +4,7 @@ import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf, CONVERSATIONS } from './stub-api';
 import { QUICK_REPLIES } from './stub-quick-replies';
+import { WORKSPACES } from './stub-workspaces';
 
 // #6 Hộp thư: quick replies in the reply box (C7c, N163). "/" opens the templates of the conversation's workspace, a picked one
 // comes in with the names the Inbox knows, the variables left get a field, a {{…}} left is never sent, a sent template counts one use.
@@ -111,4 +112,26 @@ test('Esc closes the list, a text typed by hand counts no use, and 422 unresolve
   await expect(alert).toContainText('Mã: trace-e2e-var');
   await expect(box(page)).toHaveValue(`Dạ ${giaSi!.shortcut} ạ`);
   expect(counted).toEqual([]);
+});
+
+test('an Admin reads the workspaces, so the contact number of the workspace comes filled (U37)', async ({
+  page,
+}) => {
+  await page.route('**/v1/workspaces', (route) =>
+    route.fulfill({
+      json: {
+        data: WORKSPACES.map((w) =>
+          w.id === 'ws-e2e' ? { ...w, contactPhone: '0909 123 456' } : w,
+        ),
+      },
+    }),
+  );
+  await signIn(page, accountOf('admin'));
+  await page.goto(`/inbox/${held.id}`);
+  await box(page).fill('/gia-');
+  await picker(page)
+    .getByRole('option', { name: /^\/gia-si/ })
+    .click();
+  await expect(box(page)).toHaveValue(giaSi!.body.replace('{{company_phone}}', '0909 123 456'));
+  await expect(form(page).getByRole('group')).toHaveCount(0);
 });

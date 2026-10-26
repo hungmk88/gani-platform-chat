@@ -13,6 +13,7 @@ import {
   type QuickReplyList,
 } from './quick-replies';
 import { EditQuickReplyDialog, EndQuickReplyDialog } from './quick-reply-dialogs';
+import { PreviewQuickReplyDialog } from './quick-reply-preview';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
 const tagButton = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
@@ -21,7 +22,8 @@ const button = 'rounded-input border border-border-strong px-3 py-1';
 /**
  * The templates of the workspace being worked in (#22, `GET /v1/quick-replies`, N163), most used first as the API sorts them: the
  * shortcut typed after "/" in the Inbox, the text as plain text, the tags and how often it was used. Searched by the start of a
- * shortcut; a tag of a row filters by that tag. Each is changed (`EditQuickReplyDialog`) or removed (`EndQuickReplyDialog`) from its row.
+ * shortcut; a tag of a row filters by that tag. Each is seen with sample values (`PreviewQuickReplyDialog`), changed (`EditQuickReplyDialog`) or
+ * removed (`EndQuickReplyDialog`) from its row.
  */
 export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
   const [q, setQ] = useState('');
@@ -32,6 +34,7 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
   const filtered = Boolean(filter.q.trim() || tag);
   const [editing, setEditing] = useState<QuickReply | null>(null);
   const [ending, setEnding] = useState<QuickReply | null>(null);
+  const [previewing, setPreviewing] = useState<QuickReply | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const open = (set: (r: QuickReply) => void) => (r: QuickReply) => {
     setNotice(null);
@@ -90,6 +93,14 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
                   <button
                     type="button"
                     className={button}
+                    aria-label={`Xem trước mẫu /${r.shortcut}`}
+                    onClick={() => open(setPreviewing)(r)}
+                  >
+                    Xem trước
+                  </button>
+                  <button
+                    type="button"
+                    className={button}
                     aria-label={`Sửa mẫu /${r.shortcut}`}
                     onClick={() => open(setEditing)(r)}
                   >
@@ -126,6 +137,13 @@ export function QuickReplyTable({ workspaceId }: { workspaceId: string }) {
           ))}
         </ul>
       )}
+      {previewing ? (
+        <PreviewQuickReplyDialog
+          key={previewing.id}
+          reply={previewing}
+          onClose={() => setPreviewing(null)}
+        />
+      ) : null}
       {editing ? (
         <EditQuickReplyDialog
           key={editing.id}

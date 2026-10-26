@@ -131,6 +131,34 @@ test('a Manager changes a template, only what changed is sent, then removes anot
   await expect(list.getByRole('listitem')).toHaveCount(QUICK_REPLIES.length - 1);
 });
 
+test('a template is seen with sample values; a variable with no value is said in words', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/quick-replies');
+  const list = page.getByRole('region', { name: 'Mẫu của workspace' });
+  const posted = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/preview'));
+  await list.getByRole('button', { name: 'Xem trước mẫu /chao' }).click();
+  expect((await posted).url()).toMatch(
+    new RegExp(`/v1/quick-replies/${QUICK_REPLIES[0]!.id}/preview$`),
+  );
+  const chao = page.getByRole('dialog', { name: 'Xem trước mẫu /chao' });
+  await expect(
+    chao.getByText('Chào Nguyễn Văn A, em là Người thử admin của Công ty thử.'),
+  ).toBeVisible();
+  await expect(chao.getByRole('listitem')).toHaveCount(0);
+  await chao.getByRole('button', { name: 'Đóng' }).click();
+  await expect(chao).toBeHidden();
+
+  await list.getByRole('button', { name: 'Xem trước mẫu /gia-si' }).click();
+  const giaSi = page.getByRole('dialog', { name: 'Xem trước mẫu /gia-si' });
+  await expect(giaSi.getByText('gọi {{company_phone}} để được báo giá')).toBeVisible();
+  await expect(giaSi.getByRole('listitem')).toHaveText([
+    /SĐT công ty: workspace chưa đặt SĐT liên hệ/,
+  ]);
+  await expectAccessible(page);
+});
+
 test('Sales use the templates in the Inbox only: the page is forbidden', async ({ page }) => {
   await signIn(page, accountOf('sales'));
   await page.goto('/settings/quick-replies');
