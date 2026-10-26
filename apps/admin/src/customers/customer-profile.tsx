@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 
 import type { Role } from '../nav';
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { mayEditCustomers } from './customer-edit';
+import { CustomerEditDialog } from './customer-edit-dialog';
 import {
   channelsOf,
   customerPath,
@@ -18,6 +21,7 @@ import {
 } from './customers';
 
 const TONE = { ok: 'bg-ok-bg text-ok-text', warn: 'bg-warn-bg text-warn-text' };
+const primary = 'self-start rounded-input bg-accent px-4 py-2 text-accent-on';
 const back = (
   <Link href="/customers" className="self-start underline">
     Về danh sách khách
@@ -26,11 +30,13 @@ const back = (
 
 /**
  * #8 Hồ sơ khách (`GET /v1/customers/{id}`, N165): the profile of one customer of the company and how the channels know them.
- * Marketing and Viewer get the phone and the email masked from the API. Conversations, leads, tickets, tags and notes wait for
- * their API; changing the profile (`PATCH`) comes next.
+ * Marketing and Viewer get the phone and the email masked from the API. The roles that hold conversations change it
+ * (`CustomerEditDialog`). Conversations, leads, tickets, tags and notes wait for their API.
  */
 export function CustomerProfile({ id, role }: { id: string; role: Role }) {
   const customer = useApiQuery<Customer>(['customer', id], customerPath(id));
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
   if (customer.isPending)
     return (
       <p role="status" aria-busy="true" className="text-text-muted">
@@ -70,6 +76,19 @@ export function CustomerProfile({ id, role }: { id: string; role: Role }) {
     <div className="flex flex-col gap-6">
       {back}
       <h1 className="text-20 font-semibold">{nameOf(c)}</h1>
+      {mayEditCustomers(role) ? (
+        <button
+          type="button"
+          className={primary}
+          onClick={() => {
+            setSaved(false);
+            setEditing(true);
+          }}
+        >
+          Sửa hồ sơ
+        </button>
+      ) : null}
+      {saved ? <p role="status">Đã lưu hồ sơ khách.</p> : null}
       <section aria-labelledby="customer-info" className="flex flex-col gap-2">
         <h2 id="customer-info" className="text-16 font-semibold">
           Thông tin
@@ -109,6 +128,13 @@ export function CustomerProfile({ id, role }: { id: string; role: Role }) {
       <p className="text-12 text-text-muted">
         Hội thoại, lead, ticket, tag và ghi chú của khách: chờ API.
       </p>
+      {editing ? (
+        <CustomerEditDialog
+          customer={c}
+          onClose={() => setEditing(false)}
+          onDone={() => setSaved(true)}
+        />
+      ) : null}
     </div>
   );
 }

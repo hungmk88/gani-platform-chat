@@ -144,3 +144,69 @@ test('a Viewer sees the profile masked; a customer that is not there is "not fou
   await expect(page.getByRole('heading', { name: 'Không tìm thấy khách' })).toBeVisible();
   await expectAccessible(page);
 });
+
+// "Sửa hồ sơ khách" (PATCH, N165): only what changed is sent, the phone in E.164, a blank field clears it; Marketing/Viewer cannot.
+test('a Support changes the name, the phone and the flag of a customer, and the list shows the new name', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('support'));
+  await page.goto(`/customers/${CUSTOMERS[0]!.id}`);
+  await page.getByRole('button', { name: 'Sửa hồ sơ' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sửa hồ sơ — Nguyễn Văn An' });
+  await dialog.getByLabel(/Tên khách/).fill(' Anh An ');
+  await dialog.getByLabel(/SĐT/).fill('0912 345 678');
+  await dialog.getByLabel(/Chỉ người phục vụ/).check();
+  await expectAccessible(page);
+  const patched = page.waitForRequest(
+    (r) => r.method() === 'PATCH' && r.url().endsWith(CUSTOMERS[0]!.id),
+  );
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  expect((await patched).postDataJSON()).toEqual({
+    displayName: 'Anh An',
+    phone: '+84912345678',
+    humanOnly: true,
+  });
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status')).toHaveText('Đã lưu hồ sơ khách.');
+  await expect(page.getByRole('heading', { name: 'Anh An', level: 1 })).toBeVisible();
+  const info = page.getByRole('region', { name: 'Thông tin' });
+  await expect(info).toContainText('0912 345 678');
+  await expect(info).toContainText('Có: bot không trả lời khách này');
+  await page.getByRole('link', { name: 'Về danh sách khách' }).click();
+  await expect(rows(page).nth(1)).toContainText('Anh An');
+});
+
+test('a wrong phone is said before sending, a blank email clears it, nothing changed sends nothing', async ({
+  page,
+}) => {
+  const patches: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'PATCH') patches.push(r.postData() ?? '');
+  });
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/customers/${CUSTOMERS[3]!.id}`);
+  await page.getByRole('button', { name: 'Sửa hồ sơ' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches).toEqual([]);
+
+  await page.getByRole('button', { name: 'Sửa hồ sơ' }).click();
+  await dialog.getByLabel(/SĐT/).fill('0912');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('SĐT chưa đúng dạng');
+  expect(patches).toEqual([]);
+  await dialog.getByLabel(/SĐT/).fill('0910 000 003');
+  await dialog.getByLabel(/Email/).fill('');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches.map((p) => JSON.parse(p) as unknown)).toEqual([{ email: null }]);
+  await expect(page.getByRole('region', { name: 'Thông tin' })).toContainText('EmailChưa có');
+});
+
+test('a Marketing reads a profile but has no way to change it', async ({ page }) => {
+  await signIn(page, accountOf('marketing'));
+  await page.goto(`/customers/${CUSTOMERS[0]!.id}`);
+  await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sửa hồ sơ' })).toHaveCount(0);
+});
