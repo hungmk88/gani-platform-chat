@@ -580,13 +580,13 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description channel_window_closed with windowState and reason: nothing was written (C-N4); or idempotency_key_reused. */
+                /** @description channel_window_closed with windowState and reason: nothing was written (C-N4); unresolved_variable: the text still holds a {{…}} of a quick reply (N163); or idempotency_key_reused. */
                 422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": components["schemas"]["WindowClosedProblem"];
+                        "application/problem+json": components["schemas"]["WindowClosedProblem"] | components["schemas"]["Problem"];
                     };
                 };
                 /** @description service_unavailable: the session or the membership could not be read. */
@@ -2941,6 +2941,90 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/quick-replies/{id}/used": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Count one use of a template, called when the Inbox sends it (N163); most used come first in the list. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The count after this use. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuickReplyUse"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: a role that does not answer customers; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no live template with this id in the session’s workspaces. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3230,6 +3314,9 @@ export interface components {
             shortcut?: string;
             body?: string;
             tags?: string[];
+        };
+        QuickReplyUse: {
+            useCount: number;
         };
     };
     responses: never;

@@ -230,3 +230,34 @@ describe('PATCH/DELETE /v1/quick-replies/{id}', () => {
     ]);
   });
 });
+
+describe('POST /v1/quick-replies/{id}/used', () => {
+  it('counts a use for every role that answers customers, and refuses the others and what is not theirs', async () => {
+    const id = String(
+      (await call('owner', 'POST', '', { workspaceId: W, shortcut: 'dung', body: 'Dùng' })).body[
+        'id'
+      ],
+    );
+    expect(await call('sales', 'POST', `/${id}/used`)).toEqual({
+      status: 200,
+      body: { useCount: 1 },
+    });
+    expect((await call('manager', 'POST', `/${id}/used`)).body).toEqual({ useCount: 2 });
+    const answers = [
+      await call('marketing', 'POST', `/${id}/used`),
+      await call('sales', 'POST', `/${inW2}/used`),
+      await call('sales', 'POST', '/not-a-uuid/used'),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([403, 404, 400]);
+    await call('owner', 'DELETE', `/${id}`);
+    expect((await call('sales', 'POST', `/${id}/used`)).status).toBe(404);
+    const counts = await q(
+      'SELECT id, use_count FROM quick_replies WHERE id = ANY($1::uuid[]) ORDER BY use_count',
+      [[id, inW2]],
+    );
+    expect(counts.rows).toEqual([
+      { id: inW2, use_count: 0 },
+      { id, use_count: 2 },
+    ]);
+  });
+});

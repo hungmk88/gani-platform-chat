@@ -1,4 +1,5 @@
 import {
+  countQuickReplyUse,
   createQuickReply,
   deleteQuickReply,
   listQuickReplies,
@@ -125,6 +126,16 @@ export class QuickRepliesController {
       if (!(await lockQuickReply(tx, id))) throw new NotFoundException();
       await deleteQuickReply(tx, id);
     });
+  }
+
+  /** The Inbox sent this template (endpoint-M8 §2): one more use, for "most used first". Every role that reads templates may count. */
+  @Post(':id/used')
+  @HttpCode(200)
+  async used(@Param('id', new ZodPipe(QuickReplyIdSchema)) id: string) {
+    const ctx = this.allowed(mayReadQuickReplies);
+    const useCount = await this.database.withTenant(ctx, (tx) => countQuickReplyUse(tx, id));
+    if (useCount === null) throw new NotFoundException();
+    return { useCount };
   }
 
   /** The request context of a person whose role may do this, in `workspaceId` when one is named. */

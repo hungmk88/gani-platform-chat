@@ -24,9 +24,20 @@ import {
 import { ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
+import { variablesOf } from '../quick-replies/variables.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import { ConversationIdSchema, SendMessageBodySchema } from './conversations.schemas.js';
 import { actionScope, canSee, mayAct } from './permissions.js';
+
+/** 422 of a message that still holds a {{variable}} of a quick reply (C7, N163): nothing is sent, the Inbox fills it first. */
+export class UnresolvedVariableError extends Error {
+  readonly status = 422;
+  readonly code = 'unresolved_variable';
+  constructor() {
+    super('The message still holds a {{…}} variable: fill it before sending.');
+    this.name = 'UnresolvedVariableError';
+  }
+}
 
 /** The states in which a person holds the conversation and may answer the customer (N146). Sending does not change the state. */
 const ANSWERABLE = new Set(['HUMAN_ACTIVE', 'PENDING_CUSTOMER']);
@@ -54,6 +65,8 @@ export class SendMessageController {
   ) {
     const ctx = currentRequestContext();
     if (actionScope(ctx.role, 'send_message') === 'none') throw new ForbiddenException();
+    // The text alone decides it, before any lock or read: a customer never receives "{{customer_name}}" (N163).
+    if (variablesOf(body.text).length > 0) throw new UnresolvedVariableError();
     return this.database.withTenant(ctx, async (tx) => {
       await lockConversation(tx, id);
       const conversation = await loadConversationView(tx, id);

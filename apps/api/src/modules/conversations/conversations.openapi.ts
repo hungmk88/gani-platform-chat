@@ -1,7 +1,12 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
+import {
+  EDGE_ERRORS,
+  IdempotencyHeadersSchema,
+  ProblemSchema,
+  problemResponse,
+} from '../../openapi/schemas.js';
 import {
   AssigneeBodySchema,
   ClaimConflictSchema,
@@ -86,8 +91,10 @@ export function registerConversations(registry: OpenAPIRegistry): void {
       ),
       422: {
         description:
-          'channel_window_closed with windowState and reason: nothing was written (C-N4); or idempotency_key_reused.',
-        content: { 'application/problem+json': { schema: WindowClosedSchema } },
+          'channel_window_closed with windowState and reason: nothing was written (C-N4); unresolved_variable: the text still holds a {{…}} of a quick reply (N163); or idempotency_key_reused.',
+        content: {
+          'application/problem+json': { schema: z.union([WindowClosedSchema, ProblemSchema]) },
+        },
       },
       401: EDGE_ERRORS[401],
       503: EDGE_ERRORS[503],
