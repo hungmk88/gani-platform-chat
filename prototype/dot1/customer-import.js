@@ -45,7 +45,7 @@ function chooseFile() {
       ? h('div', { class: 'state-box', role: 'alert' }, h('p', {}, 'Không đọc được file: dòng 1 không có tiêu đề cột, hoặc file không phải UTF-8.'), h('p', { class: 'trace muted' }, 'Mã: 7f3a9c1e-…'), h('p', { class: 'small' }, 'Lưu lại từ Excel bằng "CSV UTF-8" rồi chọn lại.'))
       : null,
     Proto.state() === 'empty_file'
-      ? h('div', { class: 'state-box', role: 'alert' }, h('p', {}, 'File chỉ có dòng tiêu đề, không có khách nào để nhập.'), h('button', { class: 'btn', onclick: () => document.getElementById('file')?.click() }, 'Chọn file khác'))
+      ? h('div', { class: 'state-box', role: 'alert' }, h('p', {}, 'File chỉ có dòng tiêu đề, không có khách nào để nhập.'), h('button', { class: 'btn', onclick: () => input.click() }, 'Chọn file khác'))
       : null,
     h('p', { class: 'small muted' }, 'Giới hạn: ', pending('số dòng và dung lượng tối đa: chờ Backend'), ' · Excel (.xlsx): ', pending('chờ chốt, Đợt 1 chỉ CSV theo J5')));
 }

@@ -1,4 +1,4 @@
-/* global Proto */
+/* global Proto, window */
 /* #27 Tự chủ & feature flag (danh-sach-man-M11; A13). Sprint S5, nộp wireframe 04/01/2027.
    Phụ lục B: hạ mức tự chủ, tắt feature flag — Owner, Admin; nâng mức tự chủ — chỉ Owner.
    `PATCH /v1/workspaces/{id}/autonomy` (Owner), có lý do, ghi audit. Đợt 1 chỉ L0 + AI nội bộ (Phụ lục kỹ thuật mục 29). */
