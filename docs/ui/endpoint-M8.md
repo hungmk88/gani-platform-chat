@@ -103,7 +103,7 @@ Lọc/tìm: dùng `GET /v1/customers` đã có (P9), mở rộng tham số `fiel
 | Đổi workspace | Chờ cố vấn (câu 2 mục 10) | Session | | Client xóa cache + ngắt realtime workspace cũ (T1) |
 | Quên / đặt lại mật khẩu | **Chờ PR7** | Công khai | ✓ | Đường của thư viện đã đóng (N84). Tên đường chốt ở PR7. Yêu cầu tối thiểu: link một lần, có hạn; luôn trả 202 dù email có tồn tại hay không |
 | Mời thành viên | `POST /v1/members/invite` (đã có trong Brief P9) | Owner, Admin | ✓ | **Bỏ `/v1/invitations/*`** (U22-5). Lời mời là cột trên `org_members` (S1-11, N6); hạn 7 ngày (U1). Gửi lại và nhận lời mời: tên đường chốt ở PR7 |
-| Hồ sơ cá nhân | `GET/PATCH /v1/me` · `POST /v1/me/password` | Session | ✓ (mật khẩu) | Tên, ảnh; đổi mật khẩu yêu cầu mật khẩu cũ và đăng xuất các phiên khác. `/update-user` của thư viện đã đóng nên dùng đường `/v1` |
+| Hồ sơ cá nhân | `GET/PATCH /v1/me` · `POST /api/auth/change-password` (N162) | Session | ✓ (mật khẩu) | Tên (ảnh chờ kho file); `/update-user` của thư viện đã đóng nên tên đi đường `/v1`. Đổi mật khẩu dùng đường của thư viện (bỏ `/v1/me/password`, N162): yêu cầu mật khẩu cũ, **luôn** đăng xuất các phiên khác, audit ở mỗi công ty người đó thuộc |
 | Thông báo | `GET/PATCH /v1/me/notification-settings` | Session | | Thông báo trình duyệt, âm thanh |
 
 ## 9. Script quản trị (không phải endpoint)
