@@ -3197,6 +3197,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/quick-replies/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A template not saved yet, with the same sample values as `/{id}/preview` (U38). Writes nothing; the body follows the rules of a saved template. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["QuickReplyDraft"];
+                };
+            };
+            responses: {
+                /** @description The preview. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuickReplyPreview"];
+                    };
+                };
+                /** @description validation_failed: the workspace id, or the body (up to 2000, only {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager manages templates (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers": {
         parameters: {
             query?: never;
@@ -3752,6 +3837,10 @@ export interface components {
         QuickReplyPreview: {
             text: string;
             unresolved: string[];
+        };
+        QuickReplyDraft: {
+            workspaceId: components["schemas"]["Uuid"];
+            body: string;
         };
         CustomerPage: {
             data: components["schemas"]["Customer"][];
