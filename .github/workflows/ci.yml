@@ -58,7 +58,8 @@ jobs:
   # (apps/admin/CLAUDE.md "CI bắt buộc"). No database: the stub answers /api/auth and /v1.
   admin-e2e:
     name: admin (e2e, axe)
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest (#350, CEO 27/10): the image changes only on purpose, so a library Chromium misses shows at once.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -72,7 +73,9 @@ jobs:
       - run: pnpm --filter "@gani/admin..." build
       # The Chromium of the pinned @playwright/test, cached by the runner image and that version (#350): `runner.os` alone is
       # "Linux", so the key also takes `ImageOS` (ubuntu24, ubuntu26…), a Chromium built for another image is never reused.
-      # The system libraries (apt) are not in the cache: always installed, each in its own step so their times show apart.
+      # No apt (`playwright install-deps` / `--with-deps`): it took 13 s, then 13 min on the same image and commit (#362), a slow
+      # mirror. The image ships Google Chrome, so Chromium's libraries are there. Moving to a new image and a library is missing:
+      # E2E fails when the browser starts; install that one package here, not `install-deps` as a whole.
       # pipefail and the empty checks: a failed lookup must stop here, never become a key shared by every version (CLAUDE.md).
       - id: playwright-key
         shell: bash
@@ -87,15 +90,14 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ steps.playwright-key.outputs.image }}-playwright-${{ steps.playwright-key.outputs.version }}-chromium
-      - name: Playwright system libraries (apt)
-        run: |
-          echo "::notice title=Playwright cache::hit=${{ steps.playwright-cache.outputs.cache-hit || 'false' }}"
-          pnpm --filter @gani/admin exec playwright install-deps chromium
+          # v2: the first cache made without apt (#362); bump it to start the cache afresh.
+          key: v2-${{ runner.os }}-${{ steps.playwright-key.outputs.image }}-playwright-${{ steps.playwright-key.outputs.version }}-chromium
       - name: Playwright Chromium (only on a cache miss)
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @gani/admin exec playwright install chromium
-      - run: pnpm --filter @gani/admin e2e
+      - run: |
+          echo "::notice title=Playwright cache::hit=${{ steps.playwright-cache.outputs.cache-hit || 'false' }}"
+          pnpm --filter @gani/admin e2e
       # The widget on its test page (apps/widget/CLAUDE.md "Kiểm chứng"), with the same Chromium: built, then E2E and axe-core.
       - run: pnpm --filter @gani/widget build
       - run: pnpm --filter @gani/widget e2e
