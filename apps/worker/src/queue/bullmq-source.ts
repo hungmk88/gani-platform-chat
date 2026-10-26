@@ -4,6 +4,7 @@ import { Redis } from 'ioredis';
 
 import type { QueueSource } from '../consumer/event-consumer.js';
 import type { Logger } from '../logger.js';
+import type { ConsumerMetrics } from '../metrics.js';
 import { EVENT_QUEUE_REGISTRY, QUEUE_CALL_MS, throttledErrorLog } from './bullmq-publisher.js';
 
 /** The part of an ioredis connection the source uses. */
@@ -90,6 +91,7 @@ export function createBullmqSource(
   redisUrl: string,
   log: Logger,
   concurrency: number,
+  metrics?: Pick<ConsumerMetrics, 'jobStalled' | 'jobFailed'>,
 ): BullmqSource {
   const onError = throttledErrorLog(log, Date.now);
   // `maxRetriesPerRequest: null` is what BullMQ asks of a connection a Worker uses.
@@ -101,6 +103,20 @@ export function createBullmqSource(
     makeWorker: (queue, run) => {
       const worker = new Worker(queue, (job) => run(job.data), { connection, concurrency });
       worker.on('error', onError);
+      // Where a job goes that no handler finishes (K-IN): taken back from a dead worker, or failed for good. Ids and codes only.
+      worker.on('stalled', (jobId) => {
+        metrics?.jobStalled();
+        log.warn('event_job_stalled', { queue, jobId });
+      });
+      worker.on('failed', (job, error) => {
+        metrics?.jobFailed();
+        log.warn('event_job_failed', {
+          queue,
+          jobId: job?.id ?? null,
+          attemptsMade: job?.attemptsMade ?? 0,
+          error: error.name,
+        });
+      });
       return worker;
     },
   });

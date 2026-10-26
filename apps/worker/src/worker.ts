@@ -3,7 +3,7 @@ import { EventConsumer, type EventHandlers, type QueueSource } from './consumer/
 import { InboundProcessor, type InboundStore } from './inbound/inbound-processor.js';
 import type { Logger } from './logger.js';
 import { PartitionMaintenanceJob, type PartitionStore } from './maintenance/partition-job.js';
-import type { RelayMetrics } from './metrics.js';
+import type { ConsumerMetrics, RelayMetrics } from './metrics.js';
 import { OutboxRelay, type QueuePublisher, type RelayStore } from './relay/outbox-relay.js';
 
 export interface WorkerDeps {
@@ -23,6 +23,8 @@ export interface WorkerDeps {
     readonly settings: WorkerConfig['events'];
     /** What the handlers send through (the realtime emitter, V8b): closed once the consumer has stopped. */
     readonly emitter?: { close(): Promise<void> };
+    /** What the consumer counts, for `/metrics` (#324). */
+    readonly metrics?: ConsumerMetrics;
   };
   /** What the relay counts, for `/metrics` and `/healthz` (OPS-02). */
   readonly metrics?: RelayMetrics;

@@ -33,14 +33,22 @@ function setup(names: string[], settings = { discoveryMs: 10, maxQueues: 10 }) {
   const line = (message: string, fields?: object) =>
     void logs.push(`${message} ${JSON.stringify(fields ?? {})}`);
   const log: Logger = { info: line, warn: line, error: line };
+  const counted: string[] = [];
+  const metrics = {
+    jobHandled: (ok: boolean) => void counted.push(ok ? 'handled' : 'threw'),
+    jobStalled: () => void counted.push('stalled'),
+    jobFailed: () => void counted.push('failed'),
+    queuesSubscribed: (n: number) => void counted.push(`queues ${n}`),
+  };
   const consumer = new EventConsumer({
     source: source satisfies QueueSource,
     handlers: loggingHandlers(log),
     log,
     settings,
     shutdownMs: 200,
+    metrics,
   });
-  return { consumer, source, jobs, logs };
+  return { consumer, source, jobs, logs, counted };
 }
 
 describe('EventConsumer.discover', () => {
@@ -51,6 +59,7 @@ describe('EventConsumer.discover', () => {
     expect([...t.jobs.keys()]).toEqual([wsQueue, orgQueue]);
     expect(t.source.subscribe).toHaveBeenCalledTimes(2);
     expect(t.logs.filter((l) => l.startsWith('event_queue_unknown'))).toHaveLength(2);
+    expect(t.counted).toEqual(['queues 1', 'queues 2']);
   });
 
   it('takes no more queues than its cap, and warns once for each one left', async () => {
@@ -85,6 +94,7 @@ describe('EventConsumer.handle', () => {
     expect(t.logs).toEqual([
       `event_consumed {"eventId":"e-1","type":"message.created","orgId":"${ORG}","workspaceId":"${WS}"}`,
     ]);
+    expect(t.counted).toEqual(['handled']);
   });
 
   it('is done with a type no handler wants', async () => {
@@ -128,8 +138,15 @@ describe('EventConsumer.handle', () => {
       },
       settings: { discoveryMs: 1, maxQueues: 1 },
       shutdownMs: 1,
+      metrics: {
+        jobHandled: (ok) => void t.counted.push(String(ok)),
+        jobStalled: vi.fn(),
+        jobFailed: vi.fn(),
+        queuesSubscribed: vi.fn(),
+      },
     });
     await expect(consumer.handle(event())).rejects.toBe(boom);
+    expect(t.counted).toEqual(['false']);
     expect(t.logs).toEqual([
       'event_handler_failed {"eventId":"e-1","type":"message.created","error":"TypeError"}',
     ]);
