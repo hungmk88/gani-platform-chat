@@ -1,5 +1,5 @@
-// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, making, changing, ending and previewing one,
-// counting one use. Each session has its own copy, so tests running side by side never see each other's templates. Never deployed.
+// #22 Mẫu trả lời nhanh for the e2e stub API only (N163): the templates of a workspace, most used first, making, changing, ending and
+// previewing one (saved or not, U38), counting one use. Each session has its own copy, so tests running side by side never see each other's templates. Never deployed.
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -58,7 +58,8 @@ export async function routeQuickReplies(
   const id = /^\/v1\/quick-replies\/([^/]+)$/.exec(path)?.[1];
   const used = /^\/v1\/quick-replies\/([^/]+)\/used$/.exec(path)?.[1];
   const preview = /^\/v1\/quick-replies\/([^/]+)\/preview$/.exec(path)?.[1];
-  if (path !== '/v1/quick-replies' && !id && !used && !preview) return false;
+  const draft = path === '/v1/quick-replies/preview';
+  if (path !== '/v1/quick-replies' && !id && !used && !preview && !draft) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (!READERS.includes(session.role ?? ''))
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
@@ -72,12 +73,21 @@ export async function routeQuickReplies(
     r.useCount += 1;
     return (edge.send(res, 200, { useCount: r.useCount }), true);
   }
-  if (preview) {
-    // Seen with sample values (C7c3): only who manages templates; `ws-e2e` has no contact number, so {{company_phone}} stays.
+  if (preview || draft) {
+    // Seen with sample values (C7c3; a text not saved yet, U38): only who manages templates; `ws-e2e` has no contact number, so
+    // {{company_phone}} stays. A draft follows the rules of a saved template: a variable outside Đợt 1 is a 400.
     if (!WRITERS.includes(session.role ?? ''))
       return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
-    const r = mine.find((x) => x.id === preview);
     if (req.method !== 'POST') return false;
+    let r: { body: string } | undefined = mine.find((x) => x.id === preview);
+    if (draft) {
+      const b = await edge.json(req);
+      const text = typeof b['body'] === 'string' ? b['body'] : '';
+      const names = [...text.matchAll(/\{\{\s*([^{}]*?)\s*\}\}/g)].map((m) => m[1] ?? '');
+      if (!text.trim() || text.length > 2000 || names.some((n) => !VARIABLES.includes(n)))
+        return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+      r = { body: text };
+    }
     if (!r) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
     const values: Record<string, string> = {
       customer_name: 'Nguyễn Văn A',

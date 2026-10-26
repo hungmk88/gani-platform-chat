@@ -158,6 +158,48 @@ test('a template is seen with sample values; a variable with no value is said in
   await expectAccessible(page);
 });
 
+// U38: the text being written is seen with sample values before it is saved (`POST /v1/quick-replies/preview`, writes nothing).
+test('a text not saved yet is seen with sample values, from the form and from the change dialog', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('manager'));
+  await page.goto('/settings/quick-replies');
+  const form = page.getByRole('form', { name: 'Tạo mẫu' });
+  const preview = form.getByRole('button', { name: 'Xem trước' });
+  await expect(preview).toBeDisabled();
+  await form.getByLabel('Nội dung').fill('Chào {{customer_name}}, gọi {{company_phone}} nhé.');
+  const posted = page.waitForRequest((r) => r.url().endsWith('/v1/quick-replies/preview'));
+  await preview.click();
+  expect((await posted).postDataJSON()).toEqual({
+    workspaceId: 'ws-e2e',
+    body: 'Chào {{customer_name}}, gọi {{company_phone}} nhé.',
+  });
+  const seen = page.getByRole('dialog', { name: 'Xem trước mẫu đang soạn' });
+  await expect(seen.getByText('Chào Nguyễn Văn A, gọi {{company_phone}} nhé.')).toBeVisible();
+  await expect(seen.getByRole('listitem')).toHaveText([/SĐT công ty/]);
+  await expectAccessible(page);
+  await seen.getByRole('button', { name: 'Đóng' }).click();
+  await expect(seen).toBeHidden();
+  await expect(
+    page.getByRole('region', { name: 'Mẫu của workspace' }).getByRole('listitem'),
+  ).toHaveCount(QUICK_REPLIES.length);
+
+  await form.getByLabel('Nội dung').fill('Chào {{la}}');
+  await preview.click();
+  await expect(seen.getByRole('alert')).toContainText('Máy chủ không nhận mẫu này');
+  await seen.getByRole('button', { name: 'Đóng' }).click();
+
+  const list = page.getByRole('region', { name: 'Mẫu của workspace' });
+  await list.getByRole('button', { name: 'Sửa mẫu /chao' }).click();
+  const edit = page.getByRole('dialog', { name: 'Sửa mẫu /chao' });
+  await edit.getByLabel('Nội dung').fill('Dạ {{agent_name}} nghe ạ.');
+  await edit.getByRole('button', { name: 'Xem trước' }).click();
+  await expect(seen.getByText('Dạ Người thử manager nghe ạ.')).toBeVisible();
+  await seen.getByRole('button', { name: 'Đóng' }).click();
+  await expect(seen).toBeHidden();
+  await expect(edit).toBeVisible();
+});
+
 test('Sales use the templates in the Inbox only: the page is forbidden', async ({ page }) => {
   await signIn(page, accountOf('sales'));
   await page.goto('/settings/quick-replies');
