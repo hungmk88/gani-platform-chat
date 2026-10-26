@@ -70,8 +70,19 @@ jobs:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@gani/admin..." build
-      # The Chromium of the pinned @playwright/test, with the system libraries it needs.
-      - run: pnpm --filter @gani/admin exec playwright install --with-deps chromium
+      # The Chromium of the pinned @playwright/test, cached by its version in the lockfile (#350): a hit downloads no browser and
+      # only installs the system libraries it needs; a miss downloads it as before. The widget's E2E below uses the same Chromium.
+      - id: playwright-version
+        run: echo "version=$(pnpm --filter @gani/admin exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-chromium
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @gani/admin exec playwright install --with-deps chromium
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @gani/admin exec playwright install-deps chromium
       - run: pnpm --filter @gani/admin e2e
       # The widget on its test page (apps/widget/CLAUDE.md "Kiểm chứng"), with the same Chromium: built, then E2E and axe-core.
       - run: pnpm --filter @gani/widget build
