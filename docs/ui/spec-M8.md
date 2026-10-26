@@ -1,8 +1,8 @@
 # Spec M8 — 11 hạng mục Đợt 1 chưa có màn spec
 
-Bản nháp 3 · 13/10/2026 · đã áp Q-M8-1→3 (U19), U20-1→6, dòng 4 Phụ lục B, Q-U20-1→6 (U21), U22, U23 · Bổ sung cho Brief UI v1.0 · Người duyệt: CEO HUNG MK + cố vấn kỹ thuật
+Bản nháp 3 · 13/10/2026 · đã áp Q-M8-1→3 (U19), U20-1→6, dòng 4 Phụ lục B, Q-U20-1→6 (U21), U22, U23 · **cập nhật 26/10/2026: áp N152, N158, N162, N163, U36, U39 (mục 9)** · Bổ sung cho Brief UI v1.0 · Người duyệt: CEO HUNG MK + cố vấn kỹ thuật
 
-**Kết luận:** 9 hạng mục có giao diện ở Đợt 1 (hướng a), 2 hạng mục tạo bằng script quản trị (hướng b), không hạng mục nào bị gỡ khỏi Đợt 1. Phạm vi Đợt 1 giữ **58 mã**. Hai phần nhỏ đã được CEO chốt dời sang Đợt 2: phân bổ theo kỹ năng (C9) và lưu phân khúc (J4). Đồng hồ SLA dừng ngoài giờ và khi chờ khách (C8). Sáu điểm lệch với backend (U20) đã sửa: `/me` chỉ bật 2FA; danh sách phiên chỉ có thời điểm tạo và hạn; `/reset-password` chờ PR7; trạng thái agent còn 3 mức; giờ làm việc, ngày lễ, team ↔ kênh chờ Q7. Sáu câu phát sinh ở mục 8 (Q-U20) đã được CEO chốt ngày 13/10/2026.
+**Kết luận:** 9 hạng mục có giao diện ở Đợt 1 (hướng a), 2 hạng mục tạo bằng script quản trị (hướng b), không hạng mục nào bị gỡ khỏi Đợt 1. Phạm vi Đợt 1 giữ **58 mã**. Hai phần nhỏ đã được CEO chốt dời sang Đợt 2: phân bổ theo kỹ năng (C9) và lưu phân khúc (J4). Đồng hồ SLA dừng ngoài giờ và khi chờ khách (C8). Sáu điểm lệch với backend (U20) đã sửa: `/me` chỉ bật 2FA; danh sách phiên chỉ có thời điểm tạo và hạn; `/reset-password` chờ PR7 (nay đã có, N162 — mục 9); trạng thái agent còn 3 mức; giờ làm việc, ngày lễ, team ↔ kênh chờ Q7. Sáu câu phát sinh ở mục 8 (Q-U20) đã được CEO chốt ngày 13/10/2026.
 
 Căn cứ: Brief UI v1.0 · Brief Backend & Core v1.0 (P8, P14, P16, P17) · Phụ lục B Ma trận quyền · Phạm vi triển khai 135 mã · Phụ lục kỹ thuật v2.1–v2.3.
 
@@ -20,7 +20,7 @@ Căn cứ: Brief UI v1.0 · Brief Backend & Core v1.0 (P8, P14, P16, P17) · Ph�
 | 8 | J1 | Trường tùy chỉnh khách | **(a)** | `/settings/customer-data` — tab Trường tùy chỉnh |
 | 9 | J4 | Tag, segment, tìm kiếm, lọc | **(a)**, bỏ phần lưu phân khúc (Đợt 2) | `/settings/customer-data` — tab Tag; lọc/tìm ở `/customers` |
 | 10 | D4 | Xử lý ngoài giờ | **(a)** | Dùng chung giờ làm việc (mục 7) + flow mặc định "Ngoài giờ" trong `/bots` |
-| 11 | A5, A3 | Đăng nhập, 2FA, đổi workspace, hồ sơ cá nhân | **(a)** — `/reset-password` chờ PR7 | 5 màn nhóm Chung + bộ đổi workspace |
+| 11 | A5, A3 | Đăng nhập, 2FA, đổi workspace, hồ sơ cá nhân | **(a)** — quên/đặt lại mật khẩu theo N162 | 5 màn nhóm Chung + bộ đổi workspace |
 
 Mục 11 không phải "mã thiếu": đó là A5 (đăng nhập, 2FA, phiên) và A3 (nhận lời mời), đều thuộc Đợt 1.
 
@@ -35,7 +35,8 @@ Mục 11 không phải "mã thiếu": đó là A5 (đăng nhập, 2FA, phiên) v
 
 ### A2 — Tạo Workspace, chọn mẫu B2B / B2C / Service
 
-- **Cách làm:** lệnh `tenant:create-workspace --org --template b2b|b2c|service --name`, gọi `WorkspaceTemplateService.apply` (Brief-P16): tạo flow mặc định (gồm "Ngoài giờ"), pipeline 6 bước, SLA mặc định, team mặc định, giờ làm việc theo Q7.
+- **Cách làm:** lệnh `tenant:create-workspace --org <slug công ty> --name --slug --template b2b|b2c|service --operator <email> [--timezone]` (N158; `--slug`, `--operator`, `--timezone` thêm so với bản 13/10), gọi `WorkspaceTemplateService.apply` (Brief-P16): tạo flow mặc định (gồm "Ngoài giờ"), pipeline 6 bước, SLA mặc định, team mặc định, giờ làm việc theo Q7.
+- **Hiện trạng (N158, 24/10):** lệnh đã có, tạo workspace + đưa mọi Owner/Admin active vào workspace + audit; **nội dung mẫu (`WorkspaceTemplateService.apply`) chưa làm** vì các bảng flow, pipeline, SLA, giờ làm việc chưa có. Nghiệm thu dưới đây chỉ đạt khi phần này xong.
 - **Sửa sau khi tạo:** tên, múi giờ, giờ làm việc ở `/settings/workspace` (mục 3.4).
 - **Nghiệm thu:** workspace mới có đủ flow mặc định, pipeline, SLA, team mặc định ngay sau lệnh; Admin đăng nhập thấy đủ, không phải cấu hình tay.
 
@@ -44,7 +45,7 @@ Mục 11 không phải "mã thiếu": đó là A5 (đăng nhập, 2FA, phiên) v
 ### 3.1. A4 — Team
 
 **Màn hình:** `/settings/teams` (nhóm Cài đặt)
-**Vai trò:** Owner, Admin xem và sửa. Manager xem team của mình (theo Phụ lục B: cài đặt team chỉ Owner/Admin).
+**Vai trò:** Owner, Admin xem và sửa. Manager **chỉ đọc** team mình thuộc về: không tạo, sửa, kết thúc, không chọn người hay kênh (theo Phụ lục B: cài đặt team chỉ Owner/Admin; U39, 26/10).
 **Thao tác chính:**
 - Tạo team (tên, mô tả)
 - Thêm/bớt thành viên; một người có thể ở nhiều team
@@ -84,7 +85,7 @@ Mục 11 không phải "mã thiếu": đó là A5 (đăng nhập, 2FA, phiên) v
 ### 3.3. C8 — SLA và mức ưu tiên
 
 **Màn hình:** `/settings/workspace` — tab "SLA & ưu tiên"
-**Vai trò:** Owner, Admin sửa. Manager xem.
+**Vai trò:** Owner, Admin sửa. Manager **không vào** `/settings/workspace` (U39, 26/10).
 **Thao tác chính:**
 - Đặt 3 mức ưu tiên: Thường / Cao / Khẩn
 - Mỗi mức đặt 2 chỉ tiêu: thời gian phản hồi đầu tiên, thời gian xử lý xong
@@ -104,9 +105,10 @@ Mục 11 không phải "mã thiếu": đó là A5 (đăng nhập, 2FA, phiên) v
 ### 3.4. C10 + D4 — Giờ làm việc, trạng thái agent, xử lý ngoài giờ
 
 **Màn hình:** `/settings/workspace` — tab "Thông tin & giờ làm việc"; bộ chọn trạng thái agent trên thanh trên cùng (mọi màn); flow mặc định "Ngoài giờ" trong `/bots`.
-**Vai trò:** Giờ làm việc: Owner, Admin sửa; Manager xem. Trạng thái: mọi người có quyền Inbox tự đổi trạng thái của mình. **Đổi trạng thái của người khác: chỉ Owner, Admin** (Phụ lục B, dòng U20-5 — khác đề xuất ban đầu "Manager trở lên"). Manager xem trạng thái cả team (chỉ đọc); muốn gỡ hội thoại khỏi một agent thì Manager dùng "Chuyển hội thoại" (Brief-P14), không đổi trạng thái của agent.
+**Vai trò:** Giờ làm việc: Owner, Admin sửa; Manager **không vào** `/settings/workspace` (U39, 26/10). Trạng thái: mọi người có quyền Inbox tự đổi trạng thái của mình. **Đổi trạng thái của người khác: chỉ Owner, Admin** (Phụ lục B, dòng U20-5 — khác đề xuất ban đầu "Manager trở lên"). Manager xem trạng thái cả team (chỉ đọc); muốn gỡ hội thoại khỏi một agent thì Manager dùng "Chuyển hội thoại" (Brief-P14), không đổi trạng thái của agent.
 **Thao tác chính:**
-- Đặt lịch tuần theo ngày (giờ mở/đóng, nghỉ trưa), múi giờ (mặc định Asia/Ho_Chi_Minh)
+- Tab Thông tin: tên, múi giờ (mặc định Asia/Ho_Chi_Minh), giới hạn tải mặc định (N157), **SĐT liên hệ** của workspace (`contactPhone`, là `{{company_phone}}` của mẫu trả lời nhanh; sửa qua `PATCH /v1/workspaces/{id}`, N163)
+- Đặt lịch tuần theo ngày (giờ mở/đóng, nghỉ trưa)
 - Thêm ngày nghỉ lễ (vd. Tết 04–10/02/2027); ngày nghỉ = ngoài giờ cả ngày
 - Agent đổi trạng thái: **Online / Bận / Offline** (3 mức, U20-4). "Vắng" dời Đợt 2. Hành vi từng mức theo bảng dưới
 - Sửa flow "Ngoài giờ" (lời nhắn, hẹn giờ liên hệ lại) trong trình dựng bot; flow có sẵn từ mẫu (D3)
@@ -140,7 +142,7 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 ### 3.5. C9 — Phân bổ tự động
 
 **Màn hình:** `/settings/workspace` — tab "Phân bổ"
-**Vai trò:** Owner, Admin sửa. Manager xem.
+**Vai trò:** Owner, Admin sửa. Manager **không vào** `/settings/workspace` (U39, 26/10).
 **Thao tác chính:**
 - Chọn cách phân bổ cho từng team: "Tự động xoay vòng" hoặc "Agent tự nhận"
 - Đặt giới hạn tải mặc định của workspace (mặc định 5); giới hạn riêng từng agent sửa ở `/settings/members`
@@ -179,7 +181,7 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 ### 3.7. J4 — Tag, tìm kiếm, lọc
 
 **Màn hình:** `/settings/customer-data` — tab "Tag" (quản lý); tìm và lọc ở `/customers` (Brief UI §6.1).
-**Vai trò:** Owner, Admin, Manager quản lý tag. Sales, Support gắn/bỏ tag có sẵn trên hồ sơ và hội thoại.
+**Vai trò:** Owner, Admin quản lý tag (#23 chỉ Owner/Admin, kể cả tab Tag — U36, 26/10). Sales, Support gắn/bỏ tag có sẵn trên hồ sơ và hội thoại.
 **Thao tác chính:**
 - Tạo, đổi tên, ẩn tag; xem số khách đang mang tag
 - Gộp 2 tag thành 1 (vd. "bò viên" và "bo vien")
@@ -197,17 +199,18 @@ Chi tiết Offline theo FSM: trong giờ làm việc → hội thoại về "Ch�
 
 ### 3.8. A5, A3 — Đăng nhập, 2FA, đổi workspace, hồ sơ cá nhân
 
-**Màn hình:** `/login` · `/login/2fa` · `/reset-password` (chờ PR7) · `/invite/[token]` · `/me` (3 tab: Thông tin · Bảo mật · Thông báo) · bộ đổi workspace trên thanh trên cùng.
+**Màn hình:** `/login` · `/login/2fa` · `/forgot-password` · `/reset-password` (N162) · `/invite` (token ở fragment `#token=`, N152) · `/me` (3 tab: Thông tin · Bảo mật · Thông báo) · bộ đổi workspace trên thanh trên cùng.
 **Vai trò:** mọi người dùng. 2FA bắt buộc với Owner, Admin, platform operator (Brief-P17).
 **Thao tác chính:**
 - Đăng nhập email + mật khẩu; bước 2FA nếu đã bật hoặc vai trò bắt buộc
 - Nhận lời mời: đặt mật khẩu; vai trò bắt buộc 2FA phải cài 2FA ngay
-- Quên mật khẩu: **màn phụ thuộc PR7** (luồng đặt lại mật khẩu do PR7 tự viết, N84 — đường đặt lại của thư viện đã đóng); spec chi tiết bổ sung khi PR7 xong (U20-3)
+- Quên mật khẩu (N162, PR7 đã xong): nhập email → **luôn** một câu như nhau dù email có tài khoản hay không (API luôn 202); link trong email **dùng một lần, hạn 30 phút**; đặt mật khẩu mới thì **mọi phiên bị thu hồi** và không tự đăng nhập → "Đăng nhập lại" 
 - `/me` tab Bảo mật — 2FA: **chỉ bật 2FA và xem trạng thái** (Đã bật / Chưa bật). Không có nút tắt; tắt hoặc đặt lại 2FA đi qua Admin (U20-1, N79.4)
 - Bật 2FA: quét mã QR, nhập mã 6 số xác nhận, rồi **hiện 10 mã dự phòng một lần duy nhất**, mỗi mã dùng 1 lần; người dùng tự lưu (tải/chép) trước khi đóng (Q-U20-2, chốt). Màn nhập mã 2FA có link "Dùng mã dự phòng"
 - Đặt lại 2FA của người khác: ở `/settings/members` (#19), **chỉ Owner, Admin**, bắt buộc nhập lý do, ghi audit, thu hồi mọi phiên của người bị đặt lại; người đó phải cài lại 2FA ở lần đăng nhập kế tiếp (Q-U20-1, chốt)
 - `/me` tab Bảo mật — phiên: xem danh sách phiên, mỗi phiên chỉ hiện **thời điểm tạo** và **hạn**, không có IP, không có thiết bị (U20-2, N79.2); phiên đang dùng có nhãn **"Phiên này"**, các phiên khác có nút "Đăng xuất" (Q-U20-3, chốt)
-- `/me`: đổi tên, ảnh, mật khẩu; bật thông báo trình duyệt và âm thanh (C11)
+- `/me`: đổi tên (`PATCH /v1/me`, N162); **ảnh đại diện để sau**, khi có kho file (N162); đổi mật khẩu qua `/api/auth/change-password`, **luôn** đăng xuất các thiết bị khác (N162); bật thông báo trình duyệt và âm thanh (C11, chờ API)
+- Danh sách phiên ở trên chờ một đường đọc phiên **không trả token** (`/api/auth/list-sessions` trả token của mọi phiên cho JavaScript, không dùng — SEC-03)
 - Đổi workspace: danh sách workspace được cấp; đổi xong xóa cache và ngắt realtime của workspace cũ (Brief UI §2.6, test T1)
 **Trạng thái:**
 - Đang tải: nút đăng nhập hiện đang xử lý
@@ -277,3 +280,18 @@ Bảng câu hỏi gốc (giữ để truy vết):
 | Q-U20-4 | Đóng trình duyệt/mất mạng mà quên chuyển Offline thì agent tính là gì? | Bảng U20-4 chỉ nói trạng thái chọn tay. Nếu agent vẫn "Online" khi đã rời máy, hệ thống tiếp tục phân bổ hội thoại cho người không có mặt | Mất kết nối realtime quá N phút (đề xuất 5) → hệ thống tự chuyển Offline, rồi T17/T18 chạy như thường. Cố vấn xác nhận cùng `agent.presence` (realtime-spec, S4) |
 | Q-U20-5 | "Bận" có giới hạn thời gian không? | "Bận" không bị đẩy về hàng chờ dù quá 10 phút → agent để "Bận" cả buổi vẫn giữ hội thoại; Manager không đổi được trạng thái (chỉ Owner/Admin) | Đợt 1 không chặn, nhưng sau 30 phút "Bận" hiện nhắc cho chính agent và hiện số phút "Bận" ở màn trạng thái team của Manager. SLA vẫn chạy nên cảnh báo SLA là lưới an toàn |
 | Q-U20-6 | Q7 chặn **giá trị** hay chặn **cấu trúc màn**? | Hạn Q7 (28/12) trùng ngày bắt đầu S4 — đúng sprint FE làm các màn này. Nếu hiểu "chờ Q7" là chưa được dựng màn thì S4 trượt | Cấu trúc màn (form lịch tuần, ngày lễ, gán team ↔ kênh) chốt ngay trong spec này; Q7 chỉ quyết định **dữ liệu khởi tạo** cho từng workspace. U18 đã theo hướng này ("dùng giá trị tạm, ghi chờ Q7") — đề nghị anh xác nhận để FE không hiểu nhầm |
+
+## 9. Cập nhật 26/10/2026 — áp quyết định sau bản nháp 3
+
+Rà soát spec với prototype và các quyết định đã chốt sau 13/10 (FE, 26/10). Các dòng trên đã sửa theo:
+
+| Mục | Trước | Sau | Căn cứ |
+| --- | --- | --- | --- |
+| A2 | Lệnh `--org --template --name`; nghiệm thu "đủ flow, pipeline, SLA, team ngay sau lệnh" | Thêm `--slug`, `--operator`, `--timezone`; nội dung mẫu chưa làm, nghiệm thu chỉ đạt khi xong | N158 |
+| 3.1 | Manager xem team của mình | Manager chỉ đọc team mình thuộc về | U39 |
+| 3.3, 3.4, 3.5 | Manager xem SLA, giờ làm việc, phân bổ | Manager không vào `/settings/workspace` | U39 |
+| 3.4 | Tab Thông tin không có số liên hệ | Thêm SĐT liên hệ (`contactPhone`, `{{company_phone}}`) | N163 |
+| 3.7 | Owner, Admin, Manager quản lý tag | Chỉ Owner, Admin (#23) | U36 |
+| 3.8 | `/reset-password` chờ PR7; `/invite/[token]`; `/me` đổi tên, ảnh, mật khẩu | Quên/đặt lại mật khẩu theo N162; `/invite#token=`; đổi tên, ảnh để sau, đổi mật khẩu luôn đăng xuất thiết bị khác | N152, N162, SEC-03 |
+
+Câu hỏi còn mở phát sinh từ cùng đợt rà soát: U40–U51 trong `QUESTIONS.md`.
