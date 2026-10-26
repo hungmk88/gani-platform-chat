@@ -112,7 +112,7 @@ test('each row names the customer, or says nobody has named them yet; the conver
   await expect(list(page).first()).toContainText('Nguyễn Văn An');
   await expect(list(page).filter({ hasText: 'Khách chưa có tên' })).toHaveCount(STUB_PAGE - 1);
   await list(page).first().getByRole('link').click();
-  const view = page.getByRole('region', { name: 'Hội thoại' });
+  const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
   await expect(view.getByText('Nguyễn Văn An')).toBeVisible();
   await view.getByRole('link', { name: 'Xem hồ sơ khách' }).click();
   await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();

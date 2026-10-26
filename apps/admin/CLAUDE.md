@@ -146,6 +146,12 @@ Trang mặc định sau đăng nhập:
 - 5 thẻ (U29, CEO 26/10): hội thoại đang mở, chờ nhân viên nhận (vàng khi > 0), phản hồi đầu tiên P90 hôm nay (`durationText`), quá hạn SLA (đỏ khi > 0; `null` → "Chưa tính", chờ Q7), nhân viên trực tuyến / tổng. Sales/Support: API trả `scope: me` → "Tổng quan của tôi", 4 thẻ, không thẻ nhân viên (`src/overview/overview.ts` + `overview-screen.tsx`). "Cập nhật lúc" theo `generatedAt`, nút "Làm mới".
 - **API chưa phục vụ đường này thì trả 404**: màn hiện `PendingPage` như mục menu chưa có (CEO chốt 26/10: không dữ liệu giả trên production, không cờ môi trường). API giả: `e2e/stub-overview.ts` (`+no-overview@` → 404). Các màn có file API giả riêng được gọi qua `e2e/stub-routes.ts`.
 
+## Ticket (#14)
+
+- `/tickets`, Owner/Admin/Manager/Sales/Support như menu (`mayReadTickets`), vai trò khác trang 403. `GET /v1/tickets?workspaceId=` của **workspace đang chọn**: hợp đồng **planned S4** (`docs/openapi/planned.json`, N167; kiểu ở `src/api/planned.d.ts`). Mới nhất trước, "Tải thêm" theo cursor; lọc trạng thái (5 trạng thái U27 bằng lời: Mới, Đang xử lý, Chờ khách, Đã xong, Đã hủy) và phụ trách (Của tôi, Chưa giao). Sales chỉ thấy ticket mình tạo (API lọc).
+- Cột: tiêu đề, khách ("Không gắn khách"), trạng thái (Mới vàng, Đang xử lý xanh), ưu tiên (Thường/Cao/Khẩn), phụ trách ("Chưa giao"), SLA (`null` → "Chưa có SLA" tới Q7/Q8; tạm dừng chờ khách/ngoài giờ), cập nhật (`src/tickets/tickets.ts` + `ticket-list.tsx`). API trả 404 (chưa phục vụ) → `PendingPage` như #16.
+- Chi tiết, tạo, đổi trạng thái (#15): PR sau. API giả: `e2e/stub-tickets.ts` (`TICKETS`, trang 3 dòng; `+no-tickets@` → 404).
+
 ## Hồ sơ cá nhân (#5)
 
 - `/me` (mọi vai trò; tên ở thanh trên là link): 3 phần theo URL `?tab=info|security|notify` (link, không phải tablist).
