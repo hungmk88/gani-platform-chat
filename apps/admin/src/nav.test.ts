@@ -43,9 +43,10 @@ describe('navFor', () => {
     ['platform_operator', ['/platform']],
   ])('%s sees what Phụ lục B gives it', (role, expected) => {
     expect(hrefs(role)).toEqual(expect.arrayContaining(expected));
-    // A Manager manages the quick replies (Phụ lục B, N163) and no other setting.
+    // A Manager reads its own teams (CEO, 26/10) and manages the quick replies (Phụ lục B, N163); no other setting.
     const settings = hrefs(role).filter((h) => h.startsWith('/settings'));
-    if (role === 'manager') expect(settings).toEqual(['/settings/quick-replies']);
+    if (role === 'manager')
+      expect(settings).toEqual(['/settings/teams', '/settings/quick-replies']);
     else if (role !== 'owner' && role !== 'admin') expect(settings).toEqual([]);
   });
 

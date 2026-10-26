@@ -17,7 +17,7 @@ const STATES = {
   'platform.html?tab=access&x=1': ['normal'],
   'platform.html?tab=policies&x=1': ['normal'],
   'overview.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
-  'autonomy.html': ['normal', 'loading', 'error', 'aioff'],
+  'autonomy.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'members.html': ['normal', 'loading', 'empty', 'error', 'aioff', 'invite_expired'],
   'teams.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'quick-replies.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
@@ -25,7 +25,7 @@ const STATES = {
   'ai.html': ['normal', 'loading', 'error', 'aioff', 'budget_80', 'budget_100', 'legal_ok'],
   'security.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
   'privacy.html': ['normal', 'loading', 'empty', 'error', 'aioff'],
-  'customer-import.html': ['normal', 'bad_file', 'aioff'],
+  'customer-import.html': ['normal', 'loading', 'empty_file', 'bad_file', 'error', 'aioff'],
   'customer-import.html?step=2&x=1': ['normal'],
   'customer-import.html?step=3&x=1': ['normal'],
   'customer-data.html': ['normal', 'loading', 'empty', 'error', 'save_error', 'aioff'],
@@ -360,6 +360,13 @@ p = await open('customer-import.html?role=admin&state=bad_file');
 await p.getByRole('button', { name: 'Dùng file ví dụ (prototype)' }).click();
 check((await p.textContent('[role=alert]')).includes('Không đọc được file') && (await p.textContent('[aria-current=step]')).includes('Chọn file'), '#10: file hỏng ở lại bước 1, có mã lỗi');
 await p.close();
+p = await open('customer-import.html?role=admin&state=empty_file');
+await p.getByRole('button', { name: 'Dùng file ví dụ (prototype)' }).click();
+check((await p.textContent('[role=alert]')).includes('không có khách nào') && (await p.textContent('[aria-current=step]')).includes('Chọn file'), '#10: file trống ở lại bước 1, có lối chọn file khác');
+await p.close();
+p = await open('customer-import.html?role=admin&state=error&step=3');
+check((await p.textContent('[role=alert]')).includes('Chưa có khách nào được thêm') && (await p.locator('button', { hasText: 'Thử lại' }).count()) === 1, '#10: nhập lỗi có mã và Thử lại');
+await p.close();
 p = await open('customer-import.html?role=manager');
 check((await p.textContent('main')).includes('không dùng Nhập khách từ file'), '#10: Manager không có quyền');
 await p.close();
@@ -518,6 +525,9 @@ check(await p.locator('button', { hasText: 'Nâng mức' }).isDisabled() && awai
 await p.locator('#f-ai\\.internal').uncheck();
 check((await p.textContent('.toast')).includes('Đã tắt ai.internal'), '#27: tắt cờ ai.internal');
 await shot(p, 'autonomy', true);
+await p.close();
+p = await open('autonomy.html?role=admin&state=empty');
+check((await p.textContent('main')).includes('chưa có cờ nào') && (await p.locator('button', { hasText: 'Mở AI nội bộ' }).count()) === 1, '#27 Trống: một câu, một hành động');
 await p.close();
 p = await open('autonomy.html?role=manager');
 check((await p.textContent('main')).includes('không dùng Tự chủ'), '#27: Manager không có quyền');

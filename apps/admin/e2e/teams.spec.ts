@@ -164,8 +164,26 @@ test('a team that still answers a channel is not ended: the refusal says why', a
   await expect(list.getByRole('row', { name: /CSKH/ })).toBeVisible();
 });
 
-test('a Manager gets the forbidden page, as the menu', async ({ page }) => {
+test('a Manager reads only its own teams, with nothing to change (CEO, 26/10)', async ({
+  page,
+}) => {
   await signIn(page, accountOf('manager'));
+  await page
+    .getByRole('navigation', { name: 'Menu chính' })
+    .getByRole('link', { name: 'Team' })
+    .click();
+  await expect(page).toHaveURL('/settings/teams');
+  const list = page.getByRole('region', { name: 'Team của workspace' });
+  await expect(list.getByRole('row')).toHaveCount(2); // the header and CSKH
+  await expect(list.getByRole('row', { name: /CSKH/ })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByText('Bạn xem các team mình thuộc về.')).toBeVisible();
+  await expectAccessible(page);
+});
+
+test('a Sales gets the forbidden page, as the menu', async ({ page }) => {
+  await signIn(page, accountOf('sales'));
   await page.goto('/settings/teams');
   await expect(
     page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),

@@ -11,10 +11,9 @@ test('a Manager sees the templates, most used first, and finds one by shortcut o
   page,
 }) => {
   await signIn(page, accountOf('manager'));
-  // Its only item, so the group of the menu is the link (shell.tsx).
   await page
     .getByRole('navigation', { name: 'Menu chính' })
-    .getByRole('link', { name: 'Cài đặt' })
+    .getByRole('link', { name: 'Mẫu trả lời nhanh' })
     .click();
   await expect(page).toHaveURL('/settings/quick-replies');
   const list = page.getByRole('region', { name: 'Mẫu của workspace' });
