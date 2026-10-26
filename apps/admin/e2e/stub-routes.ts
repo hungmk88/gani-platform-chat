@@ -1,6 +1,6 @@
 // The screens of the stub API that live in a file of their own (e2e/stub-*.ts), tried in turn: each answers its own routes and
 // says false for any other. #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #24 Kênh (N161), #20 Team (N160), #22 Mẫu trả
-// lời nhanh (N163), #7 Khách hàng (N165), #16 Tổng quan and #14 Ticket (N167). Never deployed.
+// lời nhanh (N163), #7 Khách hàng (N165), #16 Tổng quan and #14/#15 Ticket (N167). Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { routeChannels } from './stub-channels';
@@ -42,5 +42,7 @@ export async function routeScreens(
     routeCustomers,
   ])
     if (await route(req, res, path, who, edge)) return true;
-  return routeOverview(req, res, path, who, edge) || routeTickets(req, res, path, who, edge);
+  return (
+    routeOverview(req, res, path, who, edge) || (await routeTickets(req, res, path, who, edge))
+  );
 }

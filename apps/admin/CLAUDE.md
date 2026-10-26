@@ -150,7 +150,9 @@ Trang mặc định sau đăng nhập:
 
 - `/tickets`, Owner/Admin/Manager/Sales/Support như menu (`mayReadTickets`), vai trò khác trang 403. `GET /v1/tickets?workspaceId=` của **workspace đang chọn**: hợp đồng **planned S4** (`docs/openapi/planned.json`, N167; kiểu ở `src/api/planned.d.ts`). Mới nhất trước, "Tải thêm" theo cursor; lọc trạng thái (5 trạng thái U27 bằng lời: Mới, Đang xử lý, Chờ khách, Đã xong, Đã hủy) và phụ trách (Của tôi, Chưa giao). Sales chỉ thấy ticket mình tạo (API lọc).
 - Cột: tiêu đề, khách ("Không gắn khách"), trạng thái (Mới vàng, Đang xử lý xanh), ưu tiên (Thường/Cao/Khẩn), phụ trách ("Chưa giao"), SLA (`null` → "Chưa có SLA" tới Q7/Q8; tạm dừng chờ khách/ngoài giờ), cập nhật (`src/tickets/tickets.ts` + `ticket-list.tsx`). API trả 404 (chưa phục vụ) → `PendingPage` như #16.
-- Chi tiết, tạo, đổi trạng thái (#15): PR sau. API giả: `e2e/stub-tickets.ts` (`TICKETS`, trang 3 dòng; `+no-tickets@` → 404).
+- **Chi tiết (#15)** `/tickets/[id]`, cùng vai trò với #14; tiêu đề trên dòng là link. `GET /v1/tickets/{id}` (planned S4): trạng thái, ưu tiên, khách (link hồ sơ), hội thoại (link Hộp thư), phụ trách, SLA, mô tả (chữ thuần), **Lịch sử** `events` cũ trước; API chỉ trả id người làm nên ghi "Bạn" / "Người khác" / "Hệ thống" (`src/tickets/ticket-detail.ts` + `ticket-view.tsx`). Không có hoặc không được xem: "Không tìm thấy ticket" + link về danh sách (khi API chưa phục vụ, danh sách đã là `PendingPage`).
+- **Đổi trạng thái** (`PATCH {status, version}`): chỉ nút của bước hợp lệ (`NEXT`, `movesFor`): new → in_progress → waiting_customer ⇄ in_progress → done, done mở lại; Hủy (`cancelled`, cuối) chỉ Owner/Admin/Manager, hỏi lại. Owner/Admin/Manager/Support đổi được, Sales chỉ xem. Chờ máy chủ, không `Idempotency-Key`; xong thì ticket lấy câu trả lời, danh sách đọc lại. 409 `invalid_transition` / `version_conflict` → đọc lại ticket, nói câu P9.
+- Tạo ticket (#15b): PR sau. API giả: `e2e/stub-tickets.ts` (`TICKETS`, trang 3 dòng; `/{id}` kèm `events`; `PATCH` sửa bản sao của phiên, `+stale@` → `version_conflict`; `+no-tickets@` → 404).
 
 ## Hồ sơ cá nhân (#5)
 
