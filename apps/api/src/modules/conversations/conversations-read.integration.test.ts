@@ -26,7 +26,7 @@ const PW = randomBytes(18).toString('base64url');
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const people: Record<string, string> = {};
 const c: Record<string, string> = {};
-const customer = randomUUID();
+const [customer, channel] = [randomUUID(), randomUUID()];
 const cookies: Record<string, string> = {};
 let app: NestExpressApplication | undefined;
 let url = '';
@@ -88,6 +88,10 @@ beforeAll(async () => {
   // The customer of 'mine' (N165): the inbound worker names it; here the fixture does.
   await q(`INSERT INTO customers (id, org_id, display_name) VALUES ($1, $2, 'Chị Lan')`, [customer, orgA]);
   await q('UPDATE conversations SET customer_id = $1 WHERE id = $2', [customer, c['mine']]);
+  // The channel and the line of the Inbox (U30, N169): the inbound worker and insertMessage write them; here the fixture does.
+  await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ($1, $2, $3, 'zalo_oa', 'oa-1', 'OA Gani', 'app', decode(repeat('ab', 32), 'hex'))`, [channel, orgA, W1]);
+  await q(`UPDATE conversations SET channel_account_id = $1, external_user_id = 'zu-1', last_message_kind = 'text', last_message_preview = 'Dạ em cần báo giá' WHERE id = $2`, [channel, c['mine']]);
+  await q(`UPDATE conversations SET last_message_kind = 'image' WHERE id = $1`, [c['queue']]);
   for (let n = 1; n <= 3; n++)
     await q(`INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, $5, 'customer', 'text', 'm')`, [randomUUID(), orgA, W1, c['queue'], n]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -104,7 +108,7 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['sessions WHERE user_id', users],
+    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['channel_accounts WHERE org_id', orgs], ['sessions WHERE user_id', users],
     ['workspace_members WHERE org_id', orgs], ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs],
     ['organizations WHERE id', orgs], ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
@@ -121,10 +125,16 @@ describe('GET /v1/conversations', () => {
     expect(res.body['nextCursor']).toBeNull();
     expect((res.body['data'] as Record<string, unknown>[])[0]).toEqual({
       id: c['mine'], workspaceId: W1, state: 'HUMAN_ACTIVE', afterHoursHold: false, assignedUserId: people['sales'], version: 0,
-      outcome: null, closedAt: null, lastMessageAt: '2026-10-05T00:00:00.000Z', lastCustomerMessageAt: null, channelAccountId: null,
+      outcome: null, closedAt: null, lastMessageAt: '2026-10-05T00:00:00.000Z', lastCustomerMessageAt: null, channelAccountId: channel,
       createdAt: expect.any(String) as string, customer: { id: customer, displayName: 'Chị Lan' },
+      channel: { id: channel, type: 'zalo_oa', displayName: 'OA Gani' }, assignee: { id: people['sales'], name: 'T' },
+      lastMessagePreview: 'Dạ em cần báo giá',
     });
     expect((res.body['data'] as Record<string, unknown>[])[1]?.['customer']).toBeNull();
+    // U30: the label of a last message that is not text; no channel, no holder and no message are null.
+    const [, , queue, held] = res.body['data'] as Record<string, unknown>[];
+    expect(queue).toMatchObject({ lastMessagePreview: '[Hình ảnh]', channel: null, assignee: null });
+    expect(held).toMatchObject({ lastMessagePreview: null, channel: null, assignee: null });
   });
 
   it('gives sales their own and the unclaimed ones only (Phụ lục B, N133)', async () => {

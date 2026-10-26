@@ -33,6 +33,8 @@
 - Lint migration: mọi `CREATE TABLE` mới phải có `ENABLE ROW LEVEL SECURITY` + `FORCE`.
   CI báo đỏ nếu thiếu; GitHub Free không enforce branch protection nên không chặn được merge (N38), anh kiểm tay.
 
+- Cột lưu sẵn chứa PII trên bảng có quyền theo cột (`conversations.last_message_preview`, N169): **không** cấp cho `support_role`, cấp UPDATE cho `app_role` trong cùng migration (`grants.spec` liệt kê đúng từng cột). File migration đã áp thì không sửa: runner từ chối, thêm migration mới.
+
 ## Cấm
 
 - Không dùng UUIDv4. Chỉ UUIDv7.

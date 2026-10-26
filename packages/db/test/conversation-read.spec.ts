@@ -156,6 +156,71 @@ describe('listConversations', () => {
   });
 });
 
+describe('the line of the Inbox (U30, N169)', () => {
+  it('names the channel (a deleted one too), the holder (null name once they left) and the last message, in the list and alone', async () => {
+    const [live, gone, left] = [uuidv7(), uuidv7(), uuidv7()];
+    // prettier-ignore
+    await admin.query(
+      `INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc, deleted_at)
+       VALUES ($1, $3, $4, 'zalo_oa', 'u30-live', 'OA Live', 'app', decode(repeat('ab', 32), 'hex'), NULL),
+              ($2, $3, $4, 'zalo_oa', 'u30-gone', 'OA Gone', 'app', decode(repeat('ab', 32), 'hex'), now())`,
+      [live, gone, A, W1],
+    );
+    await admin.query(
+      `INSERT INTO users (id, email, status, display_name) VALUES ($1, $2, 'active', ' Lan ')`,
+      [left, `${left}@example.test`],
+    );
+    await admin.query(
+      `INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, 'sales', 'active')`,
+      [uuidv7(), A, left],
+    );
+    const [named, deleted, none, held] = [
+      await conversation({ assigned: left }),
+      await conversation({}),
+      await conversation({}),
+      await conversation({ assigned: me }),
+    ];
+    // prettier-ignore
+    for (const [id, channel, kind, text] of [[named, live, 'text', 'Dạ em cần báo giá'], [deleted, gone, 'sticker', null], [held, null, null, null]] as const)
+      await admin.query(
+        `UPDATE conversations SET channel_account_id = $2, external_user_id = CASE WHEN $2::uuid IS NULL THEN NULL ELSE 'zu-' || $1 END,
+           last_message_kind = $3, last_message_preview = $4 WHERE id = $1`,
+        [id, channel, kind, text],
+      );
+    const read = (id: string) => inA([W1], (tx) => loadConversationView(tx, id));
+    expect(await read(named)).toMatchObject({
+      channel: { id: live, type: 'zalo_oa', displayName: 'OA Live' },
+      assignee: { id: left, name: 'Lan' },
+      lastMessagePreview: 'Dạ em cần báo giá',
+    });
+    expect(await read(deleted)).toMatchObject({
+      channel: { id: gone, type: 'zalo_oa', displayName: 'OA Gone' },
+      assignee: null,
+      lastMessagePreview: '[Sticker]',
+    });
+    expect(await read(none)).toMatchObject({
+      channel: null,
+      assignee: null,
+      lastMessagePreview: null,
+    });
+    // The seeded person has no name: the holder is still named by id.
+    expect(await read(held)).toMatchObject({ assignee: { id: me, name: null } });
+    await admin.query(
+      `UPDATE org_members SET status = 'suspended' WHERE org_id = $1 AND user_id = $2`,
+      [A, left],
+    );
+    expect(await read(named)).toMatchObject({ assignee: { id: left, name: null } });
+    const page = await list({});
+    expect(page.rows.find((r) => r.id === named)).toEqual(await read(named));
+    await admin.query('DELETE FROM conversations WHERE id = ANY($1::uuid[])', [
+      [named, deleted, none, held],
+    ]);
+    await admin.query('DELETE FROM channel_accounts WHERE id = ANY($1::uuid[])', [[live, gone]]);
+    await admin.query('DELETE FROM org_members WHERE user_id = $1', [left]);
+    await admin.query('DELETE FROM users WHERE id = $1', [left]);
+  });
+});
+
 describe('listMessages', () => {
   it('gives the messages of one conversation, newest first, page by page', async () => {
     const [c, d] = [await conversation(), await conversation()];

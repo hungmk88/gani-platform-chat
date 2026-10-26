@@ -37,6 +37,27 @@ export const ConversationSchema = z
       .object({ id: UuidSchema, displayName: z.string().nullable() })
       .nullable()
       .meta({ id: 'ConversationCustomer' }),
+    /** The channel account it came in by (N105), null for a conversation of no channel. */
+    channelAccountId: NullableUuidSchema,
+    /** The channel (U30): null for a conversation of no channel; a channel deleted since is still named, the conversation took place on it. */
+    channel: z
+      .object({
+        id: UuidSchema,
+        type: z.enum(['zalo_oa', 'facebook', 'webchat']),
+        displayName: z.string(),
+      })
+      .nullable()
+      .meta({ id: 'ConversationChannel' }),
+    /** Who holds it (U30): null when nobody does; `name` null when the person gave none or is no longer an active member. */
+    assignee: z
+      .object({ id: UuidSchema, name: z.string().nullable() })
+      .nullable()
+      .meta({ id: 'ConversationAssignee' }),
+    /**
+     * The last message that is not an event of the system (U30, N169): its text, NFC and at most 120 graphemes with no `…` added, or
+     * `[Hình ảnh]`, `[Tệp]`, `[Sticker]`, `[Lựa chọn]` for another kind; null before any message. It is the customer's words: never logged.
+     */
+    lastMessagePreview: z.string().nullable(),
   })
   .meta({ id: 'Conversation' });
 

@@ -220,6 +220,31 @@ describe('the marks of the conversation', () => {
     );
   });
 
+  it('writes the line of the Inbox (U30, N169): the text cut in graphemes, the kind of another, and nothing for an event of the system', async () => {
+    const c = await conversation();
+    const line = async () =>
+      (
+        await admin.query<{ kind: string | null; text: string | null }>(
+          'SELECT last_message_kind AS kind, last_message_preview AS text FROM conversations WHERE id = $1',
+          [c],
+        )
+      ).rows[0];
+    expect(await line()).toEqual({ kind: null, text: null });
+    await add(message(c, { body: `${'Dạ'.normalize('NFD')}\n  em ${'x'.repeat(200)}` }));
+    expect(await line()).toEqual({ kind: 'text', text: `Dạ em ${'x'.repeat(114)}` });
+    await add(
+      message(c, {
+        senderKind: 'agent',
+        senderUserId: users.get(A) as string,
+        kind: 'image',
+        body: null,
+      }),
+    );
+    expect(await line()).toEqual({ kind: 'image', text: null });
+    await add(message(c, { senderKind: 'system', kind: 'system', body: 'closed' }));
+    expect(await line()).toEqual({ kind: 'image', text: null });
+  });
+
   it('uses now() for the customer mark when the platform gave no time', async () => {
     const c = await conversation();
     await add(message(c));

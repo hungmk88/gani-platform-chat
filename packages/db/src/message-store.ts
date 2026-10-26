@@ -1,3 +1,4 @@
+import { messagePreview, movesPreview } from '@gani/domain';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { lockConversation } from './conversation-lock.js';
@@ -58,7 +59,8 @@ export interface StoredMessage {
  * 32-bit hash only waits too long). A message that arrives late gets a higher number and is shown in its place by `platform_sent_at`;
  * numbers are never reassigned (R2).
  *
- * It also moves the marks of the conversation: `last_message_at`, and for a customer `last_customer_message_at`, the start of the free
+ * It also moves the marks of the conversation: `last_message_at`, the line of the Inbox (`last_message_kind`/`_preview`, but not for an
+ * event of the system), and for a customer `last_customer_message_at`, the start of the free
  * window (the platform's send time, or now). Both only go forward (`GREATEST`): `now()` is the time the transaction began, and a
  * writer that began early but got the lock late must not write an older time over a newer one; a late message does not pull the
  * window back.
@@ -121,6 +123,14 @@ export async function insertMessage(tx: TenantTx, message: NewMessage): Promise<
     .set({
       lastMessageAt: sql`greatest(coalesce(${c.lastMessageAt}, ${never}), now())`,
       updatedAt: sql`now()`,
+      // The line of the Inbox (U30, N169): the last message that is not an event of the system, under the lock, so it is the one with
+      // the highest sequence number. Only the text of a text message is stored, cut in graphemes by messagePreview.
+      ...(movesPreview(message.senderKind, message.kind)
+        ? {
+            lastMessageKind: message.kind,
+            lastMessagePreview: messagePreview(message.kind, message.body),
+          }
+        : {}),
       ...(message.senderKind === 'customer'
         ? {
             lastCustomerMessageAt: sql`greatest(least(coalesce(${c.lastCustomerMessageAt}, ${never}), now()), ${sentAt})`,

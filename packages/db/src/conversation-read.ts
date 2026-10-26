@@ -1,6 +1,8 @@
+import { previewOf } from '@gani/domain';
 import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 
 import { cursorString, cursorWhole, decodeCursor, encodeCursor } from './cursor.js';
+import { channelAccounts } from './schema/channel-accounts.js';
 import { conversations } from './schema/conversations.js';
 import { customers } from './schema/customers.js';
 import { messageDeliveries } from './schema/message-deliveries.js';
@@ -27,6 +29,16 @@ export interface ConversationView {
   readonly createdAt: Date;
   /** Who the customer is (N165): null until the inbound worker names them; `displayName` null until someone knows it. */
   readonly customer: { readonly id: string; readonly displayName: string | null } | null;
+  /** The channel it came in by (U30): null for a conversation of no channel; a channel deleted since is still named. */
+  readonly channel: {
+    readonly id: string;
+    readonly type: string;
+    readonly displayName: string;
+  } | null;
+  /** Who holds it (U30): null when nobody does; `name` null when the person gave none or is no longer an active member. */
+  readonly assignee: { readonly id: string; readonly name: string | null } | null;
+  /** The line of the Inbox (U30, N169): the text of the last message, a label for another kind, null before any. PII: never logged. */
+  readonly lastMessagePreview: string | null;
 }
 
 export interface ConversationListQuery {
@@ -71,22 +83,58 @@ const view = {
   createdAt: conversations.createdAt,
   customerId: conversations.customerId,
   customerName: customers.displayName,
+  channelType: channelAccounts.type,
+  channelName: channelAccounts.displayName,
+  // Names only through app.org_users (active members, no email); a holder who left keeps their id with no name.
+  assigneeName: sql<
+    string | null
+  >`(SELECT nullif(btrim(u.display_name), '') FROM app.org_users u WHERE u.user_id = ${conversations.assignedUserId})`,
+  previewKind: conversations.lastMessageKind,
+  previewText: conversations.lastMessagePreview,
 };
-type Row = Omit<ConversationView, 'customer'> & {
+type Row = Omit<ConversationView, 'customer' | 'channel' | 'assignee' | 'lastMessagePreview'> & {
   readonly customerId: string | null;
   readonly customerName: string | null;
+  readonly channelType: string | null;
+  readonly channelName: string | null;
+  readonly assigneeName: string | null;
+  readonly previewKind: string | null;
+  readonly previewText: string | null;
 };
 
-const shape = ({ customerId, customerName, ...rest }: Row): ConversationView => ({
-  ...rest,
-  customer: customerId === null ? null : { id: customerId, displayName: customerName },
-});
+const shape = (row: Row): ConversationView => {
+  const {
+    customerId,
+    customerName,
+    channelType,
+    channelName,
+    assigneeName,
+    previewKind,
+    previewText,
+    ...rest
+  } = row;
+  return {
+    ...rest,
+    customer: customerId === null ? null : { id: customerId, displayName: customerName },
+    channel:
+      rest.channelAccountId === null || channelType === null || channelName === null
+        ? null
+        : { id: rest.channelAccountId, type: channelType, displayName: channelName },
+    assignee: rest.assignedUserId === null ? null : { id: rest.assignedUserId, name: assigneeName },
+    lastMessagePreview: previewOf(previewKind, previewText),
+  };
+};
 const withoutSortKey = ({ sortKey, ...row }: Row & { readonly sortKey: string }) => {
   void sortKey;
   return shape(row);
 };
 // The customer's name rides along (N165): same organisation by the foreign key, and RLS on customers too.
 const withCustomer = eq(customers.id, conversations.customerId);
+// The channel by the pair of the foreign key (U30); not filtered on deleted_at: the conversation took place on it.
+const withChannel = and(
+  eq(channelAccounts.orgId, conversations.orgId),
+  eq(channelAccounts.id, conversations.channelAccountId),
+);
 
 function assertLimit(limit: number): void {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
@@ -102,6 +150,7 @@ export async function loadConversationView(
     .select(view)
     .from(conversations)
     .leftJoin(customers, withCustomer)
+    .leftJoin(channelAccounts, withChannel)
     .where(eq(conversations.id, assertUuid(id, 'id')));
   return row ? shape(row) : null;
 }
@@ -133,6 +182,7 @@ export async function listConversations(
     .select({ ...view, sortKey: SORT_TEXT })
     .from(c)
     .leftJoin(customers, withCustomer)
+    .leftJoin(channelAccounts, withChannel)
     .where(and(...where))
     .orderBy(sql`${SORT_KEY} DESC`, desc(c.id))
     .limit(q.limit + 1);
