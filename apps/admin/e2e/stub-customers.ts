@@ -1,5 +1,5 @@
 // #7 Khách hàng and #8 Hồ sơ khách for the e2e stub API only (N165): `GET /v1/customers` (newest first, by cursor, searched like the
-// API: a part of the name, or the start of a phone number from 3 digits), `GET /v1/customers/{id}` and `PATCH` (each session changes its
+// API: a part of the name, the start of a phone number from 3 digits, or a whole email, U48), `GET /v1/customers/{id}` and `PATCH` (each session changes its
 // own copy). Marketing and Viewer search by name only, get phones and emails masked and change nothing. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -135,10 +135,12 @@ export async function routeCustomers(
   const found = customers.filter((c) =>
     !q
       ? true
-      : prefix !== null
-        ? `0${c.phone?.slice(3) ?? ''}`.startsWith(prefix) ||
-          (c.phone ?? '').startsWith(`+${prefix}`)
-        : fold(c.displayName ?? '').includes(fold(q)),
+      : !masked && q.includes('@')
+        ? c.email === q.toLowerCase() // a whole email, any case, never a part of one (U48)
+        : prefix !== null
+          ? `0${c.phone?.slice(3) ?? ''}`.startsWith(prefix) ||
+            (c.phone ?? '').startsWith(`+${prefix}`)
+          : fold(c.displayName ?? '').includes(fold(q)),
   );
   const from = Number(query.get('cursor') ?? 0);
   const page = found.slice(from, from + CUSTOMERS_PAGE).map(shown);
