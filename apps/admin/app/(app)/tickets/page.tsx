@@ -17,5 +17,5 @@ export default async function TicketsPage() {
   if (!mayReadTickets(role)) return <SystemPage kind="forbidden" />;
   const item = role ? menuItemAt(role, '/tickets') : undefined;
   if (!role || !item) notFound();
-  return <TicketList item={item} go={builtFor(role)} />;
+  return <TicketList item={item} go={builtFor(role)} role={role} />;
 }

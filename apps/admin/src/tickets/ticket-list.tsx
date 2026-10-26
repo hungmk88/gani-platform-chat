@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-import type { NavItem } from '../nav';
+import type { NavItem, Role } from '../nav';
 import { PendingPage } from '../pending-page';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { TicketCreateDialog } from './ticket-create-dialog';
 import {
   changedAt,
   PRIORITY,
@@ -20,6 +21,7 @@ import {
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
 const button = 'rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
+const primary = 'self-start rounded-input bg-accent px-4 py-2 text-accent-on';
 const TONE = { ok: 'bg-ok-bg text-ok-text', warn: 'bg-warn-bg text-warn-text' };
 const ASSIGNEE: Readonly<Record<AssigneeFilter, string>> = {
   any: 'Mọi người',
@@ -30,10 +32,11 @@ const ASSIGNEE: Readonly<Record<AssigneeFilter, string>> = {
 /**
  * #14 Ticket of the workspace being worked in (T1), newest first, by cursor ("Tải thêm"): title, customer, status in words, priority,
  * who handles it, SLA (none until Q7/Q8), last change; filtered by status and assignee. A 404 means the API does not serve the route
- * yet (planned S4, N167): the screen then says it is not there, as before.
+ * yet (planned S4, N167): the screen then says it is not there, as before. "Tạo ticket" (#15(b)) is its one primary button.
  */
-export function TicketList({ item, go }: { item: NavItem; go: NavItem }) {
+export function TicketList({ item, go, role }: { item: NavItem; go: NavItem; role: Role }) {
   const { workspaceId } = useScope();
+  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<TicketFilter>({ status: 'all', assignee: 'any' });
   const list = useApiPages<TicketPage>(['tickets', workspaceId, filter], (cursor) =>
     ticketsPath(workspaceId ?? '', filter, cursor),
@@ -49,6 +52,9 @@ export function TicketList({ item, go }: { item: NavItem; go: NavItem }) {
       <h1 id="tickets-title" className="text-20 font-semibold">
         Ticket
       </h1>
+      <button type="button" className={primary} onClick={() => setCreating(true)}>
+        Tạo ticket
+      </button>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
           Trạng thái
@@ -109,12 +115,7 @@ export function TicketList({ item, go }: { item: NavItem; go: NavItem }) {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-start gap-2">
-            <p>Chưa có ticket nào. Ticket được tạo từ hội thoại trong Hộp thư.</p>
-            <Link href="/inbox" className="underline">
-              Mở Hộp thư
-            </Link>
-          </div>
+          <p>Chưa có ticket nào. Bấm &quot;Tạo ticket&quot; để tạo ticket đầu tiên.</p>
         )
       ) : (
         <>
@@ -183,6 +184,7 @@ export function TicketList({ item, go }: { item: NavItem; go: NavItem }) {
         </>
       )}
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
+      {creating ? <TicketCreateDialog role={role} onClose={() => setCreating(false)} /> : null}
     </section>
   );
 }
