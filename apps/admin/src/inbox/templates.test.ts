@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { fieldsOf, fill, knownOf, slashQuery, unresolvedProblem, variablesIn } from './templates';
+import {
+  fieldsOf,
+  fill,
+  knownOf,
+  phoneOf,
+  readsWorkspaces,
+  slashQuery,
+  unresolvedProblem,
+  variablesIn,
+} from './templates';
 
 describe('slashQuery', () => {
   it('opens on "/" and the start of a shortcut filling the whole box, in lower case', () => {
@@ -61,5 +70,24 @@ describe('unresolvedProblem', () => {
     expect(unresolvedProblem('{{customer_name}} {{la}}')).toBe(
       'Xóa {{la}} khỏi tin: biến này không điền được.',
     );
+  });
+});
+
+describe('readsWorkspaces and phoneOf', () => {
+  const list = {
+    data: [
+      { id: 'w1', contactPhone: ' 028 3812 3456 ' },
+      { id: 'w2', contactPhone: null },
+    ],
+  } as unknown as Parameters<typeof phoneOf>[0];
+
+  it('knows the number of the workspace for Owner and Admin only', () => {
+    expect(['owner', 'admin'].every((r) => readsWorkspaces(r as 'owner'))).toBe(true);
+    expect(['manager', 'sales', 'support'].some((r) => readsWorkspaces(r as 'owner'))).toBe(false);
+  });
+  it('gives the number of the workspace of the conversation when it is set', () => {
+    expect(phoneOf(list, 'w1')).toEqual({ company_phone: '028 3812 3456' });
+    expect(phoneOf(list, 'w2')).toEqual({});
+    expect(phoneOf(undefined, 'w1')).toEqual({});
   });
 });
