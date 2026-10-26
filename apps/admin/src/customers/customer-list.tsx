@@ -23,8 +23,8 @@ const none = <span className="text-text-muted">Chưa có</span>;
 
 /**
  * The customers of the company (#7, `GET /v1/customers`, N165), newest first, by cursor ("Tải thêm"): name, phone, email, the
- * channels that know them, last change. Searched by a part of the name or the start of a phone number (Marketing and Viewer by
- * name only, their phones and emails come masked). Tags, the person in charge and the last contact wait for their API.
+ * channels that know them, last change. Searched by a part of the name, the start of a phone number or a whole email (U48;
+ * Marketing and Viewer by name only, their phones and emails come masked). Tags, the person in charge and the last contact wait for their API.
  */
 export function CustomerList({ role }: { role: Role }) {
   const [q, setQ] = useState('');
@@ -54,7 +54,7 @@ export function CustomerList({ role }: { role: Role }) {
       <p id="customers-search-hint" className="text-12 text-text-muted">
         {masked
           ? 'Theo tên. Vai trò của bạn thấy SĐT và email dạng che.'
-          : 'Theo tên, hoặc đầu số điện thoại (từ 3 số).'}
+          : 'Theo tên, đầu số điện thoại (từ 3 số), hoặc cả địa chỉ email.'}
       </p>
       {list.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
@@ -72,6 +72,9 @@ export function CustomerList({ role }: { role: Role }) {
         query ? (
           <div className="flex flex-col items-start gap-2">
             <p>Không có khách khớp “{query}”.</p>
+            {!masked && query.includes('@') ? (
+              <p className="text-12 text-text-muted">Tìm theo email cần gõ đủ cả địa chỉ.</p>
+            ) : null}
             <button type="button" className={button} onClick={() => setQ('')}>
               Xóa tìm kiếm
             </button>
