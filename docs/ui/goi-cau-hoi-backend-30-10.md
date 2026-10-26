@@ -35,6 +35,7 @@ Các hình dạng ở mục 3 là **đề xuất của FE để Backend dễ ch�
 | 8 | U25 | (2) khóa 2FA đếm chung mã ứng dụng và mã dự phòng không; (3) `GET /v1/leads/{id}` kèm lịch sử; (4) trường SLA tạm dừng. Câu (1) `PATCH /v1/me` đã xong (N162) | #2, #13, nhãn SLA ở #6 |
 | 9 | U27 | Tập trạng thái ticket, quy tắc dừng SLA; `GET /v1/tickets/{id}` kèm lịch sử | #14, #15 (S4, nộp wireframe 21/12) |
 | 10 | U28, U29 | A17; phiên truy cập platform; chỉ số #16; L3–L5; danh sách feature flag | #28, #30, #16, #27 (S5, nộp wireframe 04/01) |
+| 11 | U40–U51 | Câu hỏi logic nghiệp vụ từ rà soát spec M8 vs prototype (mục 3.6): SLA, giờ làm việc, trạng thái agent, phân bổ, trường tùy chỉnh, tag, tìm khách, đổi công ty | Màn SLA/giờ làm việc/phân bổ của #21, #23, #7 (S3–S4) |
 
 ## 3. Endpoint và kiểu dữ liệu FE mong đợi
 
@@ -88,6 +89,26 @@ Quy ước chung FE đang dùng, đề nghị giữ: `id` là UUIDv7; thời đi
 | Xem trước nội dung đang soạn | `POST /v1/quick-replies/preview { workspaceId: uuid, body: string }`, không ghi gì | `QuickReplyPreview` như `POST /{id}/preview`: `{ text: string, unresolved: string[] }`; biến lạ → 400 như khi lưu |
 | Quyền | Owner, Admin, Manager | Như `POST /{id}/preview` |
 | Nếu không làm | CEO chấp nhận "xem sau khi lưu" | FE giữ nút "Xem trước" trên dòng mẫu như hiện nay |
+
+### 3.6 U40–U51 — câu hỏi logic nghiệp vụ từ rà soát spec M8 vs prototype (26/10)
+
+FE đối chiếu spec-M8 bản nháp 3 với prototype và các quyết định sau (N157–N165, U36–U39). Đây là chỗ spec để ngỏ mà FE và Backend
+đều cần trước khi làm màn. Nội dung đầy đủ ở `QUESTIONS.md`; U38 (xem trước mẫu khi chưa lưu, mục 3.5) cũng thuộc nhóm này.
+
+| Mã | Mảng | Câu hỏi | Ai trả lời |
+|---|---|---|---|
+| U40 | Mốc cảnh báo SLA | Mốc 15/30 phút tính **trước hạn** hay **sau khi quá hạn**, áp cho chỉ tiêu nào (phản hồi đầu hay xử lý xong)? Đơn vị và giới hạn của 2 chỉ tiêu? Ví dụ: mức Thường phản hồi trong 15 phút mà báo trước 15 phút thì báo ngay lúc mở. Prototype tự giả định phút/giờ, "trước hạn" và "khi quá hạn" (`workspace.js`). | Backend |
+| U41 | Đổi giờ làm việc hay thêm ngày lễ khi hội thoại đang mở | Hạn SLA của hội thoại đang mở có tính lại theo giờ mới không, hay giữ hạn cũ? Prototype ghi chung "giữ hạn cũ" cho cả 3 tab. | Backend |
+| U42 | Manager xem trạng thái agent của team | Manager xem trạng thái cả team và số phút "Bận" ở màn nào? M11 không có màn này; prototype #16 chỉ ghi "màn tải agent (S4)". | CEO |
+| U43 | Owner/Admin đổi trạng thái của người khác | Làm ở màn nào, qua endpoint nào? Spec chỉ nêu bộ chọn trạng thái của chính mình; prototype không có thao tác này. | CEO + Backend |
+| U44 | Ngày lễ và nghỉ trưa | Ngày lễ sửa/xóa được không; trùng khoảng ngày hay chọn ngày đã qua xử lý thế nào? Nghỉ trưa đặt riêng từng ngày hay chung cả tuần (prototype đang là chữ cố định 12:00–13:00)? | Backend |
+| U45 | Agent ở nhiều team / nhiều workspace | Vòng xoay phân bổ và giới hạn tải tính theo team, theo workspace hay chung cho người đó? | Backend |
+| U46 | Trường tùy chỉnh | Kiểu chọn 1/chọn nhiều cần tối thiểu mấy lựa chọn (prototype tự đặt ≥ 2)? Giới hạn số trường và độ dài tên? Đổi kiểu, hay bật/tắt "Nhạy cảm", khi trường đã có dữ liệu được không (bật nhạy cảm thì phải mã hóa lại dữ liệu cũ)? | Backend |
+| U47 | Phạm vi và "Ẩn" tag | Tag thuộc cấp công ty hay workspace? "Ẩn tag" là không gắn thêm nhưng khách đang mang vẫn giữ (prototype tự chốt vậy), và còn lọc theo tag ẩn được không? | Backend |
+| U48 | Tìm khách theo email | Spec có tìm theo email, N165 (6) ghi `GET /v1/customers` chỉ tìm theo tên/SĐT. Email bỏ hẳn ở Đợt 1 hay chỉ chưa làm? | Backend |
+| U49 | Người thuộc nhiều công ty và bộ đổi workspace | Người thuộc nhiều công ty có đổi công ty bằng bộ đổi ở thanh trên không? Prototype trộn workspace của 2 công ty trong một danh sách; `GET /v1/me` tự chọn một công ty (N145), màn chọn công ty còn mở. | CEO + Backend |
+| U50 | Gán người vào workspace chưa có trong spec/M11 | API đã có (`GET/PUT /v1/workspaces/{id}/members`) và app đã làm trong #21 (nút "Người"), nhưng spec-M8 và M11 chưa ghi; N160 lại bắt thành viên team phải thuộc workspace. Xin bổ sung vào spec/M11 để nghiệm thu. | CEO |
+| U51 | Tên team trùng trong một workspace | Được trùng không? Prototype chặn trùng; API (N160) cho trùng và sinh slug thêm `-2`. App thật hiện theo API (không chặn). | Backend |
 
 ## 4. Realtime: điều FE đã giả định
 
