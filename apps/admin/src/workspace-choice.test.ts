@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { choiceCookie, pickWorkspace } from './workspace-choice';
 
 const mine = [
-  { id: 'w1', name: 'B2B' },
-  { id: 'w2', name: 'CSKH' },
+  { id: 'w1', name: 'B2B', contactPhone: null },
+  { id: 'w2', name: 'CSKH', contactPhone: null },
 ];
 
 describe('pickWorkspace', () => {

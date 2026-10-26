@@ -182,8 +182,10 @@ function meOf(email: string): Me | null {
     workspaces: operator
       ? []
       : [
-          { id: 'ws-e2e', name: 'Workspace thử' },
-          ...(email.includes('+multi@') ? [{ id: 'ws-e2e-2', name: 'Workspace hai' }] : []),
+          { id: 'ws-e2e', name: 'Workspace thử', contactPhone: '028 3812 3456' },
+          ...(email.includes('+multi@')
+            ? [{ id: 'ws-e2e-2', name: 'Workspace hai', contactPhone: null }]
+            : []),
         ],
   };
 }

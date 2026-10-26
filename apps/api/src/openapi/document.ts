@@ -73,7 +73,18 @@ function registerPlatform(registry: OpenAPIRegistry): void {
         .extend({ role: z.enum(orgMembers.role.enumValues) })
         .nullable()
         .meta({ id: 'MeOrg' }),
-      workspaces: z.array(named.meta({ id: 'MeWorkspace' })),
+      workspaces: z.array(
+        named
+          .extend({
+            contactPhone: z
+              .string()
+              .nullable()
+              .describe(
+                'The number customers call ({{company_phone}} of a quick reply, U37); null when not set.',
+              ),
+          })
+          .meta({ id: 'MeWorkspace' }),
+      ),
     })
     .meta({ id: 'Me' });
   const meAnswer = {
