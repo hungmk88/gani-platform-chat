@@ -3354,7 +3354,79 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Change a profile (Owner to Support, Phụ lục B "Sửa hồ sơ khách"): name, phone (any usual way, stored in E.164), email, humanOnly; null clears. The audit names the fields, never their values. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CustomerChange"];
+                };
+            };
+            responses: {
+                /** @description The customer after the change. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Customer"];
+                    };
+                };
+                /** @description validation_failed: the id, an unknown or empty body, a phone that is not a whole number, an email. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: Marketing and Viewer do not change profiles; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no live customer with this id in the organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
 }
@@ -3691,6 +3763,13 @@ export interface components {
             channelAccountId: components["schemas"]["Uuid"] & (string | null);
             /** @enum {string} */
             verification: "verified" | "unverified" | "sales_confirmed";
+        };
+        CustomerChange: {
+            displayName?: string | null;
+            phone?: string | null;
+            /** Format: email */
+            email?: string | null;
+            humanOnly?: boolean;
         };
     };
     responses: never;

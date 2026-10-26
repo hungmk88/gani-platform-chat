@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { conversations } from './schema/conversations.js';
 import { customerIdentities, customers } from './schema/customers.js';
@@ -64,5 +64,27 @@ export async function linkConversationCustomer(
     .set({ customerId: assertUuid(customerId, 'customerId') })
     .where(and(eq(c.id, assertUuid(conversationId, 'conversationId')), isNull(c.customerId)))
     .returning({ id: c.id });
+  return rows.length === 1;
+}
+
+/** What may change of a customer; null clears a field. Values are already checked (E.164, lower-case email) by the caller. */
+export interface CustomerChange {
+  readonly displayName?: string | null;
+  readonly phoneE164?: string | null;
+  readonly email?: string | null;
+  readonly humanOnly?: boolean;
+}
+
+/** Applies `change` to a live customer of the organisation; false when there is none (deleted, unknown, another org's). */
+export async function updateCustomer(
+  tx: TenantTx,
+  id: string,
+  change: CustomerChange,
+): Promise<boolean> {
+  const rows = await tx
+    .update(customers)
+    .set({ ...change, updatedAt: sql`now()` })
+    .where(and(eq(customers.id, assertUuid(id, 'id')), isNull(customers.deletedAt)))
+    .returning({ id: customers.id });
   return rows.length === 1;
 }

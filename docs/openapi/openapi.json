@@ -1398,6 +1398,39 @@
           "channelAccountId",
           "verification"
         ]
+      },
+      "CustomerChange": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 254,
+            "format": "email"
+          },
+          "humanOnly": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -4977,6 +5010,94 @@
           },
           "403": {
             "description": "no_organisation, org_not_selected, two_factor_setup_required or forbidden.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live customer with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Change a profile (Owner to Support, Phụ lục B \"Sửa hồ sơ khách\"): name, phone (any usual way, stored in E.164), email, humanOnly; null clears. The audit names the fields, never their values.",
+        "tags": [
+          "customers"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The customer after the change.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, an unknown or empty body, a phone that is not a whole number, an email.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: Marketing and Viewer do not change profiles; or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {

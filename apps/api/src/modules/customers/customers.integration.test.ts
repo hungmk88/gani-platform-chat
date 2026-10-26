@@ -54,6 +54,19 @@ const get = async (key: string, path: string) => {
   const res = await fetch(`${url}${path}`, { headers: { cookie: cookies[key] ?? '' } });
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
 };
+const patch = async (key: string, id: string, body: unknown) => {
+  const res = await fetch(`${url}/v1/customers/${id}`, {
+    method: 'PATCH',
+    // A /v1 write with a cookie needs the Origin of the app (N136).
+    headers: {
+      cookie: cookies[key] ?? '',
+      origin: 'http://localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+};
 const rows = (body: Record<string, unknown>) => body['data'] as Record<string, unknown>[];
 const ids = (body: Record<string, unknown>) => rows(body).map((x) => x['id']);
 
@@ -88,7 +101,7 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['customers WHERE org_id', orgs], ['sessions WHERE user_id', users], ['workspace_members WHERE org_id', orgs],
+    ['audit_logs WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['sessions WHERE user_id', users], ['workspace_members WHERE org_id', orgs],
     ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs], ['organizations WHERE id', orgs],
     ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
@@ -150,5 +163,52 @@ describe('GET /v1/customers/{id}', () => {
     for (const id of [THEIRS, randomUUID()])
       expect((await get('sales', `/v1/customers/${id}`)).status).toBe(404);
     expect((await get('sales', '/v1/customers/x')).status).toBe(400);
+  });
+});
+
+describe('PATCH /v1/customers/{id}', () => {
+  it('lets sales change the name, the phone typed the Vietnamese way, the email and the flag, and audits the fields only', async () => {
+    const res = await patch('sales', LAM, {
+      displayName: ' Anh Lâm ',
+      phone: '0987 654 321',
+      email: 'Lam@Example.Test',
+      humanOnly: true,
+    });
+    expect([
+      res.status,
+      res.body['displayName'],
+      res.body['phone'],
+      res.body['email'],
+      res.body['humanOnly'],
+    ]).toEqual([200, 'Anh Lâm', '+84987654321', 'lam@example.test', true]);
+    const audit = await q(
+      `SELECT actor_user_id, detail FROM audit_logs WHERE target_id = $1 AND action = 'customer.updated'`,
+      [LAM],
+    );
+    expect(audit.rows).toEqual([
+      { actor_user_id: people['sales'], detail: { fields: 'displayName,email,humanOnly,phone' } },
+    ]);
+    expect(JSON.stringify(audit.rows)).not.toMatch(/987654321|lam@/i);
+    expect((await patch('sales', LAM, { phone: null, email: null })).body).toMatchObject({
+      phone: null,
+      email: null,
+    });
+  });
+
+  it('refuses marketing (403), another organisation’s customer (404) and a body that is empty, unknown or not a phone (400)', async () => {
+    expect((await patch('marketing', LAN, { displayName: 'X' })).status).toBe(403);
+    expect((await patch('sales', THEIRS, { displayName: 'X' })).status).toBe(404);
+    for (const body of [
+      {},
+      { name: 'X' },
+      { phone: '12ab' },
+      { phone: '09123' },
+      { email: 'not-an-email' },
+      { displayName: '  ' },
+    ])
+      expect((await patch('sales', LAN, body)).body['code'], JSON.stringify(body)).toBe(
+        'validation_failed',
+      );
+    expect((await get('sales', `/v1/customers/${LAN}`)).body['displayName']).toBe('Nguyễn Thị Lan');
   });
 });
