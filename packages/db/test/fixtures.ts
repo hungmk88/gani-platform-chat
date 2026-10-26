@@ -18,6 +18,8 @@ const TENANT_TABLES = [
   'idempotency_keys',
   'inbound_event_keys',
   'inbound_events',
+  'customer_identities',
+  'customers',
   'channel_accounts',
   'quick_replies',
   'team_members',
@@ -32,7 +34,8 @@ export const flagKeyOf = (org: string) => `f_${org.replaceAll('-', '')}`;
 
 /** Inserts an organization and one row in every RLS table (as migration_role); returns the id of its user. */
 export async function seedTenant(admin: pg.Client, org: string): Promise<string> {
-  const [user, workspace, team, conversation, channelAccount] = [
+  const [user, workspace, team, conversation, channelAccount, customer] = [
+    uuidv7(),
     uuidv7(),
     uuidv7(),
     uuidv7(),
@@ -57,6 +60,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ('${channelAccount}', '${org}', '${workspace}', 'zalo_oa', 'oa-${org}', 'OA', 'app-seed', decode('${randomBytes(32).toString('hex')}', 'hex'));
     INSERT INTO inbound_events (id, org_id, workspace_id, channel_account_id, platform_message_id, event_type, payload) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${channelAccount}', 'm-seed', 'user_send_text', '{"seed": true}');
     INSERT INTO inbound_event_keys (org_id, channel_account_id, platform_message_id) VALUES ('${org}', '${channelAccount}', 'm-seed');
+    INSERT INTO customers (id, org_id) VALUES ('${customer}', '${org}');
+    INSERT INTO customer_identities (id, org_id, customer_id, identity_type, channel_account_id, external_id) VALUES ('${uuidv7()}', '${org}', '${customer}', 'zalo_uid', '${channelAccount}', 'zu-seed');
     INSERT INTO idempotency_keys (org_id, user_id, key, method, path, request_hash) VALUES ('${org}', '${user}', 'seed', 'POST', '/v1/seed', repeat('0', 64));
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');

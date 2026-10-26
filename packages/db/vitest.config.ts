@@ -33,6 +33,7 @@ export default defineConfig({
         'src/outbox-store.ts',
         'src/password-reset-store.ts',
         'src/quick-reply-store.ts',
+        'src/customer-store.ts',
         'src/tenant-tx.ts',
         'src/member-context.ts',
         'src/org-summary.ts',

@@ -38,6 +38,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'after_hours_hold',
     'assigned_user_id',
     'closed_at',
+    'customer_id',
     'last_customer_message_at',
     'last_message_at',
     'outcome',
@@ -45,6 +46,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'updated_at',
     'version',
   ],
+  customers: ['deleted_at', 'display_name', 'email', 'human_only', 'phone_e164', 'updated_at'],
   feature_flags_overrides: ['enabled', 'updated_at'],
   // created_at on purpose: a key used again after 24 hours starts its day anew (N134).
   idempotency_keys: [
@@ -149,5 +151,21 @@ describe('SELECT of support_role on conversations (DBM-01)', () => {
     );
     expect(rows.filter((r) => !r.ok).map((r) => r.column)).toEqual(['external_user_id']);
     expect(rows.length).toBeGreaterThan(10);
+  });
+});
+
+describe('SELECT of support_role on customers (N165)', () => {
+  it('leaves out every personal column: name, phone, email and the external id of an identity', async () => {
+    const { rows } = await admin.query<{ name: string; columns: string[] }>(
+      `SELECT c.relname AS name, array_agg(a.attname::text ORDER BY a.attname) AS columns
+       FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+       WHERE c.relname IN ('customers', 'customer_identities') AND c.relnamespace = 'public'::regnamespace
+         AND a.attnum > 0 AND NOT a.attisdropped AND NOT has_column_privilege('support_role', a.attrelid, a.attnum, 'SELECT')
+       GROUP BY c.relname ORDER BY c.relname`,
+    );
+    expect(rows).toEqual([
+      { name: 'customer_identities', columns: ['external_id'] },
+      { name: 'customers', columns: ['display_name', 'email', 'phone_e164'] },
+    ]);
   });
 });
