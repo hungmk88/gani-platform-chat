@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
   TeamChangeSchema,
+  TeamChannelsBodySchema,
   TeamCreateSchema,
   TeamIdSchema,
   TeamListQuerySchema,
@@ -100,7 +101,9 @@ export function registerTeams(registry: OpenAPIRegistry): void {
       400: problemResponse('validation_failed: the id.'),
       403: writer,
       404: noTeam,
-      409: problemResponse('team_in_use: the default team of its workspace.'),
+      409: problemResponse(
+        'team_in_use: the default team of its workspace, or a team that answers a channel.',
+      ),
       ...edge,
     },
   });
@@ -132,6 +135,26 @@ export function registerTeams(registry: OpenAPIRegistry): void {
       200: people,
       400: problemResponse(
         'validation_failed: the id, more than 500 or the same member twice, or someone not in the team’s workspace.',
+      ),
+      403: writer,
+      404: noTeam,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'put',
+    path: '/v1/teams/{id}/channels',
+    summary:
+      'Set the whole list of channel accounts the team answers (N161); each must be a live channel of the team’s workspace. A channel of another team moves to this one; one left out goes back to the default team.',
+    tags: ['teams'],
+    request: {
+      params,
+      body: { content: { 'application/json': { schema: TeamChannelsBodySchema } } },
+    },
+    responses: {
+      200: one('The team as it now is.'),
+      400: problemResponse(
+        'validation_failed: the id, more than 200 or the same channel twice, or a channel not of the team’s workspace.',
       ),
       403: writer,
       404: noTeam,

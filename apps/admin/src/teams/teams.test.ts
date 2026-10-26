@@ -21,6 +21,7 @@ const team = (over: Partial<Team> = {}): Team => ({
   description: null,
   isDefault: false,
   memberCount: 0,
+  channelIds: [],
   createdAt: '2026-10-24T00:00:00.000Z',
   ...over,
 });
@@ -102,6 +103,6 @@ describe('withChanged and withoutTeam', () => {
   });
 
   it('says the default team that cannot be ended', () => {
-    expect(teamError(errorOf(409, { code: 'team_in_use' }))).toMatch(/team mặc định/);
+    expect(teamError(errorOf(409, { code: 'team_in_use' }))).toMatch(/team mặc định.*kênh/);
   });
 });

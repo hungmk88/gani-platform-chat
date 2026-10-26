@@ -26,6 +26,7 @@ const team = (over: Partial<Team>): Team => ({
   description: null,
   isDefault: false,
   memberCount: 1,
+  channelIds: [],
   createdAt: '2026-10-24T00:00:00.000Z',
   ...over,
 });

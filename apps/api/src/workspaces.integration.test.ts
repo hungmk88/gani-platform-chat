@@ -171,6 +171,27 @@ describe('PATCH /v1/workspaces/{id}', () => {
   });
 });
 
+describe('PATCH /v1/workspaces/{id} contactPhone (N163)', () => {
+  it('sets and clears the contact number, audited without the number, and refuses one with letters', async () => {
+    expect((await change('owner', sales, { contactPhone: ' 1900 1234 ' })).body).toMatchObject({
+      contactPhone: '1900 1234',
+    });
+    expect((await change('owner', sales, { contactPhone: 'gọi 1900' })).status).toBe(400);
+    expect((await change('admin', sales, { contactPhone: null })).body).toMatchObject({
+      contactPhone: null,
+    });
+    const audit = await q(
+      `SELECT detail FROM audit_logs WHERE target_id = $1 AND action = 'workspace.updated' AND detail ? 'contactPhone' ORDER BY id`,
+      [sales],
+    );
+    expect(audit.rows).toEqual([
+      { detail: { contactPhone: 'changed' } },
+      { detail: { contactPhone: 'changed' } },
+    ]);
+    expect(JSON.stringify(audit.rows)).not.toContain('1900');
+  });
+});
+
 describe('GET/PUT /v1/workspaces/{id}/members', () => {
   async function setMembers(who: string, id: string, body: unknown) {
     const res = await fetch(`${url}/v1/workspaces/${id}/members`, {

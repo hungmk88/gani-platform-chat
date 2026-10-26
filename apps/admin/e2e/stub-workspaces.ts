@@ -14,6 +14,7 @@ export const WORKSPACES: readonly Workspace[] = [
     template: 'service',
     timezone: 'Asia/Ho_Chi_Minh',
     defaultMaxConcurrent: 5,
+    contactPhone: null,
     createdAt: '2026-10-01T03:00:00.000Z',
   },
   {
@@ -23,6 +24,7 @@ export const WORKSPACES: readonly Workspace[] = [
     template: 'b2b_sales',
     timezone: 'Asia/Ho_Chi_Minh',
     defaultMaxConcurrent: 5,
+    contactPhone: null,
     createdAt: '2026-10-01T03:00:00.000Z',
   },
 ];

@@ -89,6 +89,7 @@ const APP_UPDATE: Record<string, string[]> = {
   teams: ['deleted_at', 'description', 'is_default', 'name', 'slug', 'updated_at'],
   workspace_members: ['deleted_at', 'updated_at'],
   workspaces: [
+    'contact_phone',
     'default_max_concurrent',
     'deleted_at',
     'name',

@@ -24,7 +24,18 @@ describe('navFor', () => {
       'owner',
       ['/inbox', '/customers', '/leads', '/tickets', '/bots', '/overview', '/settings/workspace'],
     ],
-    ['manager', ['/inbox', '/customers', '/leads', '/tickets', '/bots', '/overview']],
+    [
+      'manager',
+      [
+        '/inbox',
+        '/customers',
+        '/leads',
+        '/tickets',
+        '/bots',
+        '/overview',
+        '/settings/quick-replies',
+      ],
+    ],
     ['sales', ['/inbox', '/customers', '/leads', '/tickets', '/overview']],
     ['support', ['/inbox', '/customers', '/leads', '/tickets', '/overview']],
     ['marketing', ['/customers', '/leads', '/overview']],
@@ -32,8 +43,10 @@ describe('navFor', () => {
     ['platform_operator', ['/platform']],
   ])('%s sees what Phụ lục B gives it', (role, expected) => {
     expect(hrefs(role)).toEqual(expect.arrayContaining(expected));
-    if (role !== 'owner' && role !== 'admin')
-      expect(hrefs(role).some((h) => h.startsWith('/settings'))).toBe(false);
+    // A Manager manages the quick replies (Phụ lục B, N163) and no other setting.
+    const settings = hrefs(role).filter((h) => h.startsWith('/settings'));
+    if (role === 'manager') expect(settings).toEqual(['/settings/quick-replies']);
+    else if (role !== 'owner' && role !== 'admin') expect(settings).toEqual([]);
   });
 
   it('shows /platform to the platform operator only', () => {
