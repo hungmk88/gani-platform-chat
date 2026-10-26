@@ -199,7 +199,67 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Change the name the signed-in person goes by (N162). Answers as GET /v1/me. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MeChange"];
+                };
+            };
+            responses: {
+                /** @description `org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                /** @description validation_failed: the name (1–100 characters once trimmed) or an unknown field. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description two_factor_setup_required: the second factor must be set up first (N93); or forbidden: the request did not come from the application (N136). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: a database did not answer. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/v1/conversations": {
@@ -2670,6 +2730,9 @@ export interface components {
         } | null;
         MeWorkspace: {
             id: components["schemas"]["Uuid"];
+            name: string;
+        };
+        MeChange: {
             name: string;
         };
         ConversationPage: {

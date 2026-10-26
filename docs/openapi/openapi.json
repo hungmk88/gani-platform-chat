@@ -144,6 +144,20 @@
           "name"
         ]
       },
+      "MeChange": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
       "ConversationPage": {
         "type": "object",
         "properties": {
@@ -1231,6 +1245,73 @@
           },
           "403": {
             "description": "two_factor_setup_required: the second factor must be set up first (N93).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: a database did not answer.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Change the name the signed-in person goes by (N162). Answers as GET /v1/me.",
+        "tags": [
+          "me"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`org` is null for a person of no organisation, or of several with none chosen (the other /v1 routes answer 403 then). `name` falls back to the email.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the name (1–100 characters once trimmed) or an unknown field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "two_factor_setup_required: the second factor must be set up first (N93); or forbidden: the request did not come from the application (N136).",
             "content": {
               "application/problem+json": {
                 "schema": {
