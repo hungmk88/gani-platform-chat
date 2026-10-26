@@ -61,6 +61,13 @@ function turnOff(key) {
 }
 
 function flagsCard() {
+  if (Proto.state() === 'empty') {
+    // Trống: workspace chưa có cờ nào để tắt; mức tự chủ thì luôn có (L0).
+    return h('section', { class: 'card stack' },
+      h('h2', {}, 'Feature flag — workspace B2B'),
+      Proto.empty('Workspace này chưa có cờ nào để tắt. AI nội bộ bật ở màn AI nội bộ.', 'Mở AI nội bộ', () => { window.location.href = `ai.html?role=${Proto.role()}`; }),
+      h('p', { class: 'small muted' }, h('span', { class: 'pending-spec' }, 'danh sách cờ theo workspace: chờ U29')));
+  }
   return h('section', { class: 'card stack' },
     h('h2', {}, 'Feature flag — workspace B2B'),
     h('table', { class: 'plain' },
@@ -74,7 +81,7 @@ function flagsCard() {
 
 Proto.mount({
   page: 'autonomy',
-  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['error', 'Lỗi'], ['aioff', 'AI tắt']],
+  states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi'], ['aioff', 'AI tắt']],
   render: () => {
     if (!['owner', 'admin'].includes(Proto.role())) {
       return h('div', { class: 'page-body' }, Proto.noAccess('Tự chủ & feature flag (chỉ Owner, Admin)', Proto.can('inbox.view') ? 'inbox.html' : 'customer.html'));
