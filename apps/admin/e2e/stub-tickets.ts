@@ -1,7 +1,9 @@
 // #14/#15 Ticket for the e2e stub API only, as planned (docs/openapi/planned.json, N167): `GET /v1/tickets`, the workspace's
 // tickets, newest first, by cursor, filtered by status and assignee; Sales see the ones they made; `GET /v1/tickets/{id}` with its
 // events and `PATCH` of the status (the moves of N167, cancelling for Owner/Admin/Manager; each session changes its own copy,
-// `+stale@` gets version_conflict). `+no-tickets@` gets the 404 of an API that does not serve the routes yet. Never deployed.
+// `+stale@` gets version_conflict); `POST` makes one (#15(b): Phụ lục B "Ticket: tạo", an assignee among Owner/Admin/Manager/Support
+// of U52, `+bad-assignee@` gets 422 invalid_assignee). `+no-tickets@` gets the 404 of an API that does not serve the routes yet.
+// Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { NEXT, type TicketDetail, type TicketEvent } from '../src/tickets/ticket-detail';
@@ -62,6 +64,9 @@ const created = (t: Ticket): TicketEvent => ({
 });
 /** Each session's tickets with their history, as it changed them. */
 const edited = new Map<string, Map<string, TicketDetail>>();
+/** The tickets each session made, newest first. */
+const made = new Map<string, Ticket[]>();
+const ASSIGNEES = ['owner', 'admin', 'manager', 'support'];
 const LEADS = ['owner', 'admin', 'manager'];
 /** A ticket of the list, which has no history. */
 function withoutEvents(t: TicketDetail): Ticket {
@@ -88,10 +93,41 @@ export async function routeTickets(
     return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
   const me = `user-${session.role ?? ''}`;
   const mine = edited.get(session.sid) ?? new Map<string, TicketDetail>();
-  const tickets: TicketDetail[] = TICKETS.map(
+  const tickets: TicketDetail[] = [...(made.get(session.sid) ?? []), ...TICKETS].map(
     (t) => mine.get(t.id) ?? { ...t, events: [created(t)] },
   );
   const seen = tickets.filter((t) => session.role !== 'sales' || t.createdBy === me);
+  if (req.method === 'POST' && path === '/v1/tickets') {
+    if (!['sales', 'support', ...LEADS].includes(session.role ?? ''))
+      return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+    const body = await edge.json(req);
+    const title = typeof body['title'] === 'string' ? body['title'].trim() : '';
+    const to = body['assigneeUserId'];
+    if (!req.headers['idempotency-key'] || !title || title.length > 200)
+      return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+    if (
+      session.email.includes('+bad-assignee@') ||
+      (to !== undefined && !ASSIGNEES.some((r) => to === `user-${r}`))
+    )
+      return (edge.problem(res, 422, 'invalid_assignee', 'trace-e2e-422'), true);
+    const now = new Date().toISOString();
+    const t: Ticket = {
+      ...TICKETS[0]!,
+      id: `0190c3ff-0000-7000-8000-${String(Date.now()).padStart(12, '0').slice(-12)}`,
+      title,
+      description: typeof body['description'] === 'string' ? body['description'] : null,
+      status: 'new',
+      priority: (body['priority'] as Ticket['priority'] | undefined) ?? 'normal',
+      customer: null,
+      assignee: typeof to === 'string' ? { id: to, name: `Người thử ${to.slice(5)}` } : null,
+      version: 0,
+      createdBy: me,
+      createdAt: now,
+      updatedAt: now,
+    };
+    made.set(session.sid, [t, ...(made.get(session.sid) ?? [])]);
+    return (edge.send(res, 201, { ...t, events: [created(t)] }), true);
+  }
   const one = /^\/v1\/tickets\/([^/]+)$/.exec(path);
   if (one) {
     const t = seen.find((x) => x.id === decodeURIComponent(one[1] ?? ''));
