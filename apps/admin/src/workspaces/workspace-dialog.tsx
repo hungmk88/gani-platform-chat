@@ -27,7 +27,8 @@ const button = 'rounded-input border border-border-strong px-4 py-2 disabled:opa
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70';
 
 /**
- * "Sửa workspace" (#21, `PATCH /v1/workspaces/{id}`, N157): name, time zone, default load limit; only what changed is sent. Waits
+ * "Sửa workspace" (#21, `PATCH /v1/workspaces/{id}`, N157): name, time zone, default load limit, contact number (N163); only what
+ * changed is sent. Waits
  * for the server; the list then takes the API's answer and the frame is read again (its header shows the workspace's name).
  * Setting values is idempotent, so no Idempotency-Key (N157).
  */
@@ -130,6 +131,17 @@ export function WorkspaceDialog({
             value={draft.limit}
             className={field}
             onChange={(e) => edit({ limit: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          SĐT liên hệ (thay cho biến SĐT công ty trong mẫu trả lời; để trống là không có)
+          <input
+            type="tel"
+            inputMode="tel"
+            maxLength={20}
+            value={draft.phone}
+            className={field}
+            onChange={(e) => edit({ phone: e.target.value })}
           />
         </label>
         <p className="text-12 text-text-muted">
