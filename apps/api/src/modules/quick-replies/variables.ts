@@ -20,3 +20,23 @@ export function unknownVariables(text: string): string[] {
     (name) => !(TEMPLATE_VARIABLES as readonly string[]).includes(name),
   );
 }
+
+export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number];
+
+/**
+ * `text` with each variable of Đợt 1 replaced by its value; one without a value (null or blank) stays as written and is named in
+ * `unresolved`, in order of appearance.
+ */
+export function render(
+  text: string,
+  values: Readonly<Partial<Record<TemplateVariable, string | null>>>,
+): { text: string; unresolved: string[] } {
+  const unresolved = new Set<string>();
+  const out = text.replace(VARIABLE, (whole, name: string) => {
+    const value = (values as Record<string, string | null | undefined>)[name]?.trim();
+    if (value) return value;
+    unresolved.add(name);
+    return whole;
+  });
+  return { text: out, unresolved: [...unresolved] };
+}
