@@ -40,6 +40,21 @@ test('the home of a Manager, not built yet, says so and opens the inbox', async 
   await expect(page).toHaveURL('/inbox');
 });
 
+test('a Manager has the quick replies in Cài đặt, not built yet, and no other setting', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('manager'));
+  // Its only item, so the group is the link (shell.tsx).
+  const settings = page.getByRole('navigation', { name: 'Menu chính' }).getByRole('link', {
+    name: 'Cài đặt',
+  });
+  await expect(settings).toHaveAttribute('href', '/settings/quick-replies');
+  await settings.click();
+  await expect(
+    page.getByRole('heading', { name: 'Mẫu trả lời nhanh: màn này chưa có trong bản hiện tại.' }),
+  ).toBeVisible();
+});
+
 test('a Viewer goes to the profile; an item outside the menu of the role is still the 404', async ({
   page,
 }) => {
