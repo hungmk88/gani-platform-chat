@@ -9,7 +9,7 @@ const me: Me = {
   name: 'Hà Linh',
   isPlatformOperator: false,
   org: { id: 'o1', name: 'Gani Foods', role: 'sales' },
-  workspaces: [{ id: 'w1', name: 'B2B' }],
+  workspaces: [{ id: 'w1', name: 'B2B', contactPhone: null }],
 };
 
 describe('readMe', () => {

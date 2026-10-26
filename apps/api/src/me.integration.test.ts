@@ -81,12 +81,14 @@ beforeAll(async () => {
     await q('INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)', [org, `t-${org}`, name]);
   for (const [ws, org, name, deleted] of [[W1, orgA, 'Bán sỉ', false], [W2, orgA, 'Bán lẻ', false], [W3, orgA, 'Cũ', true], [W4, orgA, 'Kho', false], [WB, orgB, 'B', false]] as const)
     await q(`INSERT INTO workspaces (id, org_id, slug, name, template, deleted_at) VALUES ($1, $2, $3, $4, 'service', $5)`, [ws, org, `w-${ws}`, name, deleted ? new Date() : null]);
+  await q(`UPDATE workspaces SET contact_phone = '028 3812 3456' WHERE id = $1`, [W1]);
   await person('operator', hash, 'Op', [], true);
   await person('manager', hash, 'Lan', [[orgA, 'manager', 'active', [W1, W2, W3]]]);
   await person('nameless', hash, null, [[orgA, 'sales', 'active', []]]);
   await person('both', hash, 'Hai', [[orgA, 'sales', 'active', [W1]], [orgB, 'sales', 'active', [WB]]]);
   await person('suspended', hash, 'Tạm', [[orgA, 'sales', 'suspended', [W1]]]);
   await person('owner', hash, 'Chủ', [[orgA, 'owner', 'active', [W1]]]);
+  await person('seller', hash, 'Bán', [[orgA, 'sales', 'active', [W1]]]);
   await person('stranger', hash, 'Khác', [[orgB, 'manager', 'active', [WB]]]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const nest = (app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false }));
@@ -111,23 +113,28 @@ afterAll(async () => {
 });
 
 describe('GET /v1/me', () => {
-  it('names a member, their role, their organisation and its live workspaces they belong to, by name', async () => {
+  it('names a member, their role, their organisation and its live workspaces they belong to, by name, with their contact number', async () => {
     expect(await me('manager')).toEqual({
       id: people['manager'],
       name: 'Lan',
       isPlatformOperator: false,
       org: { id: orgA, name: 'Gani A', role: 'manager' },
       workspaces: [
-        { id: W2, name: 'Bán lẻ' },
-        { id: W1, name: 'Bán sỉ' },
+        { id: W2, name: 'Bán lẻ', contactPhone: null },
+        { id: W1, name: 'Bán sỉ', contactPhone: '028 3812 3456' },
       ],
+    });
+    // Sales reads the number too (U37): they fill {{company_phone}} of a quick reply with it.
+    expect(await me('seller')).toMatchObject({
+      org: { id: orgA, role: 'sales' },
+      workspaces: [{ id: W1, name: 'Bán sỉ', contactPhone: '028 3812 3456' }],
     });
     expect(await me('stranger')).toEqual({
       id: people['stranger'],
       name: 'Khác',
       isPlatformOperator: false,
       org: { id: orgB, name: 'Gani B', role: 'manager' },
-      workspaces: [{ id: WB, name: 'B' }],
+      workspaces: [{ id: WB, name: 'B', contactPhone: null }],
     });
   });
 

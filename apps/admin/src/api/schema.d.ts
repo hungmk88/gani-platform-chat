@@ -3238,6 +3238,8 @@ export interface components {
         MeWorkspace: {
             id: components["schemas"]["Uuid"];
             name: string;
+            /** @description The number customers call ({{company_phone}} of a quick reply, U37); null when not set. */
+            contactPhone: string | null;
         };
         MeChange: {
             name: string;

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { readOrgSummary, type OrgRole } from '@gani/db';
+import { readOrgSummary, type OrgRole, type OrgSummary } from '@gani/db';
 import { Body, Controller, Get, Inject, Logger, Patch, Req, Res } from '@nestjs/common';
 
 import { AuthService } from '../auth/auth.service.js';
@@ -23,7 +23,7 @@ export interface Me {
   readonly name: string;
   readonly isPlatformOperator: boolean;
   readonly org: { readonly id: string; readonly name: string; readonly role: OrgRole } | null;
-  readonly workspaces: readonly { readonly id: string; readonly name: string }[];
+  readonly workspaces: OrgSummary['workspaces'];
 }
 
 /**
