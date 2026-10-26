@@ -26,8 +26,36 @@ describe('WorkerMetrics', () => {
       outbox_publish_failures_total: '3',
       outbox_dead_lettered_total: '1',
       outbox_queue_full_total: '2',
+      event_jobs_handled_total: '0',
+      event_handler_errors_total: '0',
+      event_last_job_timestamp_seconds: '0',
+      event_jobs_stalled_total: '0',
+      event_jobs_failed_total: '0',
+      event_queues_subscribed: '0',
     });
     expect(text).not.toMatch(/[{}]/);
+  });
+
+  it('counts what the event consumer reports (#324): jobs handled or thrown, stalled, failed, and the queues it takes', () => {
+    let now = 2_000_000;
+    const m = new WorkerMetrics(() => now);
+    m.jobHandled(true);
+    m.jobHandled(true);
+    now += 250;
+    m.jobHandled(false);
+    m.jobStalled();
+    m.jobFailed();
+    m.queuesSubscribed(3);
+    // prettier-ignore
+    const values = Object.fromEntries(m.render().split('\n').filter((l) => l.startsWith('event_')).map((l) => l.split(' ') as [string, string]));
+    expect(values).toEqual({
+      event_jobs_handled_total: '2',
+      event_handler_errors_total: '1',
+      event_last_job_timestamp_seconds: '2000.25',
+      event_jobs_stalled_total: '1',
+      event_jobs_failed_total: '1',
+      event_queues_subscribed: '3',
+    });
   });
 
   it('is healthy while a pass ended within the limit, counting from the start until the first one', () => {

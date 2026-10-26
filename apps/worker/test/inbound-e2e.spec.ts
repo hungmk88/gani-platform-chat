@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { spawnWorker, waitFor, workerEnv, type WorkerProcess } from './harness.js';
 import { arrive, countOf, inboundStatuses, removeInbound, seedSpaces } from './inbound.js';
+import { describeJobs } from './jobs.js';
 import { startProducer } from './producer.js';
 import { useQueueSuite } from './suite.js';
 
@@ -67,7 +68,9 @@ describe('webhook event to the consumer', () => {
   });
 
   // Brief :875 and worker/CLAUDE.md: the worker killed while it takes in 50 messages a second loses none and stores none twice.
-  it('K-IN: 50 messages a second, kill -9 in the middle: no message lost, none twice, and every one reaches the consumer', async () => {
+  it('K-IN: 50 messages a second, kill -9 in the middle: no message lost, none twice, and every one reaches the consumer', async ({
+    annotate,
+  }) => {
     const { admin, app } = suite;
     const org = await suite.newOrg();
     try {
@@ -89,6 +92,7 @@ describe('webhook event to the consumer', () => {
         everyMs: 10,
         label: 'the processor to hold a claim',
       });
+      const killedAt = new Date().toISOString();
       first.signal('SIGKILL');
       expect((await first.waitExit(10_000)).signal).toBe('SIGKILL');
       const atKill = n;
@@ -96,6 +100,7 @@ describe('webhook event to the consumer', () => {
         timeoutMs: 20_000,
         label: 'the producer to write 150 events while the worker is dead',
       });
+      const restartedAt = new Date().toISOString();
       const second = spawnWorker('dist/main.js', env());
       await waitFor(() => Promise.resolve(n >= 1000), {
         timeoutMs: 40_000,
@@ -123,15 +128,50 @@ describe('webhook event to the consumer', () => {
           'SELECT count(DISTINCT platform_message_id)::int AS n FROM messages WHERE org_id = $1',
         ),
       ).toBe(written);
-      // A job the killed worker was running comes back to the second one after BullMQ's stalled check (30 s).
+      // A job the killed worker was running comes back to the second one after two stalled checks of BullMQ (30 s apart: the first
+      // marks it, the next moves it once its lock is gone): about 65 s after the kill, measured locally (#324).
       const created = await outboxIds(org, 'message.created');
       expect(created).toHaveLength(written);
+      const waitedFrom = new Date().toISOString();
       await waitFor(
         () => {
           const seen = consumedBy(first, second);
           return Promise.resolve(created.every((id) => seen.has(id)));
         },
         { timeoutMs: 75_000, label: 'the consumer to handle every message.created' },
+      ).catch(async (error: unknown) => {
+        // Where the events the consumer never logged are (#324): their jobs in BullMQ, and what the workers said of them.
+        const seen = consumedBy(first, second);
+        const missing = created.filter((id) => !seen.has(id));
+        const { rows } = await admin.query<{ id: string; ws: string }>(
+          'SELECT id, workspace_id AS ws FROM outbox_events WHERE id = ANY($1::uuid[])',
+          [missing],
+        );
+        const queues = [...new Set(rows.map((r) => r.ws))];
+        const jobs = await Promise.all(
+          queues.map((ws) =>
+            describeJobs(
+              suite.redisUrl,
+              `q.events.ws.${ws}`,
+              rows.filter((r) => r.ws === ws).map((r) => r.id),
+            ),
+          ),
+        );
+        const said = [first, second].map((w, i) =>
+          ['event_job_stalled', 'event_job_failed', 'event_handler_failed', 'event_message_missing']
+            .flatMap((m) => w.logs(m))
+            .map((l) => `  worker ${i + 1}: ${JSON.stringify(l)}`)
+            .join('\n'),
+        );
+        // prettier-ignore
+        throw new Error(`${error instanceof Error ? error.message : String(error)}\n--- K-IN: killed ${killedAt}, restarted ${restartedAt}, waited from ${waitedFrom}; ${missing.length} of ${created.length} message.created never consumed ---\n${jobs.join('\n')}\n${said.join('\n')}`, { cause: error });
+      });
+      // How long the jobs the killed worker held took to come back (BullMQ's stalled check), against the 75 s of the wait.
+      const since = (at: unknown) =>
+        ((Date.parse(String(at)) - Date.parse(killedAt)) / 1000).toFixed(1);
+      const stalled = second.logs('event_job_stalled').map((l) => since(l['time']));
+      await annotate(
+        `jobs taken back from the killed worker ${stalled.length} (s after the kill: ${stalled.join(', ') || '-'}), all consumed ${since(new Date().toISOString())} s after the kill`,
       );
     } finally {
       await removeInbound(admin, org);

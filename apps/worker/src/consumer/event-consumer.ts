@@ -1,6 +1,7 @@
 import type { TenantContext } from '@gani/db';
 
 import type { Logger } from '../logger.js';
+import type { ConsumerMetrics } from '../metrics.js';
 import type { EventJobData } from '../relay/job.js';
 import { JobTenantMissingError, runForJob } from '../tenant-job.js';
 
@@ -38,6 +39,7 @@ export interface EventConsumerDeps {
   readonly log: Logger;
   readonly settings: { readonly discoveryMs: number; readonly maxQueues: number };
   readonly shutdownMs: number;
+  readonly metrics?: ConsumerMetrics;
 }
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
@@ -77,6 +79,7 @@ export class EventConsumer {
       }
       await source.subscribe(name, (data) => this.handle(data));
       this.subscribed.add(name);
+      this.deps.metrics?.queuesSubscribed(this.subscribed.size);
       log.info('event_queue_subscribed', { queue: name });
     }
   }
@@ -93,7 +96,9 @@ export class EventConsumer {
         if (!handler) return log.info('event_unhandled', ids);
         try {
           await handler(event as EventJobData, tenant);
+          this.deps.metrics?.jobHandled(true);
         } catch (error) {
+          this.deps.metrics?.jobHandled(false);
           log.warn('event_handler_failed', {
             ...ids,
             error: error instanceof Error ? error.name : 'unknown',

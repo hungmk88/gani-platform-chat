@@ -66,7 +66,7 @@ const worker = startWorker({
   },
   ...(emitter && {
     events: {
-      source: createBullmqSource(config.redisUrl, log, config.events.concurrency),
+      source: createBullmqSource(config.redisUrl, log, config.events.concurrency, metrics),
       handlers: realtimeHandlers({
         emitter,
         read: (tenant, fn) => withTenant(pool, tenant, fn),
@@ -74,6 +74,7 @@ const worker = startWorker({
       }),
       settings: config.events,
       emitter,
+      metrics,
     },
   }),
   metrics,
