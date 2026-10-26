@@ -30,9 +30,8 @@ Báo cáo đầy đủ trước đó: `docs/reviews/J-session-backend-2026-10-26
 | #344 | Planned (3/5): P7 yêu cầu dữ liệu cá nhân + E20 prompt chỉ đọc | |
 | #345 | Planned (4/5): P11 cảnh báo và sự cố bảo mật | Merge `main` (xung đột add/add) |
 
-**Còn mở:** #346 (5/5) — thư gửi FE `docs/ui/openapi-planned-30-10.md` + `QUESTIONS.md` N167. Lúc chốt sổ, job `admin (e2e, axe)` đã chạy hơn
-10 phút (thường khoảng 2,5 phút), các job khác xanh. Session sau kiểm tiếp; đỏ thì đọc log tìm nguyên nhân, không re-run cho xanh.
-Sau khi #346 merge mới gửi thư qua session FE (`session_01P7fC5sNL63dpuyWmZNaa2d`), vì anh dặn duyệt PR này trước.
+**Cũng đã merge:** #346 (5/5) — thư gửi FE `docs/ui/openapi-planned-30-10.md` + N167. Check `admin (e2e, axe)` được anh cho bỏ qua:
+bước `playwright install` treo 14 phút do hạ tầng runner (issue #350). Đã gửi thư cho session FE (`session_01P7fC5sNL63dpuyWmZNaa2d`).
 
 ## 3. Quyết định đã ghi `QUESTIONS.md`
 
@@ -123,8 +122,8 @@ Scratchpad của session này không chuyển sang session mới. Cần dựng l
 
 | Hạn | Việc |
 |---|---|
-| Ngay | #346 xanh CI → anh merge → gửi thư cho session FE |
 | Session mới | #324 kill-9 (mục 5) |
+| Sau #324 | #350 cache trình duyệt Playwright trong CI; #351 test `send-message-locks` "close racing ten answers" đỏ chập chờn (một câu trả lời không phải 201/409, chưa biết mã nào; trước hết sửa assert để in mã lạ) |
 | 30/10 | Báo cáo tiến độ + kết quả #324 (đã đặt nhắc) |
 | Trước S1 (16/11) | U30: `channel`, `lastMessagePreview` (≤ 120 ký tự, không log), `assignee {id, name}`, lọc `channelId` và `q` trên `GET /v1/conversations`. U31: `GET /v1/conversations/{id}/assignees?purpose=transfer\|assign` |
 | Chờ | Q7 (anh đang gửi form cho các công ty), Q8, luật sư (P7, deploy) |
