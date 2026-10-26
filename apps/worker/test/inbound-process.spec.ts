@@ -86,6 +86,8 @@ afterAll(async () => {
     'conversations',
     'inbound_events',
     'inbound_event_keys',
+    'customer_identities',
+    'customers',
     'channel_accounts',
     'workspaces',
   ])
@@ -140,6 +142,38 @@ describe('processInboundEvent', () => {
     expect(await rows('SELECT status FROM inbound_events WHERE id = $1', [first.id])).toEqual([
       { status: 'processed' },
     ]);
+  });
+
+  it('gives the conversation the customer of the person on this OA, the same one for each message (N165)', async () => {
+    const person = `zu-${uuidv7()}`;
+    await process(await arrive(zalo(person)));
+    await process(await arrive(zalo(person)));
+    const customers = await rows<{ customer_id: string }>(
+      `SELECT i.customer_id FROM customer_identities i
+       WHERE i.identity_type = 'zalo_uid' AND i.channel_account_id = $1 AND i.external_id = $2`,
+      [account, person],
+    );
+    expect(customers).toHaveLength(1);
+    expect(
+      await rows('SELECT customer_id FROM conversations WHERE external_user_id = $1', [person]),
+    ).toEqual(customers);
+  });
+
+  it('names the customer of a conversation older than customers at its next message, reopened (T14) or not', async () => {
+    const person = `zu-${uuidv7()}`;
+    await admin.query(
+      `INSERT INTO conversations (id, org_id, workspace_id, state, closed_at, outcome, channel_account_id, external_user_id)
+       VALUES ($1, $2, $3, 'CLOSED', now() - interval '2 hours', 'resolved', $4, $5)`,
+      [uuidv7(), org, ws, account, person],
+    );
+    await process(await arrive(zalo(person)));
+    const [conversation, extra] = await rows<{ state: string; customer_id: string | null }>(
+      'SELECT state, customer_id FROM conversations WHERE external_user_id = $1',
+      [person],
+    );
+    expect(extra).toBeUndefined();
+    expect(conversation?.state).toBe('BOT_ACTIVE');
+    expect(conversation?.customer_id).toEqual(expect.any(String));
   });
 
   it('makes one conversation of two first messages of one person processed at once (the lock of the person)', async () => {

@@ -8,6 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createDbPool,
   customerForContact,
+  insertConversation,
+  linkConversationCustomer,
   lockContact,
   withTenant,
   type TenantTx,
@@ -16,10 +18,10 @@ import { url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // The customer of an inbound message (N165), on app_role with RLS: found or made by the Zalo user id of one OA, one customer for two
-// first messages at once (under lockContact), and what the tables refuse. RLS and the
+// first messages at once (under lockContact), the conversation's customer filled once, and what the tables refuse. RLS and the
 // privileges of app_role on the two tables are checked with every other table (rls-all-tables.spec, grants.spec).
-const A = uuidv7();
-let user = '';
+const [A, B] = [uuidv7(), uuidv7()];
+let [userA, userB] = ['', ''];
 let [WA, CA, CA2] = ['', '', ''];
 let admin: pg.Client;
 let pool: pg.Pool;
@@ -43,7 +45,8 @@ beforeAll(async () => {
   admin = new pg.Client({ connectionString: url('migration') });
   await admin.connect();
   pool = createDbPool(url('app'), { max: 4 });
-  user = await seedTenant(admin, A);
+  userA = await seedTenant(admin, A);
+  userB = await seedTenant(admin, B);
   const one = async (sql: string) =>
     ((await admin.query<{ id: string }>(sql, [A])).rows[0] as { id: string }).id;
   WA = await one('SELECT id FROM workspaces WHERE org_id = $1');
@@ -58,7 +61,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.end();
-  await cleanupTenant(admin, A, user);
+  await cleanupTenant(admin, A, userA);
+  await cleanupTenant(admin, B, userB);
   await admin.end();
 });
 
@@ -109,6 +113,49 @@ describe('customerForContact', () => {
       [who],
     );
     expect(rows).toEqual([{ n: 1 }]);
+  });
+});
+
+describe('linkConversationCustomer', () => {
+  it('names the customer of a conversation that has none, and never replaces it', async () => {
+    const who = person();
+    const [first, other] = [
+      await inA((tx) => resolve(tx, who)),
+      await inA((tx) => resolve(tx, person())),
+    ];
+    const conversation = await inA((tx) =>
+      insertConversation(tx, {
+        id: uuidv7(),
+        workspaceId: WA,
+        state: 'BOT_ACTIVE',
+        afterHoursHold: false,
+        assignedUserId: null,
+        closedAt: null,
+        outcome: null,
+        channel: { channelAccountId: CA, externalUserId: who },
+      }),
+    );
+    expect(await inA((tx) => linkConversationCustomer(tx, conversation.id, first))).toBe(true);
+    expect(await inA((tx) => linkConversationCustomer(tx, conversation.id, other))).toBe(false);
+    const { rows } = await admin.query('SELECT customer_id FROM conversations WHERE id = $1', [
+      conversation.id,
+    ]);
+    expect(rows).toEqual([{ customer_id: first }]);
+  });
+
+  it('refuses a customer of another organisation (the foreign key names the organisation)', async () => {
+    const { rows } = await admin.query<{ id: string }>(
+      'SELECT id FROM customers WHERE org_id = $1 LIMIT 1',
+      [B],
+    );
+    const conversation = await admin.query<{ id: string }>(
+      'SELECT id FROM conversations WHERE org_id = $1 AND customer_id IS NULL LIMIT 1',
+      [A],
+    );
+    const link = inA((tx) =>
+      linkConversationCustomer(tx, conversation.rows[0]?.id ?? '', rows[0]?.id ?? ''),
+    );
+    expect(await sqlState(link)).toBe('23503');
   });
 });
 

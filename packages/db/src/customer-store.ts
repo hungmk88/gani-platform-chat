@@ -1,5 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 
+import { conversations } from './schema/conversations.js';
 import { customerIdentities, customers } from './schema/customers.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
@@ -46,4 +47,22 @@ export async function customerForContact(
     externalId: q.externalUserId,
   });
   return customerId;
+}
+
+/**
+ * Names `customerId` as the customer of a conversation that has none yet: a new one, or one older than customers (N165). A conversation
+ * that has a customer keeps it (the merge of J3 will move them). True when the row changed.
+ */
+export async function linkConversationCustomer(
+  tx: TenantTx,
+  conversationId: string,
+  customerId: string,
+): Promise<boolean> {
+  const c = conversations;
+  const rows = await tx
+    .update(c)
+    .set({ customerId: assertUuid(customerId, 'customerId') })
+    .where(and(eq(c.id, assertUuid(conversationId, 'conversationId')), isNull(c.customerId)))
+    .returning({ id: c.id });
+  return rows.length === 1;
 }
