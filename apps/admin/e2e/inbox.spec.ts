@@ -102,3 +102,18 @@ test('600 conversations: only the rows near the screen are in the page, scrollin
   expect(await column.getByRole('listitem').count()).toBeLessThan(100);
   await expectAccessible(page);
 });
+
+// U30 (part, N165): the customer's name on each row and on the open conversation, with a link to the profile (#8).
+test('each row names the customer, or says nobody has named them yet; the conversation links to the profile', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('manager'));
+  await page.goto('/inbox');
+  await expect(list(page).first()).toContainText('Nguyễn Văn An');
+  await expect(list(page).filter({ hasText: 'Khách chưa có tên' })).toHaveCount(STUB_PAGE - 1);
+  await list(page).first().getByRole('link').click();
+  const view = page.getByRole('region', { name: 'Hội thoại' });
+  await expect(view.getByText('Nguyễn Văn An')).toBeVisible();
+  await view.getByRole('link', { name: 'Xem hồ sơ khách' }).click();
+  await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();
+});

@@ -1,5 +1,6 @@
 // What the conversation list of the Inbox (#6) shows and asks, kept out of React so it is tested row by row.
 import type { components } from '../api/schema';
+import { nameOf } from '../customers/customers';
 import type { Role } from '../nav';
 
 export type Conversation = components['schemas']['Conversation'];
@@ -68,6 +69,10 @@ export function holderOf(c: { readonly assignedUserId: string | null }, meId: st
   if (c.assignedUserId === null) return 'Chưa ai nhận';
   return c.assignedUserId === meId ? 'Tôi' : 'Người khác';
 }
+
+/** The customer of the conversation (U30 part, N165): its name, or words for one not named or not linked yet. */
+export const customerNameOf = (c: Pick<Conversation, 'customer'>): string =>
+  nameOf({ displayName: c.customer?.displayName?.trim() || null });
 
 /** The one sentence and one action of an empty list (prototype #6 "Trống"). */
 export function emptyOf(

@@ -14,7 +14,7 @@ import { ReplyBox } from './reply-box';
 import { customerOf, phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { Holder } from './holder';
-import { HOLD_LABEL, STATE_LABEL } from './list';
+import { customerNameOf, HOLD_LABEL, STATE_LABEL } from './list';
 import { inReadingOrder, KIND_LABEL, messagesPath, senderOf } from './messages';
 
 type Conversation = components['schemas']['Conversation'];
@@ -97,6 +97,14 @@ export function ConversationView({
       className="flex min-w-0 flex-col gap-4 rounded-card border border-border p-4"
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2">
+        <p className="flex w-full flex-wrap items-baseline gap-2">
+          <span className="font-semibold">{customerNameOf(c)}</span>
+          {c.customer ? (
+            <Link href={`/customers/${c.customer.id}`} className="text-12 underline">
+              Xem hồ sơ khách
+            </Link>
+          ) : null}
+        </p>
         <h2 className="text-16 font-semibold">
           {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
         </h2>
