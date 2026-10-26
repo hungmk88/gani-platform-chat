@@ -72,6 +72,9 @@ jobs:
       # The Chromium of the pinned @playwright/test, with the system libraries it needs.
       - run: pnpm --filter @gani/admin exec playwright install --with-deps chromium
       - run: pnpm --filter @gani/admin e2e
+      # The widget on its test page (apps/widget/CLAUDE.md "Kiểm chứng"), with the same Chromium: built, then E2E and axe-core.
+      - run: pnpm --filter @gani/widget build
+      - run: pnpm --filter @gani/widget e2e
 
   security:
     name: dependency audit, secret scan

@@ -15,6 +15,7 @@ import {
   quickReplyError,
   type QuickReply,
 } from './quick-replies';
+import { PreviewQuickReplyDialog } from './quick-reply-preview';
 import { VariableButtons } from './variable-buttons';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
@@ -39,6 +40,7 @@ function ErrorOf({ failure, shortcut }: { failure: ApiFailure | null; shortcut: 
 /**
  * "Sửa mẫu" (#22, `PATCH /v1/quick-replies/{id}`, N163): shortcut, text and tags, checked like the API; only what changed is sent,
  * nothing changed closes. Waits for the server, no Idempotency-Key (it sets values); then every list of the workspace is read again.
+ * The text being changed can be seen with sample values first ("Xem trước", U38).
  */
 export function EditQuickReplyDialog({
   reply,
@@ -57,6 +59,7 @@ export function EditQuickReplyDialog({
   const [body, setBody] = useState(reply.body);
   const [tags, setTags] = useState(reply.tags.join(', '));
   const [problem, setProblem] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const save = useMutation<QuickReply, ApiFailure, object>({
     mutationFn: (change) =>
       unwrap(api<QuickReply>(pathOf(reply), { method: 'PATCH', body: change })),
@@ -140,11 +143,25 @@ export function EditQuickReplyDialog({
           >
             {save.isPending ? 'Đang lưu…' : 'Lưu'}
           </button>
+          <button
+            type="button"
+            className={button}
+            disabled={!body.trim()}
+            onClick={() => setPreviewing(true)}
+          >
+            Xem trước
+          </button>
           <button type="button" className={button} onClick={() => dialog.current?.close()}>
             Hủy
           </button>
         </div>
       </form>
+      {previewing ? (
+        <PreviewQuickReplyDialog
+          source={{ kind: 'draft', workspaceId: reply.workspaceId, body }}
+          onClose={() => setPreviewing(false)}
+        />
+      ) : null}
     </dialog>
   );
 }

@@ -8,6 +8,7 @@ import {
   templateValues,
   updateQuickReply,
   type QuickReplyChange,
+  type TenantTx,
 } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
 import {
@@ -34,6 +35,7 @@ import { render } from './variables.js';
 import {
   QuickReplyChangeSchema,
   QuickReplyCreateSchema,
+  QuickReplyDraftSchema,
   QuickReplyIdSchema,
   QuickReplyListQuerySchema,
 } from './quick-replies.schemas.js';
@@ -155,16 +157,33 @@ export class QuickRepliesController {
     return this.database.withTenant(ctx, async (tx) => {
       const template = await lockQuickReply(tx, id);
       if (!template) throw new NotFoundException();
-      const values = await templateValues(tx, {
-        workspaceId: template.workspaceId,
-        userId: ctx.userId,
-      });
-      return render(template.body, {
-        customer_name: SAMPLE_CUSTOMER,
-        agent_name: values.agentName,
-        company_name: values.companyName,
-        company_phone: values.companyPhone,
-      });
+      return this.sample(tx, template.workspaceId, ctx.userId, template.body);
+    });
+  }
+
+  /**
+   * The same for a template not saved yet (U38): the form of /settings/quick-replies shows what it is typing. Nothing is written; a body
+   * the API would refuse to save (an unknown variable) is a 400 here too.
+   */
+  @Post('preview')
+  @HttpCode(200)
+  async previewDraft(
+    @Body(new ZodPipe(QuickReplyDraftSchema)) draft: { workspaceId: string; body: string },
+  ) {
+    const ctx = this.allowed(mayWriteQuickReplies, draft.workspaceId);
+    return this.database.withTenant(ctx, (tx) =>
+      this.sample(tx, draft.workspaceId, ctx.userId, draft.body),
+    );
+  }
+
+  /** `body` with a sample customer name, the caller's own name, the company's name and the workspace's contact number. */
+  private async sample(tx: TenantTx, workspaceId: string, userId: string, body: string) {
+    const values = await templateValues(tx, { workspaceId, userId });
+    return render(body, {
+      customer_name: SAMPLE_CUSTOMER,
+      agent_name: values.agentName,
+      company_name: values.companyName,
+      company_phone: values.companyPhone,
     });
   }
 
