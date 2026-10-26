@@ -2890,6 +2890,8 @@ export interface components {
             timezone: string;
             /** @description The limit of conversations at once of an agent without their own (C9); 5 unless changed. */
             defaultMaxConcurrent: number;
+            /** @description The number customers call: what {{company_phone}} of a quick reply becomes (N163); null until set. */
+            contactPhone: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2897,6 +2899,7 @@ export interface components {
             name?: string;
             timezone?: string;
             defaultMaxConcurrent?: number;
+            contactPhone?: string | null;
         };
         WorkspaceMemberList: {
             data: components["schemas"]["WorkspaceMember"][];

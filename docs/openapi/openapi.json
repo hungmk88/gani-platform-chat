@@ -810,6 +810,13 @@
             "type": "integer",
             "description": "The limit of conversations at once of an agent without their own (C9); 5 unless changed."
           },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The number customers call: what {{company_phone}} of a quick reply becomes (N163); null until set."
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -822,6 +829,7 @@
           "template",
           "timezone",
           "defaultMaxConcurrent",
+          "contactPhone",
           "createdAt"
         ]
       },
@@ -840,6 +848,13 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\+?[0-9][0-9 .-]{5,19}$"
           }
         },
         "additionalProperties": false
