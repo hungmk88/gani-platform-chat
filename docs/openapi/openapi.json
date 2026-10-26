@@ -399,6 +399,77 @@
           "createdAt"
         ]
       },
+      "AssigneeList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Assignee"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "Assignee": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "manager",
+              "sales",
+              "support",
+              "marketing",
+              "viewer"
+            ]
+          },
+          "teamId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          },
+          "teamName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "openCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxConcurrent": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "role",
+          "teamId",
+          "teamName",
+          "openCount",
+          "maxConcurrent"
+        ]
+      },
       "WindowClosedProblem": {
         "type": "object",
         "properties": {
@@ -2088,6 +2159,99 @@
                       "$ref": "#/components/schemas/Problem"
                     }
                   ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversations/{id}/assignees": {
+      "get": {
+        "summary": "Who \"Chuyển\" (`purpose=transfer`) or \"Gán lại\" (`purpose=assign`) would accept (U31, N168): active members of the conversation’s workspace who may hold conversations, but not its holder; a Sales/Support transfer, only those who share a team with the caller. By name; `openCount` is for the whole organisation, `maxConcurrent` the effective limit.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "transfer",
+                "assign"
+              ]
+            },
+            "required": true,
+            "name": "purpose",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The people, by name (no name last).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssigneeList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, or `purpose` missing or not transfer/assign.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: the role may not do this action (assign: sales, support; any: marketing, viewer), or a Sales/Support transfer of a conversation they do not hold; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
