@@ -58,3 +58,19 @@ export function holderNameOf(
   const m = members.find((x) => x.userId === holder);
   return m ? (m.name ?? m.email) : null;
 }
+
+/** From this many people on, the dialog has a search box: U31 has no paging and a large workspace lists everyone. */
+export const SEARCH_FROM = 8;
+
+/** Lower case without accents (đ → d), so "tran" finds "Trần" and "cskh" finds "CSKH". */
+const fold = (s: string) =>
+  s.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase();
+
+/** The lines whose words contain every word typed, in any order; an empty search keeps them all. */
+export function matching<T extends { readonly label: string }>(
+  lines: readonly T[],
+  query: string,
+): T[] {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  return lines.filter((l) => words.every((w) => fold(l.label).includes(w)));
+}

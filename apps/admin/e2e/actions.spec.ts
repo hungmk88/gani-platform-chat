@@ -93,6 +93,7 @@ test('an Owner assigns among those U31 lists: a refusal is said, another pick wo
   await expect(pick.getByRole('option')).toHaveText([
     'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
   ]);
+  await expect(dialog.getByLabel('Tìm người')).toHaveCount(0); // a short list needs no search
   await expectAccessible(page);
   await dialog.getByRole('button', { name: 'Hủy' }).click();
 
@@ -153,4 +154,20 @@ test('a Manager, who cannot read the members, sees it in words (U30)', async ({ 
   await signIn(page, accountOf('manager'));
   await page.goto(`/inbox/${held.id}`);
   await expect(view(page).getByText('Phụ trách: Người khác')).toBeVisible();
+});
+
+test('a long list of recipients can be searched by name, role or team, without accents', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto(`/inbox/${CONVERSATIONS[3]!.id}`); // the stub gives this one a crowd of recipients
+  await page.getByRole('button', { name: 'Gán lại' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
+  const pick = dialog.getByLabel('Người nhận');
+  await expect(pick.getByRole('option')).toHaveCount(10); // Owner, Sales and the crowd of 8
+  await dialog.getByLabel('Tìm người').fill('duc');
+  await expect(pick.getByRole('option')).toHaveText(['Nhân viên Đức · Support · đang giữ 0/5']);
+  await dialog.getByLabel('Tìm người').fill('không ai');
+  await expect(dialog).toContainText('Không ai khớp "không ai".');
+  await expectAccessible(page);
 });
