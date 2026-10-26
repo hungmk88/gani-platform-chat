@@ -126,8 +126,8 @@ Trang mặc định sau đăng nhập:
 ## Hồ sơ cá nhân (#5)
 
 - `/me` (mọi vai trò; tên ở thanh trên là link): 3 phần theo URL `?tab=info|security|notify` (link, không phải tablist).
-- Thông tin: chỉ đọc từ `/v1/me` (tên, vai trò, công ty, workspace); đổi tên và ảnh chờ `PATCH /v1/me` (U25).
-- Bảo mật: trạng thái 2FA (`security-status`, không có nút tắt); đổi mật khẩu qua `POST /api/auth/change-password` (`revokeOtherSessions` mặc định bật). Better Auth chỉ kiểm độ dài 12–128, nên form kiểm thêm chữ + số (ADR-003) trước khi gửi (`src/profile/password.ts`). "Đăng xuất khỏi các thiết bị khác" = `POST /api/auth/revoke-other-sessions`.
+- Thông tin: đọc từ `/v1/me` (tên, vai trò, công ty, workspace). **Đổi tên** (`PATCH /v1/me {name}`, N162): 1–100 ký tự, cắt khoảng trắng như API (`src/profile/name.ts` + `name-form.tsx`); nút khóa khi tên chưa đổi; chờ máy chủ, không `Idempotency-Key`; xong thì khung app đọc lại (`router.refresh`, thanh trên có tên mới). Ảnh đại diện: để sau khi có kho file (N162).
+- Bảo mật: trạng thái 2FA (`security-status`, không có nút tắt); đổi mật khẩu qua `POST /api/auth/change-password`: API **luôn** đăng xuất các thiết bị khác (N162), nên form không có ô chọn, chỉ nói trước; vẫn gửi `revokeOtherSessions: true`. 429 (5 lần/phút) → đợi 1 phút. Better Auth chỉ kiểm độ dài 12–128, nên form kiểm thêm chữ + số (ADR-003) trước khi gửi (`src/profile/password.ts`). "Đăng xuất khỏi các thiết bị khác" = `POST /api/auth/revoke-other-sessions`.
 - **Không gọi `/api/auth/list-sessions`**: đường này trả token của mọi phiên cho JavaScript (giữ cho `/revoke-session`, SEC-03). Danh sách phiên của prototype #5 chờ một đường không có token.
 - Thông báo: chờ API.
 
