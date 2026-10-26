@@ -19,6 +19,7 @@ const TENANT_TABLES = [
   'inbound_event_keys',
   'inbound_events',
   'channel_accounts',
+  'quick_replies',
   'team_members',
   'teams',
   'workspace_members',
@@ -52,6 +53,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO feature_flags_global (key, description, owner, remove_by) VALUES ('${flagKeyOf(org)}', 'seed', 'seed', current_date + 30);
     INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
+    INSERT INTO quick_replies (id, org_id, workspace_id, shortcut, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'seed', 'Seed');
     INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ('${channelAccount}', '${org}', '${workspace}', 'zalo_oa', 'oa-${org}', 'OA', 'app-seed', decode('${randomBytes(32).toString('hex')}', 'hex'));
     INSERT INTO inbound_events (id, org_id, workspace_id, channel_account_id, platform_message_id, event_type, payload) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${channelAccount}', 'm-seed', 'user_send_text', '{"seed": true}');
     INSERT INTO inbound_event_keys (org_id, channel_account_id, platform_message_id) VALUES ('${org}', '${channelAccount}', 'm-seed');
