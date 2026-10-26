@@ -2,7 +2,7 @@
 // tickets, newest first, by cursor, filtered by status and assignee; Sales see the ones they made; `GET /v1/tickets/{id}` with its
 // events and `PATCH` of the status (the moves of N167, cancelling for Owner/Admin/Manager; each session changes its own copy,
 // `+stale@` gets version_conflict); `POST` makes one (#15(b): Phụ lục B "Ticket: tạo", an assignee among Owner/Admin/Manager/Support
-// of U52, `+bad-assignee@` gets 422 invalid_assignee). `+no-tickets@` gets the 404 of an API that does not serve the routes yet.
+// of U52, `+bad-assignee@` gets 422 invalid_assignee; from a conversation it keeps `conversationId` and the customer, #358). `+no-tickets@` gets the 404 of an API that does not serve the routes yet.
 // Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -110,6 +110,11 @@ export async function routeTickets(
       (to !== undefined && !ASSIGNEES.some((r) => to === `user-${r}`))
     )
       return (edge.problem(res, 422, 'invalid_assignee', 'trace-e2e-422'), true);
+    // From a conversation (#358): its customer, if any, must be one the stub knows (else 404 like the API); null is refused.
+    const customerId = body['customerId'];
+    const customer = CUSTOMERS.find((c) => c.id === customerId);
+    if (customerId !== undefined && !customer)
+      return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
     const now = new Date().toISOString();
     const t: Ticket = {
       ...TICKETS[0]!,
@@ -118,7 +123,8 @@ export async function routeTickets(
       description: typeof body['description'] === 'string' ? body['description'] : null,
       status: 'new',
       priority: (body['priority'] as Ticket['priority'] | undefined) ?? 'normal',
-      customer: null,
+      customer: customer ? { id: customer.id, displayName: customer.displayName } : null,
+      conversationId: typeof body['conversationId'] === 'string' ? body['conversationId'] : null,
       assignee: typeof to === 'string' ? { id: to, name: `Người thử ${to.slice(5)}` } : null,
       version: 0,
       createdBy: me,
