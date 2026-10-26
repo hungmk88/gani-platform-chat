@@ -17,8 +17,9 @@ Dự án có **2 đợt** (Đợt 1 = 58 mã, go-live 15/02/2027; Đợt 2 = 77 
 2. Khách hàng — `/customers`, `/leads`, `/tickets`; `/quotes`, `/orders` (Đợt 2)
 3. Tự động hóa — `/bots`; `/automation`, `/knowledge` (Đợt 2)
 4. Tổng quan & Báo cáo — `/overview`; `/reports` (Đợt 2)
-5. Cài đặt — `/settings/{workspace, members, teams, channels, ai, autonomy, audit, security}`;
-   `/settings/widget` (Đợt 2)
+5. Cài đặt — `/settings/{workspace, members, teams, channels, quick-replies, customer-data, ai, autonomy, audit, security}`;
+   `/settings/widget` (Đợt 2). `quick-replies` (#22) cho Owner/Admin/Manager (Phụ lục B, N163); còn lại Owner/Admin
+   (`customer-data` #23: Manager cho tab Tag chờ U36).
 
 `/platform` chỉ hiện với `platform_operator`. Ẩn mục theo vai trò và theo đợt.
 
