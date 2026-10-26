@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   channelsOf,
+  customerPath,
   customersPath,
+  humanOnlyText,
   dayOf,
   mayReadCustomers,
   nameOf,
   phoneText,
   seesMasked,
+  VERIFICATION,
 } from './customers';
 
 describe('mayReadCustomers and seesMasked', () => {
@@ -53,5 +56,16 @@ describe('nameOf, phoneText, channelsOf and dayOf', () => {
   });
   it('gives the day in Viet Nam', () => {
     expect(dayOf('2026-10-25T18:30:00Z')).toBe('26/10/2026');
+  });
+});
+
+describe('customerPath, VERIFICATION and humanOnlyText', () => {
+  it('asks for one customer by id, encoded', () => {
+    expect(customerPath('a/b')).toBe('/v1/customers/a%2Fb');
+  });
+  it('says how sure an identity is, and what the flag does', () => {
+    expect(VERIFICATION.unverified).toEqual(['warn', 'Chưa xác thực']);
+    expect(humanOnlyText(true)).toBe('Có: bot không trả lời khách này');
+    expect(humanOnlyText(false)).toBe('Không');
   });
 });
