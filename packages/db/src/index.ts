@@ -23,6 +23,7 @@ export * from './workspace-member-store.js';
 export * from './workspace-store.js';
 export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, shareTeam, type MemberContext } from './member-context.js';
+export { listAssigneeCandidates, type AssigneeCandidate } from './assignee-read.js';
 export { insertAuditLog } from './audit-log.js';
 export { readOrgSummary, type OrgSummary } from './org-summary.js';
 export * from './outbox-store.js';
