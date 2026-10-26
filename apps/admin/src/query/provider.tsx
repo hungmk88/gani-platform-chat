@@ -38,11 +38,18 @@ export function QueryProvider({ scope, children }: { scope: Scope; children: Rea
   );
 }
 
-/** `GET path` under the key of the scope: `useApiQuery<Schemas['ConversationPage']>(['conversations'], '/v1/conversations')`. */
-export function useApiQuery<T>(parts: readonly unknown[], path: string) {
+/**
+ * `GET path` under the key of the scope: `useApiQuery<Schemas['ConversationPage']>(['conversations'], '/v1/conversations')`.
+ * `enabled: false` asks nothing until it turns true (the templates of the reply box, only while "/" is typed).
+ */
+export function useApiQuery<T>(parts: readonly unknown[], path: string, enabled = true) {
   const scope = useContext(ScopeContext);
   if (!scope) throw new Error('useApiQuery outside QueryProvider');
-  return useQuery<T, ApiFailure>({ queryKey: scopeKey(scope, ...parts), queryFn: getter<T>(path) });
+  return useQuery<T, ApiFailure>({
+    queryKey: scopeKey(scope, ...parts),
+    queryFn: getter<T>(path),
+    enabled,
+  });
 }
 
 /** Pages of a cursor list (`{ data, nextCursor }`, P9): `pathOf(cursor)` is the GET of one page, `parts` its key in the scope. */
