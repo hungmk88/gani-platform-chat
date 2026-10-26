@@ -1,18 +1,19 @@
 /* global Proto */
 /* #22 Mẫu trả lời nhanh (danh-sach-man-M11; C7). Sprint S4, nộp wireframe 21/12/2026.
    Căn cứ: spec M8 §3.2: Owner, Admin, Manager tạo/sửa/xóa mẫu dùng chung của workspace; Sales, Support chỉ dùng trong Hộp thư (gõ /).
-   Biến Đợt 1: tên khách, tên nhân viên, tên công ty, SĐT công ty. Tìm theo tên/tag, sắp theo số lần dùng, xem trước với dữ liệu
+   Biến Đợt 1 (N163): {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}. Tên ngắn và tag như API (N163): chữ
+   thường, số, "-", "_", 1–32 ký tự; tối đa 10 tag, mỗi tag ≤ 30 ký tự. Tìm theo tên/tag, sắp theo số lần dùng (cộng dồn), xem trước với dữ liệu
    mẫu. Biến thiếu dữ liệu: Hộp thư hiện ô trống để điền, không gửi {{…}} ra khách (inbox.js, fillTemplate). Chỉ chữ thuần (T2). */
 const { h } = Proto;
 
-const VARS = [['ten_khach', 'Tên khách', 'Nguyễn Văn An'], ['ten_nhan_vien', 'Tên nhân viên', 'Trần Thu'], ['ten_cong_ty', 'Tên công ty', 'Gani Foods'], ['sdt_cong_ty', 'SĐT công ty', null]];
+const VARS = [['customer_name', 'Tên khách', 'Nguyễn Văn An'], ['agent_name', 'Tên nhân viên', 'Trần Thu'], ['company_name', 'Tên công ty', 'Gani Foods'], ['company_phone', 'SĐT công ty', null]];
 const TEMPLATES = [
-  { id: 'q1', key: 'chao-hoi', text: 'Chào {{ten_khach}}, em là {{ten_nhan_vien}} từ {{ten_cong_ty}}. Em hỗ trợ được gì ạ?', tags: ['Chào hỏi'], uses: 412 },
+  { id: 'q1', key: 'chao-hoi', text: 'Chào {{customer_name}}, em là {{agent_name}} từ {{company_name}}. Em hỗ trợ được gì ạ?', tags: ['Chào hỏi'], uses: 412 },
   { id: 'q2', key: 'xin-sdt', text: 'Anh/chị cho em xin số điện thoại để bộ phận kinh doanh gọi lại ạ.', tags: ['Thu thập thông tin'], uses: 268 },
-  { id: 'q3', key: 'hotline', text: 'Anh/chị cần gấp có thể gọi {{sdt_cong_ty}}, em là {{ten_nhan_vien}} ạ.', tags: ['Liên hệ'], uses: 97 },
-  { id: 'q4', key: 'cam-on', text: 'Cảm ơn {{ten_khach}} đã liên hệ {{ten_cong_ty}} ạ.', tags: ['Chào hỏi', 'Kết thúc'], uses: 151 },
+  { id: 'q3', key: 'hotline', text: 'Anh/chị cần gấp có thể gọi {{company_phone}}, em là {{agent_name}} ạ.', tags: ['Liên hệ'], uses: 97 },
+  { id: 'q4', key: 'cam-on', text: 'Cảm ơn {{customer_name}} đã liên hệ {{company_name}} ạ.', tags: ['Chào hỏi', 'Kết thúc'], uses: 151 },
 ];
-const KEY_RULE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const KEY_RULE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const VAR_RE = /\{\{(\w+)\}\}/g;
 const label = (key) => VARS.find(([k]) => k === key)?.[1];
 
@@ -30,12 +31,15 @@ function preview(text) {
   return parts;
 }
 
-function problemsOf(key, text, editing) {
-  if (!KEY_RULE.test(key)) return 'Tên ngắn chỉ gồm chữ thường không dấu, số và dấu gạch ngang (vd. chao-hoi).';
+function problemsOf(key, text, rawTags, editing) {
+  if (!KEY_RULE.test(key)) return 'Tên ngắn gồm chữ thường không dấu, số, "-" hoặc "_", bắt đầu bằng chữ hoặc số, tối đa 32 ký tự (vd. chao-hoi).';
   if (TEMPLATES.some((t) => t.key === key && t !== editing)) return `Đã có mẫu /${key}.`;
   if (!text.trim()) return 'Nhập nội dung mẫu.';
   const unknown = [...text.matchAll(VAR_RE)].map((m) => m[1]).filter((k) => !label(k));
   if (unknown.length) return `Biến không có ở Đợt 1: ${unknown.map((k) => `{{${k}}}`).join(', ')}.`;
+  const tags = [...new Set(rawTags.split(',').map((t) => t.trim()).filter(Boolean))];
+  if (tags.length > 10) return 'Tối đa 10 tag.';
+  if (tags.some((t) => t.length > 30)) return 'Mỗi tag tối đa 30 ký tự.';
   return null;
 }
 
@@ -58,13 +62,13 @@ function editor(editing) {
     h('div', { class: 'field' }, h('label', { for: 'qr-text' }, 'Nội dung'), text),
     h('div', { class: 'row', role: 'group', 'aria-label': 'Chèn biến' }, h('span', { class: 'small muted' }, 'Chèn biến:'),
       VARS.map(([k, name]) => h('button', { class: 'btn', type: 'button', onclick: () => insert(k) }, name))),
-    h('div', { class: 'field' }, h('label', { for: 'qr-tags' }, 'Tag (cách nhau bằng dấu phẩy)'), tags),
+    h('div', { class: 'field' }, h('label', { for: 'qr-tags' }, 'Tag (cách nhau bằng dấu phẩy, tối đa 10)'), tags),
     h('div', { class: 'card stack' }, h('h3', {}, 'Xem trước với dữ liệu mẫu'), shown,
       h('p', { class: 'small muted' }, 'Ô trống: biến chưa có dữ liệu (ở đây SĐT công ty chưa cài). Hộp thư bắt người gửi điền, không bao giờ gửi {{…}} ra khách.')),
     err), (close) => [
     h('button', { class: 'btn', onclick: close }, 'Hủy'),
     h('button', { class: 'btn primary', onclick: (e) => {
-      const problem = problemsOf(key.value.trim(), text.value, editing);
+      const problem = problemsOf(key.value.trim(), text.value, tags.value, editing);
       err.replaceChildren(problem ?? '');
       if (problem) return;
       Proto.serverAction(e.currentTarget, 'Lưu mẫu', () => {
@@ -101,7 +105,7 @@ function list() {
         h('select', { id: 'qr-sort', class: 'input', onchange: (e) => Proto.set('sort', e.target.value) },
           h('option', { value: 'uses', selected: sort === 'uses' }, 'Dùng nhiều nhất'), h('option', { value: 'name', selected: sort === 'name' }, 'Tên A–Z')))),
     rows.length === 0 ? h('p', { class: 'muted' }, `Không có mẫu khớp "${Proto.get('q', '')}".`) : h('table', { class: 'plain' },
-      h('thead', {}, h('tr', {}, ['Tên ngắn', 'Nội dung', 'Tag', 'Lần dùng (30 ngày)', ''].map((c) => h('th', {}, c || h('span', { class: 'sr-only' }, 'Thao tác'))))),
+      h('thead', {}, h('tr', {}, ['Tên ngắn', 'Nội dung', 'Tag', 'Số lần dùng', ''].map((c) => h('th', {}, c || h('span', { class: 'sr-only' }, 'Thao tác'))))),
       h('tbody', {}, rows.map((t) => h('tr', {},
         h('td', {}, h('code', {}, `/${t.key}`)),
         h('td', { style: 'max-width:420px' }, t.text),
