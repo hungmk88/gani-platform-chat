@@ -2690,6 +2690,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/quick-replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The live templates of a workspace, most used first; `q` is the start of a shortcut, `tag` one of its tags (N163). */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUIDv7. */
+                    workspaceId: components["schemas"]["Uuid"];
+                    q?: string;
+                    tag?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The templates. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuickReplyList"];
+                    };
+                };
+                /** @description validation_failed: the query. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: a role that does not answer customers; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Make a template in a workspace (N163). */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
+                    "Idempotency-Key": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QuickReplyCreate"];
+                };
+            };
+            responses: {
+                /** @description The template. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuickReply"];
+                    };
+                };
+                /** @description validation_failed: a field (shortcut a-z 0-9 - _ up to 32; body up to 2000 with only {{customer_name}}, {{agent_name}}, {{company_name}}, {{company_phone}}; up to 10 different tags). Or the Idempotency-Key header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager manages templates (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description duplicate_resource: another template of the workspace has this shortcut; idempotency_in_progress. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_key_reused: the same key with another request. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2958,6 +3134,27 @@ export interface components {
              * @description The team that answers the channel; null: the default team of the workspace.
              */
             teamId: string | null;
+        };
+        QuickReplyList: {
+            data: components["schemas"]["QuickReply"][];
+        };
+        QuickReply: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            shortcut: string;
+            body: string;
+            tags: string[];
+            useCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        QuickReplyCreate: {
+            workspaceId: components["schemas"]["Uuid"];
+            shortcut: string;
+            body: string;
+            tags?: string[];
         };
     };
     responses: never;
