@@ -11,7 +11,7 @@ import { AssignAction } from './assign-action';
 import { assignsFromList, canAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
-import { phoneOf, type Known } from './templates';
+import { customerOf, phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { Holder } from './holder';
 import { HOLD_LABEL, STATE_LABEL } from './list';
@@ -163,7 +163,7 @@ export function ConversationView({
           conversationId={c.id}
           workspaceId={c.workspaceId}
           meId={meId}
-          known={{ ...known, ...phoneOf(phones, c.workspaceId) }}
+          known={{ ...known, ...phoneOf(phones, c.workspaceId), ...customerOf(c.customer) }}
         />
       ) : null}
       <p className="text-12 text-text-muted">Không áp dụng AI ở khung này.</p>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  customerOf,
   fieldsOf,
   fill,
   knownOf,
@@ -89,5 +90,16 @@ describe('phonesOf and phoneOf', () => {
     expect(phoneOf(phones, 'w1')).toEqual({ company_phone: '028 3812 3456' });
     expect(phoneOf(phones, 'w2')).toEqual({});
     expect(phoneOf(phones, 'w9')).toEqual({});
+  });
+});
+
+describe('customerOf', () => {
+  it('gives {{customer_name}} the name of the customer of the conversation, trimmed', () => {
+    expect(customerOf({ displayName: ' Chị Lan ' })).toEqual({ customer_name: 'Chị Lan' });
+  });
+  it('leaves it to a field when no customer is linked yet or nobody knows the name', () => {
+    expect(customerOf(null)).toEqual({});
+    expect(customerOf({ displayName: null })).toEqual({});
+    expect(customerOf({ displayName: '  ' })).toEqual({});
   });
 });

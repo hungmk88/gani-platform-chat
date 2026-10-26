@@ -16,7 +16,7 @@ export function slashQuery(text: string): string | null {
   return m ? (m[1] ?? '').toLowerCase() : null;
 }
 
-/** What the Inbox knows of the person and the company (N163); the workspace's number see `phoneOf`; the customer's name waits for N165 (U37). */
+/** What the Inbox knows of the person and the company (N163); the workspace's number see `phoneOf`, the customer's name `customerOf`. */
 export function knownOf(me: Pick<Me, 'name' | 'org'>): Known {
   const agent = me.name.trim();
   const company = me.org?.name.trim() ?? '';
@@ -36,6 +36,14 @@ export const phonesOf = (me: Pick<Me, 'workspaces'>): Record<string, string> =>
 export function phoneOf(phones: Readonly<Record<string, string>>, workspaceId: string): Known {
   const phone = phones[workspaceId];
   return phone ? { company_phone: phone } : {};
+}
+
+/** {{customer_name}}: the name of the conversation's customer (`conversation.customer.displayName`, N165, U37), when someone knows it. */
+export function customerOf(
+  customer: { readonly displayName: string | null } | null | undefined,
+): Known {
+  const name = customer?.displayName?.trim();
+  return name ? { customer_name: name } : {};
 }
 
 const VARIABLE = /\{\{\s*([^{}]*?)\s*\}\}/g;
