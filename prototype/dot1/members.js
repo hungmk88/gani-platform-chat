@@ -21,7 +21,6 @@ function members() {
   ];
 }
 
-const pending = (text) => h('span', { class: 'pending-spec' }, text);
 /* Admin không nâng ai lên Owner (Phụ lục B); không ai sửa vai trò của chính mình ở đây. */
 const assignable = () => Object.keys(ROLE_NAMES).filter((r) => Proto.role() === 'owner' || r !== 'owner');
 const isMe = (m) => m.role === Proto.role() && (m.id === 'u1' || m.id === 'u2');
@@ -86,15 +85,15 @@ function capacity(m) {
 }
 
 function actions(m) {
-  if (isMe(m)) return h('span', { class: 'small muted' }, 'Bạn');
+  if (isMe(m)) return h('div', { class: 'row' }, h('span', { class: 'small muted' }, 'Bạn'), h('button', { class: 'btn', onclick: () => capacity(m), 'aria-label': 'Giới hạn tải của bạn' }, 'Giới hạn tải'));
   if (m.status !== 'active') {
     return h('div', { class: 'row' },
-      h('button', { class: 'btn', onclick: () => Proto.toast('Đã gửi lại lời mời, hạn 7 ngày tính lại từ bây giờ.') }, 'Gửi lại lời mời'), pending('đường gửi lại: chờ PR7'));
+      h('button', { class: 'btn', onclick: () => Proto.toast('Đã gửi lại lời mời, hạn 7 ngày tính lại từ bây giờ.') }, 'Gửi lại lời mời'));
   }
   const ownerOnly = m.role === 'owner' && Proto.role() !== 'owner';
   return h('div', { class: 'row' },
     ownerOnly ? null : h('button', { class: 'btn', onclick: () => changeRole(m), 'aria-label': `Đổi vai trò của ${m.name}` }, 'Đổi vai trò'),
-    ['sales', 'support', 'manager'].includes(m.role) ? h('button', { class: 'btn', onclick: () => capacity(m), 'aria-label': `Giới hạn tải của ${m.name}` }, 'Giới hạn tải') : null,
+    h('button', { class: 'btn', onclick: () => capacity(m), 'aria-label': `Giới hạn tải của ${m.name}` }, 'Giới hạn tải'), // mọi thành viên, kể cả Owner/Admin (N156)
     m.tfa && !ownerOnly ? h('button', { class: 'btn', onclick: () => resetTwoFactor(m), 'aria-label': `Đặt lại 2FA của ${m.name}` }, 'Đặt lại 2FA…') : null,
     ownerOnly ? h('span', { class: 'small muted' }, 'Chỉ Owner khác sửa được Owner') : null);
 }

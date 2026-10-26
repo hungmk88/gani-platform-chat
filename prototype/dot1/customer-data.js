@@ -1,7 +1,7 @@
 /* global Proto */
 /* #23 Dữ liệu khách, 2 tab (danh-sach-man-M11; J1, J4). Sprint S4, nộp wireframe 21/12/2026.
    Căn cứ: spec M8 §3.6 (trường tùy chỉnh cấp công ty: Owner, Admin; "Nhạy cảm" mã hóa và che với Marketing, Viewer — Phụ lục B
-   dòng "Xem trường nhạy cảm"; trường đã có dữ liệu chỉ ẩn, không xóa) và §3.7 (tag: Owner, Admin, Manager; gộp 2 tag không mất
+   dòng "Xem trường nhạy cảm"; trường đã có dữ liệu chỉ ẩn, không xóa) và §3.7 (tag: chỉ Owner, Admin — U36, 26/10; gộp 2 tag không mất
    khách; AI tắt thì tag do AI gắn (E1) không xuất hiện). Lưu phân khúc: Đợt 2 (Q-M8-2). Lọc và tìm khách nằm ở #7 /customers. */
 const { h } = Proto;
 
@@ -147,8 +147,8 @@ Proto.mount({
   page: 'customer-data',
   states: [['normal', 'Bình thường'], ['loading', 'Đang tải'], ['empty', 'Trống'], ['error', 'Lỗi tải'], ['save_error', 'Lỗi khi lưu trường'], ['aioff', 'AI tắt']],
   render: () => {
-    if (!['owner', 'admin', 'manager'].includes(Proto.role())) {
-      return h('div', { class: 'page-body' }, Proto.noAccess('Dữ liệu khách (Owner, Admin; Manager chỉ tab Tag)', Proto.can('inbox.view') ? 'inbox.html' : 'customer.html'));
+    if (!canFields()) {
+      return h('div', { class: 'page-body' }, Proto.noAccess('Dữ liệu khách (chỉ Owner, Admin)', Proto.can('inbox.view') ? 'inbox.html' : 'customer.html'));
     }
     const tabs = canFields() ? [['fields', 'Trường tùy chỉnh'], ['tags', 'Tag']] : [['tags', 'Tag']];
     const tab = canFields() ? Proto.get('tab', 'fields') : 'tags';

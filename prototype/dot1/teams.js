@@ -1,11 +1,11 @@
 /* global Proto */
 /* #20 Team (danh-sach-man-M11; A4). Sprint S4, nộp wireframe 21/12/2026.
    Căn cứ: spec M8 §3.1 (tạo team, thêm/bớt thành viên — một người ở nhiều team, team mặc định, team phụ trách kênh; xóa team mặc định
-   hay đang phụ trách kênh bị chặn, báo lý do). Owner, Admin xem và sửa; Manager xem team của mình (spec M8, Phụ lục B: sửa chỉ
-   Owner/Admin). Danh sách team, team mặc định và liên kết kênh là dữ liệu tạm, chờ Q7 (U18, U20-6). */
+   hay đang phụ trách kênh bị chặn, báo lý do). Owner, Admin xem và sửa; Manager chỉ đọc team mình (U39). Người của team: mọi
+   thành viên của workspace, kể cả Owner/Admin (N160); mô tả ≤ 500 ký tự. Danh sách team, team mặc định và liên kết kênh là dữ liệu tạm, chờ Q7 (U18, U20-6). */
 const { h } = Proto;
 
-const PEOPLE = [['u3', 'Hà Linh', 'Manager'], ['u4', 'Trần Thu', 'Sales'], ['u5', 'Đặng Mai', 'Support'], ['u7', 'Lê Quân', 'Sales']];
+const PEOPLE = [['u1', 'Nguyễn Hưng', 'Owner'], ['u2', 'Phạm Quang', 'Admin'], ['u3', 'Hà Linh', 'Manager'], ['u4', 'Trần Thu', 'Sales'], ['u5', 'Đặng Mai', 'Support'], ['u7', 'Lê Quân', 'Sales']];
 const CHANNELS = [['ch1', 'Zalo OA Gani Foods B2B'], ['ch2', 'Zalo OA Gani Foods Sỉ miền Nam']];
 const TEAMS = [
   { id: 't1', name: 'Sales B2B', desc: 'Khách sỉ, nhà phân phối', members: ['u3', 'u4'], channels: ['ch1'], isDefault: true },
@@ -23,7 +23,7 @@ const ownerOf = (channelId) => TEAMS.find((t) => t.channels.includes(channelId))
 
 function createTeam() {
   const name = h('input', { id: 'team-name', class: 'input', maxlength: 60, autofocus: true });
-  const desc = h('input', { id: 'team-desc', class: 'input', maxlength: 200 });
+  const desc = h('input', { id: 'team-desc', class: 'input', maxlength: 500 });
   const err = h('p', { class: 'field-error', role: 'alert' });
   Proto.dialog('Tạo team', h('div', { class: 'stack' },
     h('div', { class: 'field' }, h('label', { for: 'team-name' }, 'Tên team'), name),
@@ -46,7 +46,7 @@ function editMembers(team) {
     TEAMS.some((t) => t !== team && t.members.includes(id)) ? h('span', { class: 'small muted' }, ` (cũng ở ${TEAMS.filter((t) => t !== team && t.members.includes(id)).map((t) => t.name).join(', ')})`) : null));
   Proto.dialog(`Thành viên — ${team.name}`, h('div', { class: 'stack' },
     h('fieldset', { class: 'stack' }, h('legend', {}, 'Người trong team'), boxes),
-    h('p', { class: 'small muted' }, 'Một người có thể ở nhiều team. Chỉ Manager, Sales, Support đang hoạt động; mời người mới ở Cài đặt › Thành viên.')), (close) => [
+    h('p', { class: 'small muted' }, 'Một người có thể ở nhiều team. Chọn trong người của workspace (Cài đặt › Workspace › Người); mời người mới ở Cài đặt › Thành viên.')), (close) => [
     h('button', { class: 'btn', onclick: close }, 'Hủy'),
     h('button', { class: 'btn primary', onclick: (e) => Proto.serverAction(e.currentTarget, 'Lưu', () => { close(); Proto.toast(`Đã lưu thành viên của ${team.name}. Hội thoại đang xử lý không đổi người phụ trách. Ghi audit.`); }) }, 'Lưu'),
   ]);
