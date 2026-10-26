@@ -71,6 +71,7 @@ beforeAll(async () => {
     [B, B1, false],
   ];
   for (const [org, id, dead] of spaces) await workspace(org, id, dead);
+  await admin.query(`UPDATE workspaces SET contact_phone = '1900 1234' WHERE id = $1`, [A1]);
   await inWorkspace(A, A1, ME);
   await inWorkspace(A, A2, ME);
   await inWorkspace(A, A3, ME, true);
@@ -142,10 +143,12 @@ describe('readOrgSummary', () => {
   const summary = (org: string, ids: string[]) =>
     withTenant(pool, { orgId: org, workspaceIds: ids }, (tx) => readOrgSummary(tx, ids));
 
-  it('names the organisation of the transaction and the live workspaces asked for', async () => {
+  it('names the organisation of the transaction and the live workspaces asked for, with their contact number', async () => {
     expect(await summary(A, [A1, A2])).toEqual({
       org: { id: A, name: 'T' },
-      workspaces: [A1, A2].sort().map((id) => ({ id, name: 'W' })),
+      workspaces: [A1, A2]
+        .sort()
+        .map((id) => ({ id, name: 'W', contactPhone: id === A1 ? '1900 1234' : null })),
     });
     expect(await summary(C, [])).toEqual({ org: { id: C, name: 'T' }, workspaces: [] });
   });
@@ -153,7 +156,7 @@ describe('readOrgSummary', () => {
   it('leaves out a deleted workspace and one of another organisation (RLS)', async () => {
     expect(await summary(A, [A1, ADEAD, B1])).toEqual({
       org: { id: A, name: 'T' },
-      workspaces: [{ id: A1, name: 'W' }],
+      workspaces: [{ id: A1, name: 'W', contactPhone: '1900 1234' }],
     });
   });
 });

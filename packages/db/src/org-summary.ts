@@ -4,10 +4,17 @@ import { organizations } from './schema/organizations.js';
 import { workspaces } from './schema/workspaces.js';
 import type { TenantTx } from './tenant-tx.js';
 
-/** The names a person sees of where they work (`GET /v1/me`, U32). */
+/**
+ * The names a person sees of where they work (`GET /v1/me`, U32), and the number customers call for each workspace: every role that
+ * uses quick replies fills `{{company_phone}}` with it (U37, N164).
+ */
 export interface OrgSummary {
   readonly org: { readonly id: string; readonly name: string } | null;
-  readonly workspaces: readonly { readonly id: string; readonly name: string }[];
+  readonly workspaces: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly contactPhone: string | null;
+  }[];
 }
 
 /**
@@ -27,7 +34,11 @@ export async function readOrgSummary(
     workspaceIds.length === 0
       ? []
       : await tx
-          .select({ id: workspaces.id, name: workspaces.name })
+          .select({
+            id: workspaces.id,
+            name: workspaces.name,
+            contactPhone: workspaces.contactPhone,
+          })
           .from(workspaces)
           .where(and(inArray(workspaces.id, [...workspaceIds]), isNull(workspaces.deletedAt)))
           .orderBy(asc(workspaces.name), asc(workspaces.id));
