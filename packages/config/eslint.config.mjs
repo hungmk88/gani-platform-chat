@@ -132,6 +132,16 @@ export default defineConfig(
     files: ['apps/admin/**/*.{ts,tsx,mts,cts}'],
     extends: [reactHooks.configs.flat['recommended-latest']],
   },
+  // apps/widget/CLAUDE.md: what a customer or a page sends is plain text, never raw HTML; Preact hooks follow the rules of hooks.
+  {
+    files: ['apps/widget/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...conversationWrites, ...rawHtmlSelectors] },
+  },
+  {
+    files: ['apps/widget/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat['recommended-latest']],
+  },
   {
     files: ['apps/**/*.css'],
     language: 'css/css',

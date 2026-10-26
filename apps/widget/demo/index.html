@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Widget: trang thử</title>
+    <!-- CSS mạnh của một website giả: không được lọt vào widget (Shadow DOM, :host { all: initial }). -->
+    <style>
+      * { font-family: Georgia, serif !important; }
+      button { background: #ff0 !important; color: #000 !important; font-size: 24px !important; }
+      div { border: 2px dashed #f0f; }
+      body { margin: 0; padding: 16px; font-size: 20px; }
+    </style>
+  </head>
+  <body>
+    <h1>Trang thử widget</h1>
+    <p>Thương hiệu: <a href="?brand=a">A</a> · <a href="?brand=b">B</a> · <a href="?brand=light">màu sáng (về màu trung tính)</a></p>
+    <button type="button">Nút của trang</button>
+    <script>
+      // Thương hiệu mẫu (chưa có API cấu hình widget, S10): đọc từ data-* của thẻ script nhúng.
+      const BRANDS = {
+        a: { brandName: 'Thương hiệu A', brandColor: '#0f766e', greeting: 'Chào anh/chị, Thương hiệu A có thể giúp gì ạ?' },
+        b: { brandName: 'Thương hiệu B', brandColor: '#7c3aed', greeting: 'Xin chào! Bạn cần tư vấn sản phẩm nào?' },
+        light: { brandName: 'Màu sáng', brandColor: '#ffd700', greeting: 'Màu vàng không đủ tương phản với chữ trắng.' },
+      };
+      const brand = BRANDS[new URLSearchParams(location.search).get('brand')] ?? BRANDS.a;
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = '../dist/loader.js';
+      Object.assign(s.dataset, brand);
+      document.body.append(s);
+    </script>
+  </body>
+</html>
