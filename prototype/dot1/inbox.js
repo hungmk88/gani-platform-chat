@@ -28,7 +28,7 @@ function seed() {
   return [
     {
       id: 'c1', name: 'Nguyễn Văn An', company: 'Quán Phở Hà Nội', state: 'HUMAN_WAITING_Q', assignee: null,
-      sla: 12, unread: 2, tags: [{ label: 'Hỏi giá', ai: true }], phone: '0900000001', lead: 'Bước 3',
+      sla: 12, priority: 'Cao', unread: 2, tags: [{ label: 'Hỏi giá', ai: true }], phone: '0900000001', lead: 'Bước 3',
       messages: [
         { kind: 'customer', text: 'Chào shop, bên mình có bánh phở khô loại sỉ không?', at: '09:02' },
         { kind: 'bot', text: 'Dạ có ạ. Anh/chị cho em xin số điện thoại để nhân viên báo giá nhé.', at: '09:02' },
@@ -58,7 +58,7 @@ function seed() {
     },
     {
       id: 'c5', name: 'Phạm Hoa', company: '', state: 'HUMAN_WAITING_Q', assignee: null,
-      sla: -6, unread: 3, tags: [], phone: '0900000004', lead: null,
+      sla: -6, priority: 'Khẩn', unread: 3, tags: [], phone: '0900000004', lead: null,
       messages: [
         { kind: 'customer', text: XSS_2, at: '08:50' },
         { kind: 'customer', text: XSS_1, at: '08:51' },
@@ -114,6 +114,15 @@ function slaPaused(c) {
   if (c.state === 'PENDING_CUSTOMER') return 'chờ khách';
   if (Proto.state() === 'after_hours' && c.sla !== null) return 'ngoài giờ';
   return null;
+}
+/* Mức ưu tiên (spec M8 §3.3, C8): mặc định Thường; người xử lý hoặc Manager trở lên đổi trong Hộp thư. Chờ API C8. */
+const PRIORITIES = ['Thường', 'Cao', 'Khẩn'];
+function priorityControl(c) {
+  const p = c.priority ?? 'Thường';
+  if (!canAct(c) || c.state === 'CLOSED') return p === 'Thường' ? null : h('span', { class: `badge ${p === 'Khẩn' ? 'error' : 'warn'}` }, `Ưu tiên: ${p}`);
+  return h('label', { class: 'row small' }, 'Ưu tiên',
+    h('select', { class: 'input', 'aria-label': 'Mức ưu tiên', onchange: (e) => { c.priority = e.target.value; Proto.toast(`Đã đổi ưu tiên sang ${c.priority} (chờ API C8).`); Proto.render(); } },
+      PRIORITIES.map((x) => h('option', { selected: x === p }, x))));
 }
 function slaBadge(c) {
   const paused = slaPaused(c);
@@ -370,7 +379,7 @@ function middleColumn() {
   const c = current();
   return h('section', { class: 'col-mid', 'aria-label': 'Khung hội thoại' },
     h('div', { class: 'conv-head' },
-      h('div', {}, h('h1', {}, c.name), h('div', { class: 'row' }, stateBadge(c), slaBadge(c), c.assignee ? h('span', { class: 'small muted' }, `Phụ trách: ${c.assignee}`) : null)),
+      h('div', {}, h('h1', {}, c.name), h('div', { class: 'row' }, stateBadge(c), slaBadge(c), priorityControl(c), c.assignee ? h('span', { class: 'small muted' }, `Phụ trách: ${c.assignee}`) : null)),
       h('div', { class: 'row' }, headerActions(c), h('button', { class: 'btn narrow-only', onclick: () => { db.rightOpen = !db.rightOpen; Proto.render(); } }, 'Hồ sơ khách'))),
     handoffCard(c),
     messageList(c),

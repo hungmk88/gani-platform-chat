@@ -102,6 +102,8 @@ check((await p.textContent('.toast')).includes('Hội thoại vừa thay đổi'
 await p.close();
 p = await open('inbox.html?role=manager');
 await p.locator('.conv', { hasText: 'Hoàng Yến' }).click();
+await p.getByRole('combobox', { name: 'Mức ưu tiên' }).selectOption('Khẩn');
+check((await p.textContent('.toast')).includes('Đã đổi ưu tiên sang Khẩn'), 'Hộp thư: Manager đổi mức ưu tiên (C8, chờ API)');
 await p.click('button:has-text("Gán lại")');
 await p.locator('.dialog label', { hasText: 'Vũ Nam' }).click();
 await p.click('.dialog button:has-text("Gán")');
@@ -254,6 +256,9 @@ await p.selectOption('#f-range', '7');
 check((await p.locator('tbody tr').count()) === 1, '#7: lọc 2 điều kiện (tag + liên hệ cuối)');
 await p.selectOption('#f-owner', 'Lê Quân');
 check((await p.textContent('main')).includes('Không có khách khớp bộ lọc'), '#7: không khớp bộ lọc');
+await p.close();
+p = await open('customers.html?role=manager&channel=SĐT');
+check((await p.locator('tbody tr').count()) === 1 && (await p.textContent('tbody')).includes('Phạm Quốc Dũng'), '#7: lọc theo kênh');
 await p.close();
 p = await open('customers.html?role=manager');
 await p.getByRole('checkbox', { name: 'Chọn Nguyễn Văn An' }).check();

@@ -23,6 +23,8 @@ const customer = {
   notes: [{ by: 'Trần Thu', text: 'Khách ưu tiên giao buổi sáng.', at: '03/10' }],
   humanOnly: false,
 };
+/* Tag có sẵn của công ty (#23 quản lý). Sales, Support gắn/bỏ trên hồ sơ, không tạo tag mới ở đây (spec M8 §3.7); chờ API J4. */
+const TAG_LIST = ['Khách sỉ', 'bò viên', 'Hỏi giá', 'Khách mới', 'VIP'];
 const other = { name: 'An Nguyễn', company: 'Phở Hà Nội Q.3', phone: '0900000001', owner: 'Vũ Nam', tags: ['Khách mới'] };
 const LEVEL = { verified: ['ok', 'Đã xác thực'], unverified: ['outline', 'Chưa xác thực'], sales_confirmed: ['ok', 'Sales xác nhận'] };
 let tab = 'conversations';
@@ -49,7 +51,13 @@ function infoCard() {
       h('table', { class: 'plain' }, customer.identities.map((i) => h('tr', {}, h('td', { class: 'muted' }, i.channel), h('td', {}, i.phone ? Proto.maskPhone(i.value) : i.value), h('td', {}, levelBadge(i.level)))))),
     h('section', { class: 'card stack', 'aria-label': 'Tag và cờ' },
       h('h2', {}, 'Tag'),
-      h('div', { class: 'row' }, customer.tags.map((t) => h('span', { class: 'badge outline' }, t)), Proto.can('customer.edit') ? h('button', { class: 'btn', onclick: () => { customer.tags.push('VIP'); Proto.render(); } }, '+ Tag') : null),
+      h('div', { class: 'row' }, customer.tags.map((t) => h('span', { class: 'badge outline' }, t,
+        Proto.can('customer.edit') ? h('button', { class: 'btn link small', 'aria-label': `Bỏ tag ${t}`, onclick: () => { customer.tags = customer.tags.filter((x) => x !== t); Proto.render(); } }, '×') : null))),
+      Proto.can('customer.edit') && TAG_LIST.some((t) => !customer.tags.includes(t))
+        ? h('div', { class: 'field' }, h('label', { for: 'add-tag' }, 'Gắn tag có sẵn'),
+          h('select', { id: 'add-tag', class: 'input', onchange: (e) => { if (e.target.value) { customer.tags.push(e.target.value); Proto.render(); } } },
+            h('option', { value: '' }, 'Chọn tag…'), TAG_LIST.filter((t) => !customer.tags.includes(t)).map((t) => h('option', { value: t }, t))))
+        : null,
       h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: customer.humanOnly, disabled: !Proto.can('customer.edit'), onchange: (e) => { customer.humanOnly = e.target.checked; Proto.render(); } }), 'Chỉ người phục vụ (§28)'),
       h('p', { class: 'small muted' }, 'Đồng ý nhận tin theo kênh (J7) hiện từ Đợt 2.')));
 }
