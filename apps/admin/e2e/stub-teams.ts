@@ -42,6 +42,9 @@ const START: Record<string, string[]> = {
   [TEAMS[1]!.id]: [MEMBERS[0]!.id, MEMBERS[2]!.id],
 };
 
+/** The teams the Manager of every session belongs to: the API lets a Manager read its own teams only (N160). */
+const MANAGER_TEAMS: readonly string[] = [TEAMS[0]!.id];
+
 /** The slug the API makes: no accents, đ → d, words joined by "-", a taken one gets -2, -3… */
 function slugOf(name: string, taken: readonly string[]): string {
   const base = name
@@ -110,10 +113,10 @@ export async function routeTeams(
     if (!changes && session.role !== 'manager')
       return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
     const ws = new URL(req.url ?? '/', 'http://stub').searchParams.get('workspaceId');
-    return (
-      edge.send(res, 200, { data: mine.filter((t) => t.workspaceId === ws).sort(byName) }),
-      true
+    const seen = mine.filter(
+      (t) => t.workspaceId === ws && (changes || MANAGER_TEAMS.includes(t.id)),
     );
+    return (edge.send(res, 200, { data: seen.sort(byName) }), true);
   }
   if (!changes) return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
   const body = req.method === 'DELETE' ? {} : await edge.json(req);

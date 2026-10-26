@@ -65,7 +65,7 @@ const MENU: readonly [string, readonly (readonly [string, string, readonly Role[
     [
       ['/settings/workspace', 'Workspace', ORG_ADMINS],
       ['/settings/members', 'Thành viên', ORG_ADMINS],
-      ['/settings/teams', 'Team', ORG_ADMINS],
+      ['/settings/teams', 'Team', LEADS], // Manager: only reads its own teams (CEO, 26/10)
       ['/settings/channels', 'Kênh', ORG_ADMINS],
       ['/settings/quick-replies', 'Mẫu trả lời nhanh', LEADS],
       ['/settings/customer-data', 'Dữ liệu khách', ORG_ADMINS],

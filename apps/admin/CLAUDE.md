@@ -18,8 +18,8 @@ Dự án có **2 đợt** (Đợt 1 = 58 mã, go-live 15/02/2027; Đợt 2 = 77 
 3. Tự động hóa — `/bots`; `/automation`, `/knowledge` (Đợt 2)
 4. Tổng quan & Báo cáo — `/overview`; `/reports` (Đợt 2)
 5. Cài đặt — `/settings/{workspace, members, teams, channels, quick-replies, customer-data, ai, autonomy, audit, security}`;
-   `/settings/widget` (Đợt 2). `quick-replies` (#22) cho Owner/Admin/Manager (Phụ lục B, N163); còn lại Owner/Admin
-   (`customer-data` #23: Manager cho tab Tag chờ U36).
+   `/settings/widget` (Đợt 2). `quick-replies` (#22) cho Owner/Admin/Manager (Phụ lục B, N163); `teams` (#20) thêm Manager
+   chỉ đọc team của mình (U39); còn lại Owner/Admin (`customer-data` #23 chỉ Owner/Admin, U36).
 
 `/platform` chỉ hiện với `platform_operator`. Ẩn mục theo vai trò và theo đợt.
 
@@ -141,21 +141,21 @@ Trang mặc định sau đăng nhập:
 
 ## Workspace (#21)
 
-- `/settings/workspace`, chỉ Owner và Admin như API (N157; Manager xem được hay không còn chờ anh chốt) → vai trò khác trang 403. `GET /v1/workspaces` (theo tên, không cursor): bảng tên + mã, mẫu (lời thường), múi giờ, giới hạn tải mặc định (`src/workspaces/workspace.ts` + `workspace-table.tsx`).
+- `/settings/workspace`, chỉ Owner và Admin như API (N157; Manager không vào, CEO chốt 26/10, U39) → vai trò khác trang 403. `GET /v1/workspaces` (theo tên, không cursor): bảng tên + mã, mẫu (lời thường), múi giờ, giới hạn tải mặc định (`src/workspaces/workspace.ts` + `workspace-table.tsx`).
 - **Sửa** (`PATCH /v1/workspaces/{id}`): hộp thoại tên (1–100, cắt khoảng trắng như API), múi giờ (danh sách IANA của trình duyệt, `Intl.supportedValuesOf`), giới hạn tải mặc định 1–100 (C9), **SĐT liên hệ** (`contactPhone`, thay cho `{{company_phone}}` của mẫu trả lời nhanh, N163; chữ số, `+` đầu, khoảng trắng, chấm, gạch, 6–20 ký tự như API; để trống là `null`, xóa số; bảng có cột "SĐT liên hệ", chưa có thì "Chưa đặt"). Chỉ gửi trường đổi thật (`changeOf`); không đổi gì thì đóng, không gọi API (API trả 400 cho body rỗng). Chờ máy chủ, không `Idempotency-Key`; xong thì bảng lấy câu trả lời và khung app đọc lại (`router.refresh`, thanh trên có tên workspace). Mẫu và mã chọn lúc tạo (spec-M8 A2), không sửa.
 - **Người trong workspace** (`GET/PUT /v1/workspaces/{id}/members`, N159): nút "Người" trên dòng, hộp thoại ô chọn cho mọi thành viên đã có tài khoản (active/suspended, không lời mời; đọc hết các trang `GET /v1/members`, tối đa 500), người của workspace đã tích sẵn (`src/workspaces/workspace-members.ts` + `members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`). Có hiệu lực từ request kế tiếp của mỗi người. 400 `validation_failed` (có người không còn là thành viên) → tải lại rồi chọn lại.
 - Giờ làm việc, ngày nghỉ, SLA, cách phân bổ (prototype #21, spec-M8 §3.3–3.5): chờ API. API giả: `e2e/stub-workspaces.ts` (mỗi phiên một bản sao).
 
 ## Team (#20)
 
-- `/settings/teams`, Owner và Admin như menu (Phụ lục B); API cho Manager đọc team của mình, chờ cùng quyết định với `/settings/workspace`. Team của **workspace đang chọn** ở thanh trên (`useScope().workspaceId`, T1).
+- `/settings/teams`, Owner và Admin quản lý (Phụ lục B). **Manager chỉ đọc** team mình thuộc về (API trả đúng những team đó, N160; CEO chốt 26/10, U39): không form tạo, không cột thao tác (`TeamsScreen readOnly`), trống thì "Bạn chưa thuộc team nào…". Vai trò khác trang 403. Team của **workspace đang chọn** ở thanh trên (`useScope().workspaceId`, T1).
 - Danh sách `GET /v1/teams?workspaceId=` (A4, N160; theo tên): tên + mã, nhãn "Mặc định", mô tả, số người (`src/teams/teams.ts` + `team-list.tsx`).
 - **Tạo team** (`POST /v1/teams`): tên 1–100, mô tả tối đa 500 (không bắt buộc, trống là không có), cắt khoảng trắng như API (`teamDraftOf`). Chờ máy chủ, một `Idempotency-Key` cho một cặp tên + mô tả; xong thì team vào danh sách theo tên (`withTeam`). Mã (slug) do API sinh.
 - **Sửa** (`PATCH /v1/teams/{id}`, A4-T2b): hộp thoại tên, mô tả (xóa trắng là bỏ mô tả), "Team mặc định của workspace" (`src/teams/team-dialogs.tsx`). Chỉ gửi trường đổi thật (`teamChangeOf`); không đổi gì thì đóng, không gọi API. Chỉ **đặt** mặc định, không bỏ: team mặc định thì ô bị khóa (đặt team khác làm mặc định để đổi), workspace luôn còn một; xong thì cờ chuyển sang team mới trong danh sách (`withChanged`). Chờ máy chủ, không `Idempotency-Key`.
 - **Kết thúc** (`DELETE /v1/teams/{id}`): hộp thoại hỏi lại (số người rời team), chờ máy chủ; xong thì team ra khỏi danh sách (`withoutTeam`). Team mặc định không có nút này; 409 `team_in_use` (team mặc định, hoặc team còn trả lời kênh, N161) nói phải đặt team khác làm mặc định hoặc bỏ kênh của team trước.
 - **Người của team** (`GET/PUT /v1/teams/{id}/members`, A4-T2c, N160): nút "Người" trên dòng, hộp thoại ô chọn cho **người của workspace của team** (`GET /v1/workspaces/{id}/members`, N159; tên lấy từ `GET /v1/members`, `inWorkspace`), người của team đã tích sẵn (`src/teams/team-members.ts` + `team-members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`); xong thì cột "Số người" lấy số của câu trả lời (`withCount`). 400 `validation_failed` (có người không còn thuộc workspace) → tải lại rồi chọn lại.
 - **Kênh của team** (`GET /v1/channels?workspaceId=` + `PUT /v1/teams/{id}/channels`, A4-T3, N161): nút "Kênh" trên dòng team **không mặc định** (kênh không giao team nào đã về team mặc định), hộp thoại ô chọn mọi kênh của workspace: tên, loại, trạng thái kết nối (lời thường), team đang trả lời nếu không phải team này (`answeredBy`); kênh của team đã tích sẵn (`src/teams/team-channels.ts` + `team-channels-dialog.tsx`). Lưu = PUT cả danh sách: chọn kênh của team khác là chuyển sang, bỏ chọn là về team mặc định (`withAssigned`); không đổi gì thì đóng, không gọi API (`sameChannels`). Chờ máy chủ, không `Idempotency-Key`; cùng khóa cache `['channels', workspaceId]` với màn Kênh (#24). Kết nối kênh: chờ U26.
-- API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao, `teamsOf`; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`), `e2e/stub-channels.ts` (`CHANNELS`).
+- API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao, `teamsOf`; Manager thuộc team CSKH, `MANAGER_TEAMS`; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`), `e2e/stub-channels.ts` (`CHANNELS`).
 
 ## Kênh (#24)
 
