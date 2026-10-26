@@ -5,21 +5,18 @@ import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../api/client';
 import type { components } from '../api/schema';
-import { membersPath } from '../members/list';
-import { ROLE_NAME } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
-import { useApiPages, useApiQuery, useScope } from '../query/provider';
-import type { WorkspaceMemberList } from '../workspaces/workspace-members';
-import { assigneesOf } from './assign';
+import { useApiQuery, useScope } from '../query/provider';
+import { assigneeLines, assigneesPath } from './assign';
 import type { Conversation } from './list';
 
-type MemberPage = components['schemas']['MemberPage'];
+type AssigneeList = components['schemas']['AssigneeList'];
 
 const button = 'rounded-input border border-border-strong px-4 py-2 disabled:opacity-70';
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70';
 
-/** "Gán lại" and its dialog (#6, Phụ lục B row 16): the dialog reads the members only once opened. */
+/** "Gán lại" and its dialog (#6, Phụ lục B row 16, issue #366): the dialog asks U31 only once opened. */
 export function AssignAction({ c }: { c: Conversation }) {
   const [open, setOpen] = useState(false);
   return (
@@ -33,28 +30,22 @@ export function AssignAction({ c }: { c: Conversation }) {
 }
 
 /**
- * Pick a member of the conversation's workspace, then `POST …/assign` with the version last read, waiting for the server (CLAUDE.md "chuyển"). One Idempotency-Key
- * per person picked, kept when the same is sent again after a failure. 422 invalid_assignee and 409 version_conflict say their
- * sentence of the P9 table; a conflict reads the conversation again.
+ * Pick one of those U31 lists (`purpose=assign`), then `POST …/assign` with the version last read, waiting for the server. One
+ * Idempotency-Key per person picked, kept when the same is sent again after a failure. 409 version_conflict says so in the dialog
+ * ("vừa được người khác thay đổi… Đã tải lại") and reads the conversation and its list again, so a second click sends the new
+ * version; 422 invalid_assignee says its sentence of the P9 table.
  */
 function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) {
   const scope = useScope();
   const queries = useQueryClient();
   const dialog = useRef<HTMLDialogElement>(null);
   const last = useRef<{ to: string; key: string } | null>(null);
-  const members = useApiPages<MemberPage>(['members'], membersPath);
-  // The people of the conversation's workspace (N159); if they cannot be read, everyone is offered and the API checks.
-  const people = useApiQuery<WorkspaceMemberList>(
-    ['workspaces', c.workspaceId, 'members'],
-    `/v1/workspaces/${encodeURIComponent(c.workspaceId)}/members`,
+  // Under the conversation's key, so reading the conversation again after a conflict reads the list again too.
+  const people = useApiQuery<AssigneeList>(
+    ['conversation', c.id, 'assignees', 'assign'],
+    assigneesPath(c.id, 'assign'),
   );
-  const inWorkspace = people.data ? new Set(people.data.data.map((p) => p.memberId)) : null;
-  const holder: string | null = c.assignedUserId; // null dropped by the generated type (CLAUDE.md)
-  const options = assigneesOf(
-    members.data?.pages.flatMap((p) => p.data) ?? [],
-    holder,
-    inWorkspace,
-  );
+  const options = assigneeLines(people.data?.data ?? []);
   const [to, setTo] = useState('');
   const assign = useMutation<Conversation, ApiFailure, { to: string; key: string }>({
     mutationFn: ({ to, key }) =>
@@ -85,7 +76,7 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
     last.current = { to: chosen, key };
     assign.mutate({ to: chosen, key });
   };
-  const error = assign.error?.error ?? members.error?.error ?? null;
+  const error = assign.error?.error ?? people.error?.error ?? null;
   return (
     <dialog
       ref={dialog}
@@ -103,11 +94,11 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
         <h3 id="assign-title" className="text-16 font-semibold">
           Gán lại hội thoại
         </h3>
-        {members.isPending || people.isPending ? (
+        {people.isPending ? (
           <p role="status" aria-busy="true" className="text-text-muted">
-            Đang tải thành viên…
+            Đang tải người nhận…
           </p>
-        ) : options.length === 0 && !members.hasNextPage ? (
+        ) : people.isError ? null : options.length === 0 ? (
           <p>
             Chưa có ai khác nhận được hội thoại này. Thêm người vào workspace ở Cài đặt › Workspace.
           </p>
@@ -119,30 +110,19 @@ function AssignDialog({ c, onClose }: { c: Conversation; onClose: () => void }) 
               className="rounded-input border border-border-strong px-3 py-2"
               onChange={(e) => setTo(e.target.value)}
             >
-              {options.map(({ userId, member }) => (
+              {options.map(({ userId, label }) => (
                 <option key={userId} value={userId}>
-                  {member.name ?? member.email} ({ROLE_NAME[member.role]})
+                  {label}
                 </option>
               ))}
             </select>
           </label>
         )}
-        {members.hasNextPage ? (
-          <button
-            type="button"
-            className={`${button} self-start`}
-            disabled={members.isFetchingNextPage}
-            aria-busy={members.isFetchingNextPage}
-            onClick={() => void members.fetchNextPage()}
-          >
-            {members.isFetchingNextPage ? 'Đang tải…' : 'Tải thêm người'}
-          </button>
+        {options.some((o) => o.full) ? (
+          <p className="text-12 text-text-muted">
+            &quot;Đã đầy&quot;: người đó đang giữ đủ số hội thoại tối đa, vẫn gán được.
+          </p>
         ) : null}
-        <p className="text-12 text-text-muted">
-          {inWorkspace
-            ? 'Chỉ hiện người thuộc workspace của hội thoại.'
-            : 'Người nhận phải thuộc workspace của hội thoại; hệ thống kiểm lại khi gán.'}
-        </p>
         {error ? (
           <div role="alert">
             <p>{error.message}</p>

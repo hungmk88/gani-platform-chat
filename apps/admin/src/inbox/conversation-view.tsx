@@ -8,7 +8,7 @@ import type { Role } from '../nav';
 import { useConversationRealtime } from '../realtime/use-conversation-realtime';
 import { RetryAction } from '../retry-button';
 import { AssignAction } from './assign-action';
-import { assignsFromList, canAssign } from './assign';
+import { canAssign, mayAssign, namesHolder } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
 import { customerOf, phoneOf, type Known } from './templates';
@@ -110,11 +110,11 @@ export function ConversationView({
           {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
         </h2>
         <span className="text-12 text-text-muted">
-          Phụ trách: <Holder c={c} meId={meId} named={assignsFromList(role)} />
+          Phụ trách: <Holder c={c} meId={meId} named={namesHolder(role)} />
         </span>
       </header>
       <ConversationActions c={c} role={role} meId={meId} />
-      {assignsFromList(role) && canAssign(c) ? <AssignAction key={c.id} c={c} /> : null}
+      {mayAssign(role) && canAssign(c) ? <AssignAction key={c.id} c={c} /> : null}
       <TicketAction
         key={`ticket-${c.id}`}
         c={c}

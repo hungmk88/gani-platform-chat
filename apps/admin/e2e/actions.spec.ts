@@ -81,7 +81,7 @@ test('a stale version is refused with its sentence and nothing changes', async (
   await expect(view(page).getByRole('heading', { name: 'Nhân viên đang xử lý' })).toBeVisible();
 });
 
-test('an Owner assigns among the people of the workspace: a refusal is said, another pick works', async ({
+test('an Owner assigns among those U31 lists: a refusal is said, another pick works', async ({
   page,
 }) => {
   await signIn(page, accountOf('owner'));
@@ -89,9 +89,10 @@ test('an Owner assigns among the people of the workspace: a refusal is said, ano
   await page.getByRole('button', { name: 'Gán lại' }).click();
   const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
   const pick = dialog.getByLabel('Người nhận');
-  // The workspace has its Owner and Sales (the holder): the Admin of the company is not offered.
-  await expect(pick.getByRole('option')).toHaveText(['Người thử owner (Owner)']);
-  await expect(dialog).toContainText('Chỉ hiện người thuộc workspace của hội thoại.');
+  // U31 (#363): the workspace has its Owner and Sales (the holder), so only the Owner, with team and load.
+  await expect(pick.getByRole('option')).toHaveText([
+    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
+  ]);
   await expectAccessible(page);
   await dialog.getByRole('button', { name: 'Hủy' }).click();
 
@@ -105,25 +106,41 @@ test('an Owner assigns among the people of the workspace: a refusal is said, ano
   await page.goto(`/inbox/${held.id}`);
   await page.getByRole('button', { name: 'Gán lại' }).click();
   await expect(pick.getByRole('option')).toHaveText([
-    'Người thử owner (Owner)',
-    'Người thử admin (Admin)',
+    'Người thử admin · Admin · đang giữ 0/5',
+    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
   ]);
-  await pick.selectOption({ label: 'Người thử admin (Admin)' });
+  await pick.selectOption({ label: 'Người thử admin · Admin · đang giữ 0/5' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Không chuyển được cho người này.');
   const posted = page.waitForRequest((r) => r.url().endsWith('/assign'));
-  await pick.selectOption({ label: 'Người thử owner (Owner)' });
+  await pick.selectOption({ label: 'Người thử owner · Owner · Sales B2B · đang giữ 0/5' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
   expect((await posted).postDataJSON()).toEqual({ version: 1, toUserId: 'user-owner' });
   await expect(dialog).toBeHidden();
   await expect(page.getByText('Phụ trách: Tôi')).toBeVisible();
 });
 
-test('a Manager has no "Gán lại" until the list of recipients (U31)', async ({ page }) => {
-  await signIn(page, accountOf('manager'));
+test('a Manager assigns from U31; a conversation changed meanwhile says so and reads it again', async ({
+  page,
+}) => {
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname.startsWith('/v1/members')) asked.push(r.url());
+  });
+  await signIn(page, accountOf('manager+stale'));
   await page.goto(`/inbox/${held.id}`);
-  await expect(page.getByText(/Phụ trách:/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Gán lại' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Gán lại' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
+  await expect(dialog.getByLabel('Người nhận').getByRole('option')).toHaveText([
+    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
+  ]);
+  const reread = page.waitForRequest((r) => r.url().endsWith(`/v1/conversations/${held.id}`));
+  await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('vừa được người khác thay đổi');
+  await expect(dialog.getByRole('alert')).toContainText('Đã tải lại');
+  await reread;
+  await expect(dialog).toBeVisible(); // the dialog stays open to try again with what was read
+  expect(asked).toEqual([]); // a Manager never reads the members (N153): the holder stays "Người khác"
 });
 
 test('an Admin sees who holds it by name, from the members', async ({ page }) => {

@@ -16,6 +16,7 @@ import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
 import { CUSTOMERS } from './stub-customers';
 import { MEMBERS } from './stub-members';
+import { routeAssignees } from './stub-assignees';
 import { routeScreens } from './stub-routes';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
@@ -310,6 +311,12 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const next = from + size < seen.length ? String(from + size) : null;
     return send(res, 200, { data: seen.slice(from, from + size), nextCursor: next });
   }
+  const u31 = session && {
+    sid: cookie(req, SESSION) ?? '',
+    me: meOf(session.email),
+    held: session.conversations,
+  };
+  if (routeAssignees(req, res, path ?? '', u31, { send, problem })) return; // U31, e2e/stub-assignees.ts
   const one = /^\/v1\/conversations\/([^/]+)(\/messages)?$/.exec(path ?? '');
   if (req.method === 'GET' && one) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
@@ -337,7 +344,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (!c || !me) return problem(res, 404, 'not_found', 'trace-e2e-404');
     if (!['owner', 'admin', 'manager'].includes(me.org?.role ?? ''))
       return problem(res, 403, 'forbidden', 'trace-e2e-403');
-    if (version !== c.version) return problem(res, 409, 'version_conflict', 'trace-e2e-version');
+    if (version !== c.version || session.email.includes('+stale@'))
+      return problem(res, 409, 'version_conflict', 'trace-e2e-version');
     const to = MEMBERS.find((m) => m.userId === toUserId && m.status === 'active');
     if (!to || toUserId === c.assignedUserId || to.userId === 'user-admin')
       return problem(res, 422, 'invalid_assignee', 'trace-e2e-422');
