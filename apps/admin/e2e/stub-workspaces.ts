@@ -86,7 +86,7 @@ export async function routeWorkspaces(
   if (req.method !== 'PATCH' || !id) return false;
   if (!w) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
   const body = await edge.json(req);
-  const { name, timezone, defaultMaxConcurrent: limit } = body;
+  const { name, timezone, defaultMaxConcurrent: limit, contactPhone: phone } = body;
   const zoneOk = (z: unknown) => {
     try {
       return (
@@ -98,7 +98,12 @@ export async function routeWorkspaces(
   };
   const ok =
     Object.keys(body).length > 0 &&
-    Object.keys(body).every((k) => ['name', 'timezone', 'defaultMaxConcurrent'].includes(k)) &&
+    Object.keys(body).every((k) =>
+      ['name', 'timezone', 'defaultMaxConcurrent', 'contactPhone'].includes(k),
+    ) &&
+    (phone === undefined ||
+      phone === null ||
+      (typeof phone === 'string' && /^\+?[0-9][0-9 .-]{5,19}$/.test(phone))) &&
     (name === undefined ||
       (typeof name === 'string' && name.trim().length >= 1 && name.trim().length <= 100)) &&
     (timezone === undefined || zoneOk(timezone)) &&
@@ -108,5 +113,6 @@ export async function routeWorkspaces(
   if (typeof name === 'string') w.name = name.trim();
   if (typeof timezone === 'string') w.timezone = timezone;
   if (typeof limit === 'number') w.defaultMaxConcurrent = limit;
+  if (phone !== undefined) w.contactPhone = phone;
   return (edge.send(res, 200, w), true);
 }

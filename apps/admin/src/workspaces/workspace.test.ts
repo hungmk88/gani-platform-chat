@@ -29,10 +29,25 @@ describe('changeOf', () => {
     expect(changeOf(w, { ...draftOf(w), name: '  Gani B2B mới ' })).toEqual({
       name: 'Gani B2B mới',
     });
-    expect(changeOf(w, { name: 'Gani B2B', timezone: 'Asia/Bangkok', limit: ' 8 ' })).toEqual({
+    expect(
+      changeOf(w, { name: 'Gani B2B', timezone: 'Asia/Bangkok', limit: ' 8 ', phone: '' }),
+    ).toEqual({
       timezone: 'Asia/Bangkok',
       defaultMaxConcurrent: 8,
     });
+  });
+
+  it('sets, keeps and clears the contact number; a blank one is none', () => {
+    const d = draftOf(ws());
+    expect(changeOf(ws(), { ...d, phone: ' +84 28 3822-1234 ' })).toEqual({
+      contactPhone: '+84 28 3822-1234',
+    });
+    expect(changeOf(ws(), { ...d, phone: '   ' })).toEqual({});
+    const set = ws({ contactPhone: '028 3822 1234' });
+    expect(changeOf(set, draftOf(set))).toEqual({});
+    expect(changeOf(set, { ...draftOf(set), phone: '' })).toEqual({ contactPhone: null });
+    for (const phone of ['12345', 'abc 123456', '0'.repeat(21), '++84 123456'])
+      expect(changeOf(ws(), { ...d, phone })).toMatch(/SĐT liên hệ/);
   });
 
   it('says a missing or long name and a limit out of 1 to 100', () => {

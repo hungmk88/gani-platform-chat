@@ -51,7 +51,7 @@ export function WorkspaceTable() {
         <table className="w-full text-left">
           <thead className="bg-bg-subtle">
             <tr>
-              {['Workspace', 'Mẫu', 'Múi giờ', 'Giới hạn tải mặc định'].map((t) => (
+              {['Workspace', 'Mẫu', 'Múi giờ', 'Giới hạn tải mặc định', 'SĐT liên hệ'].map((t) => (
                 <th key={t} scope="col" className="p-2 font-semibold">
                   {t}
                 </th>
@@ -71,6 +71,7 @@ export function WorkspaceTable() {
                 <td className="p-2">{TEMPLATE[w.template]}</td>
                 <td className="p-2">{w.timezone}</td>
                 <td className="p-2">{w.defaultMaxConcurrent} hội thoại</td>
+                <td className="p-2">{w.contactPhone ?? 'Chưa đặt'}</td>
                 <td className="p-2">
                   <button
                     type="button"

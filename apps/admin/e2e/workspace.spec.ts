@@ -31,7 +31,7 @@ test('a Manager gets the forbidden page', async ({ page }) => {
   ).toBeVisible();
 });
 
-test('an Admin changes the name, the time zone and the default limit, only what changed', async ({
+test('an Admin changes the name, the time zone, the default limit and the contact number, only what changed', async ({
   page,
 }) => {
   await signIn(page, accountOf('admin'));
@@ -45,6 +45,10 @@ test('an Admin changes the name, the time zone and the default limit, only what 
   await dialog.getByLabel('Tên workspace').fill('  Gani B2B ');
   await dialog.getByLabel('Múi giờ').selectOption('Asia/Bangkok');
   await dialog.getByLabel(/Giới hạn tải mặc định/).fill('8');
+  await dialog.getByLabel(/SĐT liên hệ/).fill('028 abc');
+  await dialog.getByRole('button', { name: 'Lưu' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('SĐT liên hệ gồm chữ số');
+  await dialog.getByLabel(/SĐT liên hệ/).fill(' 028 3822 1234 ');
   await expectAccessible(page);
   const patched = page.waitForRequest((r) => r.method() === 'PATCH');
   await dialog.getByRole('button', { name: 'Lưu' }).click();
@@ -54,12 +58,14 @@ test('an Admin changes the name, the time zone and the default limit, only what 
     name: 'Gani B2B',
     timezone: 'Asia/Bangkok',
     defaultMaxConcurrent: 8,
+    contactPhone: '028 3822 1234',
   });
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('status')).toHaveText('Đã lưu workspace Gani B2B.');
   const saved = page.getByRole('row', { name: /Gani B2B/ });
   await expect(saved).toContainText('Asia/Bangkok');
   await expect(saved).toContainText('8 hội thoại');
+  await expect(saved).toContainText('028 3822 1234');
 });
 
 test('a dialog where nothing changed sends nothing and closes', async ({ page }) => {
