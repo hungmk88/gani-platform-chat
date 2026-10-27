@@ -2,7 +2,15 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
-import { accountOf, INBOX_DOWN_TRACE, MANY, MANY_PAGE, STUB_PAGE } from './stub-api';
+import {
+  accountOf,
+  CONVERSATIONS,
+  HOSTILE,
+  INBOX_DOWN_TRACE,
+  MANY,
+  MANY_PAGE,
+  STUB_PAGE,
+} from './stub-api';
 
 // #6 Hộp thư, the list column (I1a), against the stub's six conversations of apps/admin/e2e/stub-api.ts.
 const list = (page: Page) =>
@@ -116,4 +124,34 @@ test('each row names the customer, or says nobody has named them yet; the conver
   await expect(view.getByText('Nguyễn Văn An')).toBeVisible();
   await view.getByRole('link', { name: 'Xem hồ sơ khách' }).click();
   await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();
+});
+
+// U30 (N169, #373): the channel, the last message and who holds it, on the row and the open conversation.
+test('a row shows the channel, the last message as plain text, and who holds it by name', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('owner'));
+  await page.goto('/inbox');
+  const held = list(page).filter({ hasText: 'Người thử sales' }).first();
+  await expect(held).toContainText('Zalo OA · Zalo OA Gani');
+  await expect(held).toContainText(HOSTILE); // characters, never markup (T2)
+  expect(await page.evaluate(() => (window as { __xss?: number }).__xss)).toBeUndefined();
+  await expectAccessible(page);
+  // A holder the API names with null (one who left, or never set a name): the end of their id, with words on hover.
+  await page.goto(`/inbox/${CONVERSATIONS[3]!.id}`);
+  const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
+  await expect(view.locator('abbr[title="Nhân viên chưa có tên"]')).toHaveText('…ager');
+  await expect(view).toContainText('Zalo OA · Zalo OA Gani');
+});
+
+test('Sales see only themselves or nobody as holder: they read their own and unclaimed conversations only', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('sales'));
+  await page.goto('/inbox');
+  await expect(list(page).first()).toBeVisible();
+  const holders = await list(page).locator('span.text-12').allInnerTexts();
+  for (const h of holders) expect(h).toMatch(/(Tôi|Chưa ai nhận)$/);
+  await page.goto(`/inbox/${CONVERSATIONS[1]!.id}`);
+  await expect(page.getByText('Phụ trách: Tôi')).toBeVisible();
 });

@@ -41,10 +41,14 @@ test('messages read in the order they were sent, older ones on demand', async ({
 test('T2: what a customer sends is shown as text and runs nothing', async ({ page }) => {
   await signIn(page, accountOf('manager'));
   await page.goto(`/inbox/${held.id}`);
-  await expect(page.getByText(HOSTILE, { exact: true })).toBeVisible();
+  // In the messages, and on the list row as its last message (U30): both as these characters.
+  await expect(
+    page.getByRole('list', { name: 'Tin nhắn' }).getByText(HOSTILE, { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Danh sách hội thoại' })).toContainText(HOSTILE);
   expect(await page.evaluate(() => (window as { __xss?: number }).__xss)).toBeUndefined();
   await expect(
-    page.locator('section[aria-label="Hội thoại"] img, section[aria-label="Hội thoại"] strong'),
+    page.locator('section[aria-label*="ội thoại"] img, section[aria-label*="ội thoại"] strong'),
   ).toHaveCount(0);
   await expectAccessible(page);
 });

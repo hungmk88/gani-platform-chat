@@ -1,39 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Member } from '../members/list';
 import type { Role } from '../nav';
 import {
   assigneeLines,
   assigneesPath,
   canAssign,
-  holderNameOf,
   matching,
   mayAssign,
-  namesHolder,
   type Assignee,
 } from './assign';
 
-const member = (over: Partial<Member>): Member => ({
-  id: 'm1',
-  userId: 'u1',
-  name: 'Trần Thu',
-  email: 'tranthu@example.test',
-  role: 'sales',
-  status: 'active',
-  twoFactorEnabled: false,
-  expiresAt: null,
-  maxConcurrentConversations: null,
-  ...over,
-});
-
-describe('namesHolder, mayAssign and canAssign', () => {
-  it('gives "Gán lại" to Owner, Admin and Manager, the holder by name to Owner and Admin only', () => {
+describe('mayAssign and canAssign', () => {
+  it('gives "Gán lại" to Owner, Admin and Manager', () => {
     expect(['owner', 'admin', 'manager'].every((r) => mayAssign(r as Role))).toBe(true);
     for (const r of ['sales', 'support', 'marketing', 'viewer'] as const)
       expect(mayAssign(r)).toBe(false);
-    expect(namesHolder('owner')).toBe(true);
-    expect(namesHolder('admin')).toBe(true);
-    expect(namesHolder('manager')).toBe(false);
     for (const state of ['HUMAN_ACTIVE', 'PENDING_CUSTOMER', 'HUMAN_WAITING_Q'] as const)
       expect(canAssign({ state })).toBe(true);
     for (const state of ['BOT_ACTIVE', 'CLOSED'] as const) expect(canAssign({ state })).toBe(false);
@@ -81,20 +62,6 @@ describe('assigneeLines', () => {
       'Chưa có tên · Support · CSKH · đang giữ 2/5 · …2222',
       'Trần Thu · Support · CSKH · đang giữ 2/5',
     ]);
-  });
-});
-
-describe('holderNameOf', () => {
-  it('names the holder from the members, and leaves me, nobody and a stranger to holderOf', () => {
-    const members = [
-      member({ userId: 'u2', name: 'Hà Linh' }),
-      member({ userId: 'u3', name: null }),
-    ];
-    expect(holderNameOf(members, 'u2', 'u1')).toBe('Hà Linh');
-    expect(holderNameOf(members, 'u3', 'u1')).toBe('tranthu@example.test');
-    expect(holderNameOf(members, 'u1', 'u1')).toBeNull();
-    expect(holderNameOf(members, null, 'u1')).toBeNull();
-    expect(holderNameOf(members, 'u9', 'u1')).toBeNull();
   });
 });
 

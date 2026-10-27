@@ -4,6 +4,7 @@ import {
   customerNameOf,
   emptyOf,
   filterOf,
+  channelOf,
   holderOf,
   listPath,
   NO_FILTER,
@@ -37,11 +38,39 @@ describe('listPath', () => {
   });
 });
 
-describe('holderOf', () => {
-  it('says me, someone else or nobody, never a made-up name', () => {
-    expect(holderOf({ assignedUserId: null }, 'u1')).toBe('Chưa ai nhận');
-    expect(holderOf({ assignedUserId: 'u1' }, 'u1')).toBe('Tôi');
-    expect(holderOf({ assignedUserId: 'u2' }, 'u1')).toBe('Người khác');
+describe('holderOf and channelOf', () => {
+  it('says me, the name, or nobody; a holder with no name is the end of their id', () => {
+    const c = (assignedUserId: string | null, name: string | null = 'Hà Linh') => ({
+      assignedUserId,
+      assignee: assignedUserId ? { id: assignedUserId, name } : null,
+    });
+    expect(holderOf(c(null), 'u1')).toEqual({ text: 'Chưa ai nhận' });
+    expect(holderOf(c('u1'), 'u1')).toEqual({ text: 'Tôi' });
+    expect(holderOf(c('user-2'), 'u1')).toEqual({ text: 'Hà Linh' });
+    expect(holderOf(c('user-abcd', null), 'u1')).toEqual({
+      text: '…abcd',
+      title: 'Nhân viên chưa có tên',
+    });
+    expect(holderOf(c('user-abcd', '  '), 'u1')).toEqual({
+      text: '…abcd',
+      title: 'Nhân viên chưa có tên',
+    });
+  });
+
+  it('uses a name only for the id it came with (a realtime change before the next read)', () => {
+    expect(
+      holderOf({ assignedUserId: 'user-new2', assignee: { id: 'u-old', name: 'Hà Linh' } }, 'u1'),
+    ).toEqual({
+      text: '…new2',
+      title: 'Nhân viên chưa có tên',
+    });
+  });
+
+  it('names the channel, or nothing', () => {
+    expect(channelOf({ channel: { id: 'c', type: 'zalo_oa', displayName: 'Gani Hà Nội' } })).toBe(
+      'Zalo OA · Gani Hà Nội',
+    );
+    expect(channelOf({ channel: null })).toBeNull();
   });
 });
 

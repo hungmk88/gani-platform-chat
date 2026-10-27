@@ -24,7 +24,7 @@ test('claim from the queue, then the conversation is mine in the view and the li
   await expect(view(page).getByText('Phụ trách: Tôi')).toBeVisible();
   await expect(actions(page)).toHaveText(['Chờ khách', 'Đóng']);
   await expect(
-    page.getByRole('link', { name: /Nhân viên đang xử lý\s*Tôi/ }).first(),
+    page.getByRole('link', { name: /Nhân viên đang xử lý.* Tôi\b/ }).first(),
   ).toBeVisible();
 });
 
@@ -65,7 +65,8 @@ test('a lost claim says so and shows who holds it now', async ({ page }) => {
   await page.goto(`/inbox/${waiting.id}`);
   await actions(page).click();
   await expect(view(page).getByRole('alert')).toContainText('Hội thoại đã có người nhận.');
-  await expect(view(page).getByText('Phụ trách: Người khác')).toBeVisible();
+  // The 409 gives the winner's id only: its last 4 characters, never a name the Sales may not read (U30).
+  await expect(view(page).getByText('Phụ trách: …ager')).toBeVisible();
   await expect(view(page).getByRole('group', { name: 'Thao tác' })).toHaveCount(0);
   await expectAccessible(page);
 });
@@ -141,19 +142,22 @@ test('a Manager assigns from U31; a conversation changed meanwhile says so and r
   await expect(dialog.getByRole('alert')).toContainText('Đã tải lại');
   await reread;
   await expect(dialog).toBeVisible(); // the dialog stays open to try again with what was read
-  expect(asked).toEqual([]); // a Manager never reads the members (N153): the holder stays "Người khác"
+  expect(asked).toEqual([]); // a Manager never reads the members (N153)
 });
 
-test('an Admin sees who holds it by name, from the members', async ({ page }) => {
-  await signIn(page, accountOf('admin'));
-  await page.goto(`/inbox/${held.id}`);
-  await expect(view(page).getByText('Phụ trách: Người thử sales')).toBeVisible();
-});
-
-test('a Manager, who cannot read the members, sees it in words (U30)', async ({ page }) => {
-  await signIn(page, accountOf('manager'));
-  await page.goto(`/inbox/${held.id}`);
-  await expect(view(page).getByText('Phụ trách: Người khác')).toBeVisible();
+test('Admin and Manager see who holds it by name, from the conversation (U30), never from the members', async ({
+  page,
+}) => {
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname.startsWith('/v1/members')) asked.push(r.url());
+  });
+  for (const who of ['admin', 'manager']) {
+    await signIn(page, accountOf(who));
+    await page.goto(`/inbox/${held.id}`);
+    await expect(view(page).getByText('Phụ trách: Người thử sales')).toBeVisible();
+  }
+  expect(asked).toEqual([]);
 });
 
 test('a long list of recipients can be searched by name, role or team, without accents', async ({
