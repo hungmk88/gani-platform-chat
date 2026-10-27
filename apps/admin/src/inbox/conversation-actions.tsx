@@ -73,6 +73,7 @@ export function ConversationActions({
               state: 'HUMAN_ACTIVE',
               afterHoursHold: false,
               assignedUserId: winner,
+              assignee: { id: winner, name: null }, // the 409 has the id only (U30: shown as its end)
             },
         );
         void queries.invalidateQueries({ queryKey: scopeKey(scope, 'conversations') });

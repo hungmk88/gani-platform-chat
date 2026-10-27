@@ -62,13 +62,32 @@ export function listPath(f: ListFilter, cursor: string | null, workspaceId: stri
 }
 
 /**
- * Who holds it, as the list says it: the names wait for U30, so no name is made up. `string | null` written out: the OpenAPI
- * describes this uuid as allOf[Uuid, string|null], which openapi-typescript turns into `string` and so drops the null.
+ * Who holds it, in words (U30, N169, issue #373): "Tôi", their name, or "Chưa ai nhận". A holder with no name (one who left, or
+ * never set one) is the last 4 characters of their id, with a tooltip: no /v1/members to fill it in. Every role that reads
+ * conversations sees this: Sales/Support read only their own or unclaimed ones (API `canSee`, N133), so they only ever see
+ * themselves or nobody; if that scope widens to a team after S4, look at this again. The name counts only for the id it came
+ * with: after a realtime change of holder the cache has the new id before it has the new name (`withState`).
  */
-export function holderOf(c: { readonly assignedUserId: string | null }, meId: string): string {
-  if (c.assignedUserId === null) return 'Chưa ai nhận';
-  return c.assignedUserId === meId ? 'Tôi' : 'Người khác';
+export function holderOf(
+  c: Pick<Conversation, 'assignee'> & { readonly assignedUserId: string | null },
+  meId: string,
+): { readonly text: string; readonly title?: string } {
+  const id = c.assignedUserId;
+  if (id === null) return { text: 'Chưa ai nhận' };
+  if (id === meId) return { text: 'Tôi' };
+  const name = c.assignee?.id === id ? c.assignee.name?.trim() : null;
+  return name ? { text: name } : { text: `…${id.slice(-4)}`, title: 'Nhân viên chưa có tên' };
 }
+
+const CHANNEL: Readonly<Record<NonNullable<Conversation['channel']>['type'], string>> = {
+  zalo_oa: 'Zalo OA',
+  facebook: 'Facebook',
+  webchat: 'Webchat',
+};
+
+/** The channel of the row, or null to show nothing (a conversation whose channel the API does not give). */
+export const channelOf = (c: Pick<Conversation, 'channel'>): string | null =>
+  c.channel ? `${CHANNEL[c.channel.type]} · ${c.channel.displayName}` : null;
 
 /** The customer of the conversation (U30 part, N165): its name, or words for one not named or not linked yet. */
 export const customerNameOf = (c: Pick<Conversation, 'customer'>): string =>

@@ -78,5 +78,30 @@ export function withState(c: Conversation | undefined, d: StateChanged): Convers
     afterHoursHold: d.hold,
     version: d.version,
     assignedUserId: d.assignedUserId as string,
+    // The event has the id only: a new holder has no name yet (never the old one's), until the conversation is read again.
+    assignee:
+      d.assignedUserId === c.assignee?.id
+        ? c.assignee
+        : d.assignedUserId === null
+          ? null
+          : { id: d.assignedUserId, name: null },
   };
+}
+
+/**
+ * Read a conversation again after its holder changed, trying twice more with a growing wait (0,5 s then 1 s): one failed read
+ * must not leave a stale or missing name until the page is reloaded. If all fail, what the cache has stays (the id's end).
+ */
+export async function readAgain(
+  read: () => Promise<unknown>,
+  wait = (ms: number) => new Promise((r) => setTimeout(r, ms)),
+) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await read();
+    } catch {
+      if (attempt < 2) await wait(500 * 2 ** attempt);
+    }
+  }
+  return undefined;
 }

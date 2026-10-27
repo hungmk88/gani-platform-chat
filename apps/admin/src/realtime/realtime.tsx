@@ -4,10 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { io, type Socket } from 'socket.io-client';
 
+import type { Conversation } from '../inbox/list';
+import { getter } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useScope } from '../query/provider';
 import {
   messageOf,
+  readAgain,
   withMessage,
   withState,
   type Assigned,
@@ -50,10 +53,24 @@ export function RealtimeProvider({ origin, children }: { origin: string; childre
       disconnect: () => setStatus('offline'),
       'session.ended': () => window.location.assign('/login'),
       'conversation.state_changed': (e: Envelope<StateChanged>) => {
-        queries.setQueryData(
-          scopeKey(scope, 'conversation', e.data.conversationId),
-          (c: Parameters<typeof withState>[0]) => withState(c, e.data),
-        );
+        const key = scopeKey(scope, 'conversation', e.data.conversationId);
+        const before = queries.getQueryData<Conversation>(key)?.assignedUserId;
+        queries.setQueryData(key, (c: Parameters<typeof withState>[0]) => withState(c, e.data));
+        // A new holder: their name comes with the conversation (U30), so read it again, retried (`readAgain`).
+        if (
+          before !== undefined &&
+          e.data.assignedUserId !== null &&
+          before !== e.data.assignedUserId
+        )
+          void readAgain(() =>
+            queries.fetchQuery({
+              queryKey: key,
+              queryFn: getter<Conversation>(
+                `/v1/conversations/${encodeURIComponent(e.data.conversationId)}`,
+              ),
+              staleTime: 0,
+            }),
+          );
         list();
       },
       'conversation.assigned': (e: Envelope<Assigned>) => {
