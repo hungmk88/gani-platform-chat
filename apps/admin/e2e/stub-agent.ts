@@ -11,7 +11,7 @@ interface AgentConversation {
   state: string;
   readonly afterHoursHold: boolean;
   version: number;
-  readonly assignedUserId: string | null;
+  assignedUserId: string | null;
 }
 interface AgentMessage {
   readonly id: string;
@@ -132,6 +132,7 @@ export function attachAgent(
     }
     if (name === 'state' && c) {
       Object.assign(c, { state: body['to'], version: c.version + 1 });
+      if ('assignedUserId' in body) c.assignedUserId = body['assignedUserId'] as string | null; // a new holder (U30 test)
       const data = {
         conversationId: c.id,
         to: c.state,
