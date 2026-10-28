@@ -1,6 +1,8 @@
 // U31 for the e2e stub API only: `GET /v1/conversations/{id}/assignees?purpose=assign|transfer` (N168, #363) as the API answers it:
 // active members of the conversation's workspace (`peopleOf`) who may hold conversations, not its holder; a Sales/Support transfer,
-// only those who share a team with the caller. By name, no name last; no paging, and nobody left out for being full. Never deployed.
+// only those who share a team with the caller. By name, no name last; no paging, and nobody left out for being full. Also
+// `POST …/transfer` (T15, #376): the holder's own (Sales/Support) or any held one (leads), from HUMAN_ACTIVE or PENDING_CUSTOMER
+// (else 409 invalid_transition), the version read (`+stale@` 409 version_conflict), to one U31 lists (else 422). Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { MEMBERS } from './stub-members';
@@ -76,12 +78,13 @@ export function assigneesAnswer(
 type Held = {
   readonly id: string;
   readonly workspaceId: string;
-  readonly assignedUserId: string | null;
+  assignedUserId: string | null;
   readonly state: string;
+  version: number;
 };
 
-/** Answers GET /v1/conversations/{id}/assignees and says true, or says false for any other route. */
-export function routeAssignees(
+/** Answers GET /v1/conversations/{id}/assignees and POST …/transfer and says true, or says false for any other route. */
+export async function routeAssignees(
   req: IncomingMessage,
   res: ServerResponse,
   path: string,
@@ -89,15 +92,38 @@ export function routeAssignees(
     | {
         readonly sid: string;
         readonly me: { readonly id: string; readonly org: { readonly role: string } | null } | null;
-        readonly held: readonly Held[];
+        readonly held: Held[];
+        readonly email: string;
       }
     | null
     | undefined,
   edge: {
     readonly send: (res: ServerResponse, status: number, body: unknown) => void;
     readonly problem: (res: ServerResponse, status: number, code: string, traceId: string) => void;
+    readonly json: (req: IncomingMessage) => Promise<Record<string, unknown>>;
   },
-): boolean {
+): Promise<boolean> {
+  const moving = /^\/v1\/conversations\/([^/]+)\/transfer$/.exec(path)?.[1];
+  if (req.method === 'POST' && moving) {
+    if (!session?.me?.org) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
+    const me = { id: session.me.id, role: session.me.org.role };
+    const c = session.held.find((x) => x.id === moving);
+    if (!c || !(LEADS.includes(me.role) || c.assignedUserId === null || c.assignedUserId === me.id))
+      return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    const { version, toUserId } = await edge.json(req);
+    if (!req.headers['idempotency-key'] || typeof toUserId !== 'string')
+      return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+    const listed = assigneesAnswer(c, me, 'transfer', session.sid, session.held);
+    if (listed.status !== 200) return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+    if (version !== c.version || session.email.includes('+stale@'))
+      return (edge.problem(res, 409, 'version_conflict', 'trace-e2e-version'), true);
+    if (c.state !== 'HUMAN_ACTIVE' && c.state !== 'PENDING_CUSTOMER')
+      return (edge.problem(res, 409, 'invalid_transition', 'trace-e2e-409'), true);
+    if (!(listed.body as { data: { userId: string }[] }).data.some((p) => p.userId === toUserId))
+      return (edge.problem(res, 422, 'invalid_assignee', 'trace-e2e-422'), true);
+    Object.assign(c, { assignedUserId: toUserId, version: c.version + 1 });
+    return (edge.send(res, 200, c), true);
+  }
   const id = /^\/v1\/conversations\/([^/]+)\/assignees$/.exec(path)?.[1];
   if (req.method !== 'GET' || !id) return false;
   if (!session?.me?.org) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
