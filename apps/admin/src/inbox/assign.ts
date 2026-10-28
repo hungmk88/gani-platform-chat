@@ -14,7 +14,7 @@ export const mayAssign = (role: Role): boolean =>
 /**
  * "Chuyển" (T15, `POST …/transfer`, issue #376): the rule of the API's `permissions.ts` (`transfer`: Owner/Admin/Manager `any`,
  * Sales/Support `own`) and of T15 (from HUMAN_ACTIVE or PENDING_CUSTOMER only). It mirrors the API, it is not a rule of its own:
- * if the API changes, change it here too, or the button is shown only to be refused (403). A conversation still in the queue
+ * `rules-sync.test.ts` checks it against the API's own source (#378) and goes red when the API changes. A conversation still in the queue
  * (HUMAN_WAITING_Q) has no "Chuyển" on purpose: nobody holds it, so there is nothing to hand on; "Nhận" or "Gán lại" serve it.
  */
 export function canTransfer(

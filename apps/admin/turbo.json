@@ -1,0 +1,13 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/api/src/modules/conversations/permissions.ts",
+        "$TURBO_ROOT$/packages/domain/src/conversation/**"
+      ]
+    }
+  }
+}
