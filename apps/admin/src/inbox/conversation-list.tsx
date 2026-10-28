@@ -178,6 +178,12 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
           />
         </label>
       </div>
+      {channelFilter === 'select' && filter.channel && channels.isSuccess && !known ? (
+        <p className="text-12 text-text-muted">
+          Kênh đang lọc không còn trong danh sách: kênh đã bị gỡ, hoặc bạn không còn hội thoại nào ở
+          kênh đó. Chọn &quot;Tất cả kênh&quot; để xem tất cả.
+        </p>
+      ) : null}
       {channelFilter === 'line' ? (
         <p className="flex items-center gap-2">
           Đang lọc theo một kênh ·
