@@ -3,7 +3,14 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useLayoutEffect, useRef, useState } from 'react';
+import {
+  useDeferredValue,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import type { components } from '../api/schema';
 import type { Role } from '../nav';
@@ -19,9 +26,12 @@ import {
   customerNameOf,
   channelOf,
   listPath,
+  MAX_SEARCH,
   NO_FILTER,
   paramsOf,
+  searchOf,
   STATE_LABEL,
+  tooFewDigits,
   whenOf,
   type Assignee,
   type ListFilter,
@@ -52,6 +62,13 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
     const q = paramsOf(f).toString();
     router.replace(q ? `${pathname}?${q}` : pathname);
   };
+  // "Tìm khách" (#390): what is typed, put on the URL once React has a moment (like the Khách hàng list), never an empty `q`.
+  const [text, setText] = useState(filter.q);
+  const searched = searchOf(useDeferredValue(text));
+  const search = useEffectEvent((q: string) => {
+    if (q !== filter.q) go({ ...filter, q });
+  });
+  useEffect(() => search(searched), [searched]);
 
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
   const listRef = useRef<HTMLUListElement>(null);
@@ -114,7 +131,23 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
             <option value="hold">{HOLD_LABEL}</option>
           </select>
         </label>
+        <label className="flex flex-col gap-1">
+          Tìm khách
+          <input
+            type="search"
+            value={text}
+            maxLength={MAX_SEARCH}
+            placeholder="Tên, email hoặc từ 3 số đầu SĐT"
+            className="rounded-input border border-border-strong bg-surface px-3 py-1"
+            onChange={(e) => setText(e.target.value)}
+          />
+        </label>
       </div>
+      {tooFewDigits(searched) ? (
+        <p className="text-12 text-text-muted">
+          Gõ từ 3 số để tìm theo SĐT; 1–2 số đang tìm theo tên.
+        </p>
+      ) : null}
 
       {list.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
@@ -139,11 +172,22 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
             <button
               type="button"
               className={primary}
-              onClick={() =>
-                go(empty.action === 'clear' ? NO_FILTER : { assignee: 'none', state: 'all' })
-              }
+              onClick={() => {
+                if (empty.action !== 'unassigned') setText('');
+                go(
+                  empty.action === 'search'
+                    ? { ...filter, q: '' }
+                    : empty.action === 'clear'
+                      ? NO_FILTER
+                      : { ...NO_FILTER, assignee: 'none' },
+                );
+              }}
             >
-              {empty.action === 'clear' ? 'Xóa bộ lọc' : 'Xem hội thoại chưa ai nhận'}
+              {empty.action === 'search'
+                ? 'Bỏ tìm'
+                : empty.action === 'clear'
+                  ? 'Xóa bộ lọc'
+                  : 'Xem hội thoại chưa ai nhận'}
             </button>
           )}
         </div>

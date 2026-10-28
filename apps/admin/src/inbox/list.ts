@@ -27,8 +27,23 @@ export interface ListFilter {
   readonly assignee: Assignee;
   /** A state, `hold` (out of hours, held for the bot) or `all`. */
   readonly state: ConversationState | 'hold' | 'all';
+  /** The customer searched (`q`, #390), trimmed; '' for none. */
+  readonly q: string;
 }
-export const NO_FILTER: ListFilter = { assignee: 'any', state: 'all' };
+export const NO_FILTER: ListFilter = { assignee: 'any', state: 'all', q: '' };
+
+/** The longest search the API takes: OpenAPI `GET /v1/conversations` `q` has maxLength 100 (and minLength 1). */
+export const MAX_SEARCH = 100;
+
+/** A search as the API takes it: trimmed, at most `MAX_SEARCH`; '' means no search, sent as no `q` at all (an empty `q` is a 400). */
+export const searchOf = (raw: string | null): string =>
+  (raw ?? '').trim().slice(0, MAX_SEARCH).trim();
+
+/** 1 or 2 digits are searched as a part of the name: a phone is searched from its first 3 digits (U48, #390). */
+export const tooFewDigits = (q: string): boolean => {
+  const digits = q.replace(/\D/g, '').length;
+  return /^[\d\s+.-]+$/.test(q) && digits > 0 && digits < 3;
+};
 
 const STATES = Object.keys(STATE_LABEL) as ConversationState[];
 
@@ -40,6 +55,7 @@ export function filterOf(params: URLSearchParams): ListFilter {
     assignee: a === 'me' || a === 'none' ? a : 'any',
     state:
       s === 'hold' || STATES.includes(s as ConversationState) ? (s as ListFilter['state']) : 'all',
+    q: searchOf(params.get('q')),
   };
 }
 
@@ -48,6 +64,7 @@ export function paramsOf(f: ListFilter): URLSearchParams {
   const p = new URLSearchParams();
   if (f.assignee !== 'any') p.set('assignee', f.assignee);
   if (f.state !== 'all') p.set('state', f.state);
+  if (f.q) p.set('q', f.q);
   return p;
 }
 
@@ -57,6 +74,7 @@ export function listPath(f: ListFilter, cursor: string | null, workspaceId: stri
   if (workspaceId) p.set('workspaceId', workspaceId);
   if (f.state === 'hold') p.set('hold', 'true');
   else if (f.state !== 'all') p.set('state', f.state);
+  if (f.q) p.set('q', f.q); // a part of the name, the start of a phone from 3 digits, or a whole email (U48)
   if (cursor) p.set('cursor', cursor);
   return `/v1/conversations?${p.toString()}`;
 }
@@ -97,7 +115,8 @@ export const customerNameOf = (c: Pick<Conversation, 'customer'>): string =>
 export function emptyOf(
   f: ListFilter,
   role: Role,
-): { readonly text: string; readonly action: 'clear' | 'unassigned' | 'channels' } {
+): { readonly text: string; readonly action: 'search' | 'clear' | 'unassigned' | 'channels' } {
+  if (f.q) return { text: `Không có hội thoại khớp "${f.q}".`, action: 'search' };
   if (f.state !== 'all' || (f.assignee !== 'any' && f.assignee !== 'me'))
     return { text: 'Không có hội thoại khớp bộ lọc.', action: 'clear' };
   if (role === 'owner' || role === 'admin')
