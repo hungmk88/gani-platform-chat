@@ -93,6 +93,7 @@ Trang mặc định sau đăng nhập:
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
 - Ngân sách "Kiểm chứng" (`e2e/perf.spec.ts`, đồng hồ của trình duyệt, bản build + API giả): Hộp thư hiện nội dung chính < 2,5 giây; mở hội thoại từ danh sách P95 < 500ms (21 lần). Bắt phần FE thêm vào (bundle, render, gọi nối tiếp), không đo API thật. Đo khi viết: tải 270–700ms, mở P95 180–260ms.
 - `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
+- **Bộ chọn và assertion phủ định** (#401): nhãn bọc `<select>`/`<input>` (`<label>Kênh<select>…`) thì tên của ô gồm cả chữ của lựa chọn đang chọn, nên `getByLabel('Kênh', { exact: true })` không khớp gì. Với ô chọn, dùng `getByRole('combobox', { name: /^Kênh/ })`. Bộ chọn không khớp làm `toHaveCount(0)`/`toBeHidden()` **xanh nhầm**: mỗi assertion phủ định phải có bản khẳng định dùng đúng bộ chọn đó (ở cùng test hay test khác) chứng minh nó khớp khi phần tử có mặt.
 - Trước khi push: `pnpm build:e2e-check` (#378) build admin như job `admin (e2e, axe)` (chỉ có phụ thuộc của admin): tạm dời `dist/` của các gói khác rồi trả lại, kể cả khi build lỗi. `next build` dùng `tsconfig.build.json` (bỏ `rules-sync.test.ts`, test đọc mã nguồn API); `pnpm typecheck` vẫn kiểm file đó.
 
 ## Nhận lời mời (#4, N151)
