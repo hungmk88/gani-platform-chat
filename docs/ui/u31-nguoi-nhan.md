@@ -41,7 +41,7 @@ Một người có trong danh sách khi:
 ## 3. Những điểm dễ hiểu nhầm
 
 - **`openCount` và `maxConcurrent` chỉ để hiển thị.** Đợt 1 **chưa** chặn chuyển khi người nhận đã đủ tải (áp giới hạn khi phân bổ là S4). FE có thể hiện "3/5", nhưng không nên tắt lựa chọn khi `openCount ≥ maxConcurrent`.
-  Nếu muốn, FE có thể cảnh báo người đã đủ tải (màu, tooltip "đã nhận 5/5") nhưng **vẫn cho chọn**; chặn thật là việc của S4 (U45).
+  Nếu muốn, FE có thể cảnh báo người đã đủ tải (màu, tooltip "đã nhận 5/5") nhưng **vẫn cho chọn**; không chặn khi gán tay, kể cả sau S4 (U55, mục 4).
 - **Danh sách không theo trạng thái online.** Trạng thái online là S4.
 - **Lỗi của endpoint đi theo đúng lỗi của hành động:**
   - 403: vai trò không có hành động, hoặc Sales/Support xin danh sách `transfer` cho hội thoại họ không giữ;
@@ -50,6 +50,16 @@ Một người có trong danh sách khi:
 - **Danh sách là ảnh chụp lúc mở hộp thoại.** Nếu giữa chừng có người rời workspace hay hội thoại đổi người giữ, hành động vẫn có thể trả 422 hoặc 409 như cũ. FE giữ cách xử lý lỗi đang có.
 - **Chuyển cho cả team, ghi chú khi Đóng, lý do chuyển:** vẫn như N166 (Đợt 1 chỉ chuyển cho người; ô ghi chú ẩn tới khi có ghi chú nội bộ).
 - **Màn Tạo ticket:** endpoint này **không** dùng cho ô người nhận của ticket. Người nhận ticket sẽ có luật và endpoint riêng cùng ticket thật ở S4 (CĐT chốt 27/10). Tới lúc đó FE giữ cách tạm `GET /v1/members` (Owner/Admin).
+
+## 4. Cập nhật 28/10: đếm theo trạng thái (Brief §M04, U55)
+
+Mục này thay phần nói về `openCount` ở mục 2 và 3.
+
+- **`openCount`** nay chỉ đếm hội thoại **đang xử lý** (`HUMAN_ACTIVE`). Đây là tải mà `maxConcurrent` giới hạn: "đã đầy" là `openCount ≥ maxConcurrent`.
+- **Trường mới `awaitingCustomerCount`** (integer ≥ 0): số hội thoại agent đang giữ và đã trả lời, **chờ khách phản hồi** (`PENDING_CUSTOMER`). **Không phải số tin chờ gửi**: `deliveryStatus: pending` của tin nhắn là chuyện khác.
+- **`openCount + awaitingCustomerCount`** là tải thực tế người đó đang giữ. Hiển thị đầy đủ cả hai nếu có chỗ, ví dụ "đang xử lý 3/5 · chờ khách 2".
+- Trước bản này, `openCount` đếm cả hai, nên người có hội thoại chờ khách bị hiện "đầy" sớm hơn Brief.
+- Không chặn khi gán tay hay chuyển, kể cả sau S4 (U55). Chỉ routing tự động áp giới hạn; FE giữ "đã đầy n/max" để cảnh báo.
 
 Trân trọng,
 Backend (Gói 1)
