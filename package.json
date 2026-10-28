@@ -14,6 +14,7 @@
     "dev:api": "pnpm --filter @gani/db build && pnpm --filter @gani/api dev",
     "dev:worker": "pnpm --filter @gani/db build && pnpm --filter @gani/worker dev",
     "build": "turbo run build",
+    "build:e2e-check": "pnpm --filter @gani/admin build:e2e-check",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

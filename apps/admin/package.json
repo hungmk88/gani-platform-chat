@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
+    "build:e2e-check": "node scripts/build-e2e-check.mjs",
     "start": "next start --port 3001",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --coverage",
