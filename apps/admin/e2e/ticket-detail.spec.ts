@@ -61,7 +61,9 @@ test('a ticket changed by someone else is read again; one not found says so', as
   await signIn(page, accountOf('manager+stale'));
   await page.goto(`/tickets/${TICKETS[1]!.id}`);
   await screen(page).getByRole('button', { name: 'Chờ khách' }).click();
-  await expect(screen(page).getByRole('alert')).toContainText('vừa được người khác thay đổi');
+  await expect(screen(page).getByRole('alert')).toContainText(
+    'vừa được người khác thay đổi. Đang tải lại',
+  );
   await expect(screen(page).getByRole('alert')).toContainText('trace-e2e-409');
   await page.goto('/tickets/khong-co');
   await expect(page.getByRole('heading', { name: 'Không tìm thấy ticket' })).toBeVisible();

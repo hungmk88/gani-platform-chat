@@ -33,9 +33,10 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   unauthorized: ['sign_in', 'Phiên đăng nhập đã hết. Đăng nhập lại.'],
   forbidden: ['show', 'Bạn không có quyền làm việc này.'],
   not_found: ['show', 'Không tìm thấy. Có thể đã bị xóa hoặc thuộc công ty khác.'],
+  // "Đang tải lại" here and for invalid_transition: every screen given 'reload' shows the sentence, then reads again (async).
   version_conflict: [
     'reload',
-    'Dữ liệu vừa được người khác thay đổi. Đã tải lại, kiểm tra rồi làm lại.',
+    'Dữ liệu vừa được người khác thay đổi. Đang tải lại, kiểm tra rồi làm lại.',
   ],
   conversation_already_claimed: ['reload', 'Hội thoại đã có người nhận.'],
   duplicate_resource: ['show', 'Dữ liệu này đã có.'],
@@ -61,7 +62,7 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   ],
   invalid_transition: [
     'reload',
-    'Trạng thái vừa đổi nên không làm được thao tác này. Đã tải lại, kiểm tra rồi làm lại.',
+    'Trạng thái vừa đổi nên không làm được thao tác này. Đang tải lại, kiểm tra rồi làm lại.',
   ],
   unresolved_variable: [
     'show',
