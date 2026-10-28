@@ -2,9 +2,11 @@ import {
   InvalidCursorError,
   listAssigneeCandidates,
   listConversations,
+  listInboxChannels,
   listMessages,
   loadConversationView,
   type ConversationListQuery as StoreQuery,
+  type InboxScope,
   type OrgRole,
   type TenantTx,
 } from '@gani/db';
@@ -18,8 +20,10 @@ import {
   AssigneesQuerySchema,
   ConversationIdSchema,
   ConversationListQuerySchema,
+  InboxChannelsQuerySchema,
   MessageListQuerySchema,
   type ConversationListQuery,
+  type InboxChannelsQuery,
 } from './conversations.schemas.js';
 import { searchOf } from '../customers/customer-search.js';
 import { seesCustomersMasked } from '../customers/customers.permissions.js';
@@ -54,6 +58,17 @@ export class ConversationsController {
       data: page.rows,
       nextCursor: page.nextCursor,
     }));
+  }
+
+  /** Declared before `:id`, or `channels` would be read as an id (400). */
+  @Get('channels')
+  channels(@Query(new ZodPipe(InboxChannelsQuerySchema)) q: InboxChannelsQuery) {
+    const ctx = allowedToRead();
+    const scope: InboxScope = {
+      ...(q.workspaceId === undefined ? {} : { workspaceId: q.workspaceId }),
+      ...(readScope(ctx.role) === 'mine_or_unassigned' ? { mineOrUnassigned: ctx.userId } : {}),
+    };
+    return this.read(ctx, (tx) => listInboxChannels(tx, scope)).then((data) => ({ data }));
   }
 
   @Get(':id')

@@ -371,6 +371,53 @@
           "name"
         ]
       },
+      "InboxChannelList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InboxChannel"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "InboxChannel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "zalo_oa",
+              "facebook",
+              "webchat"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "token_expiring",
+              "disconnected"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "displayName",
+          "status"
+        ]
+      },
       "MessagePage": {
         "type": "object",
         "properties": {
@@ -1916,6 +1963,77 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConversationPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a parameter or the cursor is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden (marketing, viewer), or a refusal of the edge (no_organisation, org_not_selected, two_factor_setup_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversations/channels": {
+      "get": {
+        "summary": "The channels the Inbox filter offers (U56): the live channels at least one conversation the person may read came in by (Sales and support: their own and the unclaimed ones), by name. Never a channel of no such conversation, so no choice filters to nothing.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": false,
+            "description": "UUIDv7.",
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The channels.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxChannelList"
                 }
               }
             }

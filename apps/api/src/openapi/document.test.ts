@@ -29,6 +29,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/me/security-status',
       '/v1/me',
       '/v1/conversations',
+      '/v1/conversations/channels',
       '/v1/conversations/{id}',
       '/v1/conversations/{id}/messages',
       '/v1/conversations/{id}/assignees',

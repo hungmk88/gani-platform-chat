@@ -9,6 +9,7 @@ import {
   ProblemSchema,
   UuidSchema,
 } from '../../openapi/schemas.js';
+import { ChannelSchema } from '../channels/channels.schemas.js';
 
 // The shapes of /v1/conversations (Brief P9): one Zod schema validates the request (ZodPipe) and describes it in OpenAPI, so the two
 // cannot drift. Responses are camelCase; dates are ISO 8601 in UTC.
@@ -99,6 +100,16 @@ export const ConversationListQuerySchema = CursorQuerySchema.extend({
   q: z.string().trim().min(1).max(100).optional(),
 });
 export type ConversationListQuery = z.output<typeof ConversationListQuerySchema>;
+
+/** `GET /v1/conversations/channels` (U56): the channels the Inbox filter offers, in one workspace of the session or all of them. */
+export const InboxChannelsQuerySchema = z.object({ workspaceId: UuidSchema.optional() }).strict();
+export type InboxChannelsQuery = z.output<typeof InboxChannelsQuerySchema>;
+
+/** A channel the person reads at least one conversation of (U56): metadata only, never a secret, no team. */
+export const InboxChannelSchema = ChannelSchema.omit({ teamId: true }).meta({ id: 'InboxChannel' });
+export const InboxChannelListSchema = z
+  .object({ data: z.array(InboxChannelSchema) })
+  .meta({ id: 'InboxChannelList' });
 
 export const ConversationIdSchema = UuidSchema;
 export const MessageListQuerySchema = CursorQuerySchema;
