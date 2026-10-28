@@ -37,9 +37,20 @@ Chào anh/chị,
 - FE có thể hiển thị placeholder (ví dụ "Chưa có tin nhắn" hoặc "Đang tải") cho trường hợp `null` **sau khi** ops xác nhận script đã chạy trên môi trường đó. Trước đó, để trống.
 - Sau khi script chạy, hội thoại có tin (`lastMessageAt` khác `null`) đều có đoạn trích, **trừ** hội thoại chỉ có sự kiện hệ thống (hiện chưa phát sinh): vẫn `null`, FE hiện như hội thoại chưa có tin.
 
-## 4. Chưa có trong phần này
+## 4. Bộ lọc (U30 PR 2, 28/10)
 
-- Bộ lọc `channelId` và `q` (tên hoặc SĐT khách): PR kế tiếp của U30.
+`GET /v1/conversations` nhận thêm hai tham số, dùng cùng lúc thì là **AND**, lọc trước khi chia trang:
+
+- **`channelId`** (uuid): chỉ hội thoại của kênh đó. Kênh không có, của workspace mình không thuộc hay của công ty khác → `data: []`, không lỗi. Không phải uuid → 400.
+- **`q`** (1–100 ký tự sau khi cắt khoảng trắng): tìm theo khách, **giống hệt** `GET /v1/customers?q=`:
+  - có `@` → **cả** địa chỉ email, không phân biệt hoa thường; không bao giờ tìm theo tên thay thế;
+  - từ 3 chữ số → đầu SĐT (`0912` = `+84912`);
+  - còn lại → một phần tên, không phân biệt hoa thường; `%`, `_` là chữ thường.
+  - Không gửi `q` → không lọc; `q` rỗng hay chỉ khoảng trắng → 400. FE bỏ `q` khi ô tìm trống.
+  - Hội thoại chưa gắn khách không khớp `q` nào.
+
+## 5. Chưa có trong phần này
+
 - `unreadCount`, `tags`, `sla`: như N166, sau S1.
 
 Trân trọng,

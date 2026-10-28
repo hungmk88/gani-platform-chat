@@ -7,7 +7,7 @@ import {
   type CustomerChange,
   type TenantTx,
 } from '@gani/db';
-import { phonePrefix, toE164, uuidv7 } from '@gani/domain';
+import { toE164, uuidv7 } from '@gani/domain';
 import {
   Body,
   Controller,
@@ -23,6 +23,7 @@ import {
 import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
+import { searchOf } from './customer-search.js';
 import { mayEditCustomers, seesCustomersMasked } from './customers.permissions.js';
 import {
   CustomerChangeSchema,
@@ -38,21 +39,6 @@ import { customerView } from './customers.view.js';
  * masked (Phụ lục B). One customer belongs to the whole company, so the list is not narrowed by workspace. A customer of another
  * organisation is a 404, as row-level security hides it.
  */
-/**
- * What `q` searches (N165, U48): a whole email when it has an `@` (equal, any case: never a part, so it cannot spell out an address),
- * the start of a phone number from 3 digits, a part of the name otherwise. A masked role searches by name only: it could otherwise test
- * whether a number or an address is a customer's.
- */
-function searchOf(
-  q: string,
-  masked: boolean,
-): { email: string } | { phonePrefix: string } | { name: string } {
-  if (masked) return { name: q };
-  if (q.includes('@')) return { email: q.toLowerCase() };
-  const prefix = phonePrefix(q);
-  return prefix === null ? { name: q } : { phonePrefix: prefix };
-}
-
 @Controller('v1/customers')
 export class CustomersController {
   constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}

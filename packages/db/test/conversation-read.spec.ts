@@ -221,6 +221,106 @@ describe('the line of the Inbox (U30, N169)', () => {
   });
 });
 
+describe('the filters of the Inbox (U30): channel and customer', () => {
+  // CH1 and CH2 in W1, CHW2 in W2, CHB in organisation B. one name holds a literal % and _; one
+  // customer is deleted; c4 has no customer. Times interleave matching and other rows, so a filter applied after the page is cut loses rows.
+  const [CH1, CH2, CHW2, CHB] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
+  const [HOA, BINH, WILD, GONE] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
+  const c: Record<'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'c6' | 'c7' | 'w2', string> = {} as never;
+  const ids = async (q: Partial<ConversationListQuery>, workspaces = [W1]) =>
+    new Set((await list(q, workspaces)).rows.map((r) => r.id));
+  const set = (...keys: (keyof typeof c)[]) => new Set(keys.map((k) => c[k]));
+  const pages = async (q: Partial<ConversationListQuery>) => {
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await list({ ...q, limit: 2, ...(cursor ? { cursor } : {}) });
+      seen.push(...page.rows.map((r) => r.id));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    return seen;
+  };
+
+  beforeAll(async () => {
+    const { rows } = await admin.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE org_id = $1 LIMIT 1',
+      [B],
+    );
+    // prettier-ignore
+    for (const [id, org, ws] of [[CH1, A, W1], [CH2, A, W1], [CHW2, A, W2], [CHB, B, rows[0]?.id]] as const)
+      await admin.query(
+        `INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc)
+         VALUES ($1, $2, $3, 'zalo_oa', $4, 'OA', 'app', decode(repeat('ab', 32), 'hex'))`,
+        [id, org, ws, `f-${id}`],
+      );
+    // prettier-ignore
+    for (const [id, name, phone, email, gone] of [
+      [HOA, 'Hoà Nguyễn', '+84912345678', 'an@x.vn', false],
+      [BINH, 'Bình Trần', '+84987654321', 'binh@x.vn', false],
+      [WILD, '100% Bé_Na', null, null, false],
+      [GONE, 'Hoà Cũ', null, null, true],
+    ] as const)
+      await admin.query(
+        `INSERT INTO customers (id, org_id, display_name, phone_e164, email, deleted_at) VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 THEN now() END)`,
+        [id, A, name, phone, email, gone],
+      );
+    // prettier-ignore
+    for (const [key, ws, channel, customer, minutes] of [
+      ['c1', W1, CH1, HOA, 10], ['c2', W1, CH1, BINH, 9], ['c3', W1, CH2, HOA, 8], ['c4', W1, CH1, null, 7],
+      ['c5', W1, CH1, WILD, 6], ['c6', W1, CH1, GONE, 5], ['c7', W1, CH2, HOA, 4], ['w2', W2, CHW2, HOA, 3],
+    ] as const) {
+      c[key] = await conversation({ ws, last: new Date(Date.UTC(2031, 0, 1, 0, minutes)).toISOString() });
+      await admin.query(
+        `UPDATE conversations SET channel_account_id = $2, external_user_id = $4, customer_id = $3 WHERE id = $1`,
+        [c[key], channel, customer, `zu-${c[key]}`],
+      );
+    }
+  });
+
+  afterAll(async () => {
+    await admin.query('DELETE FROM conversations WHERE id = ANY($1::uuid[])', [Object.values(c)]);
+    await admin.query('DELETE FROM customers WHERE id = ANY($1::uuid[])', [
+      [HOA, BINH, WILD, GONE],
+    ]);
+    await admin.query('DELETE FROM channel_accounts WHERE id = ANY($1::uuid[])', [
+      [CH1, CH2, CHW2, CHB],
+    ]);
+  });
+
+  it('keeps one channel; an unknown one, one of another organisation or of a workspace not in the session match nothing', async () => {
+    expect(await ids({ channelAccountId: CH1 })).toEqual(set('c1', 'c2', 'c4', 'c5', 'c6'));
+    expect(await ids({ channelAccountId: uuidv7() })).toEqual(new Set());
+    expect(await ids({ channelAccountId: CHB })).toEqual(new Set());
+    expect(await ids({ channelAccountId: CHW2 })).toEqual(new Set());
+    expect(await ids({ channelAccountId: CHW2 }, [W1, W2])).toEqual(set('w2'));
+  });
+
+  it('matches a part of the name, any case, % and _ literally; a deleted customer or none never matches', async () => {
+    expect(await ids({ customer: { name: 'hoà' } })).toEqual(set('c1', 'c3', 'c7'));
+    expect(await ids({ customer: { name: 'BÌNH' } })).toEqual(set('c2'));
+    expect(await ids({ customer: { name: '%' } })).toEqual(set('c5'));
+    expect(await ids({ customer: { name: '_' } })).toEqual(set('c5'));
+    expect(await ids({ customer: { name: 'cũ' } })).toEqual(new Set());
+  });
+
+  it('matches the start of the phone and the whole email only', async () => {
+    expect(await ids({ customer: { phonePrefix: '+84912' } })).toEqual(set('c1', 'c3', 'c7'));
+    expect(await ids({ customer: { email: 'an@x.vn' } })).toEqual(set('c1', 'c3', 'c7'));
+    expect(await ids({ customer: { email: 'an@x' } })).toEqual(new Set());
+  });
+
+  it('joins channel and customer with AND', async () => {
+    expect(await ids({ channelAccountId: CH1, customer: { name: 'hoà' } })).toEqual(set('c1'));
+    expect(await ids({ channelAccountId: CH1, customer: { name: 'zzz' } })).toEqual(new Set());
+    expect(await ids({ channelAccountId: uuidv7(), customer: { name: 'hoà' } })).toEqual(new Set());
+  });
+
+  it('filters before the page is cut: page by page gives each match once, for the channel and for the customer', async () => {
+    expect(await pages({ channelAccountId: CH1 })).toEqual([c.c1, c.c2, c.c4, c.c5, c.c6]);
+    expect(await pages({ customer: { name: 'hoà' } })).toEqual([c.c1, c.c3, c.c7]);
+  });
+});
+
 describe('listMessages', () => {
   it('gives the messages of one conversation, newest first, page by page', async () => {
     const [c, d] = [await conversation(), await conversation()];

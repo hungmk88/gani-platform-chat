@@ -280,6 +280,9 @@ export interface paths {
                     state?: "BOT_ACTIVE" | "HUMAN_WAITING_Q" | "HUMAN_ACTIVE" | "PENDING_CUSTOMER" | "CLOSED";
                     hold?: "true" | "false";
                     assignee?: "me" | "none" | "any";
+                    /** @description UUIDv7. */
+                    channelId?: components["schemas"]["Uuid"];
+                    q?: string;
                 };
                 header?: never;
                 path?: never;

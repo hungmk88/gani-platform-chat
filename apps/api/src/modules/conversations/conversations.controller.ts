@@ -21,6 +21,8 @@ import {
   MessageListQuerySchema,
   type ConversationListQuery,
 } from './conversations.schemas.js';
+import { searchOf } from '../customers/customer-search.js';
+import { seesCustomersMasked } from '../customers/customers.permissions.js';
 import { actionScope, canSee, mayAct, readScope } from './permissions.js';
 
 /**
@@ -45,6 +47,8 @@ export class ConversationsController {
       ...(q.assignee === 'me' ? { assigned: { userId: ctx.userId } } : {}),
       ...(q.assignee === 'none' ? { assigned: 'none' as const } : {}),
       ...(scope === 'mine_or_unassigned' ? { mineOrUnassigned: ctx.userId } : {}),
+      ...(q.channelId === undefined ? {} : { channelAccountId: q.channelId }),
+      ...(q.q === undefined ? {} : { customer: searchOf(q.q, seesCustomersMasked(ctx.role)) }),
     };
     return this.read(ctx, (tx) => listConversations(tx, query)).then((page) => ({
       data: page.rows,

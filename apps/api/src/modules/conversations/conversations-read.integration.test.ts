@@ -26,7 +26,7 @@ const PW = randomBytes(18).toString('base64url');
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const people: Record<string, string> = {};
 const c: Record<string, string> = {};
-const [customer, channel] = [randomUUID(), randomUUID()];
+const [customer, channel, channelB] = [randomUUID(), randomUUID(), randomUUID()];
 const cookies: Record<string, string> = {};
 let app: NestExpressApplication | undefined;
 let url = '';
@@ -86,12 +86,13 @@ beforeAll(async () => {
   await conversation('otherWs', orgA, W2, { at: '2026-10-06T00:00:00Z' });
   await conversation('otherOrg', orgB, WB, { at: '2026-10-06T00:00:00Z' });
   // The customer of 'mine' (N165): the inbound worker names it; here the fixture does.
-  await q(`INSERT INTO customers (id, org_id, display_name) VALUES ($1, $2, 'Chị Lan')`, [customer, orgA]);
+  await q(`INSERT INTO customers (id, org_id, display_name, phone_e164, email) VALUES ($1, $2, 'Chị Lan', '+84912000111', 'lan@x.vn')`, [customer, orgA]);
   await q('UPDATE conversations SET customer_id = $1 WHERE id = $2', [customer, c['mine']]);
   // The channel and the line of the Inbox (U30, N169): the inbound worker and insertMessage write them; here the fixture does.
   await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ($1, $2, $3, 'zalo_oa', 'oa-1', 'OA Gani', 'app', decode(repeat('ab', 32), 'hex'))`, [channel, orgA, W1]);
   await q(`UPDATE conversations SET channel_account_id = $1, external_user_id = 'zu-1', last_message_kind = 'text', last_message_preview = 'Dạ em cần báo giá' WHERE id = $2`, [channel, c['mine']]);
   await q(`UPDATE conversations SET last_message_kind = 'image' WHERE id = $1`, [c['queue']]);
+  await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ($1, $2, $3, 'zalo_oa', 'oa-b', 'OA B', 'app', decode(repeat('ab', 32), 'hex'))`, [channelB, orgB, WB]);
   for (let n = 1; n <= 3; n++)
     await q(`INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, $5, 'customer', 'text', 'm')`, [randomUUID(), orgA, W1, c['queue'], n]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -152,10 +153,27 @@ describe('GET /v1/conversations', () => {
     expect(next.body['nextCursor']).toBeNull();
   });
 
+  it('searches the customer as /v1/customers does (U48) and the channel (U30), the two joined by AND', async () => {
+    const find = async (query: string) => ids((await get('manager', `/v1/conversations?${query}`)).body);
+    expect(await find('q=lan')).toEqual([c['mine']]);
+    expect(await find('q=0912')).toEqual([c['mine']]);
+    expect(await find(`q=${encodeURIComponent('LAN@X.VN')}`)).toEqual([c['mine']]);
+    expect(await find(`q=${encodeURIComponent('lan@y.vn')}`)).toEqual([]);
+    // An @ means an email: the name matching does not count. No @ means a name: a part of the email never matches.
+    expect(await find(`q=${encodeURIComponent('Chị Lan@')}`)).toEqual([]);
+    expect(await find('q=x.vn')).toEqual([]);
+    expect(await find(`q=${'a'.repeat(100)}`)).toEqual([]);
+    expect(await find(`channelId=${channel}`)).toEqual([c['mine']]);
+    expect(await find(`channelId=${channelB}`)).toEqual([]);
+    expect(await find(`channelId=${channel}&q=lan`)).toEqual([c['mine']]);
+    expect(await find(`channelId=${channel}&q=zzz`)).toEqual([]);
+    expect(await find(`channelId=${randomUUID()}&q=lan`)).toEqual([]);
+  });
+
   it('refuses marketing with 403 forbidden, and a bad query or cursor with 400 validation_failed', async () => {
     const refused = await get('marketing', '/v1/conversations');
     expect([refused.status, refused.type, refused.body['code']]).toEqual([403, 'application/problem+json', 'forbidden']);
-    for (const query of ['limit=101', 'state=OPEN', 'assignee=everyone', 'workspaceId=x', 'cursor=bm90IG91cnM'])
+    for (const query of ['limit=101', 'state=OPEN', 'assignee=everyone', 'workspaceId=x', 'cursor=bm90IG91cnM', 'channelId=x', 'q=', 'q=%20%20%20', `q=${'a'.repeat(101)}`])
       expect((await get('manager', `/v1/conversations?${query}`)).body, query).toMatchObject({ status: 400, code: 'validation_failed' });
   });
 });
