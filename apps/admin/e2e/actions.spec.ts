@@ -77,7 +77,7 @@ test('a stale version is refused with its sentence and nothing changes', async (
   await expect(actions(page)).toHaveText(['Chờ khách', 'Đóng']);
   await actions(page).filter({ hasText: 'Chờ khách' }).click();
   await expect(view(page).getByRole('alert')).toContainText(
-    'Dữ liệu vừa được người khác thay đổi.',
+    'Dữ liệu vừa được người khác thay đổi. Đang tải lại',
   );
   await expect(view(page).getByRole('heading', { name: 'Nhân viên đang xử lý' })).toBeVisible();
 });
@@ -139,7 +139,7 @@ test('a Manager assigns from U31; a conversation changed meanwhile says so and r
   const reread = page.waitForRequest((r) => r.url().endsWith(`/v1/conversations/${held.id}`));
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('vừa được người khác thay đổi');
-  await expect(dialog.getByRole('alert')).toContainText('Đã tải lại');
+  await expect(dialog.getByRole('alert')).toContainText('Đang tải lại');
   await reread;
   await expect(dialog).toBeVisible(); // the dialog stays open to try again with what was read
   expect(asked).toEqual([]); // a Manager never reads the members (N153)
