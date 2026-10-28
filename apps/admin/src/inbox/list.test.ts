@@ -9,13 +9,14 @@ import {
   listPath,
   NO_FILTER,
   paramsOf,
+  tooFewDigits,
   whenOf,
 } from './list';
 
 describe('filterOf and paramsOf', () => {
   it('reads a filter from the URL and writes it back', () => {
     const f = filterOf(new URLSearchParams('assignee=me&state=HUMAN_WAITING_Q'));
-    expect(f).toEqual({ assignee: 'me', state: 'HUMAN_WAITING_Q' });
+    expect(f).toEqual({ assignee: 'me', state: 'HUMAN_WAITING_Q', q: '' });
     expect(paramsOf(f).toString()).toBe('assignee=me&state=HUMAN_WAITING_Q');
     expect(paramsOf(NO_FILTER).toString()).toBe('');
   });
@@ -26,13 +27,36 @@ describe('filterOf and paramsOf', () => {
   });
 });
 
+describe('the customer search q (#390)', () => {
+  it('is trimmed and cut to what the API takes, and none is no q at all (an empty q is a 400)', () => {
+    expect(filterOf(new URLSearchParams('q=%20%20an%20%20')).q).toBe('an');
+    expect(filterOf(new URLSearchParams('q=%20%20%20')).q).toBe('');
+    expect(filterOf(new URLSearchParams(`q=${'a'.repeat(120)}`)).q).toBe('a'.repeat(100));
+    expect(paramsOf({ ...NO_FILTER, q: 'an' }).toString()).toBe('q=an');
+    expect(listPath({ ...NO_FILTER, q: '' }, null, null)).not.toContain('q=');
+    expect(listPath({ ...NO_FILTER, q: '0912' }, null, null)).toBe(
+      '/v1/conversations?assignee=any&limit=50&q=0912',
+    );
+  });
+  it('says 1 or 2 digits are not a phone search yet', () => {
+    expect(['0', '09', ' 0 9 '].map((q) => tooFewDigits(q.trim()))).toEqual([true, true, true]);
+    expect(['091', 'an', 'an 09', ''].map(tooFewDigits)).toEqual([false, false, false, false]);
+  });
+  it('says nothing matched the search, with a way to drop it', () => {
+    expect(emptyOf({ ...NO_FILTER, q: 'an' }, 'sales')).toEqual({
+      text: 'Không có hội thoại khớp "an".',
+      action: 'search',
+    });
+  });
+});
+
 describe('listPath', () => {
   it('asks the API with its own words', () => {
     expect(listPath(NO_FILTER, null, null)).toBe('/v1/conversations?assignee=any&limit=50');
-    expect(listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q' }, 'c1', 'w1')).toBe(
+    expect(listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q', q: '' }, 'c1', 'w1')).toBe(
       '/v1/conversations?assignee=none&limit=50&workspaceId=w1&state=HUMAN_WAITING_Q&cursor=c1',
     );
-    expect(listPath({ assignee: 'me', state: 'hold' }, null, null)).toBe(
+    expect(listPath({ assignee: 'me', state: 'hold', q: '' }, null, null)).toBe(
       '/v1/conversations?assignee=me&limit=50&hold=true',
     );
   });
@@ -77,12 +101,12 @@ describe('holderOf and channelOf', () => {
 describe('emptyOf', () => {
   it('has one sentence and one action for each case', () => {
     expect(emptyOf(NO_FILTER, 'owner')).toEqual({ text: 'Chưa có hội thoại.', action: 'channels' });
-    expect(emptyOf({ assignee: 'me', state: 'all' }, 'sales')).toEqual({
+    expect(emptyOf({ assignee: 'me', state: 'all', q: '' }, 'sales')).toEqual({
       text: 'Chưa có hội thoại nào giao cho bạn.',
       action: 'unassigned',
     });
-    expect(emptyOf({ assignee: 'none', state: 'all' }, 'manager').action).toBe('clear');
-    expect(emptyOf({ assignee: 'any', state: 'CLOSED' }, 'admin').action).toBe('clear');
+    expect(emptyOf({ assignee: 'none', state: 'all', q: '' }, 'manager').action).toBe('clear');
+    expect(emptyOf({ assignee: 'any', state: 'CLOSED', q: '' }, 'admin').action).toBe('clear');
   });
 });
 
