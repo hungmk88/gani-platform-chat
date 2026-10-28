@@ -6,6 +6,10 @@ const api = process.env['API_ORIGIN'] ?? 'http://localhost:3000';
 
 const config: NextConfig = {
   poweredByHeader: false,
+  // `next build` type-checks with tsconfig.build.json: the same as tsconfig.json without rules-sync.test.ts (#378), which reads the
+  // API's source and its types need @gani/db built, and the admin's e2e job builds only the admin's own dependencies.
+  // `pnpm typecheck` (tsconfig.json, in the job that builds every package) still checks that test.
+  typescript: { tsconfigPath: 'tsconfig.build.json' },
   rewrites: () =>
     Promise.resolve([
       { source: '/api/auth/:path*', destination: `${api}/api/auth/:path*` },
