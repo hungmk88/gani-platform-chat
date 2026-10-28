@@ -1,8 +1,13 @@
 // #378: the buttons of an open conversation follow the API's own rules, read from its source, never copied here.
 // - Who may act: `mayAct` of apps/api permissions.ts (Phụ lục B rows 13–17).
 // - From which state: the transition rows of TRANSITIONS in @gani/domain (FSM P14).
-// Red because a rule changed: change actionsFor, canTransfer or mayAssign/canAssign to match, never this test.
-// Red because a file moved or was renamed (an import fails): fix the import path below, the rules have not changed.
+// Why an admin test imports apps/api: it checks that the API's rules and the FE's agree. permissions.ts belongs to the BE and
+// carries no note of this test; whoever moves it learns from this test going red.
+// - Red at an import (a file moved or was renamed): fix the import path. First read `git log --follow -p` of that file: if it
+//   also changed its content in the same move, the comparison below has not run yet, so check the rules as well.
+// - Red at the comparison (a role or a state added or removed, a guard added): that is what the test is for. Change the FE rule
+//   (actionsFor, canTransfer, mayAssign/canAssign) to match, never this test.
+// apps/admin/turbo.json lists every file this test reads outside the admin, so that turbo's cache never hides a change.
 import { describe, expect, it } from 'vitest';
 
 import {
