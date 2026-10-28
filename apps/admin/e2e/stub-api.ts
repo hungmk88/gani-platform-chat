@@ -16,7 +16,7 @@ import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
 import { MEMBERS } from './stub-members';
 import { routeAssignees } from './stub-assignees';
-import { u30Body } from './stub-u30';
+import { byChannel, inboxChannels, u30Body } from './stub-u30';
 import { routeScreens } from './stub-routes';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
@@ -237,7 +237,10 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const { twoFactorEnabled, mustSetUp } = session;
     return send(res, 200, { twoFactorEnabled, required: mustSetUp, mustSetUp });
   }
-  if (req.method === 'GET' && path === '/v1/conversations') {
+  if (
+    req.method === 'GET' &&
+    (path === '/v1/conversations' || path === '/v1/conversations/channels')
+  ) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
     if (session.email.includes('+inbox-down@'))
       return problem(res, 500, 'internal_error', INBOX_DOWN_TRACE);
@@ -255,8 +258,10 @@ async function route(req: IncomingMessage, res: ServerResponse) {
             (!q.get('state') || c.state === q.get('state')) &&
             (q.get('hold') !== 'true' || c.afterHoursHold) &&
             (!q.get('workspaceId') || c.workspaceId === q.get('workspaceId')) &&
-            (!q.has('q') || conversationMatches(c, q.get('q') ?? '')),
+            (!q.has('q') || conversationMatches(c, q.get('q') ?? '')) &&
+            byChannel(q.get('channelId')),
         );
+    if (path.endsWith('/channels')) return send(res, 200, { data: inboxChannels(seen) }); // U56, stub-u30.ts
     const from = Number(q.get('cursor') ?? 0);
     const size = session.email.includes('+many@') ? MANY_PAGE : STUB_PAGE;
     const next = from + size < seen.length ? String(from + size) : null;
