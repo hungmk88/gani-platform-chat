@@ -5,14 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { api, type components } from '../api/client';
+import type { Customer } from '../customers/customers';
 import { membersPath } from '../members/list';
 import type { Role } from '../nav';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { redirectFor, scopeKey } from '../query/keys';
 import { useApiPages, useApiQuery, useScope } from '../query/provider';
 import type { WorkspaceMemberList } from '../workspaces/workspace-members';
+import { CustomerField } from './customer-field';
 import type { TicketDetail } from './ticket-detail';
 import {
+  CUSTOMER_GONE,
   MAX_DESCRIPTION,
   MAX_TITLE,
   picksAssignee,
@@ -34,6 +37,7 @@ const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opaci
  * unchanged after a failure it keeps its key, a changed body gets a new one. A failure never clears the form.
  * Opened from a conversation (#358), the ticket is of the conversation's workspace, carries the conversation and its customer
  * (none when it has no customer: `customerId` is left out, never null) and starts with a title the person edits.
+ * Opened from the list, the person may pick a customer (#359); one no longer visible (404) is dropped with its own sentence.
  */
 export function TicketCreateDialog({
   role,
@@ -55,7 +59,9 @@ export function TicketCreateDialog({
     description: '',
     priority: 'normal',
     assigneeUserId: '',
+    customerId: '',
   });
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const create = useMutation<TicketDetail, ApiFailure, { body: TicketCreate; key: string }>({
     mutationFn: ({ body, key }) =>
@@ -66,9 +72,14 @@ export function TicketCreateDialog({
       void queries.invalidateQueries({ queryKey: scopeKey(scope, 'tickets') });
       router.push(`/tickets/${encodeURIComponent(t.id)}`);
     },
-    onError: ({ error }) => {
+    onError: ({ error }, { body }) => {
       const to = redirectFor(error); // a session that ended, or 2FA to set up (P9)
       if (to) window.location.assign(to);
+      // From the list, a 404 can only be the customer picked (the workspace is the one worked in): drop it, keep the rest.
+      if (error.code === 'not_found' && !from && body.customerId) {
+        setCustomer(null);
+        setDraft((d) => ({ ...d, customerId: '' }));
+      }
     },
   });
   useEffect(() => dialog.current?.showModal(), []);
@@ -93,7 +104,9 @@ export function TicketCreateDialog({
     last.current = { what, key };
     create.mutate({ body, key });
   };
-  const error = problem ?? create.error?.error.message ?? null;
+  const gone =
+    create.error?.error.code === 'not_found' && !from && Boolean(create.variables?.body.customerId);
+  const error = problem ?? (gone ? CUSTOMER_GONE : create.error?.error.message) ?? null;
 
   return (
     <dialog
@@ -148,6 +161,15 @@ export function TicketCreateDialog({
             ))}
           </select>
         </label>
+        {from ? null : (
+          <CustomerField
+            value={customer}
+            onChange={(c) => {
+              setCustomer(c);
+              edit({ customerId: c?.id ?? '' });
+            }}
+          />
+        )}
         {picksAssignee(role) ? (
           <AssigneeField
             workspaceId={workspaceId}
