@@ -19,9 +19,13 @@ RUN pnpm install --frozen-lockfile --offline
 
 # `pnpm deploy --prod` writes one folder with the package, its production node_modules and the dist of the workspace packages it
 # uses (their "files" is ["dist"]). Only dist, node_modules and package.json of the app are kept: no src, no tests.
+# better-auth lists next, react and vitest as optional peers, and the workspace lockfile gives them to it (next comes from the
+# admin): a plain deploy put Next.js and Playwright (about 480 MB) in this image. These two settings apply to this deploy only,
+# on the command line: the .npmrc and the lockfile of the repository do not change. Without auto-install-peers a peer must be a
+# direct dependency, which is why apps/api lists socket.io-adapter (peer of @socket.io/redis-adapter).
 FROM deps AS build-api
 RUN pnpm --filter "@gani/api..." run build \
-  && pnpm --filter @gani/api deploy --prod /deployed \
+  && pnpm --filter @gani/api deploy --prod --config.auto-install-peers=false --config.dedupe-peer-dependents=false /deployed \
   && mkdir /out && cp -r /deployed/dist /deployed/node_modules /deployed/package.json /out/
 
 FROM deps AS build-worker
@@ -33,10 +37,15 @@ RUN pnpm --filter "@gani/worker..." run build \
 FROM deps AS build-migrate
 RUN pnpm --filter @gani/db deploy --prod /deployed \
   && mkdir /out && cp -r /deployed/node_modules /deployed/package.json /out/ \
-  && cp -r packages/db/migrations packages/db/scripts packages/db/lint /out/
+  && mkdir /out/scripts /out/lint && cp -r packages/db/migrations /out/ \
+  && cp packages/db/scripts/*.mjs /out/scripts/ && cp packages/db/lint/lint-migrations.mjs /out/lint/
 
-# Runtime images: files owned by root and read-only for the process, which runs as `node` (uid 1000), never as root.
-FROM ${NODE_IMAGE} AS api
+# Runtime images: files owned by root and read-only for the process, which runs as `node` (uid 1000), never as root. npm and
+# corepack of the base image are removed: nothing runs them, and their bundled packages carry most of the CVEs a scan finds.
+FROM ${NODE_IMAGE} AS runtime
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
+FROM runtime AS api
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 WORKDIR /app
 COPY --from=build-api /out ./
@@ -46,7 +55,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 CMD ["node", "dist/main.js"]
 
-FROM ${NODE_IMAGE} AS worker
+FROM runtime AS worker
 ENV NODE_ENV=production WORKER_HTTP_PORT=9464
 WORKDIR /app
 COPY --from=build-worker /out ./
@@ -58,7 +67,7 @@ CMD ["node", "dist/main.js"]
 
 # A job, not a service: runs the pending migrations as migration_role (DATABASE_URL_MIGRATION) and exits. No port. Runs in the CI/CD
 # pipeline before api and worker are deployed, never inside the production runtime.
-FROM ${NODE_IMAGE} AS migrate
+FROM runtime AS migrate
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build-migrate /out ./
