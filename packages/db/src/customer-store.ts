@@ -75,7 +75,10 @@ export interface CustomerChange {
   readonly humanOnly?: boolean;
 }
 
-/** Applies `change` to a live customer of the organisation; false when there is none (deleted, unknown, another org's). */
+/**
+ * Applies `change` to a live customer of the organisation; false when there is none (deleted, unknown, another org's). The name is stored
+ * in NFC (customers_display_name_nfc_check), so a search compares it as stored.
+ */
 export async function updateCustomer(
   tx: TenantTx,
   id: string,
@@ -83,7 +86,11 @@ export async function updateCustomer(
 ): Promise<boolean> {
   const rows = await tx
     .update(customers)
-    .set({ ...change, updatedAt: sql`now()` })
+    .set({
+      ...change,
+      ...(change.displayName ? { displayName: change.displayName.normalize('NFC') } : {}),
+      updatedAt: sql`now()`,
+    })
     .where(and(eq(customers.id, assertUuid(id, 'id')), isNull(customers.deletedAt)))
     .returning({ id: customers.id });
   return rows.length === 1;

@@ -63,13 +63,13 @@ export type CustomerSearch =
   { readonly name: string } | { readonly phonePrefix: string } | { readonly email: string };
 
 /**
- * The condition on `customers` of a search: a part of the name, any case, `%` and `_` taken literally; the start of the E.164 number;
- * the whole email, equal.
+ * The condition on `customers` of a search: a part of the name, any case, `%` and `_` taken literally, `q` in NFC as every stored name is
+ * (customers_display_name_nfc_check); the start of the E.164 number; the whole email, equal.
  */
 export function customerSearchWhere(s: CustomerSearch): SQL {
   if ('email' in s) return eq(customers.email, s.email);
   if ('phonePrefix' in s) return sql`starts_with(${customers.phoneE164}, ${s.phonePrefix})`;
-  return ilike(customers.displayName, `%${literal(s.name)}%`);
+  return ilike(customers.displayName, `%${literal(s.name.normalize('NFC'))}%`);
 }
 
 /** One live customer of the organisation, or null (another organisation's is hidden by RLS). */
