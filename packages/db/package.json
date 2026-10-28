@@ -17,6 +17,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "migrate": "node scripts/migrate.mjs",
+    "backfill:last-message-preview": "node scripts/backfill-last-message-preview.mjs",
     "lint:migrations": "node lint/lint-migrations.mjs",
     "test": "node --test --experimental-test-coverage --test-coverage-lines=80 \"lint/*.test.mjs\" && vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts"
