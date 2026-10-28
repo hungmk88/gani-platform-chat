@@ -35,21 +35,28 @@ export const assigneesPath = (id: string, purpose: 'assign' | 'transfer') =>
 
 /**
  * One line per person U31 lists, in its order (by name, no name last). U31 has no paging and leaves nobody out for being full:
- * someone at or over their limit (`openCount >= maxConcurrent`) is still listed and still accepted (the limit is not enforced
- * before S4), so the line says "đã đầy" and a lead may still pick them. Two lines that would read the same (no name, same role
- * and team, same count) get the last 4 characters of the id, so they can be told apart.
+ * someone at or over their limit (`openCount >= maxConcurrent`) is still listed and still accepted (a manual assign or transfer
+ * is never capped, U55), so the line says "đã đầy" and a lead may still pick them. `openCount` is the load, HUMAN_ACTIVE only;
+ * `awaitingCustomerCount` (PENDING_CUSTOMER) is said apart and only when there are some (letter #387, Brief §M04).
+ * `maxConcurrent` is never null: U31 gives the workspace's default for someone with no limit of their own. Two lines that would
+ * read the same (no name, same role and team, same counts) get the last 4 characters of the id, so they can be told apart.
  */
-export function assigneeLines(
-  list: readonly Assignee[],
-): { readonly userId: string; readonly label: string; readonly full: boolean }[] {
+export function assigneeLines(list: readonly Assignee[]): {
+  readonly userId: string;
+  readonly label: string;
+  readonly full: boolean;
+  readonly waiting: boolean;
+}[] {
   const lines = list.map((a) => {
     const full = a.openCount >= a.maxConcurrent;
     const team = a.teamName ? ` · ${a.teamName}` : '';
-    const load = `${full ? 'đã đầy' : 'đang giữ'} ${a.openCount}/${a.maxConcurrent}`;
+    const waiting = a.awaitingCustomerCount > 0 ? ` · chờ khách ${a.awaitingCustomerCount}` : '';
+    const load = `${full ? 'đã đầy' : 'đang xử lý'} ${a.openCount}/${a.maxConcurrent}${waiting}`;
     return {
       userId: a.userId,
       label: `${a.name ?? 'Chưa có tên'} · ${ROLE_NAME[a.role]}${team} · ${load}`,
       full,
+      waiting: a.awaitingCustomerCount > 0,
     };
   });
   const seen = new Map<string, number>();
