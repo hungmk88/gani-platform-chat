@@ -1,19 +1,21 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import type { components } from '../api/schema';
 import { useApiPages, useApiQuery } from '../query/provider';
 import type { Role } from '../nav';
 import { useConversationRealtime } from '../realtime/use-conversation-realtime';
 import { RetryAction } from '../retry-button';
-import { AssignAction } from './assign-action';
-import { canAssign, mayAssign } from './assign';
+import { HandOverAction } from './assign-action';
+import { canAssign, canTransfer, mayAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
 import { customerOf, phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { Holder } from './holder';
+import { setNotice } from './notice';
 import { TicketAction } from './ticket-action';
 import { channelOf, customerNameOf, HOLD_LABEL, STATE_LABEL } from './list';
 import { inReadingOrder, KIND_LABEL, messagesPath, senderOf } from './messages';
@@ -56,6 +58,7 @@ export function ConversationView({
   /** The contact number of each workspace (`phonesOf`), for {{company_phone}} of the conversation's workspace. */
   phones: Readonly<Record<string, string>>;
 }) {
+  const router = useRouter();
   const conversation = useApiQuery<Conversation>(
     ['conversation', id],
     `/v1/conversations/${encodeURIComponent(id)}`,
@@ -115,7 +118,25 @@ export function ConversationView({
         </span>
       </header>
       <ConversationActions c={c} role={role} meId={meId} />
-      {mayAssign(role) && canAssign(c) ? <AssignAction key={c.id} c={c} /> : null}
+      {canTransfer(c, role, meId) ? (
+        <HandOverAction
+          key={`transfer-${c.id}`}
+          c={c}
+          purpose="transfer"
+          // Sales/Support may no longer read it once handed on (API canSee): back to the list, saying where it went.
+          onLeave={
+            mayAssign(role)
+              ? undefined
+              : (to) => {
+                  setNotice(`Đã chuyển hội thoại cho ${to}.`);
+                  router.push('/inbox');
+                }
+          }
+        />
+      ) : null}
+      {mayAssign(role) && canAssign(c) ? (
+        <HandOverAction key={`assign-${c.id}`} c={c} purpose="assign" />
+      ) : null}
       <TicketAction
         key={`ticket-${c.id}`}
         c={c}
