@@ -12,8 +12,9 @@ const button = 'rounded-input border border-border-strong px-3 py-1 disabled:opa
 /**
  * "Khách hàng (không bắt buộc)" of "Tạo ticket" from the list (#359): asks `GET /v1/customers` only once something is typed, one
  * page of `CUSTOMER_PICKS`; picked, it shows the customer with "Bỏ chọn". Phones and emails are shown as the API gives them.
- * Only the roles that make tickets see this field, and none of them gets them masked (`customers.permissions.ts`); if making
- * tickets is opened to Marketing or Viewer, look at the masking again (they search by name only).
+ * Masking: the API masks phones and emails for Marketing and Viewer only (`customers.permissions.ts`), and they search by name
+ * only. The roles that make tickets (Owner, Admin, Manager, Sales, Support) see them whole, so the lines and the search hint hold.
+ * If making tickets is opened to Marketing or Viewer, look at this field again: they would get masked lines and no phone search.
  */
 export function CustomerField({
   value,
