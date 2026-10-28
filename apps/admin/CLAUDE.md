@@ -93,6 +93,7 @@ Trang mặc định sau đăng nhập:
   Chromium: `pnpm --filter @gani/admin exec playwright install chromium` một lần, hoặc `CHROMIUM_PATH=<đường dẫn>` tới Chromium có sẵn.
 - Ngân sách "Kiểm chứng" (`e2e/perf.spec.ts`, đồng hồ của trình duyệt, bản build + API giả): Hộp thư hiện nội dung chính < 2,5 giây; mở hội thoại từ danh sách P95 < 500ms (21 lần). Bắt phần FE thêm vào (bundle, render, gọi nối tiếp), không đo API thật. Đo khi viết: tải 270–700ms, mở P95 180–260ms.
 - `pnpm test` không chạy E2E (chỉ Vitest, `src/**/*.test.ts`).
+- Trước khi push: `pnpm build:e2e-check` (#378) build admin như job `admin (e2e, axe)` (chỉ có phụ thuộc của admin): tạm dời `dist/` của các gói khác rồi trả lại, kể cả khi build lỗi. `next build` dùng `tsconfig.build.json` (bỏ `rules-sync.test.ts`, test đọc mã nguồn API); `pnpm typecheck` vẫn kiểm file đó.
 
 ## Nhận lời mời (#4, N151)
 
