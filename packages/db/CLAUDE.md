@@ -17,6 +17,19 @@
 - Mỗi file thường chạy với `SET LOCAL lock_timeout = 5000` (ms): không lấy được khóa (`55P03`) thì rollback, thử lại tối đa 3 lần (chờ 2 s, 4 s), hết lượt thì dừng và báo lỗi. Migration không bao giờ xếp hàng sau một transaction dài mà chặn mọi truy vấn của bảng.
 - Pool nào cũng đi qua `createDbPool`, nó đặt cho mọi kết nối `statement_timeout` 15 s, `lock_timeout` 5 s (cả khóa tư vấn), `idle_in_transaction_session_timeout` 30 s (N109). Cần lâu hơn thì truyền giá trị riêng; không có giá trị 0 (tắt giới hạn). Runner migration dùng client riêng nên không bị giới hạn này.
 
+## Điền lại đoạn trích (U30, N169)
+
+Chạy một lần trên mỗi môi trường có hội thoại từ trước migration `202610291000`, sau khi migration đã áp, **trước** khi báo FE bật đoạn trích:
+
+1. `APP_ENV=<môi trường> DATABASE_URL_MIGRATION=<url> pnpm --filter @gani/db backfill:last-message-preview --dry-run`: in số hội thoại sẽ điền, không ghi gì.
+2. Bỏ `--dry-run` để chạy thật.
+
+- Chỉ `migration_role`: từ pipeline hoặc runbook của ops, không từ máy dev hay AI. `--org <uuid>` chỉ chạy một công ty.
+- Lô 1000 hội thoại, mỗi lô một transaction. Chạy lại an toàn: lần sau không ghi gì, và không bao giờ đè đoạn trích mới.
+- Thời gian đo (39 partition, 2 triệu tin, khoảng 20 000 hội thoại): lần chạy đầu sau khi Postgres khởi động lại (cache nguội) khoảng 50–55 s; các lần sau (cache nóng) khoảng 4 s.
+- Script chỉ giữ khóa dòng từ UPDATE tới COMMIT của từng lô (rất ngắn). Phần chậm là đọc `messages`, không giữ khóa nào.
+- Log ra stdout (log của job): mỗi lô `processed X/Y, ETA Zs`, cuối cùng số đã điền. Không có nội dung tin, khách hay id hội thoại. Lỗi ra stderr, exit khác 0.
+
 ## 4 role DB (không được dùng lẫn)
 
 | Role | RLS | Thiếu tenant | Dùng cho |
