@@ -113,7 +113,7 @@ test('an Owner assigns among those U31 lists: a refusal is said, another pick wo
   ]);
   await pick.selectOption({ label: 'Người thử admin · Admin · đang giữ 0/5' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
-  await expect(dialog.getByRole('alert')).toContainText('Không chuyển được cho người này.');
+  await expect(dialog.getByRole('alert')).toContainText('Không giao được cho người này.');
   const posted = page.waitForRequest((r) => r.url().endsWith('/assign'));
   await pick.selectOption({ label: 'Người thử owner · Owner · Sales B2B · đang giữ 0/5' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();

@@ -26,7 +26,7 @@ export interface ApiError {
 
 // The 15 codes of Brief P9, then the codes the API serves today beyond it (two_factor_setup_required N93, invalid_assignee #147,
 // conversation_not_active N146, unresolved_variable N163, the Idempotency-Key answers N134, forbidden_origin N136; invalid_transition
-// of the planned Ticket, N167). A code missing here falls back to its HTTP status below.
+// of conversations and of the planned Ticket, N167). A code missing here falls back to its HTTP status below.
 const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   validation_failed: ['fields', 'Thông tin chưa hợp lệ. Kiểm tra các ô được đánh dấu.'],
   unauthorized: ['sign_in', 'Phiên đăng nhập đã hết. Đăng nhập lại.'],
@@ -50,14 +50,15 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   ai_budget_exceeded: ['show', 'Đã hết hạn mức AI tháng này. Gợi ý AI tạm ẩn.'],
   maintenance: ['show', 'Hệ thống đang bảo trì. Thử lại sau ít phút.'],
   two_factor_setup_required: ['set_up_2fa', 'Cần cài xác thực 2 lớp trước khi dùng hệ thống.'],
-  invalid_assignee: ['show', 'Không chuyển được cho người này. Chọn người khác.'],
+  // One sentence for conversations (assign, transfer) and tickets: neither code is about one of them only.
+  invalid_assignee: ['show', 'Không giao được cho người này. Chọn người khác.'],
   conversation_not_active: [
     'reload',
     'Hội thoại chưa có người nhận hoặc đã đóng. Nhận hội thoại rồi trả lời.',
   ],
   invalid_transition: [
     'reload',
-    'Trạng thái này không chuyển được từ trạng thái hiện tại. Đã tải lại ticket.',
+    'Trạng thái vừa đổi nên không làm được thao tác này. Đã tải lại, kiểm tra rồi làm lại.',
   ],
   unresolved_variable: [
     'show',
