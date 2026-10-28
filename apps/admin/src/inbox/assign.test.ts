@@ -5,6 +5,7 @@ import {
   assigneeLines,
   assigneesPath,
   canAssign,
+  canTransfer,
   matching,
   mayAssign,
   type Assignee,
@@ -22,6 +23,31 @@ describe('mayAssign and canAssign', () => {
 
   it('asks U31 for the purpose, the id escaped', () => {
     expect(assigneesPath('a/b', 'assign')).toBe('/v1/conversations/a%2Fb/assignees?purpose=assign');
+  });
+});
+
+describe('canTransfer', () => {
+  const c = (
+    state: 'HUMAN_ACTIVE' | 'PENDING_CUSTOMER' | 'HUMAN_WAITING_Q' | 'BOT_ACTIVE' | 'CLOSED',
+    holder: string | null,
+  ) => ({
+    state,
+    assignedUserId: holder,
+  });
+  it('follows the API: leads any held conversation, Sales/Support their own, from HUMAN_ACTIVE or PENDING_CUSTOMER', () => {
+    for (const r of ['owner', 'admin', 'manager'] as const)
+      expect(canTransfer(c('HUMAN_ACTIVE', 'u2'), r, 'u1')).toBe(true);
+    for (const r of ['sales', 'support'] as const) {
+      expect(canTransfer(c('PENDING_CUSTOMER', 'u1'), r, 'u1')).toBe(true);
+      expect(canTransfer(c('HUMAN_ACTIVE', 'u2'), r, 'u1')).toBe(false);
+    }
+    for (const r of ['marketing', 'viewer'] as const)
+      expect(canTransfer(c('HUMAN_ACTIVE', 'u1'), r, 'u1')).toBe(false);
+  });
+
+  it('never for one in the queue, with the bot or closed: nobody holds it', () => {
+    for (const state of ['HUMAN_WAITING_Q', 'BOT_ACTIVE', 'CLOSED'] as const)
+      expect(canTransfer(c(state, 'u1'), 'owner', 'u1')).toBe(false);
   });
 });
 
