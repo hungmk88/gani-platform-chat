@@ -11,6 +11,21 @@ export type Assignee = components['schemas']['Assignee'];
 export const mayAssign = (role: Role): boolean =>
   role === 'owner' || role === 'admin' || role === 'manager';
 
+/**
+ * "Chuyển" (T15, `POST …/transfer`, issue #376): the rule of the API's `permissions.ts` (`transfer`: Owner/Admin/Manager `any`,
+ * Sales/Support `own`) and of T15 (from HUMAN_ACTIVE or PENDING_CUSTOMER only). It mirrors the API, it is not a rule of its own:
+ * if the API changes, change it here too, or the button is shown only to be refused (403). A conversation still in the queue
+ * (HUMAN_WAITING_Q) has no "Chuyển" on purpose: nobody holds it, so there is nothing to hand on; "Nhận" or "Gán lại" serve it.
+ */
+export function canTransfer(
+  c: Pick<Conversation, 'state'> & { readonly assignedUserId: string | null },
+  role: Role,
+  meId: string,
+): boolean {
+  if (c.state !== 'HUMAN_ACTIVE' && c.state !== 'PENDING_CUSTOMER') return false;
+  return mayAssign(role) || ((role === 'sales' || role === 'support') && c.assignedUserId === meId);
+}
+
 /** T16 (a person holds it) and T21 (still in the queue) of P14; not a closed conversation nor one the bot has. */
 export const canAssign = (c: Pick<Conversation, 'state'>): boolean =>
   c.state === 'HUMAN_ACTIVE' || c.state === 'PENDING_CUSTOMER' || c.state === 'HUMAN_WAITING_Q';
