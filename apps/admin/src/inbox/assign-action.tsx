@@ -73,7 +73,7 @@ export function HandOverAction({
 /**
  * Pick one of those U31 lists, then `POST …/{purpose}` with the version last read, waiting for the server. One Idempotency-Key
  * per person picked, kept when the same is sent again after a failure. 409 version_conflict or invalid_transition says so in the
- * dialog ("…Đã tải lại…") and reads the conversation and its list again, tried twice more (`readAgain`); until that read
+ * dialog ("…Đang tải lại…") and reads the conversation and its list again, tried twice more (`readAgain`); until that read
  * succeeds the button is locked, so a second click never sends the old version. 422 invalid_assignee says its P9 sentence.
  */
 function HandOverDialog({

@@ -56,7 +56,9 @@ test('a conversation changed meanwhile says so, is read again, and only then can
   await view(page).getByRole('button', { name: 'Chuyển' }).click();
   const reread = page.waitForResponse((r) => r.url().endsWith(`/v1/conversations/${held.id}`));
   await dialog(page).getByRole('button', { name: 'Chuyển', exact: true }).click();
-  await expect(dialog(page).getByRole('alert')).toContainText('vừa được người khác thay đổi');
+  await expect(dialog(page).getByRole('alert')).toContainText(
+    'vừa được người khác thay đổi. Đang tải lại',
+  );
   await reread;
   await expect(dialog(page).getByRole('button', { name: 'Chuyển', exact: true })).toBeEnabled();
 });
