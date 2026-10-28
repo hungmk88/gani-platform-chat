@@ -5,7 +5,8 @@ Nguồn chuẩn: Brief P5 (Deployment), P16 (3 role DB), P17, P19 (Observability
 
 ## Trạng thái hiện tại (Q2, CEO chốt 03/10/2026)
 
-- Viết Terraform đến mức `terraform validate` và `terraform plan`. **Chưa `apply` staging.**
+- Terraform hiện là **khung**: 8 module interface + `envs/staging`, `envs/production`. CI chạy `fmt` và `validate` (job `terraform`). **Chưa `plan`/`apply`** tới khi Q2 chọn nhà cung cấp cloud. Thêm cài đặt cho một nhà cung cấp: tạo `modules/<tên>/<nhà cung cấp>/` và đặt biến `platform` trong `envs/<env>/` (mục Terraform dưới).
+- Khung hiện chỉ kiểm cú pháp và việc nối biến giữa env và module. Nó **không** chứng minh resource sẽ chạy khi có cài đặt; phép thử thật đầu tiên là `terraform plan` sau Q2.
 - Chỉ CI/CD được `apply`; không `apply` từ máy local hay từ AI.
 - Backend lưu state, secret manager, KMS, managed PostgreSQL: **chọn sau khi có Q2** (phụ thuộc Q1 pháp lý về nơi lưu dữ liệu).
 
@@ -35,6 +36,15 @@ infra/
 - `dev` (docker compose trên máy dev) · `staging` (dữ liệu ẩn danh hoặc seed) · `production`.
 - Staging giống production: cùng module Terraform, cùng phiên bản PostgreSQL + extension, cùng role DB (không owner, không BYPASSRLS), cùng cờ tính năng mặc định. Chỉ khác dữ liệu.
 - Không copy dữ liệu production xuống staging khi chưa chạy pipeline ẩn danh (Phụ lục §19).
+
+### Terraform (`infra/terraform/`)
+- `modules/<tên>/` là **interface**: `variables.tf`, `outputs.tf` cố định; `main.tf` gọi đúng một cài đặt con theo `platform` (`count = var.platform == "<x>" ? 1 : 0`, đầu ra gộp bằng `one(...)`, không chọn gì thì `null`). Env chỉ gọi interface, không bao giờ gọi resource.
+- `modules/database/` là mẫu: `dummy_a`, `dummy_temp` không tạo gì, chỉ để `tests/platform.tftest.hcl` chứng minh cơ chế chọn; xóa khi có cài đặt thật đầu tiên. 7 module còn lại chỉ nhận `platform = ""` (giá trị khác báo lỗi "chờ Q2").
+- **Không tạo thư mục mang tên nhà cung cấp trước Q2.**
+- Khi có Q2 (phương án A): thêm cài đặt của cloud đã chọn vào từng module, khai báo provider (ghim version) trong `envs/*/versions.tf`, commit `.terraform.lock.hcl`, cấu hình `backend.tf` (có mẫu trong comment), đặt `platform`.
+- Phương án B (staging tạm, `docs/business/staging-options.md`): thêm cài đặt của nơi tạm, chỉ `envs/staging` đặt `platform` = nơi tạm. Chuyển sang A sau: thêm cài đặt chính thức, đổi `platform` của staging, dựng lại từ seed; `envs/` và interface không đổi.
+- Phiên bản: CI dùng đúng `.terraform-version` (1.16.6), kiểm SHA256 trong `terraform.sha256` (4 nền tảng, lấy từ SHA256SUMS có chữ ký HashiCorp); `required_version` cho máy dev bản 1.x mới hơn. Nâng bản: khi bản mới đã ổn ≥ 4 tuần và CI chạy với nó ≥ 1 tuần không lỗi.
+- Không `.tfstate`, `.tfvars`, `.terraform/` trong Git (`.gitignore`).
 
 ### Docker (`infra/docker/`)
 - 4 image, build từ gốc repo: `gani-api`, `gani-worker`, `gani-migrate` (`Dockerfile.node`, `--target api|worker|migrate`) và `gani-admin` (`Dockerfile.admin`, Next.js standalone). Nền `node:22.23.3-slim` (glibc, khớp `@node-rs/argon2`), chỉ linux/amd64; argon2 có sẵn bản `linux-arm64-gnu` nên arm64 chỉ cần buildx.
@@ -86,7 +96,7 @@ infra/
 - Chốt dịch vụ của một cloud cụ thể (ECS, EKS, RDS…) trước khi Q2 được trả lời.
 
 ## Khi sửa infra
-1. Sửa trong `infra/terraform/modules/*`.
-2. `terraform validate` + `terraform plan` ở local (không apply).
-3. PR → CI chạy plan; reviewer đọc plan.
+1. Sửa trong `infra/terraform/modules/*` (interface hoặc cài đặt), env chỉ đổi giá trị.
+2. Trước khi push: `terraform -chdir=infra/terraform fmt -recursive`; có Terraform CLI thì `init -backend=false` + `validate` từng env, `test` trong `modules/database`. CI job `terraform` đỏ nếu format sai hay validate/test lỗi.
+3. Sau Q2: PR → CI chạy `plan`; reviewer đọc plan.
 4. Chỉ CI/CD apply, và chỉ sau khi Q2 được chốt.

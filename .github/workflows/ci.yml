@@ -332,3 +332,36 @@ jobs:
           export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
           export REDIS_URL=redis://127.0.0.1:6379
           infra/docker/test-images.sh "$TAG"
+
+  # The Terraform skeleton (infra/CLAUDE.md "Terraform"): format, then each environment validated without a backend, then the
+  # platform switch of modules/database. No plan, no apply: no provider until Q2. The binary is the version of
+  # infra/terraform/.terraform-version, checked against infra/terraform/terraform.sha256 (from HashiCorp's signed SHA256SUMS).
+  terraform:
+    name: terraform (fmt, validate, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Terraform (pinned, checksum verified)
+        run: |
+          version="$(cat infra/terraform/.terraform-version)"
+          file="terraform_${version}_linux_amd64.zip"
+          curl -sSfL -o "$RUNNER_TEMP/$file" "https://releases.hashicorp.com/terraform/${version}/${file}"
+          (cd "$RUNNER_TEMP" && grep "  ${file}\$" "$GITHUB_WORKSPACE/infra/terraform/terraform.sha256" | sha256sum --check --strict)
+          unzip -q "$RUNNER_TEMP/$file" -d "$RUNNER_TEMP/terraform"
+          echo "$RUNNER_TEMP/terraform" >> "$GITHUB_PATH"
+      # Before init: a format error fails in seconds.
+      - name: Format
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+      - name: Validate the environments
+        run: |
+          for env in staging production; do
+            terraform -chdir="infra/terraform/envs/$env" init -backend=false -input=false
+            terraform -chdir="infra/terraform/envs/$env" validate
+          done
+      - name: Test the platform switch
+        run: |
+          terraform -chdir=infra/terraform/modules/database init -input=false
+          terraform -chdir=infra/terraform/modules/database test
