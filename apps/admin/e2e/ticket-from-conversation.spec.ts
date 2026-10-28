@@ -63,3 +63,41 @@ test('an Owner makes one for a named customer, picks who gets it, and the title 
   await expect(screen.getByRole('link', { name: 'Nguyễn Văn An' })).toBeVisible();
   await expect(screen).toContainText('Người thử owner');
 });
+
+test('a 404 from the conversation says the conversation or its customer is gone, and keeps the form', async ({
+  page,
+}) => {
+  // The conversation was handed to someone else while the Sales wrote: the API answers 404 (this test only, page.route).
+  await page.route('**/v1/tickets', (r) =>
+    r.request().method() === 'POST'
+      ? r.fulfill({
+          status: 404,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 404, code: 'not_found', traceId: 'trace-gone' }),
+        })
+      : r.fallback(),
+  );
+  const generic = (page: Page) =>
+    dialog(page).getByText('Không tìm thấy. Có thể đã bị xóa hoặc thuộc công ty khác.');
+  await signIn(page, accountOf('sales'));
+  // From the list with no customer, a 404 keeps the sentence of the API: the selector below finds it when it is there.
+  await page.goto('/tickets');
+  await page.getByRole('button', { name: 'Tạo ticket' }).click();
+  await dialog(page).getByLabel('Tiêu đề').fill('Khách hỏi lại đơn');
+  await dialog(page).getByRole('button', { name: 'Tạo ticket' }).click();
+  await expect(generic(page)).toBeVisible();
+
+  await page.goto(`/inbox/${CONVERSATIONS[1]!.id}`);
+  await view(page).getByRole('button', { name: 'Tạo ticket' }).click();
+  await dialog(page).getByRole('button', { name: 'Tạo ticket' }).click();
+  const alert = dialog(page).getByRole('alert');
+  await expect(alert).toContainText(
+    'Không tạo được: hội thoại hoặc khách của hội thoại không còn thấy được (có thể đã chuyển cho người khác). Ticket chưa tạo, nội dung vẫn ở đây.',
+  );
+  await expect(alert).toContainText('trace-gone');
+  await expect(generic(page)).toHaveCount(0);
+  // Nothing is dropped, the dialog stays open: the person closes it.
+  await expect(dialog(page).getByLabel('Tiêu đề')).toHaveValue(HOSTILE);
+  await expect(dialog(page)).toContainText('Từ hội thoại với Khách chưa có tên');
+  await expectAccessible(page);
+});

@@ -92,3 +92,22 @@ export const customerLine = (c: Pick<Customer, 'displayName' | 'phone' | 'email'
 /** Said when the customer picked is no longer visible (404 not_found): the pick is dropped, the rest of the form kept (CEO 28/10). */
 export const CUSTOMER_GONE =
   'Khách này không còn thấy được. Đã bỏ chọn, chọn khách khác hoặc để trống.';
+
+/**
+ * Said when a ticket made from a conversation gets 404 not_found: the conversation or its customer is out of sight (a Sales or
+ * Support it was handed away from) and the API does not say which. Nothing is dropped: a ticket of a conversation keeps it, the
+ * person closes the dialog (CEO 28/10).
+ */
+export const CONVERSATION_GONE =
+  'Không tạo được: hội thoại hoặc khách của hội thoại không còn thấy được (có thể đã chuyển cho người khác). Ticket chưa tạo, nội dung vẫn ở đây.';
+
+/** Our own sentence for a 404 when making a ticket, or null for the API's: from the list, only a customer picked can be gone. */
+export function goneOf(
+  code: string | undefined,
+  fromConversation: boolean,
+  sentCustomer: boolean,
+): string | null {
+  if (code !== 'not_found') return null;
+  if (fromConversation) return CONVERSATION_GONE;
+  return sentCustomer ? CUSTOMER_GONE : null;
+}
