@@ -1,5 +1,6 @@
 // The actions on an open conversation (#6, I1c) a person is offered: the same rule as the API (Phụ lục B rows 13, 15–17,
 // apps/api permissions.ts and the FSM of P14), so a button is never shown only to be refused. The API still decides.
+// `rules-sync.test.ts` checks these, "Chuyển" and "Gán lại" against that source (#378).
 import type { Role } from '../nav';
 import type { Conversation } from './list';
 
