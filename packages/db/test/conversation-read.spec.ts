@@ -298,6 +298,10 @@ describe('the filters of the Inbox (U30): channel and customer', () => {
   it('matches a part of the name, any case, % and _ literally; a deleted customer or none never matches', async () => {
     expect(await ids({ customer: { name: 'hoà' } })).toEqual(set('c1', 'c3', 'c7'));
     expect(await ids({ customer: { name: 'BÌNH' } })).toEqual(set('c2'));
+    // Every stored name is NFC (202611010900); a search typed in NFD finds it too.
+    expect(await ids({ customer: { name: 'Hoà'.normalize('NFD') } })).toEqual(
+      set('c1', 'c3', 'c7'),
+    );
     expect(await ids({ customer: { name: '%' } })).toEqual(set('c5'));
     expect(await ids({ customer: { name: '_' } })).toEqual(set('c5'));
     expect(await ids({ customer: { name: 'cũ' } })).toEqual(new Set());

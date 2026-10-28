@@ -46,6 +46,7 @@ Chạy một lần trên mỗi môi trường có hội thoại từ trước mi
 - Lint migration: mọi `CREATE TABLE` mới phải có `ENABLE ROW LEVEL SECURITY` + `FORCE`.
   CI báo đỏ nếu thiếu; GitHub Free không enforce branch protection nên không chặn được merge (N38), anh kiểm tay.
 
+- Chữ tiếng Việt để tìm kiếm lưu ở **NFC** lúc ghi, không chuẩn hóa từng dòng lúc đọc (`customers.display_name`: `updateCustomer` + `customers_display_name_nfc_check`, 202611010900; tìm kiếm chỉ chuẩn hóa `q`). Thêm cột chữ để tìm thì làm giống vậy.
 - Cột lưu sẵn chứa PII trên bảng có quyền theo cột (`conversations.last_message_preview`, N169): **không** cấp cho `support_role`, cấp UPDATE cho `app_role` trong cùng migration (`grants.spec` liệt kê đúng từng cột). File migration đã áp thì không sửa: runner từ chối, thêm migration mới.
 
 ## Cấm

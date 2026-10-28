@@ -209,6 +209,24 @@ describe('PATCH /v1/customers/{id}', () => {
     });
   });
 
+  it('stores the name in NFC whatever form it comes in, finds it by a search in either form, and clears it with null (N165)', async () => {
+    const name = 'Anh Lâm Hoà';
+    for (const form of ['NFD', 'NFC'] as const) {
+      const res = await patch('sales', LAM, { displayName: name.normalize(form) });
+      expect([res.status, res.body['displayName']], form).toEqual([200, name.normalize('NFC')]);
+      const { rows } = await q('SELECT display_name FROM customers WHERE id = $1', [LAM]);
+      expect(rows[0], form).toEqual({ display_name: name.normalize('NFC') });
+    }
+    for (const form of ['NFD', 'NFC'] as const) {
+      const found = await get(
+        'sales',
+        `/v1/customers?q=${encodeURIComponent('lâm hoà'.normalize(form))}`,
+      );
+      expect(ids(found.body), form).toEqual([LAM]);
+    }
+    expect((await patch('sales', LAM, { displayName: null })).body['displayName']).toBeNull();
+  });
+
   it('refuses marketing (403), another organisation’s customer (404) and a body that is empty, unknown or not a phone (400)', async () => {
     expect((await patch('marketing', LAN, { displayName: 'X' })).status).toBe(403);
     expect((await patch('sales', THEIRS, { displayName: 'X' })).status).toBe(404);
