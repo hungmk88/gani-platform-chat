@@ -30,9 +30,9 @@ Ghi rõ ai cần hành động, khi nào, cho từng rủi ro chính của Đợ
 
 ## Rủi ro 2: image `api` vượt ngưỡng kích thước
 
-**Trạng thái: đã xử lý trong #406:** 116 MB nén / 529 MB giải nén, dưới ngưỡng đỏ 150 MB (nén). Rủi ro đóng sau khi #406 merge.
+**Trạng thái: đã xử lý trong #406:** 129 MB nén / 353 MB giải nén (đo trên CI, job `docker`), dưới ngưỡng đỏ 150 MB (nén). Rủi ro đóng sau khi #406 merge.
 
-- **Nguyên nhân cũ** (1165 MB giải nén / 254 MB nén): `better-auth` khai báo `next`, `react`, `vitest` là peer tùy chọn; lockfile gắn các peer đó và `pnpm deploy` kéo khoảng 480 MB không dùng vào image.
+- **Nguyên nhân cũ** (đo ở máy: 1165 MB giải nén / 254 MB nén): `better-auth` khai báo `next`, `react`, `vitest` là peer tùy chọn; lockfile gắn các peer đó và `pnpm deploy` kéo khoảng 480 MB không dùng vào image.
 - **Cách đã làm** (nhánh dự phòng CEO đã duyệt): deploy với cả `--config.auto-install-peers=false` và `--config.dedupe-peer-dependents=false`, chỉ trong Dockerfile, `.npmrc` của repo không đổi; khai báo `socket.io-adapter` (peer của `@socket.io/redis-adapter`) trực tiếp trong `apps/api`. Chỉ tắt dedupe thì vẫn còn Next (đã đo).
 - **Ngưỡng (CEO chốt):** chỉ **bản nén > 150 MB** mới đỏ; bản nén > 100 MB cảnh báo. Bản giải nén **chỉ cảnh báo** (> 400 MB), không đỏ kể cả trên 600 MB. CI job `docker` kiểm cả hai.
 
