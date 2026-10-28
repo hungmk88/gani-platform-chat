@@ -2,6 +2,7 @@ import { previewOf } from '@gani/domain';
 import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 
 import { cursorString, cursorWhole, decodeCursor, encodeCursor } from './cursor.js';
+import { customerSearchWhere, type CustomerSearch } from './customer-read.js';
 import { channelAccounts } from './schema/channel-accounts.js';
 import { conversations } from './schema/conversations.js';
 import { customers } from './schema/customers.js';
@@ -50,6 +51,10 @@ export interface ConversationListQuery {
   readonly assigned?: 'none' | { readonly userId: string };
   /** Limit to what this person holds plus what nobody holds (the scope of sales and support). */
   readonly mineOrUnassigned?: string;
+  /** The channel account it came in by (U30); one of another organisation or workspace simply matches nothing (RLS). */
+  readonly channelAccountId?: string;
+  /** Its live customer matches this search (U30), as the Khách hàng list searches; a conversation with no customer never does. */
+  readonly customer?: CustomerSearch;
   readonly cursor?: string;
   /** 1..100 (P9). */
   readonly limit: number;
@@ -172,6 +177,11 @@ export async function listConversations(
     const me = assertUuid(q.mineOrUnassigned, 'mineOrUnassigned');
     where.push(or(eq(c.assignedUserId, me), isNull(c.assignedUserId)));
   }
+  if (q.channelAccountId !== undefined)
+    where.push(eq(c.channelAccountId, assertUuid(q.channelAccountId, 'channelAccountId')));
+  if (q.customer !== undefined)
+    where.push(isNull(customers.deletedAt), customerSearchWhere(q.customer));
+  // Every filter sits in the same WHERE as the keyset below, joined by AND: they narrow before the page is cut, never after it.
   if (q.cursor !== undefined) {
     const fields = decodeCursor(q.cursor);
     const at = cursorString(fields, 'at', SORT_FORMAT);

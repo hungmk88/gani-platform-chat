@@ -58,6 +58,20 @@ const view = {
 /** `%` and `_` of a search are letters, not wildcards. */
 const literal = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
 
+/** One search of customers (N165, U48), as searchOf of the API picks it from `q`; the Khách hàng list and the Inbox share it. */
+export type CustomerSearch =
+  { readonly name: string } | { readonly phonePrefix: string } | { readonly email: string };
+
+/**
+ * The condition on `customers` of a search: a part of the name, any case, `%` and `_` taken literally; the start of the E.164 number;
+ * the whole email, equal.
+ */
+export function customerSearchWhere(s: CustomerSearch): SQL {
+  if ('email' in s) return eq(customers.email, s.email);
+  if ('phonePrefix' in s) return sql`starts_with(${customers.phoneE164}, ${s.phonePrefix})`;
+  return ilike(customers.displayName, `%${literal(s.name)}%`);
+}
+
 /** One live customer of the organisation, or null (another organisation's is hidden by RLS). */
 export async function loadCustomer(tx: TenantTx, id: string): Promise<CustomerView | null> {
   const [row] = await tx
@@ -76,9 +90,9 @@ export async function listCustomers(
     throw new RangeError('limit must be 1..100');
   const c = customers;
   const where: (SQL | undefined)[] = [isNull(c.deletedAt)];
-  if (q.name !== undefined) where.push(ilike(c.displayName, `%${literal(q.name)}%`));
-  if (q.phonePrefix !== undefined) where.push(sql`starts_with(${c.phoneE164}, ${q.phonePrefix})`);
-  if (q.email !== undefined) where.push(eq(c.email, q.email));
+  if (q.name !== undefined) where.push(customerSearchWhere({ name: q.name }));
+  if (q.phonePrefix !== undefined) where.push(customerSearchWhere({ phonePrefix: q.phonePrefix }));
+  if (q.email !== undefined) where.push(customerSearchWhere({ email: q.email }));
   if (q.cursor !== undefined)
     where.push(lt(c.id, cursorString(decodeCursor(q.cursor), 'id', UUID_FORMAT)));
   const rows = await tx

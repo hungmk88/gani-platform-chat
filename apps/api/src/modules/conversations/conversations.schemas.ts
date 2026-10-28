@@ -90,6 +90,13 @@ export const ConversationListQuerySchema = CursorQuerySchema.extend({
   hold: z.enum(['true', 'false']).optional(),
   /** `me`: assigned to me; `none`: unassigned; `any` (default): everything the role may see. */
   assignee: z.enum(['me', 'none', 'any']).default('any'),
+  /** The channel account it came in by (U30); one the session cannot see matches nothing, never an error. */
+  channelId: UuidSchema.optional(),
+  /**
+   * Its customer (U30), searched as `GET /v1/customers?q=` does: a whole email when it has an `@`, the start of a phone number from 3
+   * digits, else a part of the name. Absent: no search; blank: 400.
+   */
+  q: z.string().trim().min(1).max(100).optional(),
 });
 export type ConversationListQuery = z.output<typeof ConversationListQuerySchema>;
 
