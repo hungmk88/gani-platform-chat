@@ -265,8 +265,9 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     sid: cookie(req, SESSION) ?? '',
     me: meOf(session.email),
     held: session.conversations,
+    email: session.email,
   };
-  if (routeAssignees(req, res, path ?? '', u31, { send, problem })) return; // U31, e2e/stub-assignees.ts
+  if (await routeAssignees(req, res, path ?? '', u31, { send, problem, json })) return; // U31 + transfer, e2e/stub-assignees.ts
   const one = /^\/v1\/conversations\/([^/]+)(\/messages)?$/.exec(path ?? '');
   if (req.method === 'GET' && one) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');

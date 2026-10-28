@@ -10,6 +10,7 @@ import type { Role } from '../nav';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { Holder } from './holder';
+import { setNotice, useNotice } from './notice';
 import {
   ASSIGNEE_LABEL,
   emptyOf,
@@ -40,6 +41,7 @@ const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opaci
  */
 export function ConversationList({ role, meId }: { role: Role; meId: string }) {
   const router = useRouter();
+  const notice = useNotice();
   const pathname = usePathname();
   const filter = filterOf(useSearchParams());
   const scope = useScope();
@@ -71,6 +73,17 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
 
   return (
     <section aria-label="Danh sách hội thoại" className="flex flex-col gap-4">
+      {notice ? (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-2 rounded-card border border-border p-3"
+        >
+          <p>{notice}</p>
+          <button type="button" className={button} onClick={() => setNotice(null)}>
+            Đóng
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-end gap-4">
         <div role="group" aria-label="Người phụ trách" className="flex gap-2">
           {(Object.keys(ASSIGNEE_LABEL) as Assignee[]).map((a) => (
