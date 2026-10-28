@@ -92,6 +92,18 @@ const maskPhone = (p: string) => `${p.slice(0, 5)}*****${p.slice(-2)}`;
 const maskEmail = (e: string) => `${e[0]}***${e.slice(e.indexOf('@'))}`;
 
 /** Answers a route of /v1/customers and says true, or false for any other route; `session` is null when signed out. */
+/** The search of the API (U48), shared by `GET /v1/customers` and the Inbox's `q` (#390): a part of the name, the start of a phone from
+ * 3 digits, or a whole email, any case, never a part of one; masked roles search by name only. `q` is trimmed and not empty. */
+export function matchesSearch(c: Customer, q: string, masked: boolean): boolean {
+  const digits = q.replace(/\D/g, '');
+  const prefix = !masked && /^[\d\s+.-]+$/.test(q) && digits.length >= 3 ? digits : null;
+  return !masked && q.includes('@')
+    ? c.email === q.toLowerCase()
+    : prefix !== null
+      ? `0${c.phone?.slice(3) ?? ''}`.startsWith(prefix) || (c.phone ?? '').startsWith(`+${prefix}`)
+      : fold(c.displayName ?? '').includes(fold(q));
+}
+
 export async function routeCustomers(
   req: IncomingMessage,
   res: ServerResponse,
@@ -130,18 +142,7 @@ export async function routeCustomers(
   if (req.method !== 'GET' || path !== '/v1/customers') return false;
   const query = new URL(req.url ?? '/', 'http://stub').searchParams;
   const q = query.get('q')?.trim() ?? '';
-  const digits = q.replace(/\D/g, '');
-  const prefix = !masked && /^[\d\s+.-]+$/.test(q) && digits.length >= 3 ? digits : null;
-  const found = customers.filter((c) =>
-    !q
-      ? true
-      : !masked && q.includes('@')
-        ? c.email === q.toLowerCase() // a whole email, any case, never a part of one (U48)
-        : prefix !== null
-          ? `0${c.phone?.slice(3) ?? ''}`.startsWith(prefix) ||
-            (c.phone ?? '').startsWith(`+${prefix}`)
-          : fold(c.displayName ?? '').includes(fold(q)),
-  );
+  const found = customers.filter((c) => !q || matchesSearch(c, q, masked));
   const from = Number(query.get('cursor') ?? 0);
   const page = found.slice(from, from + CUSTOMERS_PAGE).map(shown);
   const next = from + CUSTOMERS_PAGE < found.length ? String(from + CUSTOMERS_PAGE) : null;

@@ -40,7 +40,7 @@ export const MANY = 600;
 export const MANY_PAGE = 200;
 
 export { CONVERSATIONS, HOSTILE, MESSAGES } from './stub-conversations';
-import { CONVERSATIONS, MESSAGES } from './stub-conversations';
+import { CONVERSATIONS, conversationMatches, MESSAGES } from './stub-conversations';
 
 /** The codes of the authenticator app: the right one, a wrong one, and one that locks the account (5 wrong in a row). */
 export const TOTP = { good: '123456', wrong: '000000', locking: '999999' } as const;
@@ -254,7 +254,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
             (q.get('assignee') !== 'none' || c.assignedUserId === null) &&
             (!q.get('state') || c.state === q.get('state')) &&
             (q.get('hold') !== 'true' || c.afterHoursHold) &&
-            (!q.get('workspaceId') || c.workspaceId === q.get('workspaceId')),
+            (!q.get('workspaceId') || c.workspaceId === q.get('workspaceId')) &&
+            (!q.has('q') || conversationMatches(c, q.get('q') ?? '')),
         );
     const from = Number(q.get('cursor') ?? 0);
     const size = session.email.includes('+many@') ? MANY_PAGE : STUB_PAGE;

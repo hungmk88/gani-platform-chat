@@ -1,6 +1,6 @@
 // The conversations and messages of the e2e stub API (moved out of e2e/stub-api.ts to keep it under 500 lines); each session
 // works on its own copy. Never deployed.
-import { CUSTOMERS } from './stub-customers';
+import { CUSTOMERS, matchesSearch } from './stub-customers';
 
 // The conversations of every workspace of the stub: who may see which is the rule of apps/api permissions.ts (canSee).
 const conversation = (
@@ -65,3 +65,10 @@ export const CONVERSATIONS = [
   conversation(5, 'HUMAN_WAITING_Q', null, true),
   conversation(6, 'CLOSED', 'user-sales'),
 ];
+
+/** The Inbox's `q` (#390), as the API: the customer of the conversation matches (`matchesSearch`); none, or a blank `q` (400 at the
+ * API, never sent by the admin), matches nothing. Every role of the Inbox sees phones and emails whole. */
+export function conversationMatches(c: { customer: { id: string } | null }, q: string): boolean {
+  const customer = CUSTOMERS.find((x) => x.id === c.customer?.id);
+  return customer !== undefined && matchesSearch(customer, q.trim(), false);
+}
