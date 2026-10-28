@@ -14,9 +14,9 @@ import type { Me } from '../src/me';
 import { ROLES, type Role } from '../src/nav';
 import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
-import { CUSTOMERS } from './stub-customers';
 import { MEMBERS } from './stub-members';
 import { routeAssignees } from './stub-assignees';
+import { u30Body } from './stub-u30';
 import { routeScreens } from './stub-routes';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
@@ -39,69 +39,8 @@ export const STUB_PAGE = 3;
 export const MANY = 600;
 export const MANY_PAGE = 200;
 
-// The conversations of every workspace of the stub: who may see which is the rule of apps/api permissions.ts (canSee).
-const conversation = (
-  n: number,
-  state: string,
-  assignedUserId: string | null,
-  hold = false,
-  customer: { id: string; displayName: string | null } | null = null,
-) => ({
-  id: `0190a000-0000-7000-8000-00000000000${n}`,
-  workspaceId: 'ws-e2e',
-  state,
-  afterHoursHold: hold,
-  assignedUserId,
-  version: 1,
-  outcome: state === 'CLOSED' ? 'resolved' : null,
-  closedAt: state === 'CLOSED' ? '2026-10-21T03:00:00Z' : null,
-  lastMessageAt: `2026-10-21T0${n}:05:00Z`,
-  lastCustomerMessageAt: null,
-  createdAt: '2026-10-20T00:00:00Z',
-  customer,
-});
-/** A message a customer could send to break a page (T2): it must show as these characters and run nothing. */
-export const HOSTILE =
-  '<script>window.__xss = 1</script><img src=x onerror="window.__xss = 1">**đậm**';
-const message = (
-  n: number,
-  senderKind: string,
-  body: string,
-  platformSentAt: string | null,
-  senderUserId: string | null = null,
-) => ({
-  id: `0190b000-0000-7000-8000-00000000000${n}`,
-  sequenceNumber: n,
-  senderKind,
-  senderUserId,
-  kind: 'text',
-  body,
-  platformSentAt,
-  createdAt: `2026-10-21T02:0${n}:30Z`,
-});
-/** The messages of conversation #2 (sales holds it); #5 arrived late from Zalo and was sent before #4. */
-export const MESSAGES = [
-  message(1, 'customer', 'Chào shop, cho hỏi giá thùng 24 lon.', '2026-10-21T02:01:00Z'),
-  message(2, 'bot', 'Dạ em chuyển anh/chị cho nhân viên ạ.', '2026-10-21T02:02:00Z'),
-  message(3, 'agent', 'Dạ em chào anh, em gửi báo giá ngay.', null, 'user-sales'),
-  message(4, 'customer', HOSTILE, '2026-10-21T02:06:00Z'),
-  message(5, 'customer', 'Gửi lúc 02:05, tới sau.', '2026-10-21T02:05:00Z'),
-];
-export const CONVERSATIONS = [
-  // #1 has a named customer (#7), #3 one nobody has named yet; the others have none linked yet (N165).
-  conversation(1, 'HUMAN_WAITING_Q', null, false, {
-    id: CUSTOMERS[0]!.id,
-    displayName: CUSTOMERS[0]!.displayName,
-  }),
-  conversation(2, 'HUMAN_ACTIVE', 'user-sales'),
-  conversation(3, 'PENDING_CUSTOMER', 'user-sales', false, {
-    id: CUSTOMERS[1]!.id,
-    displayName: null,
-  }),
-  conversation(4, 'HUMAN_ACTIVE', 'user-manager'),
-  conversation(5, 'HUMAN_WAITING_Q', null, true),
-  conversation(6, 'CLOSED', 'user-sales'),
-];
+export { CONVERSATIONS, HOSTILE, MESSAGES } from './stub-conversations';
+import { CONVERSATIONS, MESSAGES } from './stub-conversations';
 
 /** The codes of the authenticator app: the right one, a wrong one, and one that locks the account (5 wrong in a row). */
 export const TOTP = { good: '123456', wrong: '000000', locking: '999999' } as const;
@@ -134,6 +73,17 @@ function send(
   body: unknown,
   headers: Record<string, string | string[]> = {},
 ) {
+  // U30 fields on every conversation answered (e2e/stub-u30.ts); messages only #2 has.
+  const own = (id: string) =>
+    id === CONVERSATIONS[1]?.id
+      ? sessions.get(cookie(res.req, SESSION) ?? '')?.messages
+      : undefined;
+  if (
+    /^\/v1\/conversations(\/[^/?]+(\/(claim|assign|transfer|close|wait-customer))?)?(\?|$)/.test(
+      res.req.url ?? '',
+    )
+  )
+    body = u30Body(body, own);
   res.writeHead(status, { 'content-type': 'application/json', ...headers });
   res.end(JSON.stringify(body));
 }

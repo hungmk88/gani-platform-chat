@@ -1,15 +1,11 @@
 // "Gán lại" on an open conversation (#6, `POST /v1/conversations/{id}/assign`, Phụ lục B row 16, issue #366). Who it may go to is
 // U31 (`GET /v1/conversations/{id}/assignees?purpose=assign`, N168): the people the action accepts, so a pick is never refused
-// with 422 invalid_assignee for being outside the rule. Owner, Admin and Manager assign; only Owner and Admin read the members.
+// with 422 invalid_assignee for being outside the rule. Owner, Admin and Manager assign.
 import type { components } from '../api/schema';
 import { ROLE_NAME, type Role } from '../nav';
-import type { Member } from '../members/list';
 import type { Conversation } from './list';
 
 export type Assignee = components['schemas']['Assignee'];
-
-/** Who reads `GET /v1/members` (N153), so sees the holder by name: Owner and Admin. */
-export const namesHolder = (role: Role): boolean => role === 'owner' || role === 'admin';
 
 /** Who gets "Gán lại" (Phụ lục B row 16, as the API): Owner, Admin, Manager. */
 export const mayAssign = (role: Role): boolean =>
@@ -46,17 +42,6 @@ export function assigneeLines(
   return lines.map((l) =>
     (seen.get(l.label) ?? 0) > 1 ? { ...l, label: `${l.label} · …${l.userId.slice(-4)}` } : l,
   );
-}
-
-/** Who holds it, by name, for those who read the members (Owner, Admin): "Tôi", the name, or the words of `holderOf` otherwise. */
-export function holderNameOf(
-  members: readonly Member[],
-  holder: string | null,
-  meId: string,
-): string | null {
-  if (holder === null || holder === meId) return null;
-  const m = members.find((x) => x.userId === holder);
-  return m ? (m.name ?? m.email) : null;
 }
 
 /** From this many people on, the dialog has a search box: U31 has no paging and a large workspace lists everyone. */

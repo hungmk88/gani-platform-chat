@@ -2,7 +2,7 @@ import type { InfiniteData } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 
 import type { components } from '../api/schema';
-import { lastSequence, messageOf, withMessage, withState } from './events';
+import { lastSequence, messageOf, readAgain, withMessage, withState } from './events';
 
 type Page = components['schemas']['MessagePage'];
 const msg = (n: number) => ({
@@ -80,7 +80,7 @@ describe('withState', () => {
     customer: null,
     channelAccountId: null,
     channel: null,
-    assignee: { id: 'u1', name: null },
+    assignee: { id: 'u1', name: 'Hà Linh' },
     lastMessagePreview: null,
   };
   it('applies a newer version only', () => {
@@ -94,5 +94,40 @@ describe('withState', () => {
     expect(withState(c, d)).toMatchObject({ state: 'PENDING_CUSTOMER', version: 4 });
     expect(withState(c, { ...d, version: 3 })).toBe(c);
     expect(withState(undefined, d)).toBeUndefined();
+  });
+
+  it("never keeps the old holder's name for a new holder: the id comes first, the name with the next read", () => {
+    const d = {
+      conversationId: 'c',
+      to: 'HUMAN_ACTIVE' as const,
+      hold: false,
+      version: 4,
+      assignedUserId: 'u1',
+    };
+    expect(withState(c, d)?.assignee).toEqual({ id: 'u1', name: 'Hà Linh' });
+    expect(withState(c, { ...d, assignedUserId: 'u2' })?.assignee).toEqual({
+      id: 'u2',
+      name: null,
+    });
+    expect(withState(c, { ...d, assignedUserId: null })?.assignee).toBeNull();
+  });
+});
+
+describe('readAgain', () => {
+  const noWait = () => Promise.resolve();
+  it('tries again twice with a growing wait, and stops at the first answer', async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const read = () => (++calls < 3 ? Promise.reject(new Error('down')) : Promise.resolve('ok'));
+    await expect(readAgain(read, (ms) => (waits.push(ms), Promise.resolve()))).resolves.toBe('ok');
+    expect(calls).toBe(3);
+    expect(waits).toEqual([500, 1000]);
+  });
+
+  it('gives up quietly after three failures, so what the cache has stays', async () => {
+    let calls = 0;
+    const read = () => (calls++, Promise.reject(new Error('500')));
+    await expect(readAgain(read, noWait)).resolves.toBeUndefined();
+    expect(calls).toBe(3);
   });
 });

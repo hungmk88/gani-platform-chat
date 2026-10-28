@@ -32,7 +32,9 @@ test('a new message and a change of state show without reloading', async ({ page
   const email = accountOf('manager+live1');
   await open(page, email);
   await lever(page, 'message', { conversationId: held.id, body: 'Khách vừa nhắn thêm.' });
-  await expect(page.getByText('Khách vừa nhắn thêm.')).toBeVisible();
+  await expect(
+    page.getByRole('list', { name: 'Tin nhắn' }).getByText('Khách vừa nhắn thêm.'),
+  ).toBeVisible();
   await lever(page, 'state', { conversationId: held.id, to: 'PENDING_CUSTOMER' });
   const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
   await expect(view.getByRole('heading', { name: 'Chờ khách trả lời' })).toBeVisible();
@@ -74,4 +76,22 @@ test('a session ended by the server goes back to sign-in', async ({ page }) => {
   await open(page, email);
   await lever(page, 'end');
   await expect(page).toHaveURL('/login');
+});
+
+test('a new holder by realtime shows by name once read again, never the old name (U30)', async ({
+  page,
+}) => {
+  const email = accountOf('admin+live5');
+  await open(page, email);
+  const view = page.getByRole('region', { name: 'Hội thoại', exact: true });
+  await expect(view.getByText('Phụ trách: Người thử sales')).toBeVisible();
+  const reread = page.waitForResponse((r) => r.url().endsWith(`/v1/conversations/${held.id}`));
+  await lever(page, 'state', {
+    conversationId: held.id,
+    to: 'HUMAN_ACTIVE',
+    assignedUserId: 'user-owner',
+  });
+  await reread;
+  await expect(view.getByText('Phụ trách: Người thử owner')).toBeVisible();
+  await expect(view.getByText('Người thử sales')).toHaveCount(0);
 });

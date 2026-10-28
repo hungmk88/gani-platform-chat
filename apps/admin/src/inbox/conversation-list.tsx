@@ -9,13 +9,14 @@ import type { components } from '../api/schema';
 import type { Role } from '../nav';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { Holder } from './holder';
 import {
   ASSIGNEE_LABEL,
   emptyOf,
   filterOf,
   HOLD_LABEL,
   customerNameOf,
-  holderOf,
+  channelOf,
   listPath,
   NO_FILTER,
   paramsOf,
@@ -159,10 +160,16 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
                     aria-current={pathname === `/inbox/${c.id}` ? 'page' : undefined}
                     className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-bg-subtle aria-[current=page]:bg-bg-subtle"
                   >
-                    <span className="flex flex-col gap-1">
+                    <span className="flex min-w-0 flex-1 flex-col gap-1">
                       <span className="font-semibold">{customerNameOf(c)}</span>
+                      {c.lastMessagePreview ? (
+                        <span className="truncate text-text-muted">{c.lastMessagePreview}</span>
+                      ) : null}
                       <span>{c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}</span>
-                      <span className="text-12 text-text-muted">{holderOf(c, meId)}</span>
+                      <span className="text-12 text-text-muted">
+                        {channelOf(c) ? `${channelOf(c)} · ` : null}
+                        <Holder c={c} meId={meId} />
+                      </span>
                     </span>
                     <time
                       dateTime={c.lastMessageAt ?? c.createdAt}
