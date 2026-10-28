@@ -14,15 +14,18 @@ import {
 
 import type { components } from '../api/schema';
 import type { Role } from '../nav';
-import { useApiPages, useScope } from '../query/provider';
+import { useApiPages, useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { Holder } from './holder';
 import { setNotice, useNotice } from './notice';
 import {
   ASSIGNEE_LABEL,
+  channelChoice,
+  channelFilterOf,
   emptyOf,
   filterOf,
   HOLD_LABEL,
+  inboxChannelsPath,
   customerNameOf,
   channelOf,
   listPath,
@@ -34,6 +37,7 @@ import {
   tooFewDigits,
   whenOf,
   type Assignee,
+  type InboxChannelList,
   type ListFilter,
 } from './list';
 
@@ -69,6 +73,16 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
     if (q !== filter.q) go({ ...filter, q });
   });
   useEffect(() => search(searched), [searched]);
+  // "Kênh" (#392, U56): the channels of the conversations this person reads; under 'conversations', read again with the list.
+  const channels = useApiQuery<InboxChannelList>(
+    ['conversations', 'channels'],
+    inboxChannelsPath(scope.workspaceId),
+  );
+  const channelFilter = channelFilterOf(
+    channels.isPending ? 'pending' : channels.isError ? 'error' : channels.data.data,
+    filter.channel,
+  );
+  const known = channels.data?.data.some((c) => c.id === filter.channel) ?? false;
 
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
   const listRef = useRef<HTMLUListElement>(null);
@@ -131,6 +145,27 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
             <option value="hold">{HOLD_LABEL}</option>
           </select>
         </label>
+        {channelFilter === 'select' ? (
+          <label className="flex flex-col gap-1">
+            Kênh
+            <select
+              value={filter.channel}
+              onChange={(e) => go({ ...filter, channel: e.target.value })}
+              className="rounded-input border border-border-strong bg-surface px-3 py-1"
+            >
+              <option value="">Tất cả kênh</option>
+              {filter.channel && !known ? (
+                // A channel of the URL that is not offered (gone, or none of its conversations is read): still filtered, said so.
+                <option value={filter.channel}>Kênh không còn trong danh sách</option>
+              ) : null}
+              {channels.data?.data.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {channelChoice(c)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label className="flex flex-col gap-1">
           Tìm khách
           <input
@@ -143,6 +178,14 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
           />
         </label>
       </div>
+      {channelFilter === 'line' ? (
+        <p className="flex items-center gap-2">
+          Đang lọc theo một kênh ·
+          <button type="button" className={button} onClick={() => go({ ...filter, channel: '' })}>
+            Bỏ lọc
+          </button>
+        </p>
+      ) : null}
       {tooFewDigits(searched) ? (
         <p className="text-12 text-text-muted">
           Gõ từ 3 số để tìm theo SĐT; 1–2 số đang tìm theo tên.

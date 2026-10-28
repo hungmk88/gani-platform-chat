@@ -1,5 +1,6 @@
 // What the conversation list of the Inbox (#6) shows and asks, kept out of React so it is tested row by row.
 import type { components } from '../api/schema';
+import { CHANNEL_STATUS, CHANNEL_TYPE } from '../channels/channels';
 import { nameOf } from '../customers/customers';
 import type { Role } from '../nav';
 
@@ -29,8 +30,12 @@ export interface ListFilter {
   readonly state: ConversationState | 'hold' | 'all';
   /** The customer searched (`q`, #390), trimmed; '' for none. */
   readonly q: string;
+  /** The channel account filtered by (`channelId`, #392), a UUID; '' for none. */
+  readonly channel: string;
 }
-export const NO_FILTER: ListFilter = { assignee: 'any', state: 'all', q: '' };
+export const NO_FILTER: ListFilter = { assignee: 'any', state: 'all', q: '', channel: '' };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The longest search the API takes: OpenAPI `GET /v1/conversations` `q` has maxLength 100 (and minLength 1). */
 export const MAX_SEARCH = 100;
@@ -56,6 +61,7 @@ export function filterOf(params: URLSearchParams): ListFilter {
     state:
       s === 'hold' || STATES.includes(s as ConversationState) ? (s as ListFilter['state']) : 'all',
     q: searchOf(params.get('q')),
+    channel: UUID.test(params.get('channel') ?? '') ? (params.get('channel') as string) : '',
   };
 }
 
@@ -65,6 +71,7 @@ export function paramsOf(f: ListFilter): URLSearchParams {
   if (f.assignee !== 'any') p.set('assignee', f.assignee);
   if (f.state !== 'all') p.set('state', f.state);
   if (f.q) p.set('q', f.q);
+  if (f.channel) p.set('channel', f.channel);
   return p;
 }
 
@@ -75,6 +82,7 @@ export function listPath(f: ListFilter, cursor: string | null, workspaceId: stri
   if (f.state === 'hold') p.set('hold', 'true');
   else if (f.state !== 'all') p.set('state', f.state);
   if (f.q) p.set('q', f.q); // a part of the name, the start of a phone from 3 digits, or a whole email (U48)
+  if (f.channel) p.set('channelId', f.channel); // every Inbox reader may send it (#390); it narrows within what they read
   if (cursor) p.set('cursor', cursor);
   return `/v1/conversations?${p.toString()}`;
 }
@@ -117,7 +125,7 @@ export function emptyOf(
   role: Role,
 ): { readonly text: string; readonly action: 'search' | 'clear' | 'unassigned' | 'channels' } {
   if (f.q) return { text: `Không có hội thoại khớp "${f.q}".`, action: 'search' };
-  if (f.state !== 'all' || (f.assignee !== 'any' && f.assignee !== 'me'))
+  if (f.state !== 'all' || f.channel || (f.assignee !== 'any' && f.assignee !== 'me'))
     return { text: 'Không có hội thoại khớp bộ lọc.', action: 'clear' };
   if (role === 'owner' || role === 'admin')
     return { text: 'Chưa có hội thoại.', action: 'channels' };
@@ -132,3 +140,34 @@ const TIME = new Intl.DateTimeFormat('vi-VN', {
 /** The time of the last message (or of the conversation), in Vietnam's time. */
 export const whenOf = (c: Pick<Conversation, 'lastMessageAt' | 'createdAt'>) =>
   TIME.format(new Date(c.lastMessageAt ?? c.createdAt));
+
+export type InboxChannel = components['schemas']['InboxChannel'];
+export type InboxChannelList = components['schemas']['InboxChannelList'];
+
+/** The channels the filter offers (U56, #398): live ones with a conversation the person may read, by name; every Inbox reader. */
+export const inboxChannelsPath = (workspaceId: string | null): string =>
+  `/v1/conversations/channels${workspaceId ? `?${new URLSearchParams({ workspaceId }).toString()}` : ''}`;
+
+/** A channel in the filter: its name, its kind and, unless connected, its status ("Gani Foods · Zalo OA · Mất kết nối"). */
+export const channelChoice = (c: Pick<InboxChannel, 'displayName' | 'type' | 'status'>): string =>
+  [
+    c.displayName,
+    CHANNEL_TYPE[c.type],
+    c.status === 'connected' ? null : CHANNEL_STATUS[c.status].label,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+/**
+ * What the screen shows for the channel filter, the one place that decides it: the list while it loads shows nothing; a select
+ * when there are 2 channels or more, or when one is filtered by; when the list cannot be read, only a line saying a channel
+ * filters the list (with "Bỏ lọc"), or nothing. A filter from the URL is kept even for a channel not in the list (#392).
+ */
+export function channelFilterOf(
+  channels: 'pending' | 'error' | readonly Pick<InboxChannel, 'id'>[],
+  selected: string,
+): 'none' | 'select' | 'line' {
+  if (channels === 'pending') return 'none';
+  if (channels === 'error') return selected ? 'line' : 'none';
+  return channels.length >= 2 || selected ? 'select' : 'none';
+}
