@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { Member } from '../members/list';
 import {
+  CONVERSATION_GONE,
+  CUSTOMER_GONE,
   customerLine,
   customerSearchPath,
+  goneOf,
   picksAssignee,
   ticketAssigneesOf,
   ticketBodyOf,
@@ -97,5 +100,22 @@ describe('the customer of a new ticket (#359)', () => {
       'C · 091*****78',
     );
     expect(customerLine({ displayName: 'D', phone: null, email: null })).toBe('D');
+  });
+});
+
+describe('a 404 when making a ticket', () => {
+  it('from a conversation: one sentence, whether the conversation or its customer is gone', () => {
+    expect(goneOf('not_found', true, true)).toBe(CONVERSATION_GONE);
+    expect(goneOf('not_found', true, false)).toBe(CONVERSATION_GONE);
+  });
+
+  it('from the list: the customer picked, else the sentence of the API', () => {
+    expect(goneOf('not_found', false, true)).toBe(CUSTOMER_GONE);
+    expect(goneOf('not_found', false, false)).toBeNull();
+  });
+
+  it('leaves every other refusal to the API', () => {
+    expect(goneOf('invalid_assignee', true, true)).toBeNull();
+    expect(goneOf(undefined, true, false)).toBeNull();
   });
 });

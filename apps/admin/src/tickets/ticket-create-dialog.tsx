@@ -15,9 +15,9 @@ import type { WorkspaceMemberList } from '../workspaces/workspace-members';
 import { CustomerField } from './customer-field';
 import type { TicketDetail } from './ticket-detail';
 import {
-  CUSTOMER_GONE,
   MAX_DESCRIPTION,
   MAX_TITLE,
+  goneOf,
   picksAssignee,
   ticketAssigneesOf,
   ticketBodyOf,
@@ -38,6 +38,7 @@ const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opaci
  * Opened from a conversation (#358), the ticket is of the conversation's workspace, carries the conversation and its customer
  * (none when it has no customer: `customerId` is left out, never null) and starts with a title the person edits.
  * Opened from the list, the person may pick a customer (#359); one no longer visible (404) is dropped with its own sentence.
+ * Opened from a conversation, a 404 has its own sentence too (the conversation or its customer is out of sight); nothing is dropped.
  */
 export function TicketCreateDialog({
   role,
@@ -104,9 +105,12 @@ export function TicketCreateDialog({
     last.current = { what, key };
     create.mutate({ body, key });
   };
-  const gone =
-    create.error?.error.code === 'not_found' && !from && Boolean(create.variables?.body.customerId);
-  const error = problem ?? (gone ? CUSTOMER_GONE : create.error?.error.message) ?? null;
+  const gone = goneOf(
+    create.error?.error.code,
+    Boolean(from),
+    Boolean(create.variables?.body.customerId),
+  );
+  const error = problem ?? gone ?? create.error?.error.message ?? null;
 
   return (
     <dialog
