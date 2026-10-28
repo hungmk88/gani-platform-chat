@@ -23,7 +23,7 @@ describe('errorOf', () => {
   });
 
   it.each([
-    ['validation_failed', 'fields'],
+    ['validation_failed', 'show'],
     ['unauthorized', 'sign_in'],
     ['two_factor_setup_required', 'set_up_2fa'],
     ['version_conflict', 'reload'],
@@ -38,12 +38,12 @@ describe('errorOf', () => {
     [401, 'sign_in'],
     [403, 'show'],
     [404, 'show'],
-    [409, 'reload'],
+    [409, 'show'],
     [413, 'show'],
     [429, 'wait'],
     [503, 'wait'],
     [500, 'show'],
-    [400, 'fields'],
+    [400, 'show'],
   ] as const)(
     'a code it does not know, or no body, falls back to the status %i → %s',
     (status, action) => {
@@ -51,6 +51,16 @@ describe('errorOf', () => {
       expect(errorOf(status, '<html>proxy</html>').action).toBe(action);
     },
   );
+
+  it('never promises what no screen does: no marked fields on a 400, no reload on an unknown 409', () => {
+    expect(errorOf(400, { code: 'validation_failed' }).message).toBe(
+      'Dữ liệu chưa hợp lệ, kiểm tra lại.',
+    );
+    const e = errorOf(409, { code: 'not_in_phase' });
+    expect(e).toMatchObject({ code: 'not_in_phase', action: 'show' });
+    expect(e.message).toBe('Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.');
+    expect(errorOf(409, { code: 'version_conflict' }).action).toBe('reload'); // its screens do read again
+  });
 
   it('keeps an unknown code as given, with the sentence of its status', () => {
     const e = errorOf(404, { code: 'lead_gone' });

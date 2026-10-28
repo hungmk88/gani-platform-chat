@@ -9,7 +9,6 @@ export type ErrorAction =
   | 'set_up_2fa' // to /two-factor/setup (N93)
   | 'reload' // load the data again, then let the person try again
   | 'wait' // wait (Retry-After), then try again
-  | 'fields' // show the error at each field
   | 'show'; // say it; there is nothing else to do
 
 export interface ApiError {
@@ -28,7 +27,9 @@ export interface ApiError {
 // conversation_not_active N146, unresolved_variable N163, the Idempotency-Key answers N134, forbidden_origin N136; invalid_transition
 // of conversations and of the planned Ticket, N167). A code missing here falls back to its HTTP status below.
 const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
-  validation_failed: ['fields', 'Thông tin chưa hợp lệ. Kiểm tra các ô được đánh dấu.'],
+  // The API's 400 names the wrong fields only in `detail`, free English text (ZodPipe), with no structured list a screen could
+  // mark fields from; so this says so, it marks nothing. If the BE adds structured field errors, bring back a `fields` action.
+  validation_failed: ['show', 'Dữ liệu chưa hợp lệ, kiểm tra lại.'],
   unauthorized: ['sign_in', 'Phiên đăng nhập đã hết. Đăng nhập lại.'],
   forbidden: ['show', 'Bạn không có quyền làm việc này.'],
   not_found: ['show', 'Không tìm thấy. Có thể đã bị xóa hoặc thuộc công ty khác.'],
@@ -39,9 +40,10 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   conversation_already_claimed: ['reload', 'Hội thoại đã có người nhận.'],
   duplicate_resource: ['show', 'Dữ liệu này đã có.'],
   payload_too_large: ['show', 'Tệp quá lớn.'],
+  // No ZNS or task in the admin of Đợt 1: say what happened; the reply box adds the reason (WINDOW_REASON).
   channel_window_closed: [
     'show',
-    'Đã hết khung gửi tin của kênh. Gửi ZNS, gọi điện hoặc tạo task.',
+    'Kênh không cho gửi tin lúc này. Tin chưa gửi, nội dung vẫn ở ô soạn.',
   ],
   autonomy_restricted: ['show', 'Việc này cần người duyệt.'],
   rate_limited: ['wait', 'Thao tác quá nhanh. Đợi một chút rồi thử lại.'],
@@ -52,9 +54,10 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   two_factor_setup_required: ['set_up_2fa', 'Cần cài xác thực 2 lớp trước khi dùng hệ thống.'],
   // One sentence for conversations (assign, transfer) and tickets: neither code is about one of them only.
   invalid_assignee: ['show', 'Không giao được cho người này. Chọn người khác.'],
+  // "Đang tải lại": the reply box starts reading the conversation again as it shows this, and has not finished.
   conversation_not_active: [
     'reload',
-    'Hội thoại chưa có người nhận hoặc đã đóng. Nhận hội thoại rồi trả lời.',
+    'Không trả lời được: hội thoại chưa có người nhận hoặc đã đóng. Đang tải lại hội thoại.',
   ],
   invalid_transition: [
     'reload',
@@ -68,13 +71,15 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   idempotency_key_reused: ['reload', 'Yêu cầu không khớp lần gửi trước. Tải lại rồi làm lại.'],
   forbidden_origin: ['reload', 'Yêu cầu bị chặn. Tải lại trang rồi thử lại.'],
   service_unavailable: ['wait', 'Hệ thống tạm thời chưa phản hồi. Thử lại sau ít phút.'],
+  // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
+  conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };
 
 function byStatus(status: number): string {
   if (status === 401) return 'unauthorized';
   if (status === 403) return 'forbidden';
   if (status === 404) return 'not_found';
-  if (status === 409) return 'version_conflict';
+  if (status === 409) return 'conflict';
   if (status === 413) return 'payload_too_large';
   if (status === 429) return 'rate_limited';
   if (status === 503) return 'service_unavailable';

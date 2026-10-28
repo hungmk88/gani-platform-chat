@@ -53,7 +53,7 @@ test('a closed channel window keeps the draft and says why; nothing is added', a
   await box(page).fill('Anh ơi còn cần hàng không ạ?');
   await page.getByRole('button', { name: 'Gửi' }).click();
   const alert = page.getByRole('form', { name: 'Trả lời khách' }).getByRole('alert');
-  await expect(alert).toContainText('Đã hết khung gửi tin của kênh');
+  await expect(alert).toContainText('Kênh không cho gửi tin lúc này. Tin chưa gửi');
   await expect(alert).toContainText('Đã quá thời hạn trả lời miễn phí');
   await expect(alert).toContainText('Mã: trace-e2e-window');
   await expect(box(page)).toHaveValue('Anh ơi còn cần hàng không ạ?');
