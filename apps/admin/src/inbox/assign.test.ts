@@ -68,14 +68,38 @@ describe('assigneeLines', () => {
     expect(
       assigneeLines([a({}), a({ userId: 'u2', name: null, teamName: null, role: 'manager' })]),
     ).toEqual([
-      { userId: a({}).userId, label: 'Trần Thu · Support · CSKH · đang giữ 2/5', full: false },
-      { userId: 'u2', label: 'Chưa có tên · Manager · đang giữ 2/5', full: false },
+      {
+        userId: a({}).userId,
+        label: 'Trần Thu · Support · CSKH · đang xử lý 2/5',
+        full: false,
+        waiting: false,
+      },
+      {
+        userId: 'u2',
+        label: 'Chưa có tên · Manager · đang xử lý 2/5',
+        full: false,
+        waiting: false,
+      },
     ]);
   });
 
   it('keeps someone full in the list, saying so: the limit is not enforced before S4', () => {
     const [line] = assigneeLines([a({ openCount: 5, maxConcurrent: 5 })]);
     expect(line).toMatchObject({ full: true, label: 'Trần Thu · Support · CSKH · đã đầy 5/5' });
+  });
+
+  it('says those waiting for the customer apart, outside the load, only when there are some (#387)', () => {
+    expect(assigneeLines([a({ openCount: 3, awaitingCustomerCount: 2 })])[0]).toMatchObject({
+      label: 'Trần Thu · Support · CSKH · đang xử lý 3/5 · chờ khách 2',
+      full: false,
+      waiting: true,
+    });
+    // Full is the load alone: 4 handled + 3 waiting is not full, 5 handled is.
+    expect(assigneeLines([a({ openCount: 4, awaitingCustomerCount: 3 })])[0]?.full).toBe(false);
+    expect(assigneeLines([a({ openCount: 5, awaitingCustomerCount: 1 })])[0]).toMatchObject({
+      label: 'Trần Thu · Support · CSKH · đã đầy 5/5 · chờ khách 1',
+      full: true,
+    });
   });
 
   it('tells two lines that read the same apart by the end of their id', () => {
@@ -85,18 +109,18 @@ describe('assigneeLines', () => {
       a({ userId: 'x-3333' }),
     ]);
     expect(lines.map((l) => l.label)).toEqual([
-      'Chưa có tên · Support · CSKH · đang giữ 2/5 · …1111',
-      'Chưa có tên · Support · CSKH · đang giữ 2/5 · …2222',
-      'Trần Thu · Support · CSKH · đang giữ 2/5',
+      'Chưa có tên · Support · CSKH · đang xử lý 2/5 · …1111',
+      'Chưa có tên · Support · CSKH · đang xử lý 2/5 · …2222',
+      'Trần Thu · Support · CSKH · đang xử lý 2/5',
     ]);
   });
 });
 
 describe('matching', () => {
   const lines = [
-    { label: 'Trần Thu · Support · CSKH · đang giữ 2/5' },
+    { label: 'Trần Thu · Support · CSKH · đang xử lý 2/5' },
     { label: 'Đỗ Minh · Manager · Sales B2B · đã đầy 5/5' },
-    { label: 'Chưa có tên · Sales · đang giữ 0/5' },
+    { label: 'Chưa có tên · Sales · đang xử lý 0/5' },
   ];
   it('finds by any words of name, role or team, without accents or case', () => {
     expect(matching(lines, 'tran').map((l) => l.label)).toEqual([lines[0]!.label]);

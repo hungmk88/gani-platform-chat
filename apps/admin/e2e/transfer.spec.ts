@@ -19,7 +19,7 @@ test('a Manager transfers a held conversation and stays on it, with the new hold
   const posted = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/transfer'));
   await view(page).getByRole('button', { name: 'Chuyển' }).click();
   await expect(dialog(page).getByLabel('Người nhận').getByRole('option')).toHaveText([
-    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
+    'Người thử owner · Owner · Sales B2B · đang xử lý 0/5',
   ]);
   await expectAccessible(page);
   await dialog(page).getByRole('button', { name: 'Chuyển', exact: true }).click();

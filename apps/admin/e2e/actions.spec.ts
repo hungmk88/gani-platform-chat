@@ -92,7 +92,7 @@ test('an Owner assigns among those U31 lists: a refusal is said, another pick wo
   const pick = dialog.getByLabel('Người nhận');
   // U31 (#363): the workspace has its Owner and Sales (the holder), so only the Owner, with team and load.
   await expect(pick.getByRole('option')).toHaveText([
-    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
+    'Người thử owner · Owner · Sales B2B · đang xử lý 0/5',
   ]);
   await expect(dialog.getByLabel('Tìm người')).toHaveCount(0); // a short list needs no search
   await expectAccessible(page);
@@ -108,14 +108,14 @@ test('an Owner assigns among those U31 lists: a refusal is said, another pick wo
   await page.goto(`/inbox/${held.id}`);
   await page.getByRole('button', { name: 'Gán lại' }).click();
   await expect(pick.getByRole('option')).toHaveText([
-    'Người thử admin · Admin · đang giữ 0/5',
-    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
+    'Người thử admin · Admin · đang xử lý 0/5',
+    'Người thử owner · Owner · Sales B2B · đang xử lý 0/5',
   ]);
-  await pick.selectOption({ label: 'Người thử admin · Admin · đang giữ 0/5' });
+  await pick.selectOption({ label: 'Người thử admin · Admin · đang xử lý 0/5' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Không giao được cho người này.');
   const posted = page.waitForRequest((r) => r.url().endsWith('/assign'));
-  await pick.selectOption({ label: 'Người thử owner · Owner · Sales B2B · đang giữ 0/5' });
+  await pick.selectOption({ label: 'Người thử owner · Owner · Sales B2B · đang xử lý 0/5' });
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
   expect((await posted).postDataJSON()).toEqual({ version: 1, toUserId: 'user-owner' });
   await expect(dialog).toBeHidden();
@@ -134,7 +134,7 @@ test('a Manager assigns from U31; a conversation changed meanwhile says so and r
   await page.getByRole('button', { name: 'Gán lại' }).click();
   const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
   await expect(dialog.getByLabel('Người nhận').getByRole('option')).toHaveText([
-    'Người thử owner · Owner · Sales B2B · đang giữ 0/5',
+    'Người thử owner · Owner · Sales B2B · đang xử lý 0/5',
   ]);
   const reread = page.waitForRequest((r) => r.url().endsWith(`/v1/conversations/${held.id}`));
   await dialog.getByRole('button', { name: 'Gán', exact: true }).click();
@@ -170,7 +170,13 @@ test('a long list of recipients can be searched by name, role or team, without a
   const pick = dialog.getByLabel('Người nhận');
   await expect(pick.getByRole('option')).toHaveCount(10); // Owner, Sales and the crowd of 8
   await dialog.getByLabel('Tìm người').fill('duc');
-  await expect(pick.getByRole('option')).toHaveText(['Nhân viên Đức · Support · đang giữ 0/5']);
+  await expect(pick.getByRole('option')).toHaveText(['Nhân viên Đức · Support · đang xử lý 0/5']);
+  // The stub's Sales holds a conversation waiting for the customer (PENDING_CUSTOMER): said apart from the load (#387).
+  await dialog.getByLabel('Tìm người').fill('thu sales');
+  await expect(pick.getByRole('option', { name: /^Người thử sales/ })).toHaveText(
+    'Người thử sales · Sales · CSKH · đang xử lý 1/8 · chờ khách 1',
+  );
+  await expect(dialog).toContainText('"Chờ khách": hội thoại đã trả lời, đang chờ khách phản hồi');
   await dialog.getByLabel('Tìm người').fill('không ai');
   await expect(dialog).toContainText('Không ai khớp "không ai".');
   await expectAccessible(page);
