@@ -527,6 +527,10 @@
             "type": "integer",
             "minimum": 0
           },
+          "awaitingCustomerCount": {
+            "type": "integer",
+            "minimum": 0
+          },
           "maxConcurrent": {
             "type": "integer",
             "minimum": 1
@@ -539,6 +543,7 @@
           "teamId",
           "teamName",
           "openCount",
+          "awaitingCustomerCount",
           "maxConcurrent"
         ]
       },

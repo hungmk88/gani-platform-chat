@@ -3736,6 +3736,7 @@ export interface components {
             teamId: string | null;
             teamName: string | null;
             openCount: number;
+            awaitingCustomerCount: number;
             maxConcurrent: number;
         };
         WindowClosedProblem: {

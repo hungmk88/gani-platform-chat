@@ -7,7 +7,7 @@ import { assertUuid } from './validate.js';
 // one the API applies when it hands a conversation over (handOver, apps/api conversation-actions): an active member of the organisation
 // who is a member of the live workspace and, for a Sales/Support transfer, shares a team with the caller. Which roles may hold a
 // conversation and who holds it now are the caller's checks. Names come through app.org_users (active members, no email), never from
-// users; the counts through app.held_conversation_counts, for the whole organisation (N168).
+// users; the counts through app.held_conversation_counts_by_state, for the whole organisation (N168).
 
 export interface AssigneeCandidate {
   readonly userId: string;
@@ -16,8 +16,10 @@ export interface AssigneeCandidate {
   /** The team of the person in this workspace: one shared with the viewer first, then by name. Null when in none. */
   readonly teamId: string | null;
   readonly teamName: string | null;
-  /** Conversations the person holds in every live workspace of the organisation. */
+  /** HUMAN_ACTIVE conversations the person holds in every live workspace of the organisation: the load the limit counts (Brief §M04). */
   readonly openCount: number;
+  /** PENDING_CUSTOMER ones: answered, waiting for the customer. Shown apart, never counted against the limit. */
+  readonly awaitingCustomerCount: number;
   /** Their own limit (agent_settings), else the default of this workspace. */
   readonly maxConcurrent: number;
 }
@@ -29,6 +31,7 @@ type Row = {
   readonly team_id: string | null;
   readonly team_name: string | null;
   readonly open_count: number;
+  readonly awaiting_customer_count: number;
   readonly max_concurrent: number;
 };
 
@@ -58,7 +61,8 @@ export async function listAssigneeCandidates(
       WHERE true ${teammates}
     )
     SELECT p.user_id, p.name, p.role, t.id AS team_id, t.name AS team_name,
-      coalesce(h.held, 0)::int AS open_count,
+      coalesce(h.active, 0)::int AS open_count,
+      coalesce(h.awaiting_customer, 0)::int AS awaiting_customer_count,
       coalesce(a.max_concurrent_conversations, p.default_max_concurrent) AS max_concurrent
     FROM people p
     LEFT JOIN public.agent_settings a ON a.org_id = p.org_id AND a.user_id = p.user_id
@@ -71,7 +75,7 @@ export async function listAssigneeCandidates(
           AND v.user_id = ${viewer}::uuid AND v.deleted_at IS NULL) DESC, tt.name, tt.id
       LIMIT 1
     ) t ON true
-    LEFT JOIN app.held_conversation_counts(ARRAY(SELECT user_id FROM people)) h ON h.user_id = p.user_id
+    LEFT JOIN app.held_conversation_counts_by_state(ARRAY(SELECT user_id FROM people)) h ON h.user_id = p.user_id
     ORDER BY p.name NULLS LAST, p.user_id`);
   return rows.map((r) => ({
     userId: r.user_id,
@@ -80,6 +84,7 @@ export async function listAssigneeCandidates(
     teamId: r.team_id,
     teamName: r.team_name,
     openCount: r.open_count,
+    awaitingCustomerCount: r.awaiting_customer_count,
     maxConcurrent: r.max_concurrent,
   }));
 }

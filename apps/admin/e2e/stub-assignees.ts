@@ -53,7 +53,12 @@ export function assigneesAnswer(
       role: m.role,
       teamId: team?.id ?? null,
       teamName: team?.name ?? null,
-      openCount: held.filter((x) => x.assignedUserId === m.userId && x.state !== 'CLOSED').length,
+      // As app.held_conversation_counts_by_state: the load is HUMAN_ACTIVE, waiting for the customer is apart (Brief §M04).
+      openCount: held.filter((x) => x.assignedUserId === m.userId && x.state === 'HUMAN_ACTIVE')
+        .length,
+      awaitingCustomerCount: held.filter(
+        (x) => x.assignedUserId === m.userId && x.state === 'PENDING_CUSTOMER',
+      ).length,
       maxConcurrent: m.maxConcurrentConversations ?? DEFAULT_MAX,
     };
   });
