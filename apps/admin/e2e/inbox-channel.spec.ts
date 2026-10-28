@@ -50,9 +50,8 @@ test('an Owner filters by a channel; the URL keeps it and the API is asked for t
   await expect(page.getByText('Không có hội thoại khớp bộ lọc.')).toBeVisible();
 });
 
-test('a Sales whose conversations came by one channel gets no filter, and never sends channelId', async ({
-  page,
-}) => {
+// Which channels a person gets is the API's (#398, its own tests): here only what the screen does with a list of one.
+test('a Sales offered one channel gets no filter, and never sends channelId', async ({ page }) => {
   const ids = asked(page);
   await signIn(page, accountOf('sales'));
   await expect(list(page).first()).toBeVisible();
@@ -70,6 +69,9 @@ test('a channel of the URL no longer offered still filters, says so, and the fil
     'Kênh không còn trong danh sách',
   );
   await expect(page.getByText('Không có hội thoại khớp bộ lọc.')).toBeVisible();
+  await expect(
+    page.getByText(/Kênh đang lọc không còn trong danh sách: kênh đã bị gỡ/),
+  ).toBeVisible();
   await expectAccessible(page);
   await page.getByRole('button', { name: 'Xóa bộ lọc' }).click();
   await expect(page).toHaveURL('/inbox');
