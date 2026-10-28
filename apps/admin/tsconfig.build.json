@@ -1,4 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "src/inbox/rules-sync.test.ts"]
+  "exclude": ["node_modules", "src/inbox/rules-sync.test.ts", "src/permissions-sync.test.ts"]
 }

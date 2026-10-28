@@ -6,7 +6,10 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/apps/api/src/modules/conversations/permissions.ts",
-        "$TURBO_ROOT$/packages/domain/src/conversation/**"
+        "$TURBO_ROOT$/packages/domain/src/conversation/**",
+        "$TURBO_ROOT$/apps/api/src/modules/customers/customers.permissions.ts",
+        "$TURBO_ROOT$/apps/api/src/modules/members/members.permissions.ts",
+        "$TURBO_ROOT$/apps/api/src/modules/quick-replies/quick-replies.permissions.ts"
       ]
     },
     "typecheck": {
@@ -14,6 +17,9 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/apps/api/src/modules/conversations/permissions.ts",
         "$TURBO_ROOT$/packages/domain/src/conversation/**",
+        "$TURBO_ROOT$/apps/api/src/modules/customers/customers.permissions.ts",
+        "$TURBO_ROOT$/apps/api/src/modules/members/members.permissions.ts",
+        "$TURBO_ROOT$/apps/api/src/modules/quick-replies/quick-replies.permissions.ts",
         "$TURBO_ROOT$/packages/db/src/schema/org-members.ts"
       ]
     }
