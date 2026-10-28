@@ -158,3 +158,34 @@ test('a customer no longer visible is dropped with its sentence, and the ticket 
   await expect(page).toHaveURL(/\/tickets\/0190c3ff-/);
   expect(sent.at(-1)).not.toHaveProperty('customerId');
 });
+
+test('with more customers than one short page, the person is asked to type more', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('support'));
+  // More than 10 customers match one word: the API answers 10 and a cursor (GET /v1/customers?limit=10).
+  const asked: string[] = [];
+  await page.route('**/v1/customers?*', (r) => {
+    asked.push(r.request().url());
+    return r.fulfill({
+      json: {
+        data: Array.from({ length: 10 }, (_, n) => ({
+          id: `0190c1aa-0000-7000-8000-0000000000${String(n + 10)}`,
+          displayName: `Nguyễn Khách ${n + 1}`,
+          phone: `+849000001${String(n + 10)}`,
+          email: null,
+          humanOnly: false,
+          identities: [],
+          createdAt: '2026-10-20T03:00:00.000Z',
+          updatedAt: '2026-10-20T03:00:00.000Z',
+        })),
+        nextCursor: '10',
+      },
+    });
+  });
+  await open(page);
+  await customerBox(page).fill('nguyen');
+  await expect(found(page).getByRole('button')).toHaveCount(10);
+  await expect(dialog(page)).toContainText('Gõ thêm để thu hẹp.');
+  expect(new URL(asked.at(-1)!).searchParams.get('limit')).toBe('10');
+});
