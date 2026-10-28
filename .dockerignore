@@ -1,0 +1,20 @@
+# Build context of infra/docker/Dockerfile.*: the source only. Dependencies and outputs are made inside the image; secrets never
+# enter it.
+.git
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+**/*.log
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+secrets/
+.claude/
+prototype/
+evals/
