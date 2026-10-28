@@ -17,6 +17,8 @@ import {
   ConversationListQuerySchema,
   ConversationPageSchema,
   ConversationSchema,
+  InboxChannelListSchema,
+  InboxChannelsQuerySchema,
   MessageListQuerySchema,
   MessagePageSchema,
   MessageSchema,
@@ -44,6 +46,18 @@ export function registerConversations(registry: OpenAPIRegistry): void {
     tags: ['conversations'],
     request: { query: ConversationListQuerySchema },
     responses: { 200: { description: 'A page.', ...json(ConversationPageSchema) }, ...errors },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/conversations/channels',
+    summary:
+      'The channels the Inbox filter offers (U56): the live channels at least one conversation the person may read came in by (Sales and support: their own and the unclaimed ones), by name. Never a channel of no such conversation, so no choice filters to nothing.',
+    tags: ['conversations'],
+    request: { query: InboxChannelsQuerySchema },
+    responses: {
+      200: { description: 'The channels.', ...json(InboxChannelListSchema) },
+      ...errors,
+    },
   });
   registry.registerPath({
     method: 'get',

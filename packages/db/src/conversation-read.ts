@@ -1,5 +1,18 @@
 import { previewOf } from '@gani/domain';
-import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 
 import { cursorString, cursorWhole, decodeCursor, encodeCursor } from './cursor.js';
 import { customerSearchWhere, type CustomerSearch } from './customer-read.js';
@@ -42,15 +55,34 @@ export interface ConversationView {
   readonly lastMessagePreview: string | null;
 }
 
-export interface ConversationListQuery {
+/**
+ * How far a person reads the Inbox (permissions.ts readScope), on top of RLS: every Inbox read narrows by it, so the list and the
+ * choices of its filters (listInboxChannels, U56) never disagree. A new condition on what a person may see goes here, not in one read.
+ */
+export interface InboxScope {
   /** One of the session's workspaces; absent: all of them. */
   readonly workspaceId?: string;
+  /** Limit to what this person holds plus what nobody holds (the scope of sales and support). */
+  readonly mineOrUnassigned?: string;
+}
+
+function inboxScopeWhere(s: InboxScope): SQL[] {
+  const c = conversations;
+  const where: SQL[] = [];
+  if (s.workspaceId !== undefined)
+    where.push(eq(c.workspaceId, assertUuid(s.workspaceId, 'workspaceId')));
+  if (s.mineOrUnassigned !== undefined) {
+    const me = assertUuid(s.mineOrUnassigned, 'mineOrUnassigned');
+    where.push(or(eq(c.assignedUserId, me), isNull(c.assignedUserId)) as SQL);
+  }
+  return where;
+}
+
+export interface ConversationListQuery extends InboxScope {
   readonly states?: readonly string[];
   readonly afterHoursHold?: boolean;
   /** `none`: unassigned; a user id: assigned to that person. */
   readonly assigned?: 'none' | { readonly userId: string };
-  /** Limit to what this person holds plus what nobody holds (the scope of sales and support). */
-  readonly mineOrUnassigned?: string;
   /** The channel account it came in by (U30); one of another organisation or workspace simply matches nothing (RLS). */
   readonly channelAccountId?: string;
   /** Its live customer matches this search (U30), as the Khách hàng list searches; a conversation with no customer never does. */
@@ -160,23 +192,41 @@ export async function loadConversationView(
   return row ? shape(row) : null;
 }
 
+export interface InboxChannel {
+  readonly id: string;
+  readonly type: string;
+  readonly displayName: string;
+  readonly status: string;
+}
+
+/**
+ * The channels the Inbox filter offers (U56): the live channel accounts that at least one conversation the person may read came in by,
+ * by name. A channel of no such conversation, a deleted one, or one RLS hides is not offered, so no choice filters to nothing.
+ */
+export async function listInboxChannels(tx: TenantTx, scope: InboxScope): Promise<InboxChannel[]> {
+  const [ca, c] = [channelAccounts, conversations];
+  const seen = tx
+    .select({ one: sql`1` })
+    .from(c)
+    .where(and(eq(c.orgId, ca.orgId), eq(c.channelAccountId, ca.id), ...inboxScopeWhere(scope)));
+  return tx
+    .select({ id: ca.id, type: ca.type, displayName: ca.displayName, status: ca.status })
+    .from(ca)
+    .where(and(isNull(ca.deletedAt), exists(seen)))
+    .orderBy(asc(ca.displayName), asc(ca.id));
+}
+
 export async function listConversations(
   tx: TenantTx,
   q: ConversationListQuery,
 ): Promise<Page<ConversationView>> {
   assertLimit(q.limit);
   const c = conversations;
-  const where: (SQL | undefined)[] = [];
-  if (q.workspaceId !== undefined)
-    where.push(eq(c.workspaceId, assertUuid(q.workspaceId, 'workspaceId')));
+  const where: (SQL | undefined)[] = inboxScopeWhere(q);
   if (q.states !== undefined) where.push(inArray(c.state, [...q.states]));
   if (q.afterHoursHold !== undefined) where.push(eq(c.afterHoursHold, q.afterHoursHold));
   if (q.assigned === 'none') where.push(isNull(c.assignedUserId));
   else if (q.assigned) where.push(eq(c.assignedUserId, assertUuid(q.assigned.userId, 'assigned')));
-  if (q.mineOrUnassigned !== undefined) {
-    const me = assertUuid(q.mineOrUnassigned, 'mineOrUnassigned');
-    where.push(or(eq(c.assignedUserId, me), isNull(c.assignedUserId)));
-  }
   if (q.channelAccountId !== undefined)
     where.push(eq(c.channelAccountId, assertUuid(q.channelAccountId, 'channelAccountId')));
   if (q.customer !== undefined)

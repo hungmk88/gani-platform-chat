@@ -345,6 +345,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/conversations/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The channels the Inbox filter offers (U56): the live channels at least one conversation the person may read came in by (Sales and support: their own and the unclaimed ones), by name. Never a channel of no such conversation, so no choice filters to nothing. */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUIDv7. */
+                    workspaceId?: components["schemas"]["Uuid"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The channels. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboxChannelList"];
+                    };
+                };
+                /** @description validation_failed: a parameter or the cursor is not valid. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden (marketing, viewer), or a refusal of the edge (no_organisation, org_not_selected, two_factor_setup_required). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversations/{id}": {
         parameters: {
             query?: never;
@@ -3700,6 +3775,17 @@ export interface components {
             id: components["schemas"]["Uuid"];
             name: string | null;
         } | null;
+        InboxChannelList: {
+            data: components["schemas"]["InboxChannel"][];
+        };
+        InboxChannel: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            type: "zalo_oa" | "facebook" | "webchat";
+            displayName: string;
+            /** @enum {string} */
+            status: "connected" | "token_expiring" | "disconnected";
+        };
         MessagePage: {
             data: components["schemas"]["Message"][];
             nextCursor: string | null;

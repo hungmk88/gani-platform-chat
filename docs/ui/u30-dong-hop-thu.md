@@ -49,6 +49,8 @@ Chào anh/chị,
   - Không gửi `q` → không lọc; `q` rỗng hay chỉ khoảng trắng → 400. FE bỏ `q` khi ô tìm trống.
   - Hội thoại chưa gắn khách không khớp `q` nào.
 
+**Danh sách cho ô lọc kênh (U56):** `GET /v1/conversations/channels?workspaceId=` → `{ data: [{ id, type, displayName, status }] }`, theo tên. Chỉ kênh còn sống có ít nhất một hội thoại người xem đọc được (Sales/Support: của mình hoặc chưa ai nhận), nên chọn kênh nào cũng ra hội thoại. Mọi vai trò đọc Hộp thư gọi được; vai trò khác 403. Không dùng `GET /v1/channels` (chỉ Owner/Admin).
+
 ## 5. Chưa có trong phần này
 
 - `unreadCount`, `tags`, `sla`: như N166, sau S1.

@@ -26,7 +26,13 @@ const PW = randomBytes(18).toString('base64url');
 const admin = createDbPool(need('DATABASE_URL_MIGRATION'), { max: 2 });
 const people: Record<string, string> = {};
 const c: Record<string, string> = {};
-const [customer, channel, channelB] = [randomUUID(), randomUUID(), randomUUID()];
+const [customer, channel, channelB, channel2, channelW2] = [
+  randomUUID(),
+  randomUUID(),
+  randomUUID(),
+  randomUUID(),
+  randomUUID(),
+];
 const cookies: Record<string, string> = {};
 let app: NestExpressApplication | undefined;
 let url = '';
@@ -93,6 +99,11 @@ beforeAll(async () => {
   await q(`UPDATE conversations SET channel_account_id = $1, external_user_id = 'zu-1', last_message_kind = 'text', last_message_preview = 'Dạ em cần báo giá' WHERE id = $2`, [channel, c['mine']]);
   await q(`UPDATE conversations SET last_message_kind = 'image' WHERE id = $1`, [c['queue']]);
   await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ($1, $2, $3, 'zalo_oa', 'oa-b', 'OA B', 'app', decode(repeat('ab', 32), 'hex'))`, [channelB, orgB, WB]);
+  // U56: 'theirs' (a colleague's) on OA Zeta, 'otherWs' on a channel of W2, 'otherOrg' on organisation B's.
+  for (const [id, ws, name] of [[channel2, W1, 'OA Zeta'], [channelW2, W2, 'OA W2']] as const)
+    await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ($1, $2, $3, 'zalo_oa', $4, $5, 'app', decode(repeat('ab', 32), 'hex'))`, [id, orgA, ws, `oa-${id}`, name]);
+  for (const [key, ch] of [['theirs', channel2], ['otherWs', channelW2], ['otherOrg', channelB]] as const)
+    await q(`UPDATE conversations SET channel_account_id = $1, external_user_id = $2 WHERE id = $3`, [ch, `zu-${key}`, c[key]]);
   for (let n = 1; n <= 3; n++)
     await q(`INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, $5, 'customer', 'text', 'm')`, [randomUUID(), orgA, W1, c['queue'], n]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -168,6 +179,27 @@ describe('GET /v1/conversations', () => {
     expect(await find(`channelId=${channel}&q=lan`)).toEqual([c['mine']]);
     expect(await find(`channelId=${channel}&q=zzz`)).toEqual([]);
     expect(await find(`channelId=${randomUUID()}&q=lan`)).toEqual([]);
+  });
+
+  it('offers the channels of the conversations each role reads, and each one filters to at least one (U56)', async () => {
+    const offered = async (key: string, query = '') => {
+      const res = await get(key, `/v1/conversations/channels${query}`);
+      expect(res.status, key).toBe(200);
+      return (res.body['data'] as { id: string }[]).map((x) => x.id);
+    };
+    expect(await offered('manager')).toEqual([channel, channel2]);
+    expect(await offered('sales')).toEqual([channel]);
+    expect(await offered('stranger')).toEqual([channelB]);
+    expect((await get('manager', '/v1/conversations/channels')).body['data']).toEqual([
+      { id: channel, type: 'zalo_oa', displayName: 'OA Gani', status: 'disconnected' },
+      { id: channel2, type: 'zalo_oa', displayName: 'OA Zeta', status: 'disconnected' },
+    ]);
+    for (const key of ['manager', 'sales', 'stranger'])
+      for (const id of await offered(key))
+        expect(ids((await get(key, `/v1/conversations?channelId=${id}`)).body).length, `${key} ${id}`).toBeGreaterThan(0);
+    expect(await offered('manager', `?workspaceId=${W2}`)).toEqual([]);
+    expect((await get('marketing', '/v1/conversations/channels')).status).toBe(403);
+    expect((await get('manager', '/v1/conversations/channels?workspaceId=x')).body['code']).toBe('validation_failed');
   });
 
   it('refuses marketing with 403 forbidden, and a bad query or cursor with 400 validation_failed', async () => {

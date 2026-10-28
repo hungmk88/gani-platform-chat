@@ -6,6 +6,7 @@ import {
   createDbPool,
   InvalidCursorError,
   listConversations,
+  listInboxChannels,
   listMessages,
   listMessagesAfter,
   loadMessageView,
@@ -322,6 +323,88 @@ describe('the filters of the Inbox (U30): channel and customer', () => {
   it('filters before the page is cut: page by page gives each match once, for the channel and for the customer', async () => {
     expect(await pages({ channelAccountId: CH1 })).toEqual([c.c1, c.c2, c.c4, c.c5, c.c6]);
     expect(await pages({ customer: { name: 'hoà' } })).toEqual([c.c1, c.c3, c.c7]);
+  });
+});
+
+describe('listInboxChannels (U56)', () => {
+  // CHM: the viewer's own (twice: listed once). CHC: only a colleague's. CHX: a colleague's and an unclaimed one. CHE: no conversation.
+  // CHD: deleted, with an unclaimed one. CHW: in W2. CHB: organisation B.
+  const [CHM, CHC, CHX, CHE, CHD, CHW, CHB] = Array.from({ length: 7 }, () => uuidv7()) as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  const made: string[] = [];
+  const scope = (workspaces: string[], s: Parameters<typeof listInboxChannels>[1] = {}) =>
+    inA(workspaces, (tx) => listInboxChannels(tx, s));
+  const ids = async (workspaces: string[], s: Parameters<typeof listInboxChannels>[1] = {}) =>
+    (await scope(workspaces, s)).map((r) => r.id);
+
+  beforeAll(async () => {
+    const { rows } = await admin.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE org_id = $1 LIMIT 1',
+      [B],
+    );
+    const WB = rows[0]?.id as string;
+    // prettier-ignore
+    for (const [id, org, ws, name, gone] of [
+      [CHM, A, W1, 'A mine', false], [CHC, A, W1, 'B colleague', false], [CHX, A, W1, 'C mixed', false],
+      [CHE, A, W1, 'D empty', false], [CHD, A, W1, 'E deleted', true], [CHW, A, W2, 'F w2', false], [CHB, B, WB, 'G org B', false],
+    ] as const)
+      await admin.query(
+        `INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc, deleted_at)
+         VALUES ($1, $2, $3, 'zalo_oa', $4, $5, 'app', decode(repeat('ab', 32), 'hex'), CASE WHEN $6 THEN now() END)`,
+        [id, org, ws, `f-${id}`, name, gone],
+      );
+    // prettier-ignore
+    for (const [channel, ws, assigned, org] of [
+      [CHM, W1, me, A], [CHM, W1, me, A], [CHC, W1, other, A], [CHX, W1, other, A], [CHX, W1, undefined, A],
+      [CHD, W1, undefined, A], [CHW, W2, undefined, A], [CHB, WB, undefined, B],
+    ] as const) {
+      const id = await conversation({ ws, ...(assigned ? { assigned } : {}) }, org);
+      made.push(id);
+      await admin.query(`UPDATE conversations SET channel_account_id = $2, external_user_id = $3 WHERE id = $1`, [id, channel, `zu-${id}`]);
+    }
+  });
+
+  afterAll(async () => {
+    await admin.query('DELETE FROM conversations WHERE id = ANY($1::uuid[])', [made]);
+    await admin.query('DELETE FROM channel_accounts WHERE id = ANY($1::uuid[])', [
+      [CHM, CHC, CHX, CHE, CHD, CHW, CHB],
+    ]);
+  });
+
+  it('offers the live channels of the conversations in scope, once each, by name; never one with none, deleted, or RLS hides', async () => {
+    expect(await scope([W1])).toEqual([
+      { id: CHM, type: 'zalo_oa', displayName: 'A mine', status: 'disconnected' },
+      { id: CHC, type: 'zalo_oa', displayName: 'B colleague', status: 'disconnected' },
+      { id: CHX, type: 'zalo_oa', displayName: 'C mixed', status: 'disconnected' },
+    ]);
+    expect(await ids([W1, W2])).toEqual([CHM, CHC, CHX, CHW]);
+    expect(await ids([W1, W2], { workspaceId: W2 })).toEqual([CHW]);
+  });
+
+  it('keeps sales and support to their own and the unclaimed: a channel of a colleague only is not offered', async () => {
+    expect(await ids([W1], { mineOrUnassigned: me })).toEqual([CHM, CHX]);
+    expect(await ids([W1], { mineOrUnassigned: other })).toEqual([CHC, CHX]);
+  });
+
+  it('offers no channel that filters the list to nothing, for every scope', async () => {
+    for (const [workspaces, s] of [
+      [[W1], {}],
+      [[W1, W2], {}],
+      [[W1], { mineOrUnassigned: me }],
+      [[W1], { mineOrUnassigned: other }],
+    ] as const)
+      for (const channelAccountId of await ids([...workspaces], s))
+        expect(
+          (await list({ ...s, channelAccountId }, [...workspaces])).rows.length,
+          channelAccountId,
+        ).toBeGreaterThan(0);
   });
 });
 
