@@ -36,6 +36,16 @@ infra/
 - Staging giống production: cùng module Terraform, cùng phiên bản PostgreSQL + extension, cùng role DB (không owner, không BYPASSRLS), cùng cờ tính năng mặc định. Chỉ khác dữ liệu.
 - Không copy dữ liệu production xuống staging khi chưa chạy pipeline ẩn danh (Phụ lục §19).
 
+### Docker (`infra/docker/`)
+- 4 image, build từ gốc repo: `gani-api`, `gani-worker`, `gani-migrate` (`Dockerfile.node`, `--target api|worker|migrate`) và `gani-admin` (`Dockerfile.admin`, Next.js standalone). Nền `node:22.23.3-slim` (glibc, khớp `@node-rs/argon2`), chỉ linux/amd64; argon2 có sẵn bản `linux-arm64-gnu` nên arm64 chỉ cần buildx.
+- Chạy bằng `node` (uid 1000), file thuộc root; không pnpm, npm, corepack lúc chạy; chỉ `dist` + `node_modules` production. `HEALTHCHECK`: api `/healthz` (3000), worker `/healthz` (9464), admin `/login` (3001).
+- Tag theo SHA commit, **không `latest`**; chưa push registry (chờ Q2), có registry thì tag semver + SHA.
+- `gani-migrate` là **job**, không phải service: ENTRYPOINT `node scripts/migrate.mjs`, không mở port, chạy xong thì thoát. **Chạy trong pipeline CI/CD trước khi deploy api/worker, không chạy trong production runtime.** Image api/worker không mang công cụ của `migration_role`.
+- `API_ORIGIN` của admin gắn vào lúc build (`--build-arg`, mặc định `http://api:3000` cho docker compose); đổi thì build lại. Production dùng reverse proxy cho `/v1` và `/api/auth`, `API_ORIGIN` chỉ dùng cho rewrite ở dev/staging; production không dùng reverse proxy thì phải build với đúng `API_ORIGIN`. Admin log `admin_api_origin_default` khi chạy production với giá trị mặc định.
+- `api` deploy bằng `pnpm deploy --config.auto-install-peers=false --config.dedupe-peer-dependents=false` (chỉ trong Dockerfile): bỏ peer tùy chọn `next`/`react` của better-auth (~480 MB). Vì vậy peer phải là dependency trực tiếp (`socket.io-adapter` trong `apps/api`).
+- Admin (Next.js) không bắt SIGTERM: `docker stop` kết thúc bằng exit 143, bình thường.
+- CI job `docker` build cả 4 rồi chạy `infra/docker/test-images.sh` với PostgreSQL + Valkey thật. Ngưỡng: bản nén > 100 MB cảnh báo, > 150 MB đỏ; bản giải nén chỉ cảnh báo (> 400 MB; riêng `node:22-slim` đã ~326 MB). Trivy: CRITICAL có bản sửa → đỏ, HIGH chỉ in.
+
 ### Triển khai & migration
 - **Rolling update + feature flag**, không downtime; tính năng mới mặc định **tắt** ở production (P5, Phụ lục §24).
 - Migration **forward-only**; rollback bằng **migration bù**. Thay đổi phá vỡ theo mẫu expand → migrate → contract qua ≥ 2 release.

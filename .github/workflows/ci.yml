@@ -266,3 +266,69 @@ jobs:
         run: |
           docker logs pg 2>&1 | tail -n 60
           docker logs "$VALKEY_CONTAINER" 2>&1 | tail -n 60
+
+  # The images of infra/docker (infra/CLAUDE.md "Docker"): gani-api, gani-worker, gani-migrate, gani-admin, linux/amd64, tagged with
+  # the commit (never `latest`) and not pushed (no registry before Q2). infra/docker/test-images.sh then checks them against a real
+  # PostgreSQL and Valkey: size, user, contents, fail-fast, migrations, probes, HEALTHCHECK, Socket.IO, `docker stop`, Trivy.
+  # If an image is over 100 MB compressed (or 400 MB uncompressed), investigate; over 150 MB compressed, fix before merge. Common
+  # causes: devDependencies in the runtime, unnecessary files copied, large native modules.
+  docker:
+    name: docker images (build, size, run, scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PG_IMAGE: pgvector/pgvector:0.8.7-pg16
+      PG_DB: gani_platform
+      VALKEY_IMAGE: valkey/valkey:8.0-alpine
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # --- PostgreSQL and Valkey: the same steps as the `queue` job. ---
+      - name: Generate passwords
+        run: |
+          for name in POSTGRES APP_ROLE AUTH_ROLE MIGRATION_ROLE; do
+            password="$(openssl rand -hex 24)"
+            echo "::add-mask::${password}"
+            echo "${name}_PASSWORD=${password}" >> "$GITHUB_ENV"
+          done
+      - name: Start PostgreSQL and Valkey
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD -e POSTGRES_DB="$PG_DB" -p 127.0.0.1:5432:5432 "$PG_IMAGE"
+          docker run -d --name valkey -p 127.0.0.1:6379:6379 "$VALKEY_IMAGE" valkey-server --appendonly yes --maxmemory-policy noeviction
+          for _ in $(seq 1 30); do
+            docker exec pg pg_isready -h 127.0.0.1 -U postgres -d "$PG_DB" && docker exec valkey valkey-cli ping | grep -q PONG && exit 0
+            sleep 2
+          done
+          echo "PostgreSQL or Valkey did not become ready" >&2
+          exit 1
+      - name: Bootstrap roles
+        run: |
+          docker exec -i -e APP_ROLE_PASSWORD -e AUTH_ROLE_PASSWORD -e MIGRATION_ROLE_PASSWORD pg psql -v ON_ERROR_STOP=1 -U postgres -d "$PG_DB" < infra/db/bootstrap-roles.sql
+      # BuildKit layer cache, one folder per image, kept by the pinned actions/cache (as the Playwright cache of `admin-e2e`).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/buildx-cache
+          key: docker-${{ hashFiles('pnpm-lock.yaml', 'infra/docker/Dockerfile.*') }}-${{ github.sha }}
+          restore-keys: |
+            docker-${{ hashFiles('pnpm-lock.yaml', 'infra/docker/Dockerfile.*') }}-
+            docker-
+      - name: Build the images
+        run: |
+          docker buildx create --use --driver docker-container --name gani
+          build() {
+            docker buildx build --load --platform linux/amd64 --cache-from "type=local,src=/tmp/buildx-cache/$1" \
+              --cache-to "type=local,dest=/tmp/buildx-cache-new/$1,mode=max" -t "gani-$1:$TAG" "${@:2}" .
+          }
+          for target in api worker migrate; do build "$target" -f infra/docker/Dockerfile.node --target "$target"; done
+          build admin -f infra/docker/Dockerfile.admin
+          rm -rf /tmp/buildx-cache && mv /tmp/buildx-cache-new /tmp/buildx-cache
+      - name: Check the images
+        run: |
+          base="127.0.0.1:5432/${PG_DB}"
+          export DATABASE_URL_APP="postgres://app_role:${APP_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_AUTH="postgres://auth_role:${AUTH_ROLE_PASSWORD}@${base}"
+          export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
+          export REDIS_URL=redis://127.0.0.1:6379
+          infra/docker/test-images.sh "$TAG"
