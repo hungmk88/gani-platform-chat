@@ -209,10 +209,17 @@ function HandOverDialog({
             )}
           </>
         )}
+        {/* "vẫn … được": the API never caps a manual assign or transfer (U55, letter #387). If it ever does, change this. */}
         {options.some((o) => o.full) ? (
           <p className="text-12 text-text-muted">
-            &quot;Đã đầy&quot;: người đó đang giữ đủ số hội thoại tối đa, vẫn{' '}
+            &quot;Đã đầy&quot;: người đó đang xử lý đủ số hội thoại tối đa, vẫn{' '}
             {WORDS[purpose].send.toLowerCase()} được.
+          </p>
+        ) : null}
+        {options.some((o) => o.waiting) ? (
+          <p className="text-12 text-text-muted">
+            &quot;Chờ khách&quot;: hội thoại đã trả lời, đang chờ khách phản hồi; không tính vào số
+            đang xử lý.
           </p>
         ) : null}
         {error ? (
