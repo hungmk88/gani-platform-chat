@@ -94,6 +94,8 @@ export const TicketListQuerySchema = CursorQuerySchema.extend({
   status: z.enum(TICKET_STATUSES).optional(),
   /** `me`, `none` (unassigned), or the id of a member. */
   assignee: z.union([z.enum(['me', 'none']), UuidSchema]).optional(),
+  /** The tickets of one conversation (U53, N170); a Sales still sees only the ones they made. */
+  conversationId: UuidSchema.optional(),
 });
 
 export const TicketCreateSchema = z
@@ -104,6 +106,7 @@ export const TicketCreateSchema = z
     priority: priority.default('normal'),
     customerId: UuidSchema.optional(),
     conversationId: UuidSchema.optional(),
+    /** An Owner, Admin, Manager or Support of the workspace (U52, N170); anyone else is 422 invalid_assignee. */
     assigneeUserId: UuidSchema.optional(),
   })
   .strict()
