@@ -1,6 +1,7 @@
 // #15(b) Tạo ticket (U27, N167, issue #357): `POST /v1/tickets` of the workspace being worked in, a contract planned for S4
 // (docs/openapi/planned.json). The roles of the menu make tickets (Phụ lục B "Ticket: tạo"); the form checks what the API checks.
 import type { components } from '../api/planned';
+import { MAX_QUERY, nameOf, phoneText, type Customer } from '../customers/customers';
 import type { Member } from '../members/list';
 import type { Role } from '../nav';
 import type { Ticket } from './tickets';
@@ -51,6 +52,8 @@ export interface TicketDraft {
   readonly description: string;
   readonly priority: Ticket['priority'];
   readonly assigneeUserId: string;
+  /** The customer picked in the dialog (#359), '' for none. */
+  readonly customerId: string;
 }
 
 /** The body as the API takes it (trimmed, an empty description or assignee left out), or what is wrong with the form. */
@@ -66,5 +69,26 @@ export function ticketBodyOf(workspaceId: string, d: TicketDraft): TicketCreate 
     priority: d.priority,
     ...(description ? { description } : {}),
     ...(d.assigneeUserId ? { assigneeUserId: d.assigneeUserId } : {}),
+    ...(d.customerId ? { customerId: d.customerId } : {}),
   };
 }
+
+/** How many customers the search of the dialog shows (#359); with more, the person types more. */
+export const CUSTOMER_PICKS = 10;
+
+/** `GET /v1/customers` for the dialog: one short page of `q` (trimmed, ≤ 100; a name, the start of a phone, a whole email, U48). */
+export function customerSearchPath(q: string): string {
+  const params = new URLSearchParams({
+    limit: String(CUSTOMER_PICKS),
+    q: q.trim().slice(0, MAX_QUERY),
+  });
+  return `/v1/customers?${params.toString()}`;
+}
+
+/** A customer in one line: the name, then the phone as people write it, else the email, as the API gives them. */
+export const customerLine = (c: Pick<Customer, 'displayName' | 'phone' | 'email'>): string =>
+  [nameOf(c), c.phone ? phoneText(c.phone) : c.email].filter(Boolean).join(' · ');
+
+/** Said when the customer picked is no longer visible (404 not_found): the pick is dropped, the rest of the form kept (CEO 28/10). */
+export const CUSTOMER_GONE =
+  'Khách này không còn thấy được. Đã bỏ chọn, chọn khách khác hoặc để trống.';
