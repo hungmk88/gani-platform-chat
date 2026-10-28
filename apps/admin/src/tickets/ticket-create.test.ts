@@ -1,9 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Member } from '../members/list';
-import { picksAssignee, ticketAssigneesOf, ticketBodyOf, type TicketDraft } from './ticket-create';
+import {
+  customerLine,
+  customerSearchPath,
+  picksAssignee,
+  ticketAssigneesOf,
+  ticketBodyOf,
+  type TicketDraft,
+} from './ticket-create';
 
-const draft: TicketDraft = { title: '', description: '', priority: 'normal', assigneeUserId: '' };
+const draft: TicketDraft = {
+  title: '',
+  description: '',
+  priority: 'normal',
+  assigneeUserId: '',
+  customerId: '',
+};
 
 describe('ticketBodyOf', () => {
   it('trims, and leaves out an empty description or assignee', () => {
@@ -59,5 +72,30 @@ describe('the assignee field (stage 1, issue #357)', () => {
     ];
     expect(ticketAssigneesOf(all, null).map((a) => a.userId)).toEqual(['user-o', 'user-p']);
     expect(ticketAssigneesOf(all, new Set(['p'])).map((a) => a.name)).toEqual(['p@x.test']);
+  });
+});
+
+describe('the customer of a new ticket (#359)', () => {
+  it('sends the customer picked, and leaves it out when none is', () => {
+    expect(ticketBodyOf('ws-1', { ...draft, title: 'A', customerId: 'c1' })).toMatchObject({
+      customerId: 'c1',
+    });
+    expect(ticketBodyOf('ws-1', { ...draft, title: 'A' })).not.toHaveProperty('customerId');
+  });
+  it('searches one short page, trimmed to what the API takes', () => {
+    expect(customerSearchPath('  0912 ')).toBe('/v1/customers?limit=10&q=0912');
+    expect(customerSearchPath('a'.repeat(120))).toBe(`/v1/customers?limit=10&q=${'a'.repeat(100)}`);
+  });
+  it('shows the name and the phone, else the email, as the API gives them', () => {
+    expect(customerLine({ displayName: 'An', phone: '+84912345678', email: 'an@x.vn' })).toBe(
+      'An · 0912 345 678',
+    );
+    expect(customerLine({ displayName: null, phone: null, email: 'b@x.vn' })).toBe(
+      'Khách chưa có tên · b@x.vn',
+    );
+    expect(customerLine({ displayName: 'C', phone: '+8491*****78', email: null })).toBe(
+      'C · 091*****78',
+    );
+    expect(customerLine({ displayName: 'D', phone: null, email: null })).toBe('D');
   });
 });
