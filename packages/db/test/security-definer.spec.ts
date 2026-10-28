@@ -11,6 +11,7 @@ const ADR_004 = [
   'app.channel_account_for_webhook',
   'app.ensure_log_partitions',
   'app.held_conversation_counts',
+  'app.held_conversation_counts_by_state',
   'app.inbound_pending_orgs',
   'app.log_default_partition_rows',
   'app.lookup_invite',

@@ -106,8 +106,10 @@ export const VersionBodySchema = z
 export const AssigneesQuerySchema = z.object({ purpose: z.enum(['transfer', 'assign']) }).strict();
 
 /**
- * One person the action would accept (U31, N168). `name` is null when the person gave none. `openCount`: conversations they hold in
- * every workspace of the organisation; `maxConcurrent`: their limit, else the workspace's default. Nothing is enforced on them yet (S4).
+ * One person the action would accept (U31, N168). `name` is null when the person gave none. In every workspace of the organisation,
+ * `openCount`: the HUMAN_ACTIVE conversations they hold, the load `maxConcurrent` (their limit, else the workspace's default) is about
+ * (Brief §M04); `awaitingCustomerCount`: the ones answered and waiting for the customer, shown apart, not a count of messages waiting to
+ * be sent. A manual transfer or assign is never refused for a full person (U55); only routing (S4) applies the limit.
  */
 export const AssigneeSchema = z
   .object({
@@ -117,6 +119,7 @@ export const AssigneeSchema = z
     teamId: NullableUuidSchema,
     teamName: z.string().nullable(),
     openCount: z.number().int().min(0),
+    awaitingCustomerCount: z.number().int().min(0),
     maxConcurrent: z.number().int().min(1),
   })
   .meta({ id: 'Assignee' });

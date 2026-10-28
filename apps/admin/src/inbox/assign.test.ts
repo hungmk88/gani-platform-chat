@@ -59,6 +59,7 @@ describe('assigneeLines', () => {
     teamId: 't1',
     teamName: 'CSKH',
     openCount: 2,
+    awaitingCustomerCount: 0,
     maxConcurrent: 5,
     ...over,
   });

@@ -119,6 +119,7 @@ beforeAll(async () => {
   await conversation('mine', 'HUMAN_ACTIVE', people['sales'] as string);
   await conversation('theirs', 'HUMAN_ACTIVE', people['colleague'] as string);
   await conversation('queued', 'HUMAN_WAITING_Q', null);
+  await conversation('waiting', 'PENDING_CUSTOMER', people['multi'] as string);
   await conversation('elsewhere', 'HUMAN_ACTIVE', people['teammate'] as string, orgA, W2);
   await conversation('otherOrg', 'HUMAN_WAITING_Q', null, orgB, WB);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -157,6 +158,7 @@ describe('GET /v1/conversations/{id}/assignees', () => {
         teamId: TEAM,
         teamName: 'Team A',
         openCount: 0,
+        awaitingCustomerCount: 1,
         maxConcurrent: 5,
       },
       {
@@ -166,6 +168,7 @@ describe('GET /v1/conversations/{id}/assignees', () => {
         teamId: TEAM,
         teamName: 'Team A',
         openCount: 1,
+        awaitingCustomerCount: 0,
         maxConcurrent: 3,
       },
     ]);
@@ -176,6 +179,11 @@ describe('GET /v1/conversations/{id}/assignees', () => {
       const a = await list('manager', 'theirs', purpose);
       expect(a.status).toBe(200);
       expect(keysOf(a)).toEqual(['manager', 'multi', 'sales', 'teammate']);
+      // The answer carries the count by state (Brief §M04): multi holds one conversation waiting for the customer, none active.
+      const multi = (a.body['data'] as Record<string, unknown>[]).find(
+        (p) => p['userId'] === people['multi'],
+      );
+      expect(multi).toMatchObject({ openCount: 0, awaitingCustomerCount: 1 });
     }
   });
 
