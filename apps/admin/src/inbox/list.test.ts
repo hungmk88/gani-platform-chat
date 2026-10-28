@@ -8,6 +8,9 @@ import {
   holderOf,
   listPath,
   NO_FILTER,
+  channelChoice,
+  channelFilterOf,
+  inboxChannelsPath,
   paramsOf,
   tooFewDigits,
   whenOf,
@@ -16,7 +19,7 @@ import {
 describe('filterOf and paramsOf', () => {
   it('reads a filter from the URL and writes it back', () => {
     const f = filterOf(new URLSearchParams('assignee=me&state=HUMAN_WAITING_Q'));
-    expect(f).toEqual({ assignee: 'me', state: 'HUMAN_WAITING_Q', q: '' });
+    expect(f).toEqual({ assignee: 'me', state: 'HUMAN_WAITING_Q', q: '', channel: '' });
     expect(paramsOf(f).toString()).toBe('assignee=me&state=HUMAN_WAITING_Q');
     expect(paramsOf(NO_FILTER).toString()).toBe('');
   });
@@ -33,7 +36,7 @@ describe('the customer search q (#390)', () => {
     expect(filterOf(new URLSearchParams('q=%20%20%20')).q).toBe('');
     expect(filterOf(new URLSearchParams(`q=${'a'.repeat(120)}`)).q).toBe('a'.repeat(100));
     expect(paramsOf({ ...NO_FILTER, q: 'an' }).toString()).toBe('q=an');
-    expect(listPath({ ...NO_FILTER, q: '' }, null, null)).not.toContain('q=');
+    expect(listPath({ ...NO_FILTER, q: '', channel: '' }, null, null)).not.toContain('q=');
     expect(listPath({ ...NO_FILTER, q: '0912' }, null, null)).toBe(
       '/v1/conversations?assignee=any&limit=50&q=0912',
     );
@@ -50,13 +53,49 @@ describe('the customer search q (#390)', () => {
   });
 });
 
+describe('the channel filter (#392, U56)', () => {
+  const ID = '0190c200-0000-7000-8000-000000000001';
+  it('keeps a UUID from the URL and drops anything else; sends it as channelId', () => {
+    expect(filterOf(new URLSearchParams(`channel=${ID}`)).channel).toBe(ID);
+    expect(filterOf(new URLSearchParams('channel=zalo')).channel).toBe('');
+    expect(paramsOf({ ...NO_FILTER, channel: ID }).toString()).toBe(`channel=${ID}`);
+    expect(listPath({ ...NO_FILTER, channel: ID }, null, null)).toBe(
+      `/v1/conversations?assignee=any&limit=50&channelId=${ID}`,
+    );
+    expect(listPath(NO_FILTER, null, null)).not.toContain('channelId');
+    expect(inboxChannelsPath('w1')).toBe('/v1/conversations/channels?workspaceId=w1');
+    expect(emptyOf({ ...NO_FILTER, channel: ID }, 'sales').action).toBe('clear');
+  });
+  it('names a channel, with its status unless connected', () => {
+    expect(channelChoice({ displayName: 'Gani', type: 'zalo_oa', status: 'connected' })).toBe(
+      'Gani · Zalo OA',
+    );
+    expect(channelChoice({ displayName: 'Gani', type: 'zalo_oa', status: 'disconnected' })).toBe(
+      'Gani · Zalo OA · Mất kết nối',
+    );
+  });
+  it('shows a select from 2 channels or when one filters, a line when the list cannot be read', () => {
+    const one = [{ id: ID }];
+    const two = [{ id: ID }, { id: 'x' }];
+    expect(channelFilterOf('pending', ID)).toBe('none');
+    expect(channelFilterOf('error', '')).toBe('none');
+    expect(channelFilterOf('error', ID)).toBe('line');
+    expect(channelFilterOf(one, '')).toBe('none');
+    expect(channelFilterOf(one, ID)).toBe('select');
+    expect(channelFilterOf(two, '')).toBe('select');
+    expect(channelFilterOf([], 'gone')).toBe('select');
+  });
+});
+
 describe('listPath', () => {
   it('asks the API with its own words', () => {
     expect(listPath(NO_FILTER, null, null)).toBe('/v1/conversations?assignee=any&limit=50');
-    expect(listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q', q: '' }, 'c1', 'w1')).toBe(
+    expect(
+      listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q', q: '', channel: '' }, 'c1', 'w1'),
+    ).toBe(
       '/v1/conversations?assignee=none&limit=50&workspaceId=w1&state=HUMAN_WAITING_Q&cursor=c1',
     );
-    expect(listPath({ assignee: 'me', state: 'hold', q: '' }, null, null)).toBe(
+    expect(listPath({ assignee: 'me', state: 'hold', q: '', channel: '' }, null, null)).toBe(
       '/v1/conversations?assignee=me&limit=50&hold=true',
     );
   });
@@ -101,12 +140,16 @@ describe('holderOf and channelOf', () => {
 describe('emptyOf', () => {
   it('has one sentence and one action for each case', () => {
     expect(emptyOf(NO_FILTER, 'owner')).toEqual({ text: 'Chưa có hội thoại.', action: 'channels' });
-    expect(emptyOf({ assignee: 'me', state: 'all', q: '' }, 'sales')).toEqual({
+    expect(emptyOf({ assignee: 'me', state: 'all', q: '', channel: '' }, 'sales')).toEqual({
       text: 'Chưa có hội thoại nào giao cho bạn.',
       action: 'unassigned',
     });
-    expect(emptyOf({ assignee: 'none', state: 'all', q: '' }, 'manager').action).toBe('clear');
-    expect(emptyOf({ assignee: 'any', state: 'CLOSED', q: '' }, 'admin').action).toBe('clear');
+    expect(emptyOf({ assignee: 'none', state: 'all', q: '', channel: '' }, 'manager').action).toBe(
+      'clear',
+    );
+    expect(emptyOf({ assignee: 'any', state: 'CLOSED', q: '', channel: '' }, 'admin').action).toBe(
+      'clear',
+    );
   });
 });
 

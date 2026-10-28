@@ -50,3 +50,12 @@ export function u30Body(body: unknown, said: (id: string) => readonly Said[] | u
     return { ...body, data: (body as { data: unknown[] }).data.map(one) };
   return one(body);
 }
+
+/** `GET /v1/conversations/channels` (U56, #392): the stub's one channel, when the person reads a conversation at all. */
+export const inboxChannels = (seen: readonly unknown[]) =>
+  seen.length === 0
+    ? []
+    : [{ id: ZALO.id, type: ZALO.type, displayName: ZALO.displayName, status: ZALO.status }];
+
+/** `channelId` of the list: every conversation of the stub came in by its Zalo OA. */
+export const byChannel = (channelId: string | null) => !channelId || channelId === ZALO.id;
