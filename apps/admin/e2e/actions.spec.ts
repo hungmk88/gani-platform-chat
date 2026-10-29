@@ -95,6 +95,8 @@ test('an Owner assigns among those U31 lists: a refusal is said, another pick wo
     'Người thử owner · Owner · Sales B2B · đang xử lý 0/5',
   ]);
   await expect(dialog.getByLabel('Tìm người')).toHaveCount(0); // a short list needs no search
+  // The keyboard starts on the list, not on "Hủy".
+  await expect(dialog.getByRole('combobox', { name: /^Người nhận/ })).toBeFocused();
   await expectAccessible(page);
   await dialog.getByRole('button', { name: 'Hủy' }).click();
 
@@ -169,6 +171,7 @@ test('a long list of recipients can be searched by name, role or team, without a
   const dialog = page.getByRole('dialog', { name: 'Gán lại hội thoại' });
   const pick = dialog.getByLabel('Người nhận');
   await expect(pick.getByRole('option')).toHaveCount(10); // Owner, Sales and the crowd of 8
+  await expect(dialog.getByRole('searchbox', { name: 'Tìm người' })).toBeFocused(); // a long list starts on its search
   await dialog.getByLabel('Tìm người').fill('duc');
   await expect(pick.getByRole('option')).toHaveText(['Nhân viên Đức · Support · đang xử lý 0/5']);
   // The stub's Sales holds a conversation waiting for the customer (PENDING_CUSTOMER): said apart from the load (#387).
