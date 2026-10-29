@@ -27,3 +27,9 @@ package-lock.json
 next-env.d.ts
 test-results/
 playwright-report/
+
+# Terraform: local state, plugins and variable files (values of secrets never go to Git)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars

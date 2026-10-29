@@ -1,0 +1,13 @@
+# SHA256 of Terraform 1.16.6, copied from HashiCorp's SHA256SUMS (signature checked with the key C874 011F 0AB4 0511 0D02 1055
+# 3436 5D94 72D7 468F). One line per platform; check only your own line:
+#   grep "  terraform_1.16.6_<platform>.zip$" infra/terraform/terraform.sha256 | sha256sum --check --strict
+# linux_amd64: CI (job terraform) and Linux dev machines
+38034b38d03096399a7a1264a14561a8029b2b496fd1f169452656e53968f1b7  terraform_1.16.6_linux_amd64.zip
+# linux_arm64: Linux dev machines on ARM
+a750b5a11038f165846b2658c40c88cd7070aa67a61bab431a14ba27928ea9ea  terraform_1.16.6_linux_arm64.zip
+# darwin_arm64: Mac with Apple silicon
+85e1bc78ab45bdc5f82a7bac3929e37d072834a584d22583a2498dc67bb624cd  terraform_1.16.6_darwin_arm64.zip
+# darwin_amd64: Mac with Intel
+794a36c3f7ebf6c58f2089c226068a539d1705ba358a5679b51671c8dc7ebc7b  terraform_1.16.6_darwin_amd64.zip
+# windows_amd64: Windows dev machines (PowerShell: (Get-FileHash terraform_1.16.6_windows_amd64.zip).Hash, compare by hand)
+6ea2c186e0e76a113af30fbcdcf7a4b4c70756317994a04929e5c90b9e94b1df  terraform_1.16.6_windows_amd64.zip
