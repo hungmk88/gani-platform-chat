@@ -90,6 +90,8 @@ function HandOverDialog({
   const scope = useScope();
   const queries = useQueryClient();
   const dialog = useRef<HTMLDialogElement>(null);
+  const searchBox = useRef<HTMLInputElement>(null);
+  const pick = useRef<HTMLSelectElement>(null);
   const last = useRef<{ to: string; key: string } | null>(null);
   const [stale, setStale] = useState(false);
   // Under the conversation's key, so reading the conversation again after a conflict reads the list again too.
@@ -136,6 +138,10 @@ function HandOverDialog({
     },
   });
   useEffect(() => dialog.current?.showModal(), []);
+  // Where the keyboard starts: the search box, else the list, once the people are read; until then (or with nobody to offer)
+  // the dialog itself. Never "Hủy", the only button while loading: one Tab from it left the dialog, Enter closed it.
+  const read = people.isSuccess;
+  useEffect(() => (searchBox.current ?? pick.current ?? dialog.current)?.focus(), [read]);
 
   const chosen = to || options[0]?.userId || '';
   const submit = () => {
@@ -149,6 +155,7 @@ function HandOverDialog({
     <dialog
       ref={dialog}
       aria-labelledby="hand-over-title"
+      tabIndex={-1}
       onClose={onClose}
       className="m-auto w-[400px] max-w-full rounded-dialog bg-surface p-6 shadow-dialog backdrop:bg-overlay"
     >
@@ -178,6 +185,7 @@ function HandOverDialog({
               <label className="flex flex-col gap-1">
                 Tìm người
                 <input
+                  ref={searchBox}
                   type="search"
                   value={query}
                   placeholder="Tên, vai trò hoặc team"
@@ -195,6 +203,7 @@ function HandOverDialog({
               <label className="flex flex-col gap-1">
                 Người nhận
                 <select
+                  ref={pick}
                   value={chosen}
                   className="rounded-input border border-border-strong px-3 py-2"
                   onChange={(e) => setTo(e.target.value)}

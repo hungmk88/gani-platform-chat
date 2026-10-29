@@ -73,3 +73,26 @@ test('a conversation still in the queue has "Nhận" and "Gán lại", not "Chuy
   await page.keyboard.press('t');
   await expect(dialog(page)).toHaveCount(0);
 });
+
+test('the keyboard starts on the dialog while the people load, then on the list, never on "Hủy"', async ({
+  page,
+}) => {
+  // The list of U31 held back (this test only) until the dialog is checked: "Hủy" is then its only button.
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route('**/v1/conversations/*/assignees*', async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  await signIn(page, accountOf('sales'));
+  await page.goto(`/inbox/${held.id}`);
+  await expect(view(page).getByRole('button', { name: 'Chuyển' })).toBeVisible();
+  await page.keyboard.press('t');
+  await expect(dialog(page).getByRole('status')).toHaveText('Đang tải người nhận…');
+  const cancel = dialog(page).getByRole('button', { name: 'Hủy' });
+  await expect(cancel).toBeVisible();
+  await expect(dialog(page)).toBeFocused();
+  await expect(cancel).not.toBeFocused();
+  release();
+  await expect(dialog(page).getByRole('combobox', { name: /^Người nhận/ })).toBeFocused();
+});
