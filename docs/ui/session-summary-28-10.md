@@ -1,7 +1,7 @@
 # Handoff FE (Gói 2): phiên 27–28/10/2026 (giờ UTC; 29/10 giờ Việt Nam)
 
 Nạp cho phiên mới, đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/admin/CLAUDE.md` → file này → `QUESTIONS.md` (U52–U59).
-Phiên trước: `docs/ui/session-summary-27-10.md`. Người giao việc: CEO (xưng "anh", FE xưng "em", trả lời tiếng Việt).
+Phiên trước: `docs/ui/session-summary-27-10.md`. Phiên sau: `docs/ui/session-summary-29-10.md`. Người giao việc: CEO (xưng "anh", FE xưng "em", trả lời tiếng Việt).
 
 ## 1. Đã merge vào `main` trong phiên (FE)
 
@@ -24,7 +24,7 @@ BE trong phiên: #379 backfill đoạn trích, #380 U54/U55, #383/#387 thư FE, 
 
 - **Plan trước, code sau:** mọi việc trình phương án ngắn, CEO duyệt rồi mới code. Kiểm hợp đồng thật (OpenAPI, mã controller) trước khi trình, không đoán.
 - **Quy ước merge (5 lần merge thiếu commit: #365, #369, #382, #388, #396):**
-  - Chỉ báo **"sẵn sàng merge"** khi: đã push hết, **HEAD của PR trên GitHub** (`gh api repos/hungmk88/gani-platform-chat/pulls/N --jq .head.sha`) khớp `git ls-remote` của nhánh, CI xanh **6/6 job** trên đúng HEAD đó (từ 28/10, CEO xác nhận: #406 thêm job `docker images (build, size, run, scan)`; trước đó 5/5), job `admin (e2e, axe)` chạy thật (bước `pnpm --filter "@gani/admin..." build` success, annotation cache), `mergeable_state` clean.
+  - Chỉ báo **"sẵn sàng merge"** khi: đã push hết, **HEAD của PR trên GitHub** (`gh api repos/hungmk88/gani-platform-chat/pulls/N --jq .head.sha`) khớp `git ls-remote` của nhánh, **tất cả job CI** xanh trên đúng HEAD đó (CEO 29/10: không dùng con số cứng, đếm theo `ci.yml` của `main`; 29/10 là 7/7; trước đó 5/5 rồi 6/6), job `admin (e2e, axe)` chạy thật (bước `pnpm --filter "@gani/admin..." build` success, annotation cache), `mergeable_state` clean.
   - Hai phía cùng kiểm: CEO kiểm HEAD trước khi merge; CEO không merge PR mà em đang được yêu cầu push thêm. Em báo "HEAD đổi" thì CEO **không merge**; CEO chỉ merge khi nhận "Sẵn sàng merge" **kèm mã HEAD** (CEO xác nhận 28/10, sau #408 merge trước khi CI trên HEAD mới xong).
   - Push thêm commit vào PR đang chờ → báo ngay **"HEAD đổi, chưa merge được"**. Kiểm `merged` trước khi push; PR đã merge → **nhánh mới từ `origin/main`**, cherry-pick, PR "tiếp #N" (không dồn vào PR đã merge).
 - **Không merge/approve PR, không xóa nhánh** (trừ khi CEO nói rõ cho một PR cụ thể).
