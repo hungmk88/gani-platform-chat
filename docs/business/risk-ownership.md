@@ -30,7 +30,7 @@ Ghi rõ ai cần hành động, khi nào, cho từng rủi ro chính của Đợ
 
 ## Rủi ro 2: image `api` vượt ngưỡng kích thước
 
-**Trạng thái: đã xử lý trong #406:** 129 MB nén / 353 MB giải nén (đo trên CI, job `docker`), dưới ngưỡng đỏ 150 MB (nén). Rủi ro đóng sau khi #406 merge.
+**Trạng thái: đã đóng** (#406 merge 28/10/2026): 129 MB nén / 353 MB giải nén (đo trên CI, job `docker`), dưới ngưỡng đỏ 150 MB (nén). CI job `docker` đỏ nếu một image vượt 150 MB nén.
 
 - **Nguyên nhân cũ** (đo ở máy: 1165 MB giải nén / 254 MB nén): `better-auth` khai báo `next`, `react`, `vitest` là peer tùy chọn; lockfile gắn các peer đó và `pnpm deploy` kéo khoảng 480 MB không dùng vào image.
 - **Cách đã làm** (nhánh dự phòng CEO đã duyệt): deploy với cả `--config.auto-install-peers=false` và `--config.dedupe-peer-dependents=false`, chỉ trong Dockerfile, `.npmrc` của repo không đổi; khai báo `socket.io-adapter` (peer của `@socket.io/redis-adapter`) trực tiếp trong `apps/api`. Chỉ tắt dedupe thì vẫn còn Next (đã đo).
@@ -74,7 +74,7 @@ Ghi rõ ai cần hành động, khi nào, cho từng rủi ro chính của Đợ
 | Rủi ro | Chính | Hỗ trợ | Quyết định |
 |---|---|---|---|
 | 1. Q1/Q2 trễ, S1 trượt | CEO | Dev (tài liệu, nhắc mốc) | CEO |
-| 2. Image `api` vượt ngưỡng | Dev (BE) | — | Đã xử lý (#406) |
+| 2. Image `api` vượt ngưỡng | Dev (BE) | — | **Đã đóng** (#406 merge 28/10) |
 | 3. Lead BE chưa xác nhận 30/10 | Lead BE | Dev (nhắc), CEO (liên hệ) | Lead BE; CEO nếu lead BE không phản hồi |
 | 4. 16 hàm SECURITY DEFINER | Chủ đầu tư (N35) | Dev (ADR-004, `QUESTIONS.md`) | Chủ đầu tư |
 
