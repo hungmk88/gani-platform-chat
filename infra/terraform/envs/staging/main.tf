@@ -9,7 +9,7 @@ resource "terraform_data" "platform_chosen" {
   lifecycle {
     precondition {
       condition     = var.platform != ""
-      error_message = "No implementation chosen (platform = \"\"): waits for Q2 or the decision A/B (docs/business/staging-options.md). Do not plan or apply before."
+      error_message = "staging: platform not set, cannot plan. No implementation chosen for any module (network, compute, database, cache, storage, dns_tls, secrets, monitoring): waits for Q2 or the decision A/B (docs/business/staging-options.md)."
     }
   }
 }
