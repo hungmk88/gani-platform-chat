@@ -43,7 +43,9 @@ infra/
 - **Không tạo thư mục mang tên nhà cung cấp trước Q2.**
 - Khi có Q2 (phương án A): thêm cài đặt của cloud đã chọn vào từng module, khai báo provider (ghim version) trong `envs/*/versions.tf`, commit `.terraform.lock.hcl`, cấu hình `backend.tf` (có mẫu trong comment), đặt `platform`.
 - Phương án B (staging tạm, `docs/business/staging-options.md`): thêm cài đặt của nơi tạm, chỉ `envs/staging` đặt `platform` = nơi tạm. Chuyển sang A sau: thêm cài đặt chính thức, đổi `platform` của staging, dựng lại từ seed; `envs/` và interface không đổi.
-- Phiên bản: CI dùng đúng `.terraform-version` (1.16.6), kiểm SHA256 trong `terraform.sha256` (4 nền tảng, lấy từ SHA256SUMS có chữ ký HashiCorp); `required_version` cho máy dev bản 1.x mới hơn. Nâng bản: khi bản mới đã ổn ≥ 4 tuần và CI chạy với nó ≥ 1 tuần không lỗi.
+- `envs/*/main.tf` có `terraform_data.platform_chosen`: `platform = ""` thì `validate` vẫn qua (CI) nhưng `plan` dừng với lý do rõ. Không chạy `plan`/`apply` trước Q2.
+- **Khi có Q2:** thêm `required_providers` (ghim version) vào `envs/*/versions.tf`, chạy `terraform init` để sinh `.terraform.lock.hcl`, **commit lock file** (không bao giờ đưa vào `.gitignore`), thêm bước cache `~/.terraform.d/plugin-cache` vào job `terraform`.
+- Phiên bản: CI dùng đúng `.terraform-version` (1.16.6), kiểm SHA256 trong `terraform.sha256` (5 nền tảng: Linux, Mac, Windows; lấy từ SHA256SUMS có chữ ký HashiCorp); `required_version` cho máy dev bản 1.x mới hơn. Nâng bản: khi bản mới đã ổn ≥ 4 tuần và CI chạy với nó ≥ 1 tuần không lỗi.
 - Không `.tfstate`, `.tfvars`, `.terraform/` trong Git (`.gitignore`).
 
 ### Docker (`infra/docker/`)

@@ -3,6 +3,17 @@ locals {
   environment = "staging"
 }
 
+# platform = "" means no implementation is chosen yet. `validate` passes (CI), `plan` stops here with the reason, so nothing is
+# planned or applied before Q2 (or the decision A/B). terraform_data is built into Terraform: no provider to download.
+resource "terraform_data" "platform_chosen" {
+  lifecycle {
+    precondition {
+      condition     = var.platform != ""
+      error_message = "No implementation chosen (platform = \"\"): waits for Q2 or the decision A/B (docs/business/staging-options.md). Do not plan or apply before."
+    }
+  }
+}
+
 module "network" {
   source      = "../../modules/network"
   platform    = var.platform

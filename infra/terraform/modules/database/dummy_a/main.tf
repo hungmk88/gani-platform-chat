@@ -1,4 +1,5 @@
-# Test double of an implementation: no provider, no resource. Removed when the first real implementation lands.
+# This is a placeholder implementation for testing the platform selector. Replace with real implementation when Q2 answers.
+# Do NOT use in production. No provider, no resource.
 variable "environment" {
   type = string
 }

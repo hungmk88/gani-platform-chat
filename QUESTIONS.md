@@ -6,7 +6,7 @@ Gặp chỗ chưa rõ trong Brief v0.4 / Phụ lục → ghi vào đây, **khôn
 
 | # | Câu hỏi | Quyết định | Ai chốt |
 |---|---|---|---|
-| Q2 | Cloud / vùng | **Q1 pháp lý (chọn cloud), hạn CEO trả lời: 10/11/2026** (N172); trượt thì staging của S1 trượt theo. Terraform: khung 8 module interface, CI chạy `fmt`/`validate` (30/10); **chưa `plan`/`apply` staging** (chưa có provider), chờ Q1 pháp lý. Integration test chạy local nếu có Docker, không thì chạy trên CI | CEO |
+| Q2 | Cloud / vùng | **Q1 pháp lý (chọn cloud), hạn CEO trả lời: 10/11/2026** (N172); trượt thì staging của S1 trượt theo. Terraform: **có khung** (8 module interface), CI chạy `fmt`/`validate`/`test` (29/10); **chưa `plan`/`apply` được tới khi Q2 có provider và cài đặt** (`plan` dừng có chủ đích khi `platform` rỗng), chờ Q1 pháp lý. Integration test chạy local nếu có Docker, không thì chạy trên CI | CEO |
 | Q3 | Pháp nhân, repo, CI | Gani Foods đứng tên · GitHub org `gani-foods` · GitHub Actions | CEO |
 | Q4 | ORM | Drizzle (ADR-002) | Cố vấn |
 | Q5 | Auth | Better Auth, chỉ login/phiên/2FA, không dùng plugin `organization`, Argon2id, UUIDv7 (ADR-003) | Cố vấn |
