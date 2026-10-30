@@ -2,7 +2,7 @@
 
 Nạp cho phiên mới, đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/admin/CLAUDE.md` → file này → `QUESTIONS.md` (U57–U60).
 Phiên trước: `docs/ui/session-summary-28-10.md` (mục 2–4, 9 vẫn đúng, trừ chỗ file này sửa). Người giao việc: CEO (xưng "anh",
-FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 30/10, `main` ở `14509e9`.
+FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 30/10, `main` ở `0503a00`.
 
 ## 1. Đã merge vào `main` trong phiên
 
@@ -13,12 +13,15 @@ FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 30/10, `m
 | #411 | Focus ban đầu của Gán lại/Chuyển: hộp thoại khi đang tải, rồi ô "Tìm người" hoặc "Người nhận", không "Hủy"     | Sau rà soát a11y 29/10         |
 | #412 | Handoff này (bản 29/10); quy ước "tất cả job CI xanh" và "chỉ merge khi có Sẵn sàng merge kèm HEAD"            | Tài liệu                       |
 | #413 | Focus ban đầu của Người trong workspace, Người của team, Kênh của team: hộp thoại khi đang tải, rồi ô chọn đầu | Cùng cách #411, đo trước 29/10 |
+| #416 | K5: câu `channel_unavailable` (U57, bản (a)) và trang bảo trì bỏ vế sai (U58); handoff cập nhật tới 30/10      | `main` `063202c`               |
+| #417 | K4: A1 của `permissions-sync.test.ts` so `canReply` theo cả trạng thái, đọc `ANSWERABLE` của API (U59)         | `main` `6cb9e7a`; chỉ test     |
 
 BE trong phiên:
 
 - #406 Docker image (thêm job CI `docker`); #409 khung Terraform (thêm job CI `terraform`).
 - #407, #410 docs business (rủi ro Đợt 1).
 - **#414 (30/10): trả lời U57, U58, U59.** `ANSWERABLE` dời sang `permissions.ts` và export. Kích hoạt K4, K5 (mục 6).
+- #415 docs reviews (tóm tắt phiên K); #418 tài liệu gửi lead BE xác nhận U41, U44, U45, U46, U47, U51.
 
 Không còn PR FE mở. Nhánh làm việc trùng `main`.
 
@@ -93,18 +96,26 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 | U59 | **Xong (#414):** `ANSWERABLE` (`HUMAN_ACTIVE`, `PENDING_CUSTOMER`) export từ `apps/api/src/modules/conversations/permissions.ts`.                                                                                                                                               |
 | U60 | Mở, đã gửi BE (#405): luật ticket ở file export được. `apps/api/src/modules/tickets/` mới có `schemas` và `openapi`.                                                                                                                                                            |
 
-## 6. Việc đã kích hoạt (CEO duyệt 30/10)
+## 6. K4, K5: đã xong (30/10)
 
-- **K5 (PR 2, làm trước):** trang bảo trì bỏ vế "Tin khách gửi tới vẫn được lưu" (U58); câu `channel_unavailable` theo U57,
-  **CEO chọn bản (a)**: "Kênh đang lỗi. Tin đã được lưu, hệ thống sẽ thử gửi lại. Nếu không gửi được, tin sẽ chuyển sang trạng
-  thái thất bại." (phải nói rõ hệ quả cuối; bản ngắn chỉ dùng khi chỗ hiển thị quá chật và có đường xem giải thích đầy đủ).
-  Handoff này đi cùng PR.
-- **K4 (PR 1, làm sau):** A1 của `permissions-sync.test.ts` import `ANSWERABLE` từ `permissions.ts`, so `canReply` với
-  `mayAct(…, 'send_message') && ANSWERABLE.has(state)` trên mọi vai trò × trạng thái × người giữ; khoảng 20–30 dòng, có đột biến.
-  `permissions.ts` đã có trong `inputs` của turbo.
-- Mỗi PR: nhánh mới từ `origin/main` mới nhất, push thường, chỉ merge khi CI xanh hết và có "Sẵn sàng merge" kèm HEAD.
+- **K5** (#416, `main` `063202c`): câu `channel_unavailable` theo U57, **CEO chọn bản (a)**: "Kênh đang lỗi. Tin đã được lưu,
+  hệ thống sẽ thử gửi lại. Nếu không gửi được, tin sẽ chuyển sang trạng thái thất bại." (phải nói rõ hệ quả cuối; bản ngắn chỉ
+  dùng khi chỗ hiển thị quá chật và có đường xem giải thích đầy đủ). Trang bảo trì bỏ vế "Tin khách gửi tới vẫn được lưu" (U58).
+- **K4** (#417, `main` `6cb9e7a`): A1 của `permissions-sync.test.ts` import `ANSWERABLE` từ `permissions.ts`, so `canReply` với
+  `mayAct(…, 'send_message') && ANSWERABLE.has(state)` trên mọi vai trò × trạng thái × người giữ. Đột biến: bỏ `PENDING_CUSTOMER`
+  khỏi `ANSWERABLE` → đỏ.
+- Cả hai: CEO kiểm `git diff <HEAD PR> <commit trên main>` rỗng.
 
 ## 7. Việc chờ, có điều kiện kích hoạt
+
+**FE hiện không có việc làm được ngay; mọi việc còn lại chờ BE:**
+
+- **K1–K3:** chờ S4/S5 (ticket thật, danh sách người nhận cấp workspace, tổng quan).
+- **Test đồng bộ ticket:** chờ K1 **và** U60.
+- **K5-b:** chờ BE làm outbound worker 8b hoặc chế độ bảo trì (Brief dòng 859).
+- **K6:** chờ S4 nới phạm vi đọc hội thoại (A3 của `permissions-sync.test.ts` đỏ).
+
+Chi tiết từng việc:
 
 | Mã           | Điều kiện (kiểm được trên repo)                             | Việc FE                                                                                                                                                                                                                                                                                 |
 | ------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
