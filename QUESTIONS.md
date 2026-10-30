@@ -274,3 +274,23 @@ Brief Backend thắng Brief UI về API, FSM, quyền. Phần 9 của Brief UI d
 | U64 | Hợp đồng Audit log cho #28 (`/settings/audit`; Brief P9 dòng 467: `GET /v1/audit-logs` lọc ngày, người, hành động; `POST /v1/audit-logs/export` chạy nền) (FE, 30/10/2026) | **Mở, gửi Backend (Gói 1); CEO duyệt gửi 30/10.** Chưa có trong `planned.json` lẫn `openapi.json`. Xin đưa vào `planned.json` (N167), kèm cách FE biết bản xuất đã xong (job nền). Ai trả lời: Backend. |
 | U65 | Hợp đồng Platform cho #30 (`/platform`, 3 tab; Brief P9 dòng 447, 473: `GET /v1/platform/tenants/health`, `POST /v1/platform/access-sessions` bắt buộc `reason`, `GET /v1/channel-policies`, `PUT /v1/channel-policies/{id}`) (FE, 30/10/2026) | **Mở, gửi Backend (Gói 1); CEO duyệt gửi 30/10.** Chưa có trong `planned.json` lẫn `openapi.json`. Xin đưa vào `planned.json` (N167). Ai trả lời: Backend. |
 | U66 | Quyền đọc phiên bản prompt (E20, #26, `GET /v1/ai/prompts`) (FE, 30/10/2026) | **Mở, gửi Backend + CEO.** Phụ lục B chỉ có dòng 41 "Bật/tắt AI nội bộ, ngân sách AI" (Owner, Admin), không có dòng đọc phiên bản prompt. Hợp đồng planned trả 403 cho mọi vai trò khác Owner/Admin. FE **tạm** cho Owner/Admin (menu `/settings/ai` cũng chỉ Owner/Admin) tới khi có trả lời; không tự chốt. Hỏi: có thêm dòng vào Phụ lục B không (ví dụ Manager chỉ xem)? Ai trả lời: CEO (Phụ lục B) + Backend. |
+
+## Chờ lead BE
+
+Mọi việc đang chờ lead BE (đối chiếu file trên `main`, 30/10/2026). Mỗi dòng: chờ gì, chặn việc gì. Backend đã đề xuất nhưng không tự quyết
+và không xác nhận thay. Lead BE trả lời thì ghi vào dòng của câu đó ở bảng trên và xóa dòng ở đây.
+
+| Mục | Chờ lead BE | Chặn việc gì | Nguồn |
+|---|---|---|---|
+| Mốc 30/10 | Xác nhận spec M8 "Bản nháp 3" là bản cuối, hoặc chỉ rõ còn gì phải sửa | Đóng mốc 30/10. Anh báo CEO nếu 31/10 02:00 UTC chưa có phản hồi | `docs/business/risk-ownership.md` rủi ro 3 |
+| U40 | Chọn phương án A/B/C cho mốc cảnh báo SLA 15/30 phút; đơn vị và giới hạn (Backend nghiêng A, khớp Brief P14) | Đồng hồ SLA và cảnh báo (C8, S4); lọc, sắp theo SLA trên Hộp thư | `docs/business/q7-q8-q9-survey.md` mục 6 |
+| U41 | A (lưu hạn là mốc thời gian) hay B (lưu số giây đã chạy); nếu B: đổi giờ làm việc có tính lại hạn cũ không | Cách lưu SLA (C8, C10, S4); câu "giữ hạn cũ" trong spec-M8:101 | `docs/ui/xac-nhan-lead-be-u41-u51.md` |
+| U44 | Ngày lễ: (a) bỏ "sửa được" hay (b) thêm `PATCH …/holidays/{hid}`; khoảng ngày trùng: gộp hay 409 | Endpoint ngày lễ, giờ làm việc (C10, S4) | như trên |
+| U45 | A (giới hạn mặc định theo workspace của hội thoại, code hiện tại) hay B (nhỏ nhất trong các workspace của người đó); người ở 2 team có lượt ở cả hai vòng xoay | Routing, vòng xoay, giới hạn tải (C9, S4) | như trên |
+| U46 | Các con số 2 lựa chọn / 50 trường / 100 ký tự; bỏ một lựa chọn đang có khách dùng | Trường tùy chỉnh (J1, S4) | như trên |
+| U47 | Tag trên dòng Hộp thư là tag của khách hay của hội thoại; `PUT …/tags` giữ tag ẩn khách đang mang | Tag và lọc theo tag (J4, S4); phần tag còn lại của U30 | như trên |
+| U51 | Giữ cho trùng tên team (code hiện tại, N160) hay chặn (cần migration + đổi API) | Không chặn code; chỉ chốt hành vi đã làm | như trên |
+| U57 | `POST …/messages` có bao giờ trả 502 `channel_unavailable` không (gửi là bất đồng bộ) | **Blocker S3:** outbound worker 8b (Zalo gửi ra, B1/B2); Backend không code outbound trước khi chốt | dòng U57 ở bảng trên; `docs/reviews/backend-progress-20261030.md` mục 3 |
+| U58 | Webhook `/v1/hooks/*` có nằm ngoài cổng bảo trì không | Chế độ bảo trì (Brief dòng 859); câu trang bảo trì của FE | dòng U58 ở bảng trên |
+| Rủi ro | Xác nhận đã đọc và đồng ý bảng chủ trì rủi ro | Không chặn code | `docs/business/risk-ownership.md` mục "Xác nhận" |
+| Staging | Ước tính số ngày dựng staging, cùng DevOps | Kế hoạch S1; chỉ sau Q2 | `docs/business/staging-options.md` |

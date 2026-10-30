@@ -43,6 +43,14 @@ Thêm hai chỗ cách đo làm số **thấp hơn thật** (không phải thiế
 
 ## 3. File dưới 70 % (gộp unit + integration)
 
+**19 = 4 + 9 + 6:**
+
+| Nhóm | Số file | File |
+|---|---|---|
+| Do cách đo (code có chạy, công cụ không tính) | 4 | `member-role-store.ts`, `auth-db.ts`, `create-workspace.ts`, `create-org.ts` |
+| Thấp cố ý | 9 | 8 file `schema/*.ts`, `testing/totp.ts` |
+| Thiếu thật (đều nhỏ, rủi ro thấp) | 6 | `customer-store.ts`, `quick-reply-store.ts`, `invite-mailer.ts`, `teams.schemas.ts`, `audit-log.ts`, `smtp-sender.ts` |
+
 | File | Dòng / nhánh | Đánh giá |
 |---|---|---|
 | `packages/db/src/member-role-store.ts` | 0 / 0 | **Do cách đo.** `lockActiveOwners` được api gọi qua `dist`; `apps/api/src/members.integration.test.ts` có ca "hai Owner hạ vai trò của nhau cùng lúc" |
