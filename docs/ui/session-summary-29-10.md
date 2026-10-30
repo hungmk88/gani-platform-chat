@@ -47,6 +47,9 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   `cancel-in-progress` hủy thì tìm run kế tiếp chứa commit đó.
 - **PR mở ở trạng thái draft** (CEO 30/10, sau #438 và #441 merge khi chưa có "Sẵn sàng merge"): chỉ chuyển sang ready khi đã
   kiểm đủ điều kiện và gửi "Sẵn sàng merge"; GitHub chặn merge PR draft. Đề xuất branch protection trên `main`: U71.
+- **Mốc thời gian (CEO 31/10):** mọi mốc thời gian ghi vào handoff phải lấy từ dòng thời gian GitHub (`issues/*/timeline`,
+  trường `created_at`), không lấy từ giờ thông báo về phiên; chênh lệch thường 2–6 giây. Chỉ ghi dữ kiện (tài khoản nào),
+  không suy diễn người làm.
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
