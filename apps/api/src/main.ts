@@ -1,11 +1,19 @@
 import 'reflect-metadata';
 
+import { describeError, installCrashHandlers } from '@gani/domain';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module.js';
 import { setupApp } from './app-setup.js';
+import { RedactingLogger } from './redacting-logger.js';
+
+// No PII in a log (CLAUDE.md rule 5): a crash prints `describeError`, never the error object, and every Logger writes through
+// RedactingLogger, the static methods and Better Auth's included.
+installCrashHandlers();
+const logger = new RedactingLogger();
+Logger.overrideLogger(logger);
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '127.0.0.1';
@@ -21,7 +29,10 @@ function readPort(raw: string | undefined): number {
 
 async function bootstrap(): Promise<void> {
   // bodyParser is off on purpose: setupApp mounts Better Auth first and then the JSON parser.
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+    logger,
+  });
   setupApp(app);
   app.enableShutdownHooks();
   const port = readPort(process.env['PORT']);
@@ -31,6 +42,6 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error: unknown) => {
-  new Logger('bootstrap').error(error instanceof Error ? error.message : String(error));
+  new Logger('bootstrap').error(describeError(error));
   process.exit(1);
 });
