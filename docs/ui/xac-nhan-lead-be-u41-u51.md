@@ -34,6 +34,8 @@ Không câu nào chặn S1 (16/11); tất cả phải chốt trước S4 (28/12)
     dừng đồng hồ: hạn của phần còn lại thực chất được tính lại.
   - "Giữ hạn cũ" chỉ đúng hoàn toàn với A. Backend chưa nghiêng bên nào: đây là thiết kế lưu SLA.
 - **Chờ lead BE:** chọn A hay B; nếu B, câu "giữ hạn cũ" trong spec-M8:101 phải sửa cho khớp.
+- **Câu đi kèm, không tách rời:** nếu chọn B (`sla_elapsed_seconds`), phải trả lời luôn: khi đổi giờ làm việc, các hạn đã tính trước
+  đó có được tính lại không? B mới có khả năng tính lại, A thì không.
 
 ## U44: ngày lễ và nghỉ trưa
 
@@ -41,8 +43,10 @@ Không câu nào chặn S1 (16/11); tất cả phải chốt trước S4 (28/12)
   từng ngày** trong lịch tuần.
 - **Bằng chứng:** chưa có code. `docs/ui/endpoint-M8.md:56–58`: `GET/PUT …/business-hours` (lịch tuần, nghỉ trưa), `GET/POST …/holidays`,
   `DELETE …/holidays/{hid}`, hỗ trợ khoảng ngày. `docs/ui/spec-M8.md:111`: lịch tuần theo ngày, có nghỉ trưa.
-- **Lệch cần chốt:** endpoint-M8 **không có** đường sửa ngày lễ (không `PATCH`), trong khi đề xuất nói "sửa được".
-- **Chờ lead BE:** thêm `PATCH …/holidays/{hid}` hay "sửa" = xóa rồi thêm; trùng khoảng thì gộp hay từ chối (409).
+- **Lệch cần chốt:** đề xuất 26/10 nói ngày lễ "sửa được", nhưng `docs/ui/endpoint-M8.md:58` **không có** `PATCH`.
+- **Chờ lead BE:**
+  - Chọn (a) bỏ "sửa được" khỏi đề xuất, hay (b) thêm `PATCH …/holidays/{hid}` vào endpoint? Backend không tự quyết.
+  - Khoảng ngày trùng nhau: gộp hay từ chối (409)?
 
 ## U47: phạm vi và "Ẩn" của tag
 
@@ -73,8 +77,8 @@ Không câu nào chặn S1 (16/11); tất cả phải chốt trước S4 (28/12)
 | Câu | Lead BE: đồng ý / bác / sửa | Ghi chú | Ngày |
 |---|---|---|---|
 | U45 | | A hay B | |
-| U41 | | A hay B | |
-| U44 | | PATCH ngày lễ? gộp hay 409? | |
+| U41 | | A hay B; nếu B: đổi giờ làm việc có tính lại hạn cũ không | |
+| U44 | | (a) bỏ "sửa được" hay (b) thêm PATCH; gộp hay 409 | |
 | U47 | | tag khách hay tag hội thoại trên Hộp thư | |
 | U46 | | 2 / 50 / 100 | |
 | U51 | | | |
