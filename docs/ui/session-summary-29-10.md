@@ -155,6 +155,11 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   file của PR rỗng. **Có thể chính lệnh sửa mô tả PR của FE (`update_pull_request`, chỉ truyền `body`) đã đưa PR khỏi draft**:
   cùng thời điểm, cùng tài khoản `hungmk88`, không phân biệt được. Từ đây FE sửa mô tả PR draft luôn kèm `draft: true` và đọc
   lại trạng thái ngay sau. Draft chặn được merge sớm: 0/2 (#447, #450).
+  **Kiểm auto-merge (CEO 31/10, API công khai vì `gh` không đăng nhập được):** repo `allow_auto_merge: false`; `auto_merge`
+  của #450 là `null`; dòng thời gian không có `auto_merge_enabled` → **auto-merge không phải nguyên nhân**. Dòng thời gian ghi
+  `ready_for_review` 17:27:06 và `merged` 17:27:12, cùng `hungmk88`, `app=none` (như #447, rời draft 9 giây trước merge mà
+  FE không gọi lệnh nào; như #449 FE tự chuyển qua công cụ): **không xác định được ai đưa #450 khỏi draft**. Giữ biện pháp
+  `draft: true` mỗi lần sửa mô tả PR draft.
 - **#447 (B1) merge khi chưa đủ điều kiện (30/10, 16:36 UTC), ca thử đầu tiên của PR draft: draft KHÔNG chặn được.**
   PR được chuyển ready lúc 16:35:58 và merge lúc 16:36:07 bởi người giữ quyền repo, khi FE **chưa gửi "Sẵn sàng merge"**.
   CI trên HEAD `6cf3dbc` đã xong 9/9 success (kể cả `coverage`, `docker images` chạy thật) lúc 16:35:03; diff giữa
