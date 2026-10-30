@@ -78,6 +78,20 @@ infra/
     - mọi job khác vẫn xanh.
   - **Lý do ngoại lệ an toàn:** nhờ fail-safe ở trên, docker chỉ bị bỏ khi đã xác định chắc PR không đụng thứ image đọc. Mọi trường hợp không chắc đều làm docker chạy.
 
+### Coverage (job `coverage`, `infra/ci/coverage-gate.mjs` + test cùng thư mục; anh duyệt 30/10)
+- **Ngưỡng từng file** của backend (`apps/api`, `apps/worker`, `packages/{db,domain,conversations,channels,email}`): dòng ≥ 80 %, nhánh ≥ 70 %, tính trên unit **gộp** integration.
+- **Cách gộp:** theo vị trí trong mã nguồn, không theo số thứ tự câu lệnh (như bản rà 30/10, #423). Script chỉ dùng Node, không cần cài workspace.
+- **Đổi config có chủ đích, không phải nhầm:**
+  - `packages/config/vitest.base.mjs` thêm reporter `json` để job `coverage` đọc được `coverage/coverage-final.json` của unit.
+  - Ba file `vitest.integration.config.ts` (db, api, worker) bật coverage, **chỉ ghi json** vào `coverage-integration/`, **không đặt ngưỡng**: số đo cho cổng, không phải cổng riêng.
+  - Cổng 80 % **cả gói** của unit (`pnpm test`) **giữ nguyên**.
+- **Đường đi:** `verify`, `db`, `queue` tải lên artifact `coverage-*`; job `coverage` (`needs` cả ba) tải về, chạy test của script rồi chạy cổng.
+- **Danh sách trong script:**
+  - `EXEMPT`: thấp cố ý, mỗi file một lý do (callback `pgTable`, công cụ test, tiến trình con).
+  - `DEBT`: thiếu test thật, phải bù trước S4 (28/12); issue umbrella #433. Cổng **đỏ khi file trong nợ đã đạt ngưỡng** (phải xóa khỏi danh sách), nên danh sách chỉ ngắn lại.
+  - **Thêm file vào `DEBT` phải có comment trong PR giải thích vì sao**, không thêm im lặng.
+  - File trong danh sách mà không còn được đo (đổi tên, xóa) cũng làm cổng đỏ.
+
 ### Triển khai & migration
 - **Rolling update + feature flag**, không downtime; tính năng mới mặc định **tắt** ở production (P5, Phụ lục §24).
 - Migration **forward-only**; rollback bằng **migration bù**. Thay đổi phá vỡ theo mẫu expand → migrate → contract qua ≥ 2 release.

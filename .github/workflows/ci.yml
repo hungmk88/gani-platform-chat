@@ -45,6 +45,15 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # The unit coverage of every package, for the per-file gate of the job `coverage` (infra/CLAUDE.md "Coverage").
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-unit
+          path: |
+            apps/*/coverage/coverage-final.json
+            packages/*/coverage/coverage-final.json
+          if-no-files-found: error
+          retention-days: 7
       - run: pnpm format:check
       - run: pnpm --filter @gani/db lint:migrations
       # The types of the admin are generated from the OpenAPI of the API (served and planned, N167): a change to one without the
@@ -186,6 +195,15 @@ jobs:
           pnpm --filter @gani/db test:integration
           # Better Auth on the real adapter as auth_role (N79); reuses this job's PostgreSQL. Split it into its own job if it adds > 30 s.
           pnpm --filter @gani/api test:integration
+      # The integration coverage of db and api (json only, no threshold), for the job `coverage`.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-integration-db
+          path: |
+            packages/db/coverage-integration/coverage-final.json
+            apps/api/coverage-integration/coverage-final.json
+          if-no-files-found: error
+          retention-days: 7
       - name: PostgreSQL log
         if: failure()
         run: docker logs pg 2>&1 | tail -n 60
@@ -261,11 +279,40 @@ jobs:
           export DATABASE_URL_MIGRATION="postgres://migration_role:${MIGRATION_ROLE_PASSWORD}@${base}"
           pnpm --filter @gani/db migrate
           pnpm --filter @gani/worker test:integration
+      # The integration coverage of the worker, for the job `coverage`.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-integration-worker
+          path: apps/worker/coverage-integration/coverage-final.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Logs of the servers
         if: failure()
         run: |
           docker logs pg 2>&1 | tail -n 60
           docker logs "$VALKEY_CONTAINER" 2>&1 | tail -n 60
+
+  # Coverage per file, unit and integration merged (infra/CLAUDE.md "Coverage"): every file of the backend at lines >= 80 % and
+  # branches >= 70 %, except the files EXEMPT or in DEBT in infra/ci/coverage-gate.mjs. The 80 % per package of `pnpm test` (unit) stays
+  # as it is. Runs once the three jobs that measure have passed; their reports come as artifacts. Node only: nothing to install.
+  coverage:
+    name: coverage (per file, unit + integration)
+    needs: [verify, db, queue]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: coverage-*
+          path: coverage-reports
+      - run: node --test infra/ci/coverage-gate.test.mjs
+      - run: node infra/ci/coverage-gate.mjs coverage-reports
 
   # The images of infra/docker (infra/CLAUDE.md "Docker"): gani-api, gani-worker, gani-migrate, gani-admin, linux/amd64, tagged with
   # the commit (never `latest`) and not pushed (no registry before Q2). infra/docker/test-images.sh then checks them against a real
