@@ -146,6 +146,7 @@ describe('agent_settings_app: A writes no setting of B', () => {
       [B],
     );
 
+  // 42501 by WITH CHECK; without it, 23505 by UNIQUE (org_id, user_id) on B's seed setting (fixtures.ts), or a new row if none.
   it('writes no setting for B: 42501 (WITH CHECK)', async () => {
     const sql = 'INSERT INTO agent_settings (id, org_id, user_id) VALUES ($1, $2, $3)';
     const insert = asApp(app, A, [], () => app.query(sql, [uuidv7(), B, users.get(B)]));
