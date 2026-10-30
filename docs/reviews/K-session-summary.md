@@ -2,7 +2,7 @@
 
 Session `session_01BjcEWmGXkhq6DYgXdQ5YyF` · Backend (Gói 1) · từ **26/10/2026 18:11 UTC** tới **30/10/2026 ~08:40 UTC**.
 Session trước: `docs/reviews/J-session-summary.md` (mục 1, 4 vẫn đúng, trừ chỗ file này sửa). Người giao việc: anh (xưng "anh",
-Backend xưng "em", trả lời tiếng Việt). `main` lúc chốt sổ: `14509e9`.
+Backend xưng "em", trả lời tiếng Việt). `main` tại thời điểm chốt session K: `14509e9`; sau đó #415 (`32ded30`) đã merge.
 
 Đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/api/CLAUDE.md`, `packages/db/CLAUDE.md`, `infra/CLAUDE.md` → file này → `QUESTIONS.md`
 (N168–N172, U52–U60) → `docs/business/risk-ownership.md`.
