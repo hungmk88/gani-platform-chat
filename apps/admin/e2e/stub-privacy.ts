@@ -1,10 +1,15 @@
 // #23 Dữ liệu khách for the e2e stub API only, as planned (docs/openapi/planned.json, N167), Owner and Admin: `GET
 // /v1/privacy-requests` in two pages (the second repeats the last row of the first, as a request recorded between the two would
 // make it); `POST` records a request in the session's copy (a customer of CUSTOMERS, 404 otherwise; 409 when one of the same kind
-// waits). Never deployed.
+// waits); `POST …/{id}/execute` carries out a pending `erase` in that copy (404 unknown, 409 `request_not_pending` otherwise).
+// Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import type { PrivacyRequest, PrivacyRequestPage as PrivacyPage } from '../src/privacy/privacy';
+import type {
+  PrivacyErasure,
+  PrivacyRequest,
+  PrivacyRequestPage as PrivacyPage,
+} from '../src/privacy/privacy';
 import { CUSTOMERS } from './stub-customers';
 import type { Edge } from './stub-members';
 
@@ -38,7 +43,17 @@ export const REQUEST_PAGES: readonly [PrivacyPage, PrivacyPage] = [
   { data: REQUESTS.slice(1), nextCursor: null },
 ];
 
-const copies = new Map<string, PrivacyRequest[]>(); // session → the requests it recorded
+/** The figures the stub says it erased, for the tests to find on the screen. */
+export const ERASED: PrivacyErasure['erased'] = {
+  profile: true,
+  identities: 1,
+  messagesRedacted: 37,
+};
+
+const copies = new Map<string, { added: PrivacyRequest[]; done: Set<string> }>(); // session → recorded, carried out
+
+const withState = (r: PrivacyRequest, done: Set<string>): PrivacyRequest =>
+  done.has(r.id) ? { ...r, status: 'done', executedAt: '2026-10-30T09:00:00.000Z' } : r;
 
 /** Answers the routes of #23 and says true, or says false for any other route. `session` is null when signed out. */
 export async function routePrivacy(
@@ -48,17 +63,28 @@ export async function routePrivacy(
   session: { readonly sid: string; readonly role: string | undefined } | null,
   edge: Edge,
 ): Promise<boolean> {
-  if (path !== '/v1/privacy-requests' || (req.method !== 'GET' && req.method !== 'POST'))
-    return false;
+  const executed = /^\/v1\/privacy-requests\/([^/]+)\/execute$/.exec(path)?.[1];
+  if (executed ? req.method !== 'POST' : path !== '/v1/privacy-requests') return false;
+  if (req.method !== 'GET' && req.method !== 'POST') return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (session.role !== 'owner' && session.role !== 'admin')
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
-  const added = copies.get(session.sid) ?? [];
-  copies.set(session.sid, added);
+  const mine = copies.get(session.sid) ?? { added: [], done: new Set<string>() };
+  copies.set(session.sid, mine);
+  const { added, done } = mine;
+  if (executed) {
+    const r = [...added, ...REQUESTS].find((x) => x.id === executed);
+    if (!r) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    if (r.kind !== 'erase' || r.status !== 'pending' || done.has(r.id))
+      return (edge.problem(res, 409, 'request_not_pending', 'trace-e2e-409'), true);
+    done.add(r.id);
+    return (edge.send(res, 200, { request: withState(r, done), erased: ERASED }), true);
+  }
   if (req.method === 'GET') {
     const cursor = new URL(req.url ?? '/', 'http://stub').searchParams.get('cursor');
     const page = REQUEST_PAGES[cursor === 'trang-2' ? 1 : 0];
-    return (edge.send(res, 200, { ...page, data: [...(cursor ? [] : added), ...page.data] }), true);
+    const data = [...(cursor ? [] : added), ...page.data].map((r) => withState(r, done));
+    return (edge.send(res, 200, { ...page, data }), true);
   }
   const { customerId, kind, reason } = await edge.json(req);
   const customer = CUSTOMERS.find((c) => c.id === customerId);
@@ -66,7 +92,8 @@ export async function routePrivacy(
     return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
   if (!customer) return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
   const waiting = [...added, ...REQUESTS].some(
-    (r) => r.customer.id === customerId && r.kind === kind && r.status === 'pending',
+    (r) =>
+      r.customer.id === customerId && r.kind === kind && r.status === 'pending' && !done.has(r.id),
   );
   if (waiting) return (edge.problem(res, 409, 'duplicate_resource', 'trace-e2e-409'), true);
   const made: PrivacyRequest = {
