@@ -28,7 +28,8 @@ const CUSTOMER_GONE = 'Khách này không còn thấy được. Đã bỏ chọn
 /**
  * "Ghi nhận yêu cầu" (#23 PR B, `POST /v1/privacy-requests`, planned S5): the customer, what they ask (`export` or `erase`) and the
  * reason (1–500, kept as plain text). Nothing is carried out here: an `erase` is done later with its own dialog. Waits for the
- * server; one Idempotency-Key for one body (sent again unchanged it keeps its key). A failure never clears the form.
+ * server; one Idempotency-Key for one body (sent again unchanged it keeps its key). A failure never clears the form,
+ * and nothing is sent again by itself: each request is a click.
  */
 export function RequestDialog({ onClose }: { onClose: () => void }) {
   const scope = useScope();
@@ -45,7 +46,12 @@ export function RequestDialog({ onClose }: { onClose: () => void }) {
   >({
     mutationFn: ({ body, key }) =>
       unwrap(
-        api<PrivacyRequest>('/v1/privacy-requests', { method: 'POST', body, idempotencyKey: key }),
+        api<PrivacyRequest>('/v1/privacy-requests', {
+          method: 'POST',
+          body,
+          idempotencyKey: key,
+          retry: false, // the person sends again, never the client by itself (CEO 31/10, as the erase of B2)
+        }),
       ),
     onSuccess: () => {
       last.current = null;
