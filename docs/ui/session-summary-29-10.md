@@ -150,6 +150,14 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **#447 (B1) merge khi chưa đủ điều kiện (30/10, 16:36 UTC), ca thử đầu tiên của PR draft: draft KHÔNG chặn được.**
+  PR được chuyển ready lúc 16:35:58 và merge lúc 16:36:07 bởi người giữ quyền repo, khi FE **chưa gửi "Sẵn sàng merge"**.
+  CI trên HEAD `6cf3dbc` đã xong 9/9 success (kể cả `coverage`, `docker images` chạy thật) lúc 16:35:03; diff giữa
+  `6cf3dbc` và `e48ce4a` trên 13 file của PR rỗng. **Thiếu so với điều kiện CEO giao cho B1 (cùng ngày):** `main` có B1 với cách thử lại cũ
+  của client (tự thử lại mọi lỗi `wait`, kể cả 4xx 429/409; không hiện "Đang thử lại…", không khóa form; API giả chưa chống
+  trùng theo khóa). Bản sửa đã làm và kiểm ở máy (commit `056c3e4`, chỉ ở máy FE, chưa push): `api(…, { retry: false })`,
+  thử lại một lần chỉ mạng/502/503/504 có hiển thị và khóa, API giả chống trùng, E2E "đúng 1 dòng mới". **Chờ CEO quyết**
+  cách đưa lên; FE không tự xử lý. Số lần draft chặn được merge sớm (U71): 0/1.
 - **U68 (iii) đã xóa** ở PR docs sau #437 (vế về `limit`: hợp đồng đã ghi mặc định 50, trần 100 cho cả hai đường); comment
   `apps/admin/src/security/security.ts` thành "50 = mặc định của hợp đồng (trần 100, cả hai đường)". Phiên sau kiểm trên
   `main`: dòng U68 của `QUESTIONS.md` không còn "(iii)", `security.ts` không còn "U68 (iii)". Còn thấy → PR đó chưa merge, việc
