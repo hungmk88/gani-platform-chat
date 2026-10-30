@@ -2,12 +2,14 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { asApp } from './as-app.js';
 import { sqlState, url } from './db.js';
 import { cleanupTenant, flagKeyOf, seedTenant } from './fixtures.js';
 
 // PR 4c (N74): the constraints of the three new tables and the access of app_role and support_role to the global flags.
 // Constraints are checked as migration_role (BYPASSRLS, constraints still apply); isolation of the two RLS tables comes from
-// rls-all-tables.spec.ts and support-access.spec.ts, which are generated from the catalog.
+// rls-all-tables.spec.ts and support-access.spec.ts, which are generated from the catalog, and for a write of agent_settings
+// into another organisation from the cases at the end of this file.
 const [A, B] = [uuidv7(), uuidv7()];
 const users = new Map<string, string>();
 let admin: pg.Client;
@@ -133,5 +135,36 @@ describe('agent_settings', () => {
 
   it('rejects a user who is not a member of that organisation', async () => {
     expect(await sqlState(setting(A, users.get(B) as string, 5))).toBe('23503');
+  });
+});
+
+// agent_settings_app in SQL of A's own, as app_role; the read across organisations is case 2 of rls-all-tables.spec.ts.
+describe('agent_settings_app: A writes no setting of B', () => {
+  const theirs = () =>
+    admin.query(
+      'SELECT id, max_concurrent_conversations AS max FROM agent_settings WHERE org_id = $1',
+      [B],
+    );
+
+  // 42501 by WITH CHECK; without it, 23505 by UNIQUE (org_id, user_id) on B's seed setting (fixtures.ts), or a new row if none.
+  it('writes no setting for B: 42501 (WITH CHECK)', async () => {
+    const sql = 'INSERT INTO agent_settings (id, org_id, user_id) VALUES ($1, $2, $3)';
+    const insert = asApp(app, A, [], () => app.query(sql, [uuidv7(), B, users.get(B)]));
+    expect(await sqlState(insert)).toBe('42501');
+  });
+
+  it('changes no setting of B: 0 rows (USING), committed, and B keeps its limit', async () => {
+    const before = await theirs();
+    expect(before.rows, 'B must hold its seed setting, or 0 rows proves nothing').toHaveLength(1);
+    const sql =
+      'UPDATE agent_settings SET max_concurrent_conversations = max_concurrent_conversations + 1';
+    await app.query('BEGIN');
+    // COMMIT ends a failed transaction too (as a rollback), so the client is free for afterAll either way.
+    const update = app
+      .query("SELECT set_config('app.current_org', $1, true)", [A])
+      .then(() => app.query(`${sql} WHERE org_id = $1`, [B]))
+      .finally(() => app.query('COMMIT'));
+    expect((await update).rowCount).toBe(0);
+    expect((await theirs()).rows).toEqual(before.rows);
   });
 });
