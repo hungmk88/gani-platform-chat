@@ -27,14 +27,6 @@ export function alertsPath(cursor: string | null): string {
   return `/v1/security-alerts?${p.toString()}`;
 }
 
-/** The rows of the pages read, each once: a record put at the head between two pages shifts the next page onto rows seen. */
-export function uniqueRows<T extends { readonly id: string }>(
-  pages: readonly { readonly data: readonly T[] }[],
-): T[] {
-  const seen = new Set<string>();
-  return pages.flatMap((p) => p.data).filter((r) => !seen.has(r.id) && Boolean(seen.add(r.id)));
-}
-
 const TIME = new Intl.DateTimeFormat('vi-VN', {
   hour: '2-digit',
   minute: '2-digit',
