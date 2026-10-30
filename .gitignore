@@ -21,6 +21,7 @@ build/
 .env.local
 .env.*.local
 coverage/
+coverage-integration/
 .nyc_output/
 yarn.lock
 package-lock.json
