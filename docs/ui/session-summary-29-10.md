@@ -77,8 +77,13 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       duyệt thực hiện." Đây là biện pháp duy nhất còn lại, vì required check không chặn được merge khi CI đã xanh.
   - **"PR có thao tác ghi"** = PR gửi POST/PATCH/DELETE lên API.
   - Approval bị bỏ: không khả thi khi mọi PR do một tài khoản `hungmk88` mở (N36).
+  - **Áp dụng cho cả FE và BE** (CEO 31/10; lý do: #448 của BE cũng merge trước khi BE xác nhận). Tầng 3 của BE do BE lead
+    định nghĩa trong tài liệu BE; FE không viết ví dụ BE.
   - `CLAUDE.md` gốc, mục GIT WORKFLOW, đã sửa theo luật này (CEO 31/10). Chỉ sửa mục đó.
-  - PR docs gộp các luật này (sau khi đủ 3 điều kiện) áp dụng luật tầng 1.
+  - PR docs gộp các luật này (sau khi đủ 3 điều kiện) áp dụng luật tầng 1, theo thứ tự:
+    1. comment vào PR tag BE lead, **trước khi merge**;
+    2. DEV tự chuyển ready rồi merge khi required check xanh;
+    3. **sau merge**, gửi thông báo cho BE lead.
 - **"Ready" ≠ "xong" (CEO 31/10, nguyên văn):** "Ready" ≠ "xong". Chuyển PR khỏi draft chỉ có nghĩa "không còn là draft" — có
   thể do lỗi công cụ, do sửa mô tả, do bất kỳ ai. Tín hiệu duy nhất để merge một PR tầng 3 là tin "Sẵn sàng merge" từ FE, kèm
   đủ 3 thứ: HEAD đầy đủ, danh sách job theo tên, `mergeable_state = clean` khi check đã kết thúc. Không có tin đó → không merge,

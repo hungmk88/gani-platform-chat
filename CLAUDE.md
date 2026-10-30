@@ -23,18 +23,22 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - KHÔNG `push --force` lên `main`.
 - KHÔNG amend commit đã push.
 - Sau khi push branch, báo URL cho anh.
-- **Ai merge: phân tầng (CEO 31/10).** Mọi PR mở ở **draft**; draft không thay required check, phải có cả hai.
-  - **Tầng 1** (docs, chỉ đọc, test, fix nhỏ) và **tầng 2** (thao tác ghi thông thường): DEV tự kiểm **đủ mọi job** của
-    `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD. Rồi DEV tự chuyển ready ngay trước khi merge,
-    trong cùng một lượt, và tự merge. Sau đó báo: HEAD, tên từng job, thời điểm merge, diff giữa HEAD và commit squash.
-  - **Tầng 3** (thao tác ghi không hoàn tác: xóa dữ liệu, hạ mức tự chủ): CEO merge.
-    - Trước đó DEV gửi "Sẵn sàng merge" kèm HEAD đầy đủ, job theo tên, `mergeable_state = clean` khi check đã kết thúc.
-    - CEO comment phê duyệt trên PR rồi mới bấm merge.
-  - **"Ready" ≠ "xong":** PR rời draft không phải tín hiệu merge.
-  - "PR có thao tác ghi" = PR gửi POST/PATCH/DELETE lên API.
+- **Phân tầng merge (áp dụng cho FE và BE)** (CEO 31/10):
+  - Tầng 1/2 — docs, chỉ đọc, test, fix nhỏ, thao tác ghi thông thường (POST/PATCH/DELETE lên API không gây hậu quả không
+    hoàn tác): DEV tự merge sau khi required check xanh.
+  - Tầng 3 — thao tác không hoàn tác được: CEO merge sau khi DEV gửi "Sẵn sàng merge" kèm HEAD + job +
+    `mergeable_state = clean`, và CEO comment phê duyệt vào PR trước khi bấm merge.
+    - FE: xóa dữ liệu khách (B2), hạ mức tự chủ (màn 2).
+    - BE: do BE lead định nghĩa trong tài liệu BE. Tầng 3 của BE (migration xóa dữ liệu, đổi schema phá vỡ, …) do BE lead định
+      nghĩa trong tài liệu BE; nguyên tắc áp dụng ngay từ khi luật có hiệu lực.
+- Kèm theo phân tầng (CEO 31/10):
+  - Mọi PR mở ở draft. Tầng 1/2: DEV tự chuyển ready ngay trước khi tự merge, trong cùng một lượt. Draft không thay required
+    check, phải có cả hai.
+  - Tầng 1/2: DEV tự kiểm đủ mọi job của `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD; required
+    check chỉ là lưới an toàn cuối. Sau merge báo HEAD, tên từng job, thời điểm, diff giữa HEAD và commit squash.
+  - "Ready" ≠ "xong": PR rời draft không phải tín hiệu merge.
   - PR sửa file của bộ phận khác phải có review của bộ phận đó, kể cả comment.
-  - `main` có required check `lint, typecheck, test` và `enforce_admins` (U71); required check chỉ là lưới an toàn cuối.
-  - Chi tiết và lịch sử: `docs/ui/session-summary-29-10.md` mục 2.
+  - Chi tiết và lịch sử: `docs/ui/session-summary-29-10.md` mục 2; required check `lint, typecheck, test` và `enforce_admins`: U71.
 
 ### Quy trình mỗi PR
 
