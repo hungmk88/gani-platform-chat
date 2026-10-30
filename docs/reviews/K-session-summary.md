@@ -245,8 +245,19 @@ Lịch "FE check-in 2 tiếng" (`trig_01Br6sSpPXw9Xej9KzBakxUt`) là của sessi
 
 ## 7. Môi trường local (container cloud)
 
-- **Postgres 16 tự dựng** (container khởi động lại thì tắt; bật lại bằng):
-  `su postgres -s /bin/sh -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/kin-pg -o '-p 5432 -k /tmp -c listen_addresses=127.0.0.1' -l /var/tmp/kin-pg/log start"`.
+- **Postgres 16 tự dựng.** Container MỚI chưa có `/var/tmp/kin-pg`, nên dựng một lần. Không chép nguyên bước "Bootstrap roles"
+  của `ci.yml`: CI chạy `docker exec` vào container Postgres, còn ở local Postgres chạy thẳng trên máy.
+  1. `install -d -o postgres /var/tmp/kin-pg`, rồi
+     `su postgres -s /bin/sh -c "/usr/lib/postgresql/16/bin/initdb -D /var/tmp/kin-pg"`.
+  2. Start (container khởi động lại thì chỉ cần bước này):
+     `su postgres -s /bin/sh -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/kin-pg -o '-p 5432 -k /tmp -c listen_addresses=127.0.0.1' -l /var/tmp/kin-pg/log start"`.
+  3. Tạo DB (CI dùng `gani_platform`), rồi chạy cùng file SQL CI dùng, với 3 biến mật khẩu `APP_ROLE_PASSWORD`,
+     `AUTH_ROLE_PASSWORD`, `MIGRATION_ROLE_PASSWORD` (giá trị đặt ở `.env.test`, **không** ghi vào tài liệu):
+     `psql -h /tmp -U postgres -v ON_ERROR_STOP=1 -d <db> < infra/db/bootstrap-roles.sql`.
+     Test `support_role` cần thêm `infra/db/ci-support-login.sql` (biến `SUPPORT_TEST_LOGIN_PASSWORD`).
+  4. Đặt `DATABASE_URL_APP` / `_AUTH` / `_MIGRATION` theo mẫu bước "Migrate and run database tests" của `ci.yml`.
+
+  Đã thử 30/10 trên cluster tạm (cổng 5433): initdb, start, tạo DB, hai file SQL, `migrate` (75 migration) đều exit 0.
 - **Valkey/Redis:** `redis-server --port 6379 --bind 127.0.0.1 --daemonize yes`.
   - Test tích hợp worker cần `REDIS_URL=redis://127.0.0.1:6379`.
 - **Docker:**
@@ -255,6 +266,7 @@ Lịch "FE check-in 2 tiếng" (`trig_01Br6sSpPXw9Xej9KzBakxUt`) là của sessi
   - Script env của scratchpad đặt shim `docker` lên đầu PATH, nên gọi `/usr/bin/docker`.
 - **Công cụ:** Terraform 1.16.6 và gitleaks nằm trong scratchpad.
   - Scratchpad mất khi container bị thu hồi; tải lại và kiểm SHA256 trước khi dùng.
+  - gitleaks phải có trong PATH, nếu không hook pre-commit (`.githooks/pre-commit`) chỉ cảnh báo rồi **BỎ QUA** bước quét.
 - **GitHub:**
   - Free không bật được required check (N38). Anh tự kiểm job đỏ trước khi merge.
   - "Sẵn sàng merge" nghĩa là **mọi** job trong `ci.yml` xanh trên đúng HEAD và `mergeable_state` clean. Hiện là 7 job.
