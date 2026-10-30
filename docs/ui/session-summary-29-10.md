@@ -114,7 +114,7 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 
 ## 7. Việc chờ, có điều kiện kích hoạt
 
-**FE hiện không có việc làm được ngay; mọi việc còn lại chờ BE:**
+**Ngoài các việc treo ở cuối mục này (màn trên hợp đồng planned), mọi việc còn lại chờ BE:**
 
 - **K1–K3:** chờ S4/S5 (ticket thật, danh sách người nhận cấp workspace, tổng quan).
 - **Test đồng bộ ticket:** chờ K1 **và** U60.
@@ -140,6 +140,25 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - 404: POST có 3 nguồn; đã có câu riêng cho trường hợp mở từ hội thoại (#408).
 - 409: `idempotency_in_progress`; `version_conflict` / `invalid_transition`.
 - 422: `invalid_assignee`, `idempotency_key_reused`.
+
+### Việc treo (CEO 30/10 chiều)
+
+- **U68 (iii) đã xóa** ở PR docs sau #437 (vế về `limit`: hợp đồng đã ghi mặc định 50, trần 100 cho cả hai đường); comment
+  `apps/admin/src/security/security.ts` thành "50 = mặc định của hợp đồng (trần 100, cả hai đường)". Phiên sau kiểm trên
+  `main`: dòng U68 của `QUESTIONS.md` không còn "(iii)", `security.ts` không còn "U68 (iii)". Còn thấy → PR đó chưa merge, việc
+  vẫn treo.
+- **Màn 4 Dữ liệu khách** (`/settings/customer-data`, planned S5 `/v1/privacy-requests*`): **chưa code.** Thứ tự: PR A chỉ đọc
+  danh sách yêu cầu (không nút) → PR B (form ghi nhận yêu cầu + hộp thoại thực hiện xóa). Thiết kế hộp thoại xóa **đã duyệt**
+  (CEO 30/10), dành cho PR B:
+  - Gõ lại chuỗi `XOA-<6 ký tự cuối mã yêu cầu>` (hiện monospace; không dùng tên khách); so khớp: cắt khoảng trắng đầu/cuối,
+    không phân biệt hoa thường, không chuẩn hóa khoảng trắng bên trong, không bỏ gạch; không có nút "Sao chép".
+  - Câu "không hoàn tác được" ở đầu hộp thoại; liệt kê loại và phạm vi sẽ xóa; tên khách `null` → "khách chưa có tên" + mã
+    yêu cầu; lý do là chữ thuần, dài thì vùng cuộn, không cắt.
+  - Focus vào ô gõ; Enter không gửi (không form submit, nút `type="button"`); lỗi → focus `role="alert"` (hoặc "Đóng"),
+    thành công → focus "Đóng", đóng → trả focus về nút đã mở.
+  - Một `Idempotency-Key` sinh khi mở hộp thoại, giữ qua mọi "Thử lại", bỏ khi đóng. Đang xử lý: khóa nút, Esc và "Hủy".
+    409/404/403/503 nói lý do thật, không bao giờ "đã xóa" giả; thành công hiện số thật API trả (`PrivacyErasure`).
+  - U70 (số lượng trong `GET /v1/privacy-requests/{id}`, "tại thời điểm xem") không chặn PR B.
 
 ## 8. Lệnh kiểm
 
