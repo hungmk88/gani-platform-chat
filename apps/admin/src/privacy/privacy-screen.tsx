@@ -1,0 +1,84 @@
+'use client';
+
+import type { NavItem } from '../nav';
+import { Paged } from '../paged-list';
+import { PendingPage } from '../pending-page';
+import { useApiPages } from '../query/provider';
+import { KIND, STATUS } from './labels';
+import { customerOf, requestsPath, timeText, type PrivacyRequestPage } from './privacy';
+
+const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
+const TONE = { ok: 'bg-ok-bg text-ok-text', error: 'bg-error-bg text-error-text' };
+
+/**
+ * #23 Dữ liệu khách of the company, read only in Đợt 1 (PR A, CEO 30/10): the requests on customers' personal data, newest first, by
+ * cursor as #29 (`Paged`). No button records or carries out a request (PR B). A 404 means the API does not serve the route yet
+ * (planned S5): the screen then says it is not there, never a list made up here. The reason is plain text, wrapped, never cut.
+ */
+export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
+  const requests = useApiPages<PrivacyRequestPage>(['privacy-requests'], requestsPath);
+  if (requests.isError && requests.error.error.code === 'not_found')
+    return <PendingPage item={item} go={go} />;
+  return (
+    <section aria-labelledby="privacy-title" className="flex max-w-[1080px] flex-col gap-6">
+      <h1 id="privacy-title" className="text-20 font-semibold">
+        Dữ liệu khách
+      </h1>
+      <section aria-labelledby="requests-title" className="flex flex-col gap-3">
+        <h2 id="requests-title" className="text-16 font-semibold">
+          Yêu cầu dữ liệu cá nhân
+        </h2>
+        <Paged
+          query={requests}
+          loading="Đang tải yêu cầu…"
+          empty={
+            <div className="flex flex-col items-start gap-2">
+              <p>Chưa có yêu cầu nào về dữ liệu cá nhân.</p>
+              <button
+                type="button"
+                className={button}
+                disabled={requests.isFetching}
+                aria-busy={requests.isFetching}
+                onClick={() => void requests.refetch()}
+              >
+                Làm mới
+              </button>
+            </div>
+          }
+          head={[
+            'Khách',
+            'Yêu cầu',
+            'Trạng thái',
+            'Lý do',
+            'Người ghi nhận',
+            'Ghi nhận lúc',
+            'Thực hiện lúc',
+          ]}
+          row={(r) => {
+            const [word, tone] = STATUS[r.status];
+            return (
+              <tr key={r.id}>
+                <td className="p-2">{customerOf(r)}</td>
+                <td className="p-2">{KIND[r.kind]}</td>
+                <td className="p-2">
+                  <span
+                    className={`rounded-input px-2 py-1 text-12 ${tone ? TONE[tone] : 'bg-bg-subtle'}`}
+                  >
+                    {word}
+                  </span>
+                </td>
+                <td className="p-2 break-words whitespace-pre-wrap">{r.reason}</td>
+                <td className="p-2">{r.requestedBy.name}</td>
+                <td className="p-2 whitespace-nowrap">{timeText(r.createdAt)}</td>
+                <td className="p-2 whitespace-nowrap">{timeText(r.executedAt)}</td>
+              </tr>
+            );
+          }}
+        />
+      </section>
+      <p className="text-12 text-text-muted">
+        Chỉ xem: không ghi nhận hay thực hiện yêu cầu ở màn này. Không áp dụng AI ở màn này.
+      </p>
+    </section>
+  );
+}
