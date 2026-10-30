@@ -83,6 +83,20 @@ describe('F7: events follow the visibility of their conversation', () => {
     expect(await sqlState(asApp(app, A, [WA], insert(CB)))).toBe('42501');
   });
 
+  // A session of A that holds a workspace of B too. Without WITH CHECK, A would write into a conversation of B: the FK only asks that
+  // (org_id, conversation_id) exists. Without only its org_id, conversation_visible still refuses (it reads conversations under their
+  // RLS, org A); that mutant changes no behaviour, and the structure check of rls-all-tables.spec.ts catches it.
+  it('refuses an event of A for a conversation of B, with the workspace of B in the session (42501)', async () => {
+    const theirs = await admin.query<{ w: string; c: string }>(
+      'SELECT workspace_id AS w, id AS c FROM conversations WHERE org_id = $1',
+      [B],
+    );
+    const [w, c] = [theirs.rows[0]?.w as string, theirs.rows[0]?.c as string];
+    const insert = () =>
+      app.query(insertSql, [uuidv7(), B, c, 'state_changed', 'HUMAN_WAITING_Q', 'system']);
+    expect(await sqlState(asApp(app, A, [WA, w], insert))).toBe('42501');
+  });
+
   it('is append-only for app_role: UPDATE and DELETE are refused (42501)', async () => {
     const update = () => app.query("UPDATE conversation_events SET detail = '{}'");
     expect(await sqlState(asApp(app, A, [WA], update))).toBe('42501');
