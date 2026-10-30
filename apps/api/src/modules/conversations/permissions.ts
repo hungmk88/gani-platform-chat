@@ -1,4 +1,5 @@
 import type { OrgRole } from '@gani/db';
+import type { ConversationState } from '@gani/domain';
 
 // Who sees which conversations (Phụ lục B rows 11–12). The table lives here, in one place, so a test can read it row by row:
 // - owner, admin, manager: every conversation of their workspaces;
@@ -86,3 +87,13 @@ export function mayAct(
   const scope = actionScope(role, action);
   return scope === 'any' || (scope === 'own' && conversation.assignedUserId === userId);
 }
+
+/**
+ * The states in which the person who holds a conversation may answer the customer (N146); sending does not change the state. Here,
+ * with the rest of the rules, so the admin's permission test reads it as it is (U59). The values are checked against
+ * ConversationState (a misspelt state does not compile); the set takes a plain string, as the state of a conversation view is.
+ */
+export const ANSWERABLE: ReadonlySet<string> = new Set([
+  'HUMAN_ACTIVE',
+  'PENDING_CUSTOMER',
+] satisfies ConversationState[]);
