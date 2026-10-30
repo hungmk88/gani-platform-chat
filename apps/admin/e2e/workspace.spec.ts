@@ -92,6 +92,7 @@ test('an Admin picks the people of a workspace: members of the company only, the
   const people = dialog.getByRole('group');
   await expect(people).toContainText('Đã chọn 2 / 4 người');
   await expect(dialog.getByRole('checkbox')).toHaveCount(4); // the invitations are not offered
+  await expect(dialog.getByRole('checkbox').first()).toBeFocused(); // the keyboard starts on the list, not on "Hủy"
   await expect(dialog.getByRole('checkbox', { name: /Người thử owner/ })).toBeChecked();
   await expect(dialog.getByRole('checkbox', { name: /Người thử admin/ })).not.toBeChecked();
   await dialog.getByRole('checkbox', { name: /Người thử admin/ }).check();
@@ -113,4 +114,27 @@ test('an Admin picks the people of a workspace: members of the company only, the
   await dialog.getByRole('button', { name: 'Lưu người trong workspace' }).click();
   await expect(dialog).toBeHidden();
   expect(sent).toBe(false); // nothing changed
+});
+
+test('the keyboard starts on the dialog while the people load, never on "Hủy"', async ({
+  page,
+}) => {
+  // The people of the workspace held back (this test only) until the dialog is checked: "Hủy" is then its only button.
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route('**/v1/workspaces/*/members', async (route) => {
+    if (route.request().method() === 'GET') await gate;
+    await route.fallback();
+  });
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/workspace');
+  await page.getByRole('button', { name: 'Người trong workspace Workspace thử' }).click();
+  const dialog = page.getByRole('dialog', { name: /Người trong workspace/ });
+  await expect(dialog.getByRole('status')).toHaveText('Đang tải thành viên…');
+  const cancel = dialog.getByRole('button', { name: 'Hủy' });
+  await expect(cancel).toBeVisible();
+  await expect(dialog).toBeFocused();
+  await expect(cancel).not.toBeFocused();
+  release();
+  await expect(dialog.getByRole('checkbox').first()).toBeFocused();
 });
