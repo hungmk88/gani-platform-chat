@@ -27,7 +27,7 @@ import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { variablesOf } from '../quick-replies/variables.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import { ConversationIdSchema, SendMessageBodySchema } from './conversations.schemas.js';
-import { actionScope, canSee, mayAct } from './permissions.js';
+import { actionScope, ANSWERABLE, canSee, mayAct } from './permissions.js';
 
 /** 422 of a message that still holds a {{variable}} of a quick reply (C7, N163): nothing is sent, the Inbox fills it first. */
 export class UnresolvedVariableError extends Error {
@@ -38,9 +38,6 @@ export class UnresolvedVariableError extends Error {
     this.name = 'UnresolvedVariableError';
   }
 }
-
-/** The states in which a person holds the conversation and may answer the customer (N146). Sending does not change the state. */
-const ANSWERABLE = new Set(['HUMAN_ACTIVE', 'PENDING_CUSTOMER']);
 
 /**
  * `POST /v1/conversations/{id}/messages` (Brief P9, channel-policy-spec §3, N146): the agent answers the customer. One TenantTx, in
