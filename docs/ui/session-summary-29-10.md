@@ -205,6 +205,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
+- **Brief gửi nhầm phiên FE hai lần (#459 và B2-local-coding); FE từ chối đúng, không phải chậm tiến độ** (CEO 31/10). #459
+  là PR của BE (nhánh `test/rls-quick-replies-cross-org`); FE không merge PR của bộ phận khác (luật "PR sửa file bộ phận khác
+  phải có review bộ phận đó"); FE merge PR của BE chỉ khi CEO nói rõ và ghi ngoại lệ.
 - **PR docs gộp sửa `CLAUDE.md` gốc — BE lead chưa review; cần BE lead xác nhận trong PR docs BE kế tiếp** (CEO 31/10). Chưa
   có tài khoản GitHub của BE lead nên comment không `@`. Luật phân tầng áp dụng cho cả FE và BE.
 - **#458 (BE) thêm 2 test E2E vào file của FE, FE đã đọc (CEO 31/10: đọc, không revert): test đúng, ghi nhận, không sửa.**
