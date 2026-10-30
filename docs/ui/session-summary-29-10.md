@@ -153,6 +153,12 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **#452 (docs) merge khi CI CHƯA CHẠY JOB NÀO và FE chưa gửi "Sẵn sàng merge" (30/10, sự cố thứ 5).** GitHub timeline:
+  `ready_for_review` 17:42:46, `merged` 17:42:53, cùng tài khoản `hungmk88`, `app=none`. Lúc merge, CI trên HEAD `ecea0cb`
+  có 8/8 job còn `queued`, chỉ GitGuardian xong. Thao tác cuối của FE lên #452 là sửa mô tả kèm `draft: true` (PR
+  `updated_at` 17:35:55), sau đó FE chỉ đọc trạng thái và push commit `98d4a1f` (sau lúc merge, nên commit này không vào
+  `main`; PR kế tiếp mang lại). Diff giữa `ecea0cb` và `ad131f0` trên 2 file rỗng. Draft chặn được merge sớm: 0/3 (#447,
+  #450, #452). Theo luật mục 2: phải kiểm run CI trên `main` chứa `ad131f0`, mọi job xanh, trước việc kế tiếp; B2 chưa bắt đầu.
 - **#450 (`retry: false`) cũng merge khi FE chưa gửi "Sẵn sàng merge" (30/10, 17:27 UTC).** PR rời draft lúc 17:27:06,
   merge lúc 17:27:12 (giờ sự kiện của GitHub timeline, không phải giờ thông báo đến phiên). CI 9/9 trên HEAD `ce544b50` đã xong success lúc 17:26:19; diff giữa `ce544b50` và `47bea27` trên 6
   file của PR rỗng. **Có thể chính lệnh sửa mô tả PR của FE (`update_pull_request`, chỉ truyền `body`) đã đưa PR khỏi draft**:
