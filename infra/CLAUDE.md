@@ -57,6 +57,26 @@ infra/
 - `api` deploy bằng `pnpm deploy --config.auto-install-peers=false --config.dedupe-peer-dependents=false` (chỉ trong Dockerfile): bỏ peer tùy chọn `next`/`react` của better-auth (~480 MB). Vì vậy peer phải là dependency trực tiếp (`socket.io-adapter` trong `apps/api`).
 - Admin (Next.js) không bắt SIGTERM: `docker stop` kết thúc bằng exit 143, bình thường.
 - CI job `docker` build cả 4 rồi chạy `infra/docker/test-images.sh` với PostgreSQL + Valkey thật. Ngưỡng: bản nén > 100 MB cảnh báo, > 150 MB đỏ; bản giải nén chỉ cảnh báo (> 400 MB; riêng `node:22-slim` đã ~326 MB). Trivy: CRITICAL có bản sửa → đỏ, HIGH chỉ in.
+- **Lọc đường dẫn của job `docker`** (job `changes`, `infra/ci/docker-needed.sh` + test cùng thư mục):
+  - PR **chỉ** đổi file thuộc denylist thì bỏ `docker`: `**/*.md`, `docs/**`, `prototype/**`, `evals/**`, `.github/ISSUE_TEMPLATE/**`.
+  - Push lên `main` và chạy tay luôn chạy.
+  - Denylist (liệt kê thứ được bỏ), không allowlist: hai Dockerfile `COPY . .`, mọi path khác đều có thể vào image.
+  - Thêm chỗ đọc file `.md` hay file trong `docs/` lúc build hoặc lúc chạy (ví dụ prompt `.md`) thì **phải** sửa denylist.
+  - Không dùng `paths-ignore` cấp workflow: nó bỏ cả job `security`, mà PR tài liệu vẫn phải quét secret.
+  - Fail-safe hai lớp:
+    - Script luôn exit 0 và trả `docker=true` khi không chắc: git lỗi, không có merge commit, `HEAD^1` khác `base.sha`, không có file đổi.
+    - `if:` của `docker` là `!= 'false'`, không bao giờ `== 'true'`: `changes` đỏ hay không có output thì `docker` vẫn chạy.
+    - Đừng "dọn gọn" hai chỗ này: dọn thì bộ lọc hỏng mà CI vẫn xanh, docker bị bỏ không ai biết.
+- **"Sẵn sàng merge"** theo quy ước Sẵn sàng merge (`docs/ui/session-summary-29-10.md` mục 2, #412), không ghi số job cứng:
+  - Mọi job trong `ci.yml` của `main` xanh trên đúng HEAD.
+  - HEAD khớp `git ls-remote`.
+  - `mergeable_state` clean.
+  - Các điều kiện khác của quy ước giữ nguyên.
+  - **Ngoại lệ:** `docker` được phép **Skipped** khi đủ cả ba:
+    - job `changes` xanh và log ghi "chỉ docs";
+    - output của nó **đúng bằng** `false`;
+    - mọi job khác vẫn xanh.
+  - **Lý do ngoại lệ an toàn:** nhờ fail-safe ở trên, docker chỉ bị bỏ khi đã xác định chắc PR không đụng thứ image đọc. Mọi trường hợp không chắc đều làm docker chạy.
 
 ### Triển khai & migration
 - **Rolling update + feature flag**, không downtime; tính năng mới mặc định **tắt** ở production (P5, Phụ lục §24).

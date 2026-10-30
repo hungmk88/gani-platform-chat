@@ -272,8 +272,37 @@ jobs:
   # PostgreSQL and Valkey: size, user, contents, fail-fast, migrations, probes, HEALTHCHECK, Socket.IO, `docker stop`, Trivy.
   # If an image is over 100 MB compressed (or 400 MB uncompressed), investigate; over 150 MB compressed, fix before merge. Common
   # causes: devDependencies in the runtime, unnecessary files copied, large native modules.
+  # Whether `docker` must run: a pull request that changes only Markdown, docs/, prototype/, evals/ or .github/ISSUE_TEMPLATE/ skips
+  # it (infra/CLAUDE.md "Docker"); push to main and runs by hand always run it. The script always exits 0 and answers docker=true
+  # whenever it cannot tell. Its tests run first: a red test makes this job red, and `docker` then runs (see its `if:`).
+  changes:
+    name: changes (docker needed?)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docker: ${{ steps.decide.outputs.docker }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # A pull request checks out its merge commit (refs/pull/N/merge): depth 2 brings both parents, HEAD^1 the base.
+          fetch-depth: 2
+      - name: Test the filter
+        run: infra/ci/docker-needed.test.sh
+      - name: Decide
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: infra/ci/docker-needed.sh
+
   docker:
     name: docker images (build, size, run, scan)
+    needs: changes
+    # `!= 'false'`, never `== 'true'`: docker is skipped ONLY when `changes` answered exactly false. When `changes` is red, skipped
+    # or gives no output, the output is empty and docker still runs (fail-safe); `== 'true'` would skip it then. `!cancelled()`
+    # because a red `needs` skips this job by default; not `always()`, which would also run it after the workflow is cancelled.
+    if: ${{ !cancelled() && needs.changes.outputs.docker != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
