@@ -7,7 +7,7 @@
 // apps/admin/turbo.json lists every file this test reads outside the admin, so that turbo's cache never hides a change.
 import { describe, expect, it } from 'vitest';
 
-import { mayAct, readScope } from '../../api/src/modules/conversations/permissions';
+import { ANSWERABLE, mayAct, readScope } from '../../api/src/modules/conversations/permissions';
 import {
   mayEditCustomers as apiMayEditCustomers,
   seesCustomersMasked,
@@ -21,6 +21,7 @@ import {
   mayReadQuickReplies,
   mayWriteQuickReplies,
 } from '../../api/src/modules/quick-replies/quick-replies.permissions';
+import { CONVERSATION_STATES } from '../../../packages/domain/src/conversation/types';
 import { mayEditCustomers } from './customers/customer-edit';
 import { seesMasked } from './customers/customers';
 import { readsConversations } from './inbox/actions';
@@ -52,18 +53,20 @@ const disagree = (fe: (r: OrgRole) => boolean, api: (r: OrgRole) => boolean) =>
   ROLES.filter((r) => fe(r) !== api(r)).map((r) => `${r}: fe=${fe(r)} api=${api(r)}`);
 
 describe('the admin offers what the API allows (permission files of apps/api, #378 A1–A6)', () => {
-  it('A1 the reply box: role × holder as send_message of permissions.ts', () => {
-    // canReply is checked for role × holder only. Its states are NOT checked yet: they are ANSWERABLE of the API's
-    // send-message.controller.ts, not exported (U59). HUMAN_ACTIVE stands in here. Once U59 is done, add the states to this test.
+  it('A1 the reply box: role × state × holder as send_message and ANSWERABLE of permissions.ts', () => {
+    // The API takes a reply when mayAct lets the person send and the state is one of ANSWERABLE (send-message.controller.ts;
+    // exported for this test, U59).
     const wrong = ROLES.flatMap((role) =>
-      HOLDERS.flatMap((assignedUserId) => {
-        const c = { state: 'HUMAN_ACTIVE' as const, assignedUserId };
-        const fe = canReply(c, role, ME);
-        const api = mayAct(role, ME, 'send_message', c);
-        return fe === api
-          ? []
-          : [`${role} holder=${assignedUserId ?? 'none'}: fe=${fe} api=${api}`];
-      }),
+      CONVERSATION_STATES.flatMap((state) =>
+        HOLDERS.flatMap((assignedUserId) => {
+          const c = { state, assignedUserId };
+          const fe = canReply(c, role, ME);
+          const api = mayAct(role, ME, 'send_message', c) && ANSWERABLE.has(state);
+          return fe === api
+            ? []
+            : [`${role} ${state} holder=${assignedUserId ?? 'none'}: fe=${fe} api=${api}`];
+        }),
+      ),
     );
     expect(wrong, 'change canReply (inbox/composer.ts)').toEqual([]);
   });
