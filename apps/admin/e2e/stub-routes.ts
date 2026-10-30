@@ -1,6 +1,7 @@
 // The screens of the stub API that live in a file of their own (e2e/stub-*.ts), tried in turn: each answers its own routes and
 // says false for any other. #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #24 Kênh (N161), #20 Team (N160), #22 Mẫu trả
-// lời nhanh (N163), #7 Khách hàng (N165), #16 Tổng quan, #14/#15 Ticket, #26 AI nội bộ and #27 Tự chủ (N167). Never deployed.
+// lời nhanh (N163), #7 Khách hàng (N165), #16 Tổng quan, #14/#15 Ticket, #26 AI nội bộ, #27 Tự chủ and #29 Bảo mật (N167).
+// Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { routeAutonomy } from './stub-autonomy';
@@ -11,6 +12,7 @@ import { routeMembers } from './stub-members';
 import { routeOverview } from './stub-overview';
 import { routeAiPrompts } from './stub-prompts';
 import { routeQuickReplies } from './stub-quick-replies';
+import { routeSecurity } from './stub-security';
 import { routeTeams } from './stub-teams';
 import { routeTickets } from './stub-tickets';
 import { routeWorkspaces } from './stub-workspaces';
@@ -26,6 +28,7 @@ const PREFIXES = [
   'tickets',
   'ai',
   'feature-flags',
+  'security-',
 ];
 
 /** Answers the route with the module that owns it and says true, or says false when none does. */
@@ -51,6 +54,7 @@ export async function routeScreens(
   return (
     routeOverview(req, res, path, who, edge) ||
     routeAiPrompts(req, res, path, who, edge) ||
+    routeSecurity(req, res, path, who, edge) ||
     (await routeTickets(req, res, path, who, edge))
   );
 }

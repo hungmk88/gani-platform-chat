@@ -122,7 +122,7 @@ Trang mặc định sau đăng nhập:
 ## Màn chạy trên hợp đồng planned (N167, CEO 30/10)
 
 - Các màn này đọc `docs/openapi/planned.json` (kiểu ở `src/api/planned.d.ts`), chưa phải API thật: API trả 404 thì màn hiện `PendingPage` chung ("<mục>: màn này chưa có trong bản hiện tại."). **Không** đưa "chưa nối API" hay banner dev lên giao diện; danh sách chỉ ghi ở đây. Hợp đồng chốt khác bản planned thì phải sửa màn.
-- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5).
+- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5).
 
 ## Hộp thư (#6)
 
@@ -207,6 +207,13 @@ Trang mặc định sau đăng nhập:
 
 - `/settings/autonomy`, Owner/Admin như menu và API; Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Workspace đang chọn: **Mức tự chủ** (`GET /v1/workspaces/{id}/autonomy`: mức hiện tại + ý nghĩa, lý do (`null` → "—"), lần đổi gần nhất: API chỉ trả id nên "Bạn" / "Người khác" / "Hệ thống" (`null`, **tạm** theo U67) kèm giờ, chưa đổi lần nào thì nói vậy; bảng ý nghĩa L0–L2 theo prototype, L3–L5 "chưa có định nghĩa (U29)") và **Feature flag** (`GET /v1/feature-flags?workspaceId=`: cờ, tác dụng = `description` của API, trạng thái "Đang bật" / "Đang tắt" / "Khóa ở Đợt 1", khóa đứng trước). Hai hợp đồng **planned S5** (`src/autonomy/autonomy.ts` + `autonomy-screen.tsx`). Mỗi khối tự có đang tải / lỗi (mã + "Thử lại"); cờ rỗng: một câu + "Làm mới"; một trong hai đường trả 404 → cả màn `PendingPage`.
 - **Không có nút** hạ mức, nâng mức hay "Tắt" cờ: thuộc PR B, mở khi đủ ba điều kiện (S5 chốt hợp đồng autonomy; BE trả lời `available` và `not_in_phase`; CEO duyệt riêng thiết kế hộp thoại hạ mức). Chỉ **tắt** cờ (Phụ lục B "tắt feature flag"), không bật: bật AI nội bộ qua cổng pháp lý Q1, hợp đồng PATCH không thay luật nghiệp vụ. API giả: `e2e/stub-autonomy.ts` (đi trước `routeWorkspaces` trong `e2e/stub-routes.ts`); rỗng/lỗi/404 bằng `page.route` trong `e2e/autonomy.spec.ts`.
+
+## Bảo mật (#29)
+
+- `/settings/security`, Owner/Admin như menu (Phụ lục B "Mở sự cố bảo mật"; góc nhìn của platform operator chờ `/platform`); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**, không theo workspace. Hai hợp đồng **planned S5** (`src/security/security.ts` + `security-screen.tsx`), mới nhất trước, cursor "Tải thêm"; hàng trùng giữa hai trang (bản ghi mới chèn lên đầu) chỉ hiện một lần (`uniqueRows`); hết trang thì "Đã hiện hết."; trang sau lỗi thì giữ hàng đã đọc, "Thử lại" đọc lại đúng trang đó.
+- **Sự cố** (`GET /v1/security-incidents?status=`): lọc "Đang mở" / "Đã đóng", **luôn gửi** `status` (mặc định `open`, U68); cột tiêu đề, mức độ, người xử lý, người mở (tên của API), mở lúc, đóng lúc (khi xem đã đóng). Trống: một câu + nút sang trạng thái kia.
+- **Cảnh báo** (`GET /v1/security-alerts`, **không lọc**, U68): loại, mức độ, thời điểm, số lần, "Đã gắn sự cố" / "Chưa gắn sự cố". **Không** có cột người liên quan và kênh tới khi API trả tên (U69). Nhãn loại và mức độ ở `src/security/labels.ts` (dùng lại cho `/platform`); mức độ luôn có chữ, màu chỉ thêm (Trung bình vàng, Cao/Nghiêm trọng đỏ).
+- Một trong hai đường trả 404 → cả màn `PendingPage`. **Không có nút** mở, đóng, giao sự cố: PR B, khi S5 chốt hợp đồng, U35 hết "dữ liệu tạm" và CEO duyệt thiết kế hộp thoại. API giả: `e2e/stub-security.ts` (cảnh báo hai trang, trang 2 lặp một hàng); rỗng/lỗi/404 bằng `page.route` trong `e2e/security.spec.ts`.
 
 ## Kênh (#24)
 
