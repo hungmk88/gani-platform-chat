@@ -34,6 +34,8 @@ không phải giờ công.
     chỉ có bảng sprint.
   - Không tìm thấy baseline nào chốt lại 50 tính năng theo Brief v1.0.
 - **Ước lượng 55–65 % trước đây:** gần với mẫu số B. Theo mẫu số A thì thấp hơn nhiều.
+- **Dùng con số nào:** A khi nói về **tính năng** (CEO, FE); B khi nói về **tiến độ sprint** (lead BE, nội bộ). Hỏi "bao nhiêu %" thì
+  trả lời "tùy mẫu số" và đưa cả hai, không chọn một.
 
 ## 2. Theo mảng việc
 
@@ -65,7 +67,8 @@ Chỉ ghi sự kiện, không kết luận trách nhiệm.
 | Q7 (giờ làm việc, SLA, phân bổ) | CEO; khảo sát gửi 30/10 (#400) | trả lời 06/11; hạn tổng 10/11 | C8, C9, C10, U18, U40 |
 | Xác nhận mốc 30/10 (U48, Spec M8 "Bản nháp 3") | lead BE | anh báo CEO nếu 31/10 02:00 UTC chưa có phản hồi | đóng mốc 30/10 |
 | Gói xác nhận U41, U44, U45, U46, U47, U51 (#418) | lead BE | trước S4 | SLA, routing, trường tùy chỉnh, tag |
-| U57 (`POST …/messages` có trả 502 không, cho 8b), U58 (bảo trì) | lead BE | khi làm 8b / bảo trì | Zalo gửi ra (S3) |
+| **U57** (`POST …/messages` có trả 502 không) | lead BE | trước khi làm 8b | **Blocker S3:** "tin thật đi được cả vào lẫn ra" (Brief dòng 907). Backend không code outbound trước khi U57 được chốt |
+| U58 (chế độ bảo trì, Brief dòng 859) | lead BE | khi làm bảo trì | câu trang bảo trì của FE |
 
 ## 4. Đề xuất 3 việc tiếp theo, xếp theo rủi ro
 
