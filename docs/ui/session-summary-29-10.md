@@ -47,6 +47,9 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   `cancel-in-progress` hủy thì tìm run kế tiếp chứa commit đó.
 - **PR mở ở trạng thái draft** (CEO 30/10, sau #438 và #441 merge khi chưa có "Sẵn sàng merge"): chỉ chuyển sang ready khi đã
   kiểm đủ điều kiện và gửi "Sẵn sàng merge"; GitHub chặn merge PR draft. Đề xuất branch protection trên `main`: U71.
+- **Mốc thời gian (CEO 31/10):** mọi mốc thời gian ghi vào handoff phải lấy từ dòng thời gian GitHub (`issues/*/timeline`,
+  trường `created_at`), không lấy từ giờ thông báo về phiên; chênh lệch thường 2–6 giây. Chỉ ghi dữ kiện (tài khoản nào),
+  không suy diễn người làm.
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
@@ -150,11 +153,23 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
+  câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
+  lại ở mục 7 của file đó.
+- **#452 (docs) merge khi CI CHƯA CHẠY JOB NÀO và FE chưa gửi "Sẵn sàng merge" (30/10, sự cố thứ 5).** GitHub timeline:
+  `ready_for_review` 17:42:46, `merged` 17:42:53, cùng tài khoản `hungmk88`, `app=none`. Lúc merge, CI trên HEAD `ecea0cb`
+  chưa xong: lúc FE đọc (17:43:38) API trả 8/8 job `queued`; giờ GitHub ghi về sau cho thấy chỉ `terraform` (17:41:59) và
+  GitGuardian xong trước merge, `coverage` chưa được tạo. Thao tác cuối của FE lên #452 là sửa mô tả kèm `draft: true` (PR
+  `updated_at` 17:35:55), sau đó FE chỉ đọc trạng thái và push commit `98d4a1f` (sau lúc merge, nên commit này không vào
+  `main`; PR kế tiếp mang lại). Diff giữa `ecea0cb` và `ad131f0` trên 2 file rỗng. Draft chặn được merge sớm: 0/3 (#447,
+  #450, #452). Theo luật mục 2: phải kiểm run CI trên `main` chứa `ad131f0`, mọi job xanh, trước việc kế tiếp; B2 dừng hoàn
+  toàn (CEO 31/10).
 - **#450 (`retry: false`) cũng merge khi FE chưa gửi "Sẵn sàng merge" (30/10, 17:27 UTC).** PR rời draft lúc 17:27:06,
   merge lúc 17:27:12 (giờ sự kiện của GitHub timeline, không phải giờ thông báo đến phiên). CI 9/9 trên HEAD `ce544b50` đã xong success lúc 17:26:19; diff giữa `ce544b50` và `47bea27` trên 6
-  file của PR rỗng. **Có thể chính lệnh sửa mô tả PR của FE (`update_pull_request`, chỉ truyền `body`) đã đưa PR khỏi draft**:
-  cùng thời điểm, cùng tài khoản `hungmk88`, không phân biệt được. Từ đây FE sửa mô tả PR draft luôn kèm `draft: true` và đọc
-  lại trạng thái ngay sau. Draft chặn được merge sớm: 0/2 (#447, #450).
+  file của PR rỗng. **Sửa 31/10:** lệnh sửa mô tả của FE (`update_pull_request`, chỉ `body`) xong lúc 17:25:51, 75 giây trước
+  `ready_for_review`; từ 17:25:52 tới 17:27:10 FE không gọi lệnh nào. Câu cũ "có thể chính lệnh sửa mô tả đã đưa PR khỏi draft,
+  cùng thời điểm" là sai (`dieu-tra-merge-30-10.md` mục 3). FE vẫn sửa mô tả PR draft luôn kèm `draft: true` và đọc lại trạng
+  thái ngay sau. Draft chặn được merge sớm: 0/2 (#447, #450).
   **Kiểm auto-merge (CEO 31/10, API công khai vì `gh` không đăng nhập được):** repo `allow_auto_merge: false`; `auto_merge`
   của #450 là `null`; dòng thời gian không có `auto_merge_enabled` → **auto-merge không phải nguyên nhân**. Dòng thời gian ghi
   `ready_for_review` 17:27:06 và `merged` 17:27:12, cùng `hungmk88`, `app=none` (như #447, rời draft 9 giây trước merge mà
@@ -176,6 +191,7 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **Màn 4 Dữ liệu khách** (`/settings/customer-data`, planned S5 `/v1/privacy-requests*`): PR A chỉ đọc danh sách yêu cầu
   (không nút) xong ở #444. PR B tách hai (CEO 30/10): **B1** ghi nhận yêu cầu (PR draft đầu tiên); **B2** hộp thoại
   thực hiện xóa, nhánh mới từ `origin/main` sau khi B1 merge, **không tự thử lại 503** (CEO: mỗi lần gửi là một lần bấm).
+  **B2 DỪNG HOÀN TOÀN (CEO 31/10)**, điều kiện mở lại: `dieu-tra-merge-30-10.md` mục 7.
   Thiết kế hộp thoại xóa **đã duyệt** (CEO 30/10), dành cho B2:
   - Gõ lại chuỗi `XOA-<6 ký tự cuối mã yêu cầu>` (hiện monospace; không dùng tên khách); so khớp: cắt khoảng trắng đầu/cuối,
     không phân biệt hoa thường, không chuẩn hóa khoảng trắng bên trong, không bỏ gạch; không có nút "Sao chép".
