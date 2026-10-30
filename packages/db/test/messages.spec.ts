@@ -7,7 +7,7 @@ import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // `messages` (M1.2 PR1): O+W like conversations, append-only, partitioned by month. Org A has two workspaces (WA, WB), one
-// conversation and one message in each; org B only exists to be a foreign tenant.
+// conversation and one message in each; org B is the foreign tenant (a write into it is refused).
 const [A, B] = [uuidv7(), uuidv7()];
 const [WB, CB, MA, MB] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const users = new Map<string, string>();
@@ -87,6 +87,26 @@ describe('workspace isolation of messages', () => {
     expect(await sqlState(asApp(app, A, [WA], () => app.query(insertSql, row(WB, CB))))).toBe(
       '42501',
     );
+  });
+
+  it('cannot write a message for another organisation, even with its workspace in the context (42501), and B keeps its messages', async () => {
+    const { rows } = await admin.query<{ w: string; c: string }>(
+      'SELECT workspace_id AS w, id AS c FROM conversations WHERE org_id = $1',
+      [B],
+    );
+    const [theirs] = rows;
+    const count = async () =>
+      (
+        await admin.query<{ n: number }>(
+          'SELECT count(*)::int AS n FROM messages WHERE org_id = $1',
+          [B],
+        )
+      ).rows[0]?.n;
+    const before = await count();
+    const insert = () =>
+      app.query(insertSql, [uuidv7(), B, theirs?.w, theirs?.c, 9, 'bot', 'text', null]);
+    expect(await sqlState(asApp(app, A, [WA, theirs?.w ?? ''], insert))).toBe('42501');
+    expect(await count()).toBe(before);
   });
 
   it('is append-only for app_role: UPDATE and DELETE are refused (42501)', async () => {

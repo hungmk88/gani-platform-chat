@@ -56,6 +56,7 @@ Claim: `UPDATE ... WHERE state='HUMAN_WAITING_Q' RETURNING id` →
 
 - Không `any` trong `apps/api/src/modules/*`.
 - Không log nội dung tin nhắn, chỉ log `messageId`.
+- Không ghi log bằng `console.*` hay `ConsoleLogger` riêng: `main.ts` cài `RedactingLogger` (`redactPii` của `@gani/domain`, cả lời gọi tĩnh `Logger.*`) và `installCrashHandlers` (crash in `describeError`, không bao giờ `detail` của PostgreSQL, thoát 1). Lưới: `apps/worker/test/pii-log-net.spec.ts`.
 
 ## TypeScript, ESM và decorator (PR1b)
 

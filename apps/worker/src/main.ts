@@ -1,5 +1,6 @@
 import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool, withTenant } from '@gani/db';
+import { installCrashHandlers, redactPii } from '@gani/domain';
 
 import { ConfigError, readConfig } from './config.js';
 import { realtimeHandlers } from './consumer/realtime-handlers.js';
@@ -17,6 +18,8 @@ import { startWorker } from './worker.js';
 // The entry point: it reads the settings, builds the real ports and ties the signals to the shutdown. Nothing here is logic worth a
 // unit test (the parts have their own); the kill-tests of O-5 run it for real.
 const log = createLogger();
+// A crash is one JSON line of `describeError` (never the error object, whose PostgreSQL `detail` holds values), then exit 1.
+installCrashHandlers((line) => log.error('worker_crashed', { error: line }));
 
 function configOrExit(): ReturnType<typeof readConfig> {
   try {
@@ -24,7 +27,7 @@ function configOrExit(): ReturnType<typeof readConfig> {
   } catch (error) {
     // The message names the variables that are wrong and never echoes a URL.
     process.stderr.write(
-      `${error instanceof ConfigError ? error.message : 'invalid configuration'}\n`,
+      `${error instanceof ConfigError ? redactPii(error.message) : 'invalid configuration'}\n`,
     );
     return process.exit(1);
   }

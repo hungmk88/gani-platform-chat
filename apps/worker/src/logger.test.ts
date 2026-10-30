@@ -27,6 +27,21 @@ describe('createLogger', () => {
     ]);
   });
 
+  it('masks an email, a phone number or a Zalo user id in the message and the string fields, and keeps ids and numbers', () => {
+    const lines: string[] = [];
+    const log = createLogger((line) => lines.push(line));
+    log.warn('message_clock_skew from an@example.test', {
+      line: 'uid 4836251958174629381 phone 0912 345 678',
+      count: 3,
+    });
+    const { message, line, count } = JSON.parse(lines[0] ?? '{}') as Record<string, unknown>;
+    expect([message, line, count]).toEqual([
+      'message_clock_skew from <email>',
+      'uid <number> phone <number>',
+      3,
+    ]);
+  });
+
   it('writes to stdout by default', () => {
     const out: string[] = [];
     const spy = (chunk: unknown): boolean => (out.push(String(chunk)), true);

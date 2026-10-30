@@ -2,6 +2,7 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { asApp } from './as-app.js';
 import { sqlState, url, withClient } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
@@ -41,8 +42,10 @@ const tables = await withClient('migration', async (c) => {
 });
 const rlsTables = tables.filter((t) => t.tenant).map((t) => t.name);
 
-const org = uuidv7();
-let seedUser = '';
+// `other` is the foreign tenant of the cross-organisation read below.
+const [org, other] = [uuidv7(), uuidv7()];
+const seedUsers: string[] = [];
+const workspaces: string[] = [];
 let admin: pg.Client;
 let app: pg.Client;
 
@@ -50,12 +53,20 @@ beforeAll(async () => {
   admin = new pg.Client({ connectionString: url('migration') });
   app = new pg.Client({ connectionString: url('app') });
   await Promise.all([admin.connect(), app.connect()]);
-  seedUser = await seedTenant(admin, org);
+  for (const o of [org, other]) {
+    seedUsers.push(await seedTenant(admin, o));
+    const { rows } = await admin.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE org_id = $1',
+      [o],
+    );
+    workspaces.push(rows[0]?.id as string);
+  }
 });
 
 afterAll(async () => {
   await app.end();
-  await cleanupTenant(admin, org, seedUser);
+  for (const [i, o] of [org, other].entries())
+    await cleanupTenant(admin, o, seedUsers[i] as string);
   await admin.end();
 });
 
@@ -163,5 +174,27 @@ describe.each(rlsTables)('%s', (table) => {
         (g) => g.startsWith('auth_role') || /:(DELETE|TRUNCATE|REFERENCES|TRIGGER)$/.test(g),
       ),
     ).toEqual([]);
+  });
+});
+
+// Spec RLS M01 §7 case 2 (no row of another organisation), generated from the catalog like the cases above: app_role in the context of
+// `org`, with the workspaces of BOTH organisations, reads only rows of `org`, while `other` does hold rows in every table.
+describe.each(rlsTables.filter((t) => !NO_APP_ACCESS.includes(t)))('%s', (table) => {
+  it('case 2: reads only its own organisation, even with the workspace of another in its context', async () => {
+    const key = table === 'organizations' ? 'id' : 'org_id';
+    const theirs = await admin.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM ${admin.escapeIdentifier(table)} WHERE ${key} = $1`,
+      [other],
+    );
+    expect(
+      theirs.rows[0]?.n,
+      'the other organisation must hold rows, or this proves nothing',
+    ).toBeGreaterThan(0);
+    const seen = await asApp(app, org, workspaces, () =>
+      app.query<{ k: string }>(
+        `SELECT DISTINCT ${key}::text AS k FROM ${app.escapeIdentifier(table)}`,
+      ),
+    );
+    expect(seen.rows.map((r) => r.k)).toEqual([org]);
   });
 });

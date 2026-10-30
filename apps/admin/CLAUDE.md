@@ -119,6 +119,11 @@ Trang mặc định sau đăng nhập:
   `QueryProvider` gắn `key={scopeId(scope)}` trong khung app: đổi công ty/workspace là cache mới; đăng xuất xóa cache. Lỗi `sign_in`/`set_up_2fa` của mọi query tự chuyển trang.
   Workspace đang làm (T1): chọn ở thanh trên (`src/workspace-switcher.tsx`, chỉ hiện khi có từ 2 workspace), lưu cookie `gani_ws` (không phải bí mật); khung app đọc trên server và chỉ nhận id thuộc `me.workspaces`, không có thì lấy workspace đầu (`pickWorkspace`). Đổi là `router.refresh` → scope mới → `QueryProvider` dựng lại: cache cũ bỏ, realtime ngắt rồi nối lại. Hộp thư gửi `workspaceId` khi đọc danh sách. E2E `+multi` (2 workspace).
 
+## Màn chạy trên hợp đồng planned (N167, CEO 30/10)
+
+- Các màn này đọc `docs/openapi/planned.json` (kiểu ở `src/api/planned.d.ts`), chưa phải API thật: API trả 404 thì màn hiện `PendingPage` chung ("<mục>: màn này chưa có trong bản hiện tại."). **Không** đưa "chưa nối API" hay banner dev lên giao diện; danh sách chỉ ghi ở đây. Hợp đồng chốt khác bản planned thì phải sửa màn.
+- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5).
+
 ## Hộp thư (#6)
 
 - `/inbox` (I1a): cột danh sách. Bộ lọc nằm trên URL (`?assignee=me|none&state=…|hold&q=…&channel=…`), trang theo cursor ("Tải thêm"). Vai trò đọc được: owner, admin, manager, sales, support (như `permissions.ts` của API); vai trò khác → trang 403.
@@ -191,6 +196,24 @@ Trang mặc định sau đăng nhập:
 - **Người của team** (`GET/PUT /v1/teams/{id}/members`, A4-T2c, N160): nút "Người" trên dòng, hộp thoại ô chọn cho **người của workspace của team** (`GET /v1/workspaces/{id}/members`, N159; tên lấy từ `GET /v1/members`, `inWorkspace`), người của team đã tích sẵn (`src/teams/team-members.ts` + `team-members-dialog.tsx`). Lưu = PUT cả danh sách, chờ máy chủ, không `Idempotency-Key`; không đổi gì thì đóng, không gọi API (`samePeople`); xong thì cột "Số người" lấy số của câu trả lời (`withCount`). 400 `validation_failed` (có người không còn thuộc workspace) → tải lại rồi chọn lại.
 - **Kênh của team** (`GET /v1/channels?workspaceId=` + `PUT /v1/teams/{id}/channels`, A4-T3, N161): nút "Kênh" trên dòng team **không mặc định** (kênh không giao team nào đã về team mặc định), hộp thoại ô chọn mọi kênh của workspace: tên, loại, trạng thái kết nối (lời thường), team đang trả lời nếu không phải team này (`answeredBy`); kênh của team đã tích sẵn (`src/teams/team-channels.ts` + `team-channels-dialog.tsx`). Lưu = PUT cả danh sách: chọn kênh của team khác là chuyển sang, bỏ chọn là về team mặc định (`withAssigned`); không đổi gì thì đóng, không gọi API (`sameChannels`). Chờ máy chủ, không `Idempotency-Key`; cùng khóa cache `['channels', workspaceId]` với màn Kênh (#24). Kết nối kênh: chờ U26.
 - API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao, `teamsOf`; Manager thuộc team CSKH, `MANAGER_TEAMS`; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`), `e2e/stub-channels.ts` (`CHANNELS`).
+
+## AI nội bộ (#26)
+
+- `/settings/ai`, Owner/Admin như menu; Đợt 1 **chỉ E20** (CEO 30/10): bảng phiên bản prompt **chỉ đọc** (prompt, phiên bản, "Đang dùng", ngày duyệt, người duyệt; `null` → "Chưa duyệt" / "—"), thứ tự như API. `GET /v1/ai/prompts`: hợp đồng **planned S5** (N167; `src/ai/prompts.ts` + `prompt-table.tsx`). Rỗng: một câu + "Làm mới"; lỗi: câu + mã + "Thử lại"; API trả 404 (chưa phục vụ) → `PendingPage` như #16, không danh sách giả, không toast "đã lưu".
+- Quyền đọc **tạm** Owner/Admin theo **U66** (`mayReadPrompts`, Phụ lục B chưa có dòng đọc prompt): đổi khi BE/CEO trả lời U66.
+- Môi trường, tính năng, ngân sách (chờ `ai-settings`, U61) và khối E1/E4/E7 **không dựng**: thay bằng đúng một dòng "Môi trường, tính năng và ngân sách AI chưa có trong bản hiện tại." (không "sắp có"). API giả: `e2e/stub-prompts.ts`; rỗng/lỗi/404 bằng `page.route` trong `e2e/ai.spec.ts`.
+
+## Tự chủ & feature flag (#27)
+
+- `/settings/autonomy`, Owner/Admin như menu và API; Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Workspace đang chọn: **Mức tự chủ** (`GET /v1/workspaces/{id}/autonomy`: mức hiện tại + ý nghĩa, lý do (`null` → "—"), lần đổi gần nhất: API chỉ trả id nên "Bạn" / "Người khác" / "Hệ thống" (`null`, **tạm** theo U67) kèm giờ, chưa đổi lần nào thì nói vậy; bảng ý nghĩa L0–L2 theo prototype, L3–L5 "chưa có định nghĩa (U29)") và **Feature flag** (`GET /v1/feature-flags?workspaceId=`: cờ, tác dụng = `description` của API, trạng thái "Đang bật" / "Đang tắt" / "Khóa ở Đợt 1", khóa đứng trước). Hai hợp đồng **planned S5** (`src/autonomy/autonomy.ts` + `autonomy-screen.tsx`). Mỗi khối tự có đang tải / lỗi (mã + "Thử lại"); cờ rỗng: một câu + "Làm mới"; một trong hai đường trả 404 → cả màn `PendingPage`.
+- **Không có nút** hạ mức, nâng mức hay "Tắt" cờ: thuộc PR B, mở khi đủ ba điều kiện (S5 chốt hợp đồng autonomy; BE trả lời `available` và `not_in_phase`; CEO duyệt riêng thiết kế hộp thoại hạ mức). Chỉ **tắt** cờ (Phụ lục B "tắt feature flag"), không bật: bật AI nội bộ qua cổng pháp lý Q1, hợp đồng PATCH không thay luật nghiệp vụ. API giả: `e2e/stub-autonomy.ts` (đi trước `routeWorkspaces` trong `e2e/stub-routes.ts`); rỗng/lỗi/404 bằng `page.route` trong `e2e/autonomy.spec.ts`.
+
+## Bảo mật (#29)
+
+- `/settings/security`, Owner/Admin như menu (Phụ lục B "Mở sự cố bảo mật"; góc nhìn của platform operator chờ `/platform`); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**, không theo workspace. Hai hợp đồng **planned S5** (`src/security/security.ts` + `security-screen.tsx`), mới nhất trước, cursor "Tải thêm"; hàng trùng giữa hai trang (bản ghi mới chèn lên đầu) chỉ hiện một lần (`uniqueRows`); hết trang thì "Đã hiện hết."; trang sau lỗi thì giữ hàng đã đọc, "Thử lại" đọc lại đúng trang đó.
+- **Sự cố** (`GET /v1/security-incidents?status=`): lọc "Đang mở" / "Đã đóng", **luôn gửi** `status` (mặc định `open`, U68); cột tiêu đề, mức độ, người xử lý, người mở (tên của API), mở lúc, đóng lúc (khi xem đã đóng). Trống: một câu + nút sang trạng thái kia.
+- **Cảnh báo** (`GET /v1/security-alerts`, **không lọc**, U68): loại, mức độ, thời điểm, số lần, "Đã gắn sự cố" / "Chưa gắn sự cố". **Không** có cột người liên quan và kênh tới khi API trả tên (U69). Nhãn loại và mức độ ở `src/security/labels.ts` (dùng lại cho `/platform`); mức độ luôn có chữ, màu chỉ thêm (Trung bình vàng, Cao/Nghiêm trọng đỏ).
+- Một trong hai đường trả 404 → cả màn `PendingPage`. **Không có nút** mở, đóng, giao sự cố: PR B, khi S5 chốt hợp đồng, U35 hết "dữ liệu tạm" và CEO duyệt thiết kế hộp thoại. API giả: `e2e/stub-security.ts` (cảnh báo hai trang, trang 2 lặp một hàng); rỗng/lỗi/404 bằng `page.route` trong `e2e/security.spec.ts`.
 
 ## Kênh (#24)
 
