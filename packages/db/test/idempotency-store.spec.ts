@@ -125,6 +125,58 @@ describe('beginIdempotent and completeIdempotent', () => {
   });
 });
 
+// The policy idempotency_keys_app itself, in SQL of A's own: the store sets and filters org_id by itself, so the cases above stay green
+// without it. B's seed key holds a kept answer, which may name a customer.
+describe('idempotency_keys_app: A neither reads, writes nor changes a key of B', () => {
+  const where = 'org_id = $1 AND user_id = $2 AND key = $3';
+  const theirs = () => [B, users.get(B) as string, 'seed'];
+  const kept = { customer: { email: 'b@example.test' } };
+  /** One statement as app_role in the tenant of A, committed. */
+  async function asA(text: string, params: unknown[]): Promise<pg.QueryResult> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.current_org', $1, true)", [A]);
+      const result = await client.query(text, params);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  beforeAll(async () => {
+    const { rowCount } = await admin.query(
+      `UPDATE idempotency_keys SET status = 'done', response_status = 200, response_body = $4 WHERE ${where}`,
+      [...theirs(), kept],
+    );
+    expect(rowCount, 'B must hold its seed key, or 0 rows proves nothing').toBe(1);
+  });
+
+  it('reads no kept answer of B (USING)', async () => {
+    expect(
+      (await asA(`SELECT response_body FROM idempotency_keys WHERE ${where}`, theirs())).rows,
+    ).toEqual([]);
+  });
+
+  it('writes no key for B: 42501 (WITH CHECK)', async () => {
+    const insert = `INSERT INTO idempotency_keys (org_id, user_id, key, method, path, request_hash) VALUES ($1, $2, $3, 'POST', '/v1/x', $4)`;
+    expect(await sqlState(asA(insert, [B, users.get(B), uuidv7(), hash(1)]))).toBe('42501');
+  });
+
+  it('changes no key of B: 0 rows, and B keeps its answer (USING)', async () => {
+    const update = `UPDATE idempotency_keys SET status = 'failed', response_status = NULL, response_body = NULL WHERE ${where}`;
+    expect((await asA(update, theirs())).rowCount).toBe(0);
+    const { rows } = await admin.query(
+      `SELECT status, response_body FROM idempotency_keys WHERE ${where}`,
+      theirs(),
+    );
+    expect(rows).toEqual([{ status: 'done', response_body: kept }]);
+  });
+});
+
 describe('purgeIdempotencyKeys (app.purge_idempotency_keys)', () => {
   it('removes the keys older than 24 hours of every organisation, in batches, and keeps the others', async () => {
     const [oldA, oldB, fresh] = [uuidv7(), uuidv7(), uuidv7()];
