@@ -40,6 +40,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   config hay dependency mà job `docker` bị `skipped` là bất thường: dừng, báo CEO. Khi báo "Sẵn sàng merge": nêu tên từng job,
   đếm đúng số check thực tế (hiện 8), ghi "N success + M skipped (doc-only)". `unstable` khi CI còn chạy là bình thường; chỉ báo
   khi mọi check đã xong và `mergeable_state = clean`. (Bản trước ghi "docker/terraform" là sai.)
+- **Job CI mới trên `main` (CEO 30/10, sau #436 thêm `coverage`, nay 9 job):** mọi PR đang mở phải cập nhật từ `main`
+  (merge `origin/main` vào nhánh, **không rebase**) để chạy đủ job mới **trước khi** báo "Sẵn sàng merge". PR mới: kiểm nhánh
+  đã có commit thêm job (`git merge-base --is-ancestor <commit> HEAD` exit 0). Một PR đã merge mà thiếu job mới (#438): **bắt
+  buộc** kiểm run CI trên `main` chứa commit squash, mọi job kể cả job mới xanh, **trước khi** bắt đầu việc tiếp theo; run bị
+  `cancel-in-progress` hủy thì tìm run kế tiếp chứa commit đó.
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
@@ -147,8 +152,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `apps/admin/src/security/security.ts` thành "50 = mặc định của hợp đồng (trần 100, cả hai đường)". Phiên sau kiểm trên
   `main`: dòng U68 của `QUESTIONS.md` không còn "(iii)", `security.ts` không còn "U68 (iii)". Còn thấy → PR đó chưa merge, việc
   vẫn treo.
-- **Màn 4 Dữ liệu khách** (`/settings/customer-data`, planned S5 `/v1/privacy-requests*`): **chưa code.** Thứ tự: PR A chỉ đọc
-  danh sách yêu cầu (không nút) → PR B (form ghi nhận yêu cầu + hộp thoại thực hiện xóa). Thiết kế hộp thoại xóa **đã duyệt**
+- **Màn 4 Dữ liệu khách** (`/settings/customer-data`, planned S5 `/v1/privacy-requests*`): PR A chỉ đọc danh sách yêu cầu
+  (không nút) làm sau #438; **PR B chưa code** → PR B (form ghi nhận yêu cầu + hộp thoại thực hiện xóa). Thiết kế hộp thoại xóa **đã duyệt**
   (CEO 30/10), dành cho PR B:
   - Gõ lại chuỗi `XOA-<6 ký tự cuối mã yêu cầu>` (hiện monospace; không dùng tên khách); so khớp: cắt khoảng trắng đầu/cuối,
     không phân biệt hoa thường, không chuẩn hóa khoảng trắng bên trong, không bỏ gạch; không có nút "Sao chép".

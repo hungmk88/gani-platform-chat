@@ -122,7 +122,7 @@ Trang mặc định sau đăng nhập:
 ## Màn chạy trên hợp đồng planned (N167, CEO 30/10)
 
 - Các màn này đọc `docs/openapi/planned.json` (kiểu ở `src/api/planned.d.ts`), chưa phải API thật: API trả 404 thì màn hiện `PendingPage` chung ("<mục>: màn này chưa có trong bản hiện tại."). **Không** đưa "chưa nối API" hay banner dev lên giao diện; danh sách chỉ ghi ở đây. Hợp đồng chốt khác bản planned thì phải sửa màn.
-- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5).
+- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5) · #23 Dữ liệu khách, chỉ đọc (S5).
 
 ## Hộp thư (#6)
 
@@ -210,10 +210,15 @@ Trang mặc định sau đăng nhập:
 
 ## Bảo mật (#29)
 
-- `/settings/security`, Owner/Admin như menu (Phụ lục B "Mở sự cố bảo mật"; góc nhìn của platform operator chờ `/platform`); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**, không theo workspace. Hai hợp đồng **planned S5** (`src/security/security.ts` + `security-screen.tsx`), mới nhất trước, cursor "Tải thêm"; hàng trùng giữa hai trang (bản ghi mới chèn lên đầu) chỉ hiện một lần (`uniqueRows`); hết trang thì "Đã hiện hết."; trang sau lỗi thì giữ hàng đã đọc, "Thử lại" đọc lại đúng trang đó.
+- `/settings/security`, Owner/Admin như menu (Phụ lục B "Mở sự cố bảo mật"; góc nhìn của platform operator chờ `/platform`); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**, không theo workspace. Hai hợp đồng **planned S5** (`src/security/security.ts` + `security-screen.tsx`), mới nhất trước, cursor "Tải thêm"; hàng trùng giữa hai trang (bản ghi mới chèn lên đầu) chỉ hiện một lần (`uniqueRows`); hết trang thì "Đã hiện hết."; trang sau lỗi thì giữ hàng đã đọc, "Thử lại" đọc lại đúng trang đó. Danh sách cursor dùng chung `Paged` (`src/paged-list.tsx`) + `uniqueRows` (`src/paged.ts`) với #23.
 - **Sự cố** (`GET /v1/security-incidents?status=`): lọc "Đang mở" / "Đã đóng", **luôn gửi** `status` (mặc định `open`, U68); cột tiêu đề, mức độ, người xử lý, người mở (tên của API), mở lúc, đóng lúc (khi xem đã đóng). Trống: một câu + nút sang trạng thái kia.
 - **Cảnh báo** (`GET /v1/security-alerts`, **không lọc**, U68): loại, mức độ, thời điểm, số lần, "Đã gắn sự cố" / "Chưa gắn sự cố". **Không** có cột người liên quan và kênh tới khi API trả tên (U69). Nhãn loại và mức độ ở `src/security/labels.ts` (dùng lại cho `/platform`); mức độ luôn có chữ, màu chỉ thêm (Trung bình vàng, Cao/Nghiêm trọng đỏ).
 - Một trong hai đường trả 404 → cả màn `PendingPage`. **Không có nút** mở, đóng, giao sự cố: PR B, khi S5 chốt hợp đồng, U35 hết "dữ liệu tạm" và CEO duyệt thiết kế hộp thoại. API giả: `e2e/stub-security.ts` (cảnh báo hai trang, trang 2 lặp một hàng); rỗng/lỗi/404 bằng `page.route` trong `e2e/security.spec.ts`.
+
+## Dữ liệu khách (#23)
+
+- `/settings/customer-data`, Owner/Admin như menu và API (U36); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**. `GET /v1/privacy-requests` (planned S5, `src/privacy/privacy.ts` + `privacy-screen.tsx`): **không có bộ lọc** (hợp đồng chỉ có `cursor`, `limit`), mới nhất trước, cursor như #29 (`Paged`). Cột khách (`null` → "Khách chưa có tên"), yêu cầu (Xuất dữ liệu / Xóa dữ liệu), trạng thái (Chờ thực hiện; Đã thực hiện xanh; Không thực hiện được đỏ; luôn có chữ), lý do (chữ thuần, xuống dòng, không cắt), người ghi nhận, ghi nhận lúc, thực hiện lúc. Trống: một câu + "Làm mới"; 404 → `PendingPage`.
+- **Không có nút** ghi nhận hay thực hiện yêu cầu: PR B (form ghi nhận + hộp thoại thực hiện xóa theo thiết kế CEO duyệt 30/10, handoff mục 7 "Việc treo"; U70 không chặn). API giả: `e2e/stub-privacy.ts` (hai trang, trang 2 lặp một hàng); rỗng/lỗi/404 bằng `page.route` trong `e2e/privacy.spec.ts`.
 
 ## Kênh (#24)
 
