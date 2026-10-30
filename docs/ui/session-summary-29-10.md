@@ -150,6 +150,11 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **#450 (`retry: false`) cũng merge khi FE chưa gửi "Sẵn sàng merge" (30/10, 17:27 UTC).** PR rời draft lúc 17:27:08,
+  merge lúc 17:27:12. CI 9/9 trên HEAD `ce544b50` đã xong success lúc 17:26:19; diff giữa `ce544b50` và `47bea27` trên 6
+  file của PR rỗng. **Có thể chính lệnh sửa mô tả PR của FE (`update_pull_request`, chỉ truyền `body`) đã đưa PR khỏi draft**:
+  cùng thời điểm, cùng tài khoản `hungmk88`, không phân biệt được. Từ đây FE sửa mô tả PR draft luôn kèm `draft: true` và đọc
+  lại trạng thái ngay sau. Draft chặn được merge sớm: 0/2 (#447, #450).
 - **#447 (B1) merge khi chưa đủ điều kiện (30/10, 16:36 UTC), ca thử đầu tiên của PR draft: draft KHÔNG chặn được.**
   PR được chuyển ready lúc 16:35:58 và merge lúc 16:36:07 bởi người giữ quyền repo, khi FE **chưa gửi "Sẵn sàng merge"**.
   CI trên HEAD `6cf3dbc` đã xong 9/9 success (kể cả `coverage`, `docker images` chạy thật) lúc 16:35:03; diff giữa
