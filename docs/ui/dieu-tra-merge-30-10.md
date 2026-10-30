@@ -43,7 +43,7 @@ Proxy GitHub của môi trường FE chỉ cho đường `repos/hungmk88/gani-pl
   - quanh năm mốc merge và bốn mốc ready, FE không gọi lệnh GitHub nào; lúc đó FE chỉ sửa file ở máy, như #447: 16:35:07–16:36:03.
 - **Sửa ghi chú cũ về #450.** Lệnh sửa mô tả #450 (chỉ `body`) chạy 17:25:49, xong 17:25:51, tức 75 giây trước
   `ready_for_review` (17:27:06). Từ 17:25:52 tới 17:27:10 FE không gọi lệnh nào. Câu "cùng thời điểm" ở handoff là sai.
-- **Phiên khác trên tài khoản:** _(đang đọc, xem mục 3a)_.
+- **Phiên Claude khác trên tài khoản:** mục 3a.
 - **Lịch tự động của tài khoản** (`list_triggers`): 6 lịch, không lịch nào có nội dung merge PR:
   - 2 của FE: check-in 2 tiếng và tự kiểm 18:30;
   - 3 nhắc Rủi ro 1 (05/11, 06/11, 08/11) của phiên BE cũ;
@@ -60,9 +60,36 @@ Proxy GitHub của môi trường FE chỉ cho đường `repos/hungmk88/gani-pl
   - Dưới 20 giây: #438 6, #422 12, #448 13, #429 17, #444 18. Hai PR BE (#422, #448) không draft cũng nằm trong nhóm này.
   - Chỉ 4 PR draft có sự kiện ready: #447 9 giây, #449 594 giây, #450 6 giây, #452 7 giây.
 
-### 3a. Phiên khác trên tài khoản
+### 3a. Phiên Claude khác trên tài khoản
 
-_(điền khi đọc xong)_
+FE đọc lịch sử lệnh (tin người dùng và lệnh của agent, qua `list_events`) của hai phiên BE chạy trong khung giờ sự cố:
+
+| Phiên                                          | Khung giờ đã đọc                             | Phủ sự cố                |
+| ---------------------------------------------- | -------------------------------------------- | ------------------------ |
+| `session_015SNdqaLzkgVtERKS4NdqaD` (BE Session K) | 15:48:23 (sự kiện đầu tiên) – 17:57:00        | #447, #449, #450, #452   |
+| `session_01BjcEWmGXkhq6DYgXdQ5YyF` (BE flaky test) | 13:58:40 – 15:59:17 (phiên dừng lúc 15:59:10) | #438, #441               |
+
+Kết quả:
+
+- Không phiên nào gọi `merge_pull_request`, `enable_pr_auto_merge` hay `pull_request_review_write`, và không có lệnh
+  `update_pull_request` nào truyền `draft`.
+- Không lệnh Bash merge hay chuyển ready.
+- Thao tác ghi GitHub duy nhất của hai phiên:
+  - tạo PR, issue, comment;
+  - `update_pull_request_branch` #424 (15:50:40);
+  - đóng #445 (`state=closed`, 16:13:22);
+  - sửa mô tả #436 (14:23:46).
+- Không có poller merge: hai phiên chỉ `sleep` chờ CI và đặt lịch `send_later` để kiểm và báo.
+
+Chưa đọc:
+
+- phiên "Gani KPI system review": cập nhật cuối 16:12, trước sự cố 3–5;
+- phiên Cowork: không liệt kê được từ phiên này.
+
+Các phiên còn lại có lần cập nhật cuối trước 14:00 ngày 30/10.
+
+Dữ kiện tổng hợp: ở cả năm mốc merge và bốn mốc ready, ba phiên Claude đã đọc (FE và hai BE) không gọi lệnh merge hay ready nào.
+Các khả năng ngoài các phiên này (PAT/script, extension, người bấm) FE không kiểm được, xem mục 2 và câu hỏi ở mục 4.
 
 ## 4. Câu hỏi cho anh (CEO 31/10, ghi nguyên văn, chờ anh trả lời)
 
