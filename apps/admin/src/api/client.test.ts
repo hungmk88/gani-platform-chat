@@ -64,10 +64,27 @@ describe('api', () => {
     expect(init(1).headers['idempotency-key']).toBe(init(0).headers['idempotency-key']);
   });
 
+  it('never tries again a 4xx but 429, even a wait one (CEO 31/10), nor when the call says retry: false', async () => {
+    const busy = deps(json(409, { code: 'idempotency_in_progress' }), json(200, {}));
+    const r = await api('/v1/x', { method: 'POST' }, busy.d);
+    expect(r).toMatchObject({
+      ok: false,
+      error: { code: 'idempotency_in_progress', action: 'wait' },
+    });
+    expect(busy.fetch).toHaveBeenCalledTimes(1);
+    expect(busy.sleep).not.toHaveBeenCalled();
+
+    const off = deps(json(503, { code: 'service_unavailable' }), json(200, {}));
+    const r2 = await api('/v1/x', { method: 'POST', retry: false }, off.d);
+    expect(r2).toMatchObject({ ok: false, error: { code: 'service_unavailable' } });
+    expect(off.fetch).toHaveBeenCalledTimes(1);
+    expect(off.sleep).not.toHaveBeenCalled();
+  });
+
   it('does not try again a second time, nor past the longest wait, nor a show error', async () => {
     const twice = deps(
-      json(409, { code: 'idempotency_in_progress' }),
-      json(409, { code: 'idempotency_in_progress' }),
+      json(503, { code: 'service_unavailable' }),
+      json(503, { code: 'service_unavailable' }),
     );
     expect((await api('/v1/x', { method: 'POST' }, twice.d)).ok).toBe(false);
     expect(twice.fetch).toHaveBeenCalledTimes(2);

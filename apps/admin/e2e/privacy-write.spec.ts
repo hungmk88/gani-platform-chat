@@ -66,10 +66,10 @@ test('a recording that fails keeps the form and its key; one already waiting say
   failing = false;
   await form.getByRole('button', { name: 'Ghi nhận', exact: true }).click();
   await expect(form).toHaveCount(0);
-  // Two clicks, three requests: the API client asks a 503 (`wait`) once more by itself, as for every POST of the admin (F5b);
-  // all three carry the one key of this body.
-  expect(keys).toHaveLength(3);
-  expect(new Set(keys).size).toBe(1);
+  // Two clicks, two requests (`retry: false`: nothing is sent again by itself), with the one key of this body.
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBeTruthy();
+  expect(keys[1]).toBe(keys[0]);
   // The same customer and kind again: the API says one waits.
   await page.getByRole('button', { name: 'Ghi nhận yêu cầu' }).click();
   await form.getByRole('searchbox', { name: 'Khách hàng' }).fill('Lê');

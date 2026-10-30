@@ -15,6 +15,8 @@ export interface ApiRequest {
    */
   readonly idempotencyKey?: string;
   readonly signal?: AbortSignal;
+  /** `false`: never the automatic retry below; the person sends again (#23, CEO 31/10). Default `true`. */
+  readonly retry?: boolean;
 }
 
 export interface ApiDeps {
@@ -29,12 +31,19 @@ const browser: ApiDeps = {
   newKey: () => crypto.randomUUID(),
 };
 
-/** Longest wait before the one automatic retry (rate_limited, idempotency_in_progress); a longer one is left to the person. */
+/** Longest wait before the one automatic retry; a longer one is left to the person. */
 export const MAX_WAIT_SECONDS = 10;
 
 /**
+ * The statuses a `wait` error is tried again for (CEO 31/10): 429 and 502/503/504. Never another 4xx, on purpose: a 409
+ * `idempotency_in_progress` means the first request is still being carried out, and asking again does not help it.
+ */
+const RETRIED: ReadonlySet<number> = new Set([429, 502, 503, 504]);
+
+/**
  * `path` under the admin's origin (`/v1/...`). Answers the body as `T` (from `components['schemas']`), or the error of the P9
- * table. A `wait` error is tried again once, with the same Idempotency-Key, after its Retry-After (1 s when none is given).
+ * table. A `wait` error of a status in RETRIED is tried again once, with the same Idempotency-Key, after its Retry-After (1 s
+ * when none is given), unless the call says `retry: false`.
  */
 export async function api<T>(
   path: string,
@@ -66,8 +75,8 @@ export async function api<T>(
     }
     const error = await readError(res);
     const wait = error.retryAfter ?? 1;
-    if (error.action !== 'wait' || attempt > 0 || wait > MAX_WAIT_SECONDS)
-      return { ok: false, error };
+    const again = req.retry !== false && error.action === 'wait' && RETRIED.has(error.status);
+    if (!again || attempt > 0 || wait > MAX_WAIT_SECONDS) return { ok: false, error };
     await deps.sleep(wait * 1000);
   }
 }
