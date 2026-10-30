@@ -23,7 +23,18 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - KHÔNG `push --force` lên `main`.
 - KHÔNG amend commit đã push.
 - Sau khi push branch, báo URL cho anh.
-- Anh tạo PR + merge sau khi CI xanh.
+- **Ai merge: phân tầng (CEO 31/10).** Mọi PR mở ở **draft**; draft không thay required check, phải có cả hai.
+  - **Tầng 1** (docs, chỉ đọc, test, fix nhỏ) và **tầng 2** (thao tác ghi thông thường): DEV tự kiểm **đủ mọi job** của
+    `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD. Rồi DEV tự chuyển ready ngay trước khi merge,
+    trong cùng một lượt, và tự merge. Sau đó báo: HEAD, tên từng job, thời điểm merge, diff giữa HEAD và commit squash.
+  - **Tầng 3** (thao tác ghi không hoàn tác: xóa dữ liệu, hạ mức tự chủ): CEO merge.
+    - Trước đó DEV gửi "Sẵn sàng merge" kèm HEAD đầy đủ, job theo tên, `mergeable_state = clean` khi check đã kết thúc.
+    - CEO comment phê duyệt trên PR rồi mới bấm merge.
+  - **"Ready" ≠ "xong":** PR rời draft không phải tín hiệu merge.
+  - "PR có thao tác ghi" = PR gửi POST/PATCH/DELETE lên API.
+  - PR sửa file của bộ phận khác phải có review của bộ phận đó, kể cả comment.
+  - `main` có required check `lint, typecheck, test` và `enforce_admins` (U71); required check chỉ là lưới an toàn cuối.
+  - Chi tiết và lịch sử: `docs/ui/session-summary-29-10.md` mục 2.
 
 ### Quy trình mỗi PR
 
@@ -32,8 +43,8 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 3. [viết code, chạy lint/typecheck/test]
 4. `git add . && git commit -m "feat(db): ..." -m "Co-Authored-By: Claude <noreply@anthropic.com>"`
 5. `git push -u origin feat/pr3-tenancy-tables`
-6. Báo anh: URL branch + tóm tắt thay đổi
-7. Anh tạo PR → CI chạy → anh review → merge
+6. Mở PR ở draft, báo anh URL PR + tóm tắt thay đổi
+7. CI chạy → merge theo phân tầng ở trên
 8. `git checkout main && git pull`
 
 Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ để lại file thuộc PR này

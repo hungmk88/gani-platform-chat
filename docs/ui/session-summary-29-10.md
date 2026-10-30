@@ -66,6 +66,9 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   | 3    | Thao tác ghi không hoàn tác (B2 xóa dữ liệu, PR B màn 2 hạ mức tự chủ)        | CEO, sau tín hiệu "Sẵn sàng merge" của DEV và comment phê duyệt   |
 
   - **Tầng 1, 2:** bỏ nghi thức "Sẵn sàng merge".
+    - PR vẫn mở **draft**. Draft là trạng thái an toàn mặc định, ready là ngoại lệ có chủ đích. Draft không thay required
+      check, phải có cả hai.
+    - DEV tự chuyển ready **ngay trước khi tự merge, trong cùng một lượt**, để khoảng ready→merge ngắn nhất có thể.
     - DEV tự kiểm **đủ 9 job theo tên**; required check 1 job chỉ là lưới an toàn cuối, không phải chuẩn chất lượng.
     - DEV tự merge, rồi báo: HEAD, tên từng job, thời điểm merge, diff giữa HEAD và squash.
   - **Tầng 3:**
@@ -74,6 +77,8 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       duyệt thực hiện." Đây là biện pháp duy nhất còn lại, vì required check không chặn được merge khi CI đã xanh.
   - **"PR có thao tác ghi"** = PR gửi POST/PATCH/DELETE lên API.
   - Approval bị bỏ: không khả thi khi mọi PR do một tài khoản `hungmk88` mở (N36).
+  - `CLAUDE.md` gốc, mục GIT WORKFLOW, đã sửa theo luật này (CEO 31/10). Chỉ sửa mục đó.
+  - PR docs gộp các luật này (sau khi đủ 3 điều kiện) áp dụng luật tầng 1.
 - **"Ready" ≠ "xong" (CEO 31/10, nguyên văn):** "Ready" ≠ "xong". Chuyển PR khỏi draft chỉ có nghĩa "không còn là draft" — có
   thể do lỗi công cụ, do sửa mô tả, do bất kỳ ai. Tín hiệu duy nhất để merge một PR tầng 3 là tin "Sẵn sàng merge" từ FE, kèm
   đủ 3 thứ: HEAD đầy đủ, danh sách job theo tên, `mergeable_state = clean` khi check đã kết thúc. Không có tin đó → không merge,
