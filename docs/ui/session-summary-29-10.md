@@ -81,9 +81,18 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     định nghĩa trong tài liệu BE; FE không viết ví dụ BE.
   - `CLAUDE.md` gốc, mục GIT WORKFLOW, đã sửa theo luật này (CEO 31/10). Chỉ sửa mục đó.
   - PR docs gộp các luật này (sau khi đủ 3 điều kiện) áp dụng luật tầng 1, theo thứ tự:
-    1. comment vào PR tag BE lead, **trước khi merge**;
+    1. **trước khi merge**, comment vào PR: "PR sửa `CLAUDE.md` gốc — file dùng chung FE + BE. Đề nghị BE lead đọc và bổ sung
+       ví dụ tầng 3 của BE trong PR docs BE kế tiếp. Nguyên tắc áp dụng ngay từ khi luật có hiệu lực." Có tài khoản GitHub
+       của BE lead (anh cung cấp) thì tag đúng; không có thì **không `@`**. Không tag được ai thì không làm như đã tag;
     2. DEV tự chuyển ready rồi merge khi required check xanh;
-    3. **sau merge**, gửi thông báo cho BE lead.
+    3. **sau merge**, thông báo cho BE lead bằng hai đường:
+       - comment trên GitHub để lưu vết;
+       - FE soạn sẵn nội dung để anh chuyển qua kênh anh đang dùng với BE lead.
+
+       Không gửi vào phiên Claude BE: phiên có thể đã dừng, và dễ hiểu nhầm thẩm quyền.
+  - **Ngoại lệ có ghi chú:** PR docs gộp tự vi phạm luật "PR sửa file của bộ phận khác cần review", vì sửa `CLAUDE.md` gốc
+    (file dùng chung). Mô tả PR ghi: "PR này thiết lập luật phân tầng, đồng thời sửa `CLAUDE.md` gốc (file dùng chung). BE lead
+    chưa review. Chấp nhận ngoại lệ để luật có hiệu lực sớm; BE lead xác nhận trong PR docs BE kế tiếp."
 - **"Ready" ≠ "xong" (CEO 31/10, nguyên văn):** "Ready" ≠ "xong". Chuyển PR khỏi draft chỉ có nghĩa "không còn là draft" — có
   thể do lỗi công cụ, do sửa mô tả, do bất kỳ ai. Tín hiệu duy nhất để merge một PR tầng 3 là tin "Sẵn sàng merge" từ FE, kèm
   đủ 3 thứ: HEAD đầy đủ, danh sách job theo tên, `mergeable_state = clean` khi check đã kết thúc. Không có tin đó → không merge,
@@ -196,6 +205,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
+- **PR docs gộp sửa `CLAUDE.md` gốc — BE lead chưa review; cần BE lead xác nhận trong PR docs BE kế tiếp** (CEO 31/10). Chưa
+  có tài khoản GitHub của BE lead nên comment không `@`. Luật phân tầng áp dụng cho cả FE và BE.
 - **#458 (BE) thêm 2 test E2E vào file của FE, FE đã đọc (CEO 31/10: đọc, không revert): test đúng, ghi nhận, không sửa.**
   Hai file sửa: `apps/admin/e2e/privacy-write.spec.ts` và `reply.spec.ts`. Mỗi file thêm một ca: API trả 409
   `idempotency_in_progress` cho POST đầu, màn hiện "Yêu cầu trước vẫn đang xử lý. Đợi một chút.", lần bấm sau gửi cùng

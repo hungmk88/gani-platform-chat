@@ -31,7 +31,7 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
     - FE: xóa dữ liệu khách (B2), hạ mức tự chủ (màn 2).
     - BE: do BE lead định nghĩa trong tài liệu BE. Tầng 3 của BE (migration xóa dữ liệu, đổi schema phá vỡ, …) do BE lead định
       nghĩa trong tài liệu BE; nguyên tắc áp dụng ngay từ khi luật có hiệu lực.
-- Kèm theo phân tầng (CEO 31/10):
+- Kèm theo phân tầng (CEO 31/10). 5 dòng dưới đây là chi tiết bắt buộc của tầng 1/2, không phải tùy chọn:
   - Mọi PR mở ở draft. Tầng 1/2: DEV tự chuyển ready ngay trước khi tự merge, trong cùng một lượt. Draft không thay required
     check, phải có cả hai.
   - Tầng 1/2: DEV tự kiểm đủ mọi job của `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD; required
