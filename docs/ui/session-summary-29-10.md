@@ -175,6 +175,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   - Một `Idempotency-Key` sinh khi mở hộp thoại, giữ qua mọi "Thử lại", bỏ khi đóng. Đang xử lý: khóa nút, Esc và "Hủy".
     409/404/403/503 nói lý do thật, không bao giờ "đã xóa" giả; thành công hiện số thật API trả (`PrivacyErasure`).
   - U70 (số lượng trong `GET /v1/privacy-requests/{id}`, "tại thời điểm xem") không chặn PR B.
+- **502/504 chưa được tự thử lại** vì `apps/admin/src/api/errors.ts` map chúng vào `internal_error` (action `show`), dù luật của
+  `client.ts` (#450) cho phép 429/502/503/504: sửa khi có nhu cầu, không mở PR riêng bây giờ (CEO 31/10).
 - **Hằng `button` trùng** giữa `apps/admin/src/paged-list.tsx` và `apps/admin/src/security/security-screen.tsx` (#441, CEO 30/10
   chấp nhận): gộp khi có PR đụng một trong hai file, không mở PR riêng.
 - **Dòng 28 `apps/admin/CLAUDE.md` sai định dạng** (thiếu dòng trống, `prettier --check` đỏ từ trước; file không nằm trong

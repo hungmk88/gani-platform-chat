@@ -51,8 +51,8 @@ describe('api', () => {
     expect(r).toMatchObject({ ok: false, error: { code: 'version_conflict', action: 'reload' } });
   });
 
-  it('tries a wait error again once after Retry-After, with the same key', async () => {
-    const { d, sleep, init } = deps(
+  it('still tries a 429 again exactly once after Retry-After, with the same key (CEO 31/10)', async () => {
+    const { d, fetch, sleep, init } = deps(
       json(429, { code: 'rate_limited' }, { 'retry-after': '2' }),
       json(200, { done: true }),
     );
@@ -60,6 +60,8 @@ describe('api', () => {
       ok: true,
       data: { done: true },
     });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
     expect(sleep).toHaveBeenCalledWith(2000);
     expect(init(1).headers['idempotency-key']).toBe(init(0).headers['idempotency-key']);
   });
