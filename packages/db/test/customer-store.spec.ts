@@ -2,12 +2,14 @@ import { randomBytes } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { uuidv7 } from '@gani/domain';
+import { inArray } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   createDbPool,
   customerForContact,
+  customerIdentities,
   insertConversation,
   linkConversationCustomer,
   lockContact,
@@ -178,5 +180,45 @@ describe('the customer tables', () => {
       );
     expect(await identity(null, person())).toBe('23514');
     expect(await identity(CA, 'zu-seed')).toBe('23505');
+  });
+
+  // rls-all-tables.spec checks the shape of the policy; this checks the rows themselves (rà độ phủ test 30/10, mục 4.2): the Zalo user
+  // ids of another organisation are never read, by list or by id, and never written for it.
+  it('shows a tenant the Zalo identities of its own customers only, and refuses writing one for another organisation (42501)', async () => {
+    const ofB = await admin.query<{ id: string; customer_id: string; channel_account_id: string }>(
+      'SELECT id, customer_id, channel_account_id FROM customer_identities WHERE org_id = $1',
+      [B],
+    );
+    const theirs = ofB.rows.map((r) => r.id);
+    expect(
+      theirs.length,
+      'organisation B must hold identities, or the check below proves nothing',
+    ).toBeGreaterThan(0);
+    const seen = await inA((tx) =>
+      tx
+        .select({ id: customerIdentities.id, orgId: customerIdentities.orgId })
+        .from(customerIdentities),
+    );
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.filter((r) => r.orgId !== A)).toEqual([]);
+    const byId = await inA((tx) =>
+      tx
+        .select({ id: customerIdentities.id })
+        .from(customerIdentities)
+        .where(inArray(customerIdentities.id, theirs)),
+    );
+    expect(byId).toEqual([]);
+    const [target] = ofB.rows;
+    const write = inA((tx) =>
+      tx.insert(customerIdentities).values({
+        id: uuidv7(),
+        orgId: B,
+        customerId: target?.customer_id ?? '',
+        identityType: 'zalo_uid',
+        channelAccountId: target?.channel_account_id ?? null,
+        externalId: person(),
+      }),
+    );
+    expect(await sqlState(write)).toBe('42501');
   });
 });
