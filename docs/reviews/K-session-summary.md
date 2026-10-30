@@ -2,7 +2,7 @@
 
 Session `session_01BjcEWmGXkhq6DYgXdQ5YyF` · Backend (Gói 1) · từ **26/10/2026 18:11 UTC** tới **30/10/2026 ~15:45 UTC**.
 Session trước: `docs/reviews/J-session-summary.md` (mục 1, 4 vẫn đúng, trừ chỗ file này sửa). Người giao việc: anh (xưng "anh",
-Backend xưng "em", trả lời tiếng Việt). `main` lúc chốt: `0d18e37`. Bản đầu của file này (#415, `a95138c`) chốt lúc 08:40 UTC;
+Backend xưng "em", trả lời tiếng Việt). `main` lúc chốt: `c1ab8f7` (#442). Bản đầu của file này (#415, `a95138c`) chốt lúc 08:40 UTC;
 bản này thêm phần 30/10 từ 08:40 tới 15:45 UTC.
 
 Đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/api/CLAUDE.md`, `packages/db/CLAUDE.md`, `infra/CLAUDE.md` → file này → `QUESTIONS.md`
@@ -55,7 +55,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:45 UTC.
 - **Test phải kiểm hành vi thật:** assert giá trị đầu ra, không assert "hàm được gọi". Mỗi test mới kèm đột biến chứng minh test đỏ.
 - **Không code outbound Zalo trước khi U57 được chốt** (blocker S3, `backend-progress-20261030.md` mục 3).
 
-## 2. PR đã merge trong session (34 PR, squash)
+## 2. PR đã merge trong session (35 PR, squash)
 
 **26/10 – 30/10 08:40 UTC (22 PR):**
 
@@ -84,7 +84,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:45 UTC.
 | #410 | Rủi ro 2 đóng (#406 merge) | |
 | #414 | U59: `ANSWERABLE` dời sang `permissions.ts` và export; trả lời U57, U58 | Em merge theo lệnh anh, `da45290` |
 
-**30/10 08:40 – 15:45 UTC (giờ merge theo UTC):**
+**30/10 08:40 – 15:45 UTC (13 PR, giờ merge theo UTC):**
 
 | PR | Merge | Nội dung | Ghi chú |
 |---|---|---|---|
@@ -100,6 +100,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:45 UTC.
 | #436 | 14:29 | Cổng coverage theo từng file (job `coverage`) + test đường Valkey của `RealtimeService` | **428 dòng, push trước khi đếm** (mục 8); anh giữ |
 | #439 | 15:07 | Không PII trong log: hai formatter + crash handler | Mục 4.10 |
 | #440 | 15:17 | Ca crash có PII ngay trong message (chỉ `redactPii` chặn được) | Bù cho #439 |
+| #442 | 15:40 | Ca đọc chéo tổ chức cho 22 bảng từ catalog + ca ghi `messages` (+58/−5) | Mục 4.9; đột biến 3/3 |
 
 ## 3. Quyết định ghi trong `QUESTIONS.md`
 
@@ -210,7 +211,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:45 UTC.
 - **Thứ tự anh duyệt (brief "#440 MERGE, CHUYỂN BƯỚC 2 ƯU TIÊN 2"):** mỗi bảng một ca đọc + một ca ghi, nhiều PR nhỏ, đếm dòng
   trước: `messages` → `message_deliveries` → `idempotency_keys` → `agent_settings`. Vòng lặp catalog đi cùng hoặc sau.
   `audit_logs` cuối cùng, **plan trước khi code**, kiểm bảng cha chứ không chỉ một partition.
-- **Đang mở (mục 6):** #442 (catalog + `messages`), #443 (`message_deliveries`).
+- **#442 (đã merge):** vòng lặp catalog + `messages`. **Đang mở (mục 6):** #443 (`message_deliveries`).
 
 ### 4.10 Không PII trong log (#439, #440)
 
@@ -247,15 +248,14 @@ Các lịch "FE check-in 2 tiếng" (`trig_01Br6sSpPXw9Xej9KzBakxUt`) và "Check
 
 ## 6. Việc tiếp theo
 
-1. **PR đang mở của Backend** (em subscribe #442, #443):
+1. **PR đang mở của Backend** (em subscribe #443; #442 đã merge nên đã hủy subscribe):
 
    | PR | Nhánh | HEAD | Nội dung | Trạng thái lúc chốt |
    |---|---|---|---|---|
-   | #442 | `test/rls-catalog-cross-org` | `7cca318` | Ca đọc chéo tổ chức cho 22 bảng từ catalog + ca ghi `messages` (+58/−5) | 9/9 job xanh (run 41080252468); chưa báo "Sẵn sàng merge" |
-   | #443 | `test/rls-message-deliveries-cross-org` | `4304354` | INSERT → 42501, UPDATE → 0 dòng cho `message_deliveries` của B (+40/−7) | CI đang chạy |
+   | #443 | `test/rls-message-deliveries-cross-org` | `4304354` | INSERT → 42501, UPDATE → 0 dòng cho `message_deliveries` của B (+40/−7) | 9/9 job xanh (run 41081763502), docker chạy thật; chờ GitGuardian và `mergeable_state` |
    | #424 | `test/customer-identities-cross-tenant` | `6b9e5e1` | Mục 4.9 | Chờ anh merge (ngoại lệ #430) |
 
-   Số local của #442/#443: DB mới `gani_rls2` đủ 75 migration, db `test:integration` 863 (#442) và 841 (#443), mỗi PR chạy 2 lần.
+   Số local của #442 (đã merge) và #443: DB mới `gani_rls2` đủ 75 migration, db `test:integration` 863 (#442) và 841 (#443), mỗi PR chạy 2 lần.
    Đột biến: #442 3/3 bị bắt, #443 2/2 bị bắt; sau mỗi lần trả policy về và so `pg_policies` khớp.
 2. **Bước 2 tiếp:** `idempotency_keys` (ca ghi; `response_body` có thể chứa PII) → `agent_settings` (ca ghi). Ca đọc đã nằm trong
    vòng lặp catalog của #442. Mỗi bảng một PR nhỏ, đếm dòng trước khi push.
