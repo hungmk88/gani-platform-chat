@@ -93,14 +93,16 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 | U59 | **Xong (#414):** `ANSWERABLE` (`HUMAN_ACTIVE`, `PENDING_CUSTOMER`) export từ `apps/api/src/modules/conversations/permissions.ts`.                                                                                                                                               |
 | U60 | Mở, đã gửi BE (#405): luật ticket ở file export được. `apps/api/src/modules/tickets/` mới có `schemas` và `openapi`.                                                                                                                                                            |
 
-## 6. Việc đã kích hoạt, chờ CEO duyệt phương án (30/10)
+## 6. Việc đã kích hoạt (CEO duyệt 30/10)
 
-| Mã  | Việc                                                                                                                                                                                                                                                                                                        | Cần CEO                                                                                                                                         |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| K4  | **PR 1** (khoảng 20–30 dòng): A1 của `permissions-sync.test.ts` import `ANSWERABLE`, so `canReply` với `mayAct(…, 'send_message') && ANSWERABLE.has(state)` trên mọi vai trò × trạng thái × người giữ. `permissions.ts` đã có trong `inputs` của turbo. Đột biến: bỏ một trạng thái khỏi `ANSWERABLE` → đỏ. | Duyệt phương án                                                                                                                                 |
-| K5  | **PR 2** (khoảng 10 dòng): `system-page.tsx:13` trang bảo trì bỏ vế "Tin khách gửi tới vẫn được lưu"; `errors.ts:52` sửa câu `channel_unavailable`.                                                                                                                                                         | Duyệt; **chọn câu U57**: (a) bản đầy đủ BE đề xuất hay (b) bản ngắn "Kênh đang lỗi. Tin đã lưu, sẽ thử gửi lại (có giới hạn)." (em đề xuất (b)) |
-
-Em đề xuất làm PR 1 trước. Hai PR tách theo việc.
+- **K5 (PR 2, làm trước):** trang bảo trì bỏ vế "Tin khách gửi tới vẫn được lưu" (U58); câu `channel_unavailable` theo U57,
+  **CEO chọn bản (a)**: "Kênh đang lỗi. Tin đã được lưu, hệ thống sẽ thử gửi lại. Nếu không gửi được, tin sẽ chuyển sang trạng
+  thái thất bại." (phải nói rõ hệ quả cuối; bản ngắn chỉ dùng khi chỗ hiển thị quá chật và có đường xem giải thích đầy đủ).
+  Handoff này đi cùng PR.
+- **K4 (PR 1, làm sau):** A1 của `permissions-sync.test.ts` import `ANSWERABLE` từ `permissions.ts`, so `canReply` với
+  `mayAct(…, 'send_message') && ANSWERABLE.has(state)` trên mọi vai trò × trạng thái × người giữ; khoảng 20–30 dòng, có đột biến.
+  `permissions.ts` đã có trong `inputs` của turbo.
+- Mỗi PR: nhánh mới từ `origin/main` mới nhất, push thường, chỉ merge khi CI xanh hết và có "Sẵn sàng merge" kèm HEAD.
 
 ## 7. Việc chờ, có điều kiện kích hoạt
 

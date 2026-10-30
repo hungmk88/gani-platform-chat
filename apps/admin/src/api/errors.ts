@@ -49,7 +49,12 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   autonomy_restricted: ['show', 'Việc này cần người duyệt.'],
   rate_limited: ['wait', 'Thao tác quá nhanh. Đợi một chút rồi thử lại.'],
   internal_error: ['show', 'Đã có lỗi, không phải do bạn. Nếu còn lỗi, gửi mã bên dưới cho Admin.'],
-  channel_unavailable: ['show', 'Kênh đang lỗi. Tin được giữ lại để gửi sau.'],
+  // U57 (#414): the API returns this code nowhere yet; sending is asynchronous, retried a limited number of times by the outbound
+  // worker (8b), then failed. CEO 30/10: say the end of it too, so it never reads as retried forever.
+  channel_unavailable: [
+    'show',
+    'Kênh đang lỗi. Tin đã được lưu, hệ thống sẽ thử gửi lại. Nếu không gửi được, tin sẽ chuyển sang trạng thái thất bại.',
+  ],
   ai_budget_exceeded: ['show', 'Đã hết hạn mức AI tháng này. Gợi ý AI tạm ẩn.'],
   maintenance: ['show', 'Hệ thống đang bảo trì. Thử lại sau ít phút.'],
   two_factor_setup_required: ['set_up_2fa', 'Cần cài xác thực 2 lớp trước khi dùng hệ thống.'],
