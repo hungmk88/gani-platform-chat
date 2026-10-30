@@ -89,6 +89,8 @@ function byStatus(status: number): string {
   if (status === 413) return 'payload_too_large';
   if (status === 429) return 'rate_limited';
   if (status === 503) return 'service_unavailable';
+  // 502/504 land here, `internal_error` (`show`), so the RETRIED of client.ts has no effect on them today. Mapping them to a
+  // `wait` code would make every POST try a 502/504 again by itself: weigh that before changing it (#454).
   return status >= 500 ? 'internal_error' : 'validation_failed';
 }
 
