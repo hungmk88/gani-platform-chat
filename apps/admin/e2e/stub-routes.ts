@@ -45,6 +45,7 @@ export async function routeScreens(
   // #27 first: its autonomy route lives under /v1/workspaces/, which routeWorkspaces would answer.
   for (const route of [
     routeAutonomy,
+    routePrivacy,
     routeMembers,
     routeWorkspaces,
     routeChannels,
@@ -57,7 +58,6 @@ export async function routeScreens(
     routeOverview(req, res, path, who, edge) ||
     routeAiPrompts(req, res, path, who, edge) ||
     routeSecurity(req, res, path, who, edge) ||
-    routePrivacy(req, res, path, who, edge) ||
     (await routeTickets(req, res, path, who, edge))
   );
 }

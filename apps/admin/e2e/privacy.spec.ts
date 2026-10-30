@@ -4,8 +4,8 @@ import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 
-// #23 Dữ liệu khách, Đợt 1 read only (PR A, CEO 30/10): the requests on customers' personal data from a route planned for S5, by
-// cursor as #29. No button records or carries out a request (PR B), and the route has no filter.
+// #23 Dữ liệu khách (CEO 30/10): the requests on customers' personal data from a route planned for S5, by cursor as #29, with no
+// filter. Recording one (PR B1) is in privacy-write.spec.ts; nothing is carried out from this screen yet (PR B2).
 const rows = (page: Page) =>
   page.getByRole('region', { name: 'Yêu cầu dữ liệu cá nhân' }).getByRole('table').getByRole('row');
 
@@ -15,7 +15,9 @@ const problem = (status: number, code: string, traceId: string) => ({
   body: JSON.stringify({ status, code, traceId }),
 });
 
-test('an Owner reads the requests, with nothing to record or carry out', async ({ page }) => {
+test('an Owner reads the requests; the one button records, no row carries anything out', async ({
+  page,
+}) => {
   const asked: string[] = [];
   page.on('request', (r) => {
     if (r.url().includes('/v1/privacy-requests')) asked.push(new URL(r.url()).search);
@@ -33,7 +35,12 @@ test('an Owner reads the requests, with nothing to record or carry out', async (
   await expect(rows(page).nth(2)).toHaveText(/^Khách chưa có tênXuất dữ liệuĐã thực hiện/);
   expect(asked[0]).toBe('?limit=50');
   await expect(page.getByRole('main').getByRole('button', { name: 'Tải thêm' })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /Ghi nhận|Thực hiện|Xóa/ })).toHaveCount(0);
+  // The buttons of the screen are exactly "Ghi nhận yêu cầu" and "Tải thêm": no row has one (PR B2 adds the erase).
+  await expect(page.getByRole('main').getByRole('button')).toHaveText([
+    'Ghi nhận yêu cầu',
+    'Tải thêm',
+  ]);
+  await expect(rows(page).getByRole('button')).toHaveCount(0);
   await expect(page.getByRole('combobox')).toHaveCount(0);
   await expectAccessible(page);
 });

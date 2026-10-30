@@ -9,7 +9,7 @@ import { PrivacyScreen } from '../../../../src/privacy/privacy-screen';
 export const metadata: Metadata = { title: 'Dữ liệu khách — Gani Platform' };
 
 /**
- * #23 Dữ liệu khách, Đợt 1 read only (CEO 30/10): Owner and Admin as the menu and the API (Phụ lục B "Xử lý yêu cầu dữ liệu cá nhân",
+ * #23 Dữ liệu khách (CEO 30/10): Owner and Admin as the menu and the API (Phụ lục B "Xử lý yêu cầu dữ liệu cá nhân",
  * U36). Outside the menu of the role it is the 404 inside the frame, as any such path.
  */
 export default async function CustomerDataPage() {

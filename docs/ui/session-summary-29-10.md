@@ -155,8 +155,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `main`: dòng U68 của `QUESTIONS.md` không còn "(iii)", `security.ts` không còn "U68 (iii)". Còn thấy → PR đó chưa merge, việc
   vẫn treo.
 - **Màn 4 Dữ liệu khách** (`/settings/customer-data`, planned S5 `/v1/privacy-requests*`): PR A chỉ đọc danh sách yêu cầu
-  (không nút) làm sau #438; **PR B chưa code** → PR B (form ghi nhận yêu cầu + hộp thoại thực hiện xóa). Thiết kế hộp thoại xóa **đã duyệt**
-  (CEO 30/10), dành cho PR B:
+  (không nút) xong ở #444. PR B tách hai (CEO 30/10): **B1** ghi nhận yêu cầu (PR draft đầu tiên); **B2** hộp thoại
+  thực hiện xóa, nhánh mới từ `origin/main` sau khi B1 merge, **không tự thử lại 503** (CEO: mỗi lần gửi là một lần bấm).
+  Thiết kế hộp thoại xóa **đã duyệt** (CEO 30/10), dành cho B2:
   - Gõ lại chuỗi `XOA-<6 ký tự cuối mã yêu cầu>` (hiện monospace; không dùng tên khách); so khớp: cắt khoảng trắng đầu/cuối,
     không phân biệt hoa thường, không chuẩn hóa khoảng trắng bên trong, không bỏ gạch; không có nút "Sao chép".
   - Câu "không hoàn tác được" ở đầu hộp thoại; liệt kê loại và phạm vi sẽ xóa; tên khách `null` → "khách chưa có tên" + mã
@@ -170,7 +171,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   chấp nhận): gộp khi có PR đụng một trong hai file, không mở PR riêng.
 - **Dòng 28 `apps/admin/CLAUDE.md` sai định dạng** (thiếu dòng trống, `prettier --check` đỏ từ trước; file không nằm trong
   `format:check`): sửa trong PR đụng file này, không mở PR riêng. #444 có đụng file nên đã sửa luôn trong #444.
-- **Sau khi #444 merge: xóa nhánh `backup/privacy-full`** (chỉ giữ bản đầy đủ màn 4 trong lúc tách #441/#444).
+- **Nhánh `backup/privacy-full` (`c9e5578`): CHƯA xóa, cần người có quyền repo xóa trên GitHub.** CEO duyệt xóa 30/10 sau #444;
+  proxy git của môi trường trả HTTP 403 cho lệnh xóa nhánh. Nội dung đã trên `main` (#441, #444).
 
 ## 8. Lệnh kiểm
 
