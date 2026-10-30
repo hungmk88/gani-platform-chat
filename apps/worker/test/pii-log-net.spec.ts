@@ -47,9 +47,20 @@ describe('no PII in a log', () => {
     }
   });
 
-  it.each(['unhandledRejection', 'uncaughtException'])(
-    'a crash on %s prints the PostgreSQL error without its detail, and exits with 1',
-    async (event) => {
+  // `error` is the name pg gives its DatabaseError. The third case has the PII in the message: only redactPii stands in its way.
+  const CHECK =
+    'error 23514: new row for relation "customers" violates check constraint "customers_phone_check"';
+  it.each([
+    ['unhandledRejection', 'detail', CHECK],
+    ['uncaughtException', 'detail', CHECK],
+    [
+      'unhandledRejection',
+      'message',
+      'error 22P02: invalid input syntax for type uuid: "<email> <number>"',
+    ],
+  ])(
+    'a crash on %s with PII in the %s of a PostgreSQL error prints it masked, and exits with 1',
+    async (event, where, line) => {
       const org = await suite.newOrg();
       const child = spawn(
         process.execPath,
@@ -59,6 +70,8 @@ describe('no PII in a log', () => {
             PATH: process.env['PATH'],
             DATABASE_URL_MIGRATION: requireEnv('DATABASE_URL_MIGRATION'),
             CRASH_EVENT: event,
+            CRASH_IN: where,
+            VALUE: `${EMAIL} ${PHONE}`,
             ORG_ID: org,
             CUSTOMER_ID: uuidv7(),
             PHONE,
@@ -70,10 +83,7 @@ describe('no PII in a log', () => {
         stream.on('data', (chunk: Buffer) => (output += chunk.toString('utf8')));
       const code = await new Promise<number | null>((done) => child.once('close', done));
       expect(code).toBe(1);
-      // `error` is the name pg gives its DatabaseError.
-      expect(output).toContain(
-        `${event}: error 23514: new row for relation "customers" violates check constraint "customers_phone_check"`,
-      );
+      expect(output).toContain(`${event}: ${line}`);
       expect(output).not.toContain('Failing row');
       expect(leaks(output)).toEqual([]);
     },
