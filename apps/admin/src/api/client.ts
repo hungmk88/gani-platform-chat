@@ -37,6 +37,8 @@ export const MAX_WAIT_SECONDS = 10;
 /**
  * The statuses a `wait` error is tried again for (CEO 31/10): 429 and 502/503/504. Never another 4xx, on purpose: a 409
  * `idempotency_in_progress` means the first request is still being carried out, and asking again does not help it.
+ * 502/504 have no effect here today: `byStatus` in errors.ts makes them `internal_error` (`show`), never `wait`. Mapping them to
+ * `wait` would make every POST try a 502/504 again by itself, without a change here: weigh that before changing it (#454).
  */
 const RETRIED: ReadonlySet<number> = new Set([429, 502, 503, 504]);
 

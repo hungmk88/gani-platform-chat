@@ -79,3 +79,34 @@ test('no box before the conversation is claimed; it comes with the claim', async
   await claim(page).click();
   await expect(box(page)).toBeVisible();
 });
+
+// #455: since #450 the client does not ask a 409 `idempotency_in_progress` again by itself; the agent sees why, and the same text
+// sent again keeps its key.
+test('a reply still being carried out says so, and sending it again keeps its key', async ({
+  page,
+}) => {
+  let busy = true;
+  await page.route('**/messages', (route) => {
+    if (route.request().method() !== 'POST' || !busy) return route.fallback();
+    busy = false;
+    return route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({ status: 409, code: 'idempotency_in_progress' }),
+    });
+  });
+  const posted = () =>
+    page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/messages'));
+  await signIn(page, accountOf('sales'));
+  await page.goto(`/inbox/${held.id}`);
+  await box(page).fill('Dạ em kiểm lại đơn ạ.');
+  const first = posted();
+  await page.getByRole('button', { name: 'Gửi' }).click();
+  const key = (await first).headers()['idempotency-key'];
+  const alert = page.getByRole('form', { name: 'Trả lời khách' }).getByRole('alert');
+  await expect(alert).toContainText('Yêu cầu trước vẫn đang xử lý. Đợi một chút.');
+  const second = posted();
+  await page.getByRole('button', { name: 'Gửi' }).click();
+  expect(key).toMatch(/^[0-9a-f-]{36}$/);
+  expect((await second).headers()['idempotency-key']).toBe(key);
+});
