@@ -7,10 +7,10 @@ import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // message_deliveries (202610211000, N146): the pending row of a send, its constraints and what app_role may change. RLS by organisation
-// and workspace and the grants by column are also swept by rls-all-tables.spec and grants.spec.
-const A = uuidv7();
+// and workspace and the grants by column are also swept by rls-all-tables.spec and grants.spec; B is the foreign organisation.
+const [A, B] = [uuidv7(), uuidv7()];
 const WA2 = uuidv7();
-let [WA, CA, CONV, user] = ['', '', '', ''];
+let [WA, CA, CONV, user, userB] = ['', '', '', '', ''];
 let admin: pg.Client;
 let pool: pg.Pool;
 
@@ -26,17 +26,18 @@ const pending = (over: { workspaceIds?: string[]; channel?: string; message?: st
     insertPendingDelivery(tx, d),
   ).then(() => d);
 };
-/** One statement as app_role in the tenant of A and WA, committed. */
-async function asApp(sql: string, params: unknown[]): Promise<void> {
+/** One statement as app_role in the tenant of A and `workspaces` (WA unless given), committed; its number of rows. */
+async function asApp(sql: string, params: unknown[], workspaces = [WA]): Promise<number | null> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query(
       "SELECT set_config('app.current_org', $1, true), set_config('app.current_workspaces', $2, true)",
-      [A, `{${WA}}`],
+      [A, `{${workspaces.join(',')}}`],
     );
-    await client.query(sql, params);
+    const { rowCount } = await client.query(sql, params);
     await client.query('COMMIT');
+    return rowCount;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -50,6 +51,7 @@ beforeAll(async () => {
   await admin.connect();
   pool = createDbPool(url('app'), { max: 2 });
   user = await seedTenant(admin, A);
+  userB = await seedTenant(admin, B);
   const one = async (sql: string) =>
     ((await admin.query<{ id: string }>(sql, [A])).rows[0] as { id: string }).id;
   WA = await one('SELECT id FROM workspaces WHERE org_id = $1');
@@ -63,6 +65,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanupTenant(admin, A, user);
+  await cleanupTenant(admin, B, userB);
   await admin.end();
   await pool.end();
 });
@@ -130,5 +133,35 @@ describe('what app_role may change', () => {
       await set(`UPDATE message_deliveries SET org_id = gen_random_uuid() WHERE id = $1`),
     ).toBe('42501');
     expect(await set('DELETE FROM message_deliveries WHERE id = $1')).toBe('42501');
+  });
+});
+
+describe('another organisation', () => {
+  it('A, even with the workspace of B in its context, can neither write a delivery for B (42501) nor change one of B (0 rows)', async () => {
+    const { rows } = await admin.query<{
+      id: string;
+      w: string;
+      c: string;
+      ch: string;
+      status: string;
+    }>(
+      `SELECT id, workspace_id AS w, conversation_id AS c, channel_account_id AS ch, status
+       FROM message_deliveries WHERE org_id = $1`,
+      [B],
+    );
+    const [theirs] = rows;
+    expect(theirs, 'B must hold a delivery, or this proves nothing').toBeDefined();
+    const both = [WA, theirs?.w ?? ''];
+    const insert = asApp(
+      `INSERT INTO message_deliveries (id, org_id, workspace_id, conversation_id, message_id, channel_account_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [uuidv7(), B, theirs?.w, theirs?.c, uuidv7(), theirs?.ch],
+      both,
+    );
+    expect(await sqlState(insert)).toBe('42501');
+    const update = `UPDATE message_deliveries SET status = 'failed', last_error = 'E_X', attempts = 1 WHERE id = $1`;
+    expect(await asApp(update, [theirs?.id], both)).toBe(0);
+    const after = await admin.query('SELECT status FROM message_deliveries WHERE org_id = $1', [B]);
+    expect(after.rows).toEqual([{ status: theirs?.status }]);
   });
 });
