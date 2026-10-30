@@ -31,12 +31,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   - đã push hết;
   - HEAD của PR trên GitHub khớp `git ls-remote` của nhánh;
   - **TẤT CẢ job CI xanh trên đúng HEAD đó**, đếm theo `.github/workflows/ci.yml` của `main`. Không dùng con số cứng (CEO 29/10).
-    Hiện 7/7: lint/typecheck/test, admin (e2e, axe), database, queue, dependency audit/secret scan, docker images, terraform;
+    Hiện 8 check (từ #420): changes (docker needed?), lint/typecheck/test, admin (e2e, axe), database, queue,
+    dependency audit/secret scan, docker images, terraform;
   - job `admin (e2e, axe)` chạy thật (bước `pnpm --filter "@gani/admin..." build` success);
   - `mergeable_state` clean.
-- **Job `skipped` (CEO 30/10, sau #420):** job `docker`/`terraform` hiện `skipped` được tính đạt **chỉ khi PR chỉ sửa `*.md`**.
-  PR có file code, config hay dependency mà job bị `skipped` là bất thường: dừng, báo CEO. Khi báo "Sẵn sàng merge", ghi
-  "N success + M skipped (doc-only)", không ghi "7/7 xanh".
+- **Job `skipped` (CEO 30/10, sửa luật sau #420):** **chỉ job `docker images`** được `skipped`, và chỉ trên PR chỉ sửa `*.md`
+  (do job `changes (docker needed?)` quyết định). Mọi job khác, **kể cả `terraform`**, phải chạy và xanh. PR có file code,
+  config hay dependency mà job `docker` bị `skipped` là bất thường: dừng, báo CEO. Khi báo "Sẵn sàng merge": nêu tên từng job,
+  đếm đúng số check thực tế (hiện 8), ghi "N success + M skipped (doc-only)". `unstable` khi CI còn chạy là bình thường; chỉ báo
+  khi mọi check đã xong và `mergeable_state = clean`. (Bản trước ghi "docker/terraform" là sai.)
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
