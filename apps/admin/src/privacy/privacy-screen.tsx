@@ -1,22 +1,28 @@
 'use client';
 
+import { useState } from 'react';
+
 import type { NavItem } from '../nav';
 import { Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
 import { KIND, STATUS } from './labels';
 import { customerOf, requestsPath, timeText, type PrivacyRequestPage } from './privacy';
+import { RequestDialog } from './request-dialog';
 
 const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
+const primary = 'self-start rounded-input bg-accent px-4 py-2 text-accent-on';
 const TONE = { ok: 'bg-ok-bg text-ok-text', error: 'bg-error-bg text-error-text' };
 
 /**
- * #23 Dữ liệu khách of the company, read only in Đợt 1 (PR A, CEO 30/10): the requests on customers' personal data, newest first, by
- * cursor as #29 (`Paged`). No button records or carries out a request (PR B). A 404 means the API does not serve the route yet
- * (planned S5): the screen then says it is not there, never a list made up here. The reason is plain text, wrapped, never cut.
+ * #23 Dữ liệu khách of the company (CEO 30/10): the requests on customers' personal data, newest first, by cursor as #29
+ * (`Paged`). PR B1: "Ghi nhận yêu cầu" records one (`RequestDialog`); nothing is carried out from this screen yet (the erase
+ * dialog is PR B2). A 404 means the API does not serve the route yet (planned S5): the screen then says it is not there, never
+ * a list made up here. The reason is plain text, wrapped, never cut.
  */
 export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
   const requests = useApiPages<PrivacyRequestPage>(['privacy-requests'], requestsPath);
+  const [recording, setRecording] = useState(false);
   if (requests.isError && requests.error.error.code === 'not_found')
     return <PendingPage item={item} go={go} />;
   return (
@@ -24,6 +30,9 @@ export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
       <h1 id="privacy-title" className="text-20 font-semibold">
         Dữ liệu khách
       </h1>
+      <button type="button" className={primary} onClick={() => setRecording(true)}>
+        Ghi nhận yêu cầu
+      </button>
       <section aria-labelledby="requests-title" className="flex flex-col gap-3">
         <h2 id="requests-title" className="text-16 font-semibold">
           Yêu cầu dữ liệu cá nhân
@@ -77,8 +86,9 @@ export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
         />
       </section>
       <p className="text-12 text-text-muted">
-        Chỉ xem: không ghi nhận hay thực hiện yêu cầu ở màn này. Không áp dụng AI ở màn này.
+        Thực hiện yêu cầu chưa có trong bản hiện tại. Không áp dụng AI ở màn này.
       </p>
+      {recording ? <RequestDialog onClose={() => setRecording(false)} /> : null}
     </section>
   );
 }

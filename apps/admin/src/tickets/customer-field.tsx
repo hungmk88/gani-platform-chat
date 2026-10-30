@@ -19,9 +19,11 @@ const button = 'rounded-input border border-border-strong px-3 py-1 disabled:opa
 export function CustomerField({
   value,
   onChange,
+  label = 'Khách hàng (không bắt buộc)',
 }: {
   value: Customer | null;
   onChange: (c: Customer | null) => void;
+  label?: string;
 }) {
   const [q, setQ] = useState('');
   const asked = useDeferredValue(q).trim().slice(0, MAX_QUERY);
@@ -34,7 +36,7 @@ export function CustomerField({
   if (value)
     return (
       <div className="flex flex-col gap-1">
-        <span>Khách hàng (không bắt buộc)</span>
+        <span>{label}</span>
         <p className="flex flex-wrap items-center gap-2">
           <span>Khách: {customerLine(value)}</span>
           <button type="button" className={button} onClick={() => onChange(null)}>
@@ -46,7 +48,7 @@ export function CustomerField({
   return (
     <div className="flex flex-col gap-1">
       <label className="flex flex-col gap-1">
-        Khách hàng (không bắt buộc)
+        {label}
         <input
           type="search"
           value={q}
