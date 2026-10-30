@@ -33,3 +33,6 @@ playwright-report/
 *.tfstate
 *.tfstate.*
 *.tfvars
+
+# Snapshot redis-server writes into the directory it starts in (local Valkey/Redis for the worker tests).
+dump.rdb
