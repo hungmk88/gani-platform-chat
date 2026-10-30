@@ -41,4 +41,17 @@ describe('SECURITY DEFINER functions', () => {
     expect(rows.map((r) => r.name)).toEqual(ADR_004);
     expect(rows.filter((r) => !r.pinned)).toEqual([]);
   });
+
+  // Each function's own spec checks the roles that may run it; this holds for every one, the next one included: a function created
+  // without REVOKE ... FROM PUBLIC can be run by any role that logs in (rà độ phủ test 30/10, mục 6).
+  it('none of them can be run by PUBLIC', async () => {
+    const { rows } = await admin.query<{ name: string }>(
+      `SELECT n.nspname || '.' || p.proname AS name
+       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+         AND has_function_privilege('public', p.oid, 'EXECUTE')
+       ORDER BY 1`,
+    );
+    expect(rows.map((r) => r.name)).toEqual([]);
+  });
 });
