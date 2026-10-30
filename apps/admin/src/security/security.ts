@@ -10,7 +10,7 @@ export type SecurityIncident = components['schemas']['SecurityIncident'];
 export type SecurityIncidentPage = components['schemas']['SecurityIncidentPage'];
 export type IncidentStatus = SecurityIncident['status'];
 
-// Set here, not a standard: the default and the ceiling of both routes are asked in U68 (iii).
+// 50 = mặc định của hợp đồng (trần 100, cả hai đường).
 const LIMIT = '50';
 
 /** The incidents of one status: `status` is always sent (U68: what the API gives without it is not said). */
