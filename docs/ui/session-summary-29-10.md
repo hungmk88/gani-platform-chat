@@ -34,6 +34,9 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     Hiện 7/7: lint/typecheck/test, admin (e2e, axe), database, queue, dependency audit/secret scan, docker images, terraform;
   - job `admin (e2e, axe)` chạy thật (bước `pnpm --filter "@gani/admin..." build` success);
   - `mergeable_state` clean.
+- **Job `skipped` (CEO 30/10, sau #420):** job `docker`/`terraform` hiện `skipped` được tính đạt **chỉ khi PR chỉ sửa `*.md`**.
+  PR có file code, config hay dependency mà job bị `skipped` là bất thường: dừng, báo CEO. Khi báo "Sẵn sàng merge", ghi
+  "N success + M skipped (doc-only)", không ghi "7/7 xanh".
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
