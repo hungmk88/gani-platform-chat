@@ -1,9 +1,9 @@
 # Tóm tắt session Backend K (để session sau đọc lại)
 
-Session `session_01BjcEWmGXkhq6DYgXdQ5YyF` · Backend (Gói 1) · từ **26/10/2026 18:11 UTC** tới **30/10/2026 ~15:50 UTC**.
+Session `session_01BjcEWmGXkhq6DYgXdQ5YyF` · Backend (Gói 1) · từ **26/10/2026 18:11 UTC** tới **30/10/2026 ~16:00 UTC**.
 Session trước: `docs/reviews/J-session-summary.md` (mục 1, 4 vẫn đúng, trừ chỗ file này sửa). Người giao việc: anh (xưng "anh",
-Backend xưng "em", trả lời tiếng Việt). `main` lúc chốt: `5ba18ee` (#443). Bản đầu của file này (#415, `a95138c`) chốt lúc 08:40 UTC;
-bản này thêm phần 30/10 từ 08:40 tới 15:50 UTC.
+Backend xưng "em", trả lời tiếng Việt). `main` lúc chốt: `2eff99a` (#424). Bản đầu của file này (#415, `a95138c`) chốt lúc 08:40 UTC;
+bản này thêm phần 30/10 từ 08:40 tới 16:00 UTC.
 
 Đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/api/CLAUDE.md`, `packages/db/CLAUDE.md`, `infra/CLAUDE.md` → file này → `QUESTIONS.md`
 (N168–N172, U52–U60, mục cuối "Chờ lead BE") → `docs/business/risk-ownership.md` → `docs/reviews/test-coverage-2026-10-30.md`.
@@ -55,7 +55,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:50 UTC.
 - **Test phải kiểm hành vi thật:** assert giá trị đầu ra, không assert "hàm được gọi". Mỗi test mới kèm đột biến chứng minh test đỏ.
 - **Không code outbound Zalo trước khi U57 được chốt** (blocker S3, `backend-progress-20261030.md` mục 3).
 
-## 2. PR đã merge trong session (36 PR, squash)
+## 2. PR đã merge trong session (37 PR, squash)
 
 **26/10 – 30/10 08:40 UTC (22 PR):**
 
@@ -84,7 +84,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:50 UTC.
 | #410 | Rủi ro 2 đóng (#406 merge) | |
 | #414 | U59: `ANSWERABLE` dời sang `permissions.ts` và export; trả lời U57, U58 | Em merge theo lệnh anh, `da45290` |
 
-**30/10 08:40 – 15:50 UTC (14 PR, giờ merge theo UTC):**
+**30/10 08:40 – 16:00 UTC (15 PR, giờ merge theo UTC):**
 
 | PR | Merge | Nội dung | Ghi chú |
 |---|---|---|---|
@@ -102,6 +102,7 @@ bản này thêm phần 30/10 từ 08:40 tới 15:50 UTC.
 | #440 | 15:17 | Ca crash có PII ngay trong message (chỉ `redactPii` chặn được) | Bù cho #439 |
 | #442 | 15:40 | Ca đọc chéo tổ chức cho 22 bảng từ catalog + ca ghi `messages` (+58/−5) | Mục 4.9; đột biến 3/3 |
 | #443 | 15:48 | `message_deliveries` của B: INSERT → 42501, UPDATE → 0 dòng (+40/−7) | Mục 4.9; đột biến 2/2 |
+| #424 | 15:55 | `customer_identities` không cho đọc/ghi Zalo id của tổ chức khác (+45) | Mục 4.9; 9/9 xanh, không cần ngoại lệ |
 
 ## 3. Quyết định ghi trong `QUESTIONS.md`
 
@@ -203,10 +204,9 @@ bản này thêm phần 30/10 từ 08:40 tới 15:50 UTC.
 
 ### 4.9 RLS chéo tổ chức (bước 2)
 
-- **#424 (CHƯA merge, đang mở):** `customer_identities` không cho đọc/ghi Zalo id của tổ chức khác. HEAD `6b9e5e1`. Job admin e2e
-  đỏ ở `conversation.spec.ts:30`, không do PR (chỉ đổi test db + `.gitignore`). Anh cho merge **như ngoại lệ có ghi chép**, chỉ
-  áp cho #424; issue **#430** giao FE điều tra và đề xuất CI lưu trace Playwright. Base cũ `28cc18c`: trước khi merge cần kiểm lại
-  conflict và CI.
+- **#424 (merge 15:55):** `customer_identities` không cho đọc/ghi Zalo id của tổ chức khác. Lần CI đầu (HEAD `6b9e5e1`) đỏ ở admin
+  e2e `conversation.spec.ts:30`, không do PR; anh cho phép ngoại lệ có ghi chép. Anh merge `main` vào nhánh (`9e89546`), CI chạy
+  lại 9/9 xanh (run 41084453977), nên **không dùng tới ngoại lệ**. Issue **#430** (FE, flaky + lưu trace Playwright) vẫn mở.
 - **#431:** ca "never another organisation" tạo hội thoại của B trong workspace của A, khóa ngoại từ chối (23503), `.catch(() => null)`
   nuốt lỗi, `if (stranger)` bỏ qua assert ở mọi lần chạy. Nay tạo trong workspace của B và assert vô điều kiện.
 - **Thứ tự anh duyệt (brief "#440 MERGE, CHUYỂN BƯỚC 2 ƯU TIÊN 2"):** mỗi bảng một ca đọc + một ca ghi, nhiều PR nhỏ, đếm dòng
@@ -235,7 +235,6 @@ bản này thêm phần 30/10 từ 08:40 tới 15:50 UTC.
 | Ngày (UTC) | Việc | Ai |
 |---|---|---|
 | 30/10 | Báo cáo tiến độ đã gửi (trễ 6 giờ, anh chấp nhận). Lead BE chưa xác nhận | — |
-| 30/10 17:13 | Check-in #424 (`trig_01ESzJizaTBxG6HPjHzyL9dE`). #431 đã merge; #424 vẫn mở | Em (tự chạy) |
 | **31/10 02:00** | Lead BE vẫn chưa phản hồi thì anh báo CEO can thiệp. Em không xác nhận thay | Anh |
 | 05/11 01:00 | Nhắc CEO Q1/Q2 lần 1 + kiểm khảo sát Q7 (`trig_01MXf3p1XMCGt4EAawi9VSAf`) | Em (tự chạy) |
 | 06/11 | Hạn trả lời khảo sát Q7/Q8/Q9 | CEO / các công ty |
@@ -249,14 +248,8 @@ Các lịch "FE check-in 2 tiếng" (`trig_01Br6sSpPXw9Xej9KzBakxUt`) và "Check
 
 ## 6. Việc tiếp theo
 
-1. **PR đang mở của Backend:**
-
-   | PR | Nhánh | HEAD | Nội dung | Trạng thái lúc chốt |
-   |---|---|---|---|---|
-   | #424 | `test/customer-identities-cross-tenant` | `6b9e5e1` | Mục 4.9 | Chờ anh merge (ngoại lệ #430) |
-
-   Số local của #442 và #443 (đều đã merge): DB mới `gani_rls2` đủ 75 migration, db `test:integration` 863 (#442) và 841 (#443), mỗi PR chạy 2 lần.
-   Đột biến: #442 3/3 bị bắt, #443 2/2 bị bắt; sau mỗi lần trả policy về và so `pg_policies` khớp.
+1. **PR đang mở của Backend:** không còn (#424, #442, #443 đã merge). Số local của #442 và #443: DB mới `gani_rls2` đủ
+   75 migration, db `test:integration` 863 (#442) và 841 (#443), mỗi PR chạy 2 lần. Đột biến: #442 3/3 bị bắt, #443 2/2 bị bắt; sau mỗi lần trả policy về và so `pg_policies` khớp.
 2. **Bước 2 tiếp:** `idempotency_keys` (ca ghi; `response_body` có thể chứa PII) → `agent_settings` (ca ghi). Ca đọc đã nằm trong
    vòng lặp catalog của #442. Mỗi bảng một PR nhỏ, đếm dòng trước khi push.
 3. **`audit_logs`:** viết plan trước, kiểm bảng cha (hiện test chỉ kiểm một partition).
@@ -287,8 +280,8 @@ Các lịch "FE check-in 2 tiếng" (`trig_01Br6sSpPXw9Xej9KzBakxUt`) và "Check
   DB mới (`gani_rls2`, …) và ghi tên DB vào báo cáo. Không xóa dữ liệu trong DB cũ để "dọn" (mục 8).
 - **Postgres có lúc tắt giữa chừng (ECONNREFUSED):** lỗi môi trường. Bật lại (bước 2) rồi chạy lại; không sửa code.
 - **Valkey/Redis:** `redis-server --port 6379 --bind 127.0.0.1 --daemonize yes`. Test tích hợp worker cần
-  `REDIS_URL=redis://127.0.0.1:6379`. Chạy `redis-server` ở gốc repo sẽ sinh `dump.rdb` (#424, chưa merge, thêm vào
-  `.gitignore`); xóa trước khi commit.
+  `REDIS_URL=redis://127.0.0.1:6379`. Chạy `redis-server` ở gốc repo sẽ sinh `dump.rdb` (đã trong `.gitignore` từ
+  #424).
   - **Đo coverage cho giống CI:** integration của API **không** đặt `REDIS_URL` (job `db` không có).
 - **Docker:** Docker Hub trả 429, kéo image qua `mirror.gcr.io`. Build local cần CA của proxy, `--network host`, build-arg proxy.
   Gọi `/usr/bin/docker` (scratchpad có shim `docker`).
@@ -318,5 +311,6 @@ Các lịch "FE check-in 2 tiếng" (`trig_01Br6sSpPXw9Xej9KzBakxUt`) và "Check
   dòng, để "0 dòng" không xanh vì bảng trống.
 - **Số đo phụ thuộc môi trường:** coverage của `realtime.service.ts` khác giữa máy (có `REDIS_URL`) và CI (không có). Tái hiện
   đúng điều kiện CI trước khi kết luận.
-- **Tóm tắt sau khi nén ngữ cảnh có thể sai:** bản tóm tắt nội bộ ghi #424 "đã merge", nhưng GitHub cho thấy #424 vẫn mở.
+- **Tóm tắt sau khi nén ngữ cảnh có thể sai:** bản tóm tắt nội bộ ghi #424 "đã merge" lúc nó còn mở
+  (merge thật lúc 15:55).
   Mọi trạng thái PR phải kiểm lại trên GitHub trước khi ghi.
