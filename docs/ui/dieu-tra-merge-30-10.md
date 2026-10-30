@@ -3,10 +3,12 @@
 Trạng thái: **dây chuyền dừng** (CEO 31/10). **B2 dừng hoàn toàn** (mục 7). Mọi mốc là giờ UTC lấy từ GitHub: `created_at`
 của dòng thời gian PR, `completed_at` của check run. Chỉ ghi dữ kiện (tài khoản nào làm), không suy diễn người làm.
 
-## 1. Năm sự cố
+## 1. Sáu sự cố
 
-Cả năm lần: `merged_by = hungmk88`, `performed_via_github_app` rỗng (`app=none`), `auto_merge = null`; repo
-`allow_auto_merge: false`. FE chưa gửi "Sẵn sàng merge" ở cả năm lần.
+Sự cố 6 là chính PR của file này (#457), thêm sau khi nó bị merge.
+
+Cả sáu lần: `merged_by = hungmk88`, `performed_via_github_app` rỗng (`app=none`), `auto_merge = null`; repo
+`allow_auto_merge: false`. FE chưa gửi "Sẵn sàng merge" ở cả sáu lần.
 
 | #   | PR   | Loại     | Draft             | `ready_for_review` | `merged` | Ready → merge | Job CI xong cuối trước merge     | CI lúc merge                                                                                                                                                  |
 | --- | ---- | -------- | ----------------- | ------------------ | -------- | ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -15,6 +17,7 @@ Cả năm lần: `merged_by = hungmk88`, `performed_via_github_app` rỗng (`app
 | 3   | #447 | B1       | có                | 16:35:55           | 16:36:04 | 9 giây        | 16:35:03                         | 9/9 success trên `6cf3dbc`                                                                                                                                    |
 | 4   | #450 | fix      | có                | 17:27:06           | 17:27:12 | 6 giây        | 17:26:19                         | 9/9 success trên `ce544b5`                                                                                                                                    |
 | 5   | #452 | docs     | có                | 17:42:46           | 17:42:53 | 7 giây        | 17:41:59 (`terraform`)           | **CI CHƯA XONG** trên `ecea0cb`: chỉ `terraform` xong trước merge; 7 job chưa xong; `coverage` chưa được tạo (tạo 17:53:23). Run PR 41100166005 còn `queued` |
+| 6   | #457 | docs     | có                | 18:01:52           | 18:02:04 | 12 giây       | — (chưa job nào của `ci.yml`)    | **CI CHƯA CHẠY** trên `5f710b7`: run PR 41103169210 tạo 18:00:51, còn `queued`; chưa có check run nào của `ci.yml`, chỉ GitGuardian xong (18:01:09) |
 
 Ghi chú #452: lúc FE đọc (17:43:38) API còn trả cả 8 job `queued`; giờ xong của `terraform` do runner báo về sau.
 
@@ -90,6 +93,20 @@ Các phiên còn lại có lần cập nhật cuối trước 14:00 ngày 30/10.
 
 Dữ kiện tổng hợp: ở cả năm mốc merge và bốn mốc ready, ba phiên Claude đã đọc (FE và hai BE) không gọi lệnh merge hay ready nào.
 Các khả năng ngoài các phiên này (PAT/script, extension, người bấm) FE không kiểm được, xem mục 2 và câu hỏi ở mục 4.
+
+### 3b. Sự cố 6 (#457)
+
+- FE ở #457:
+  - lệnh ghi GitHub cuối là sửa mô tả kèm `draft: true` (18:01:09–18:01:12, PR `updated_at` 18:01:10);
+  - đọc lại lúc 18:01:14: `draft = true`, HEAD `5f710b7`;
+  - sau đó FE chỉ sửa hai lịch tự kiểm (không phải lệnh GitHub, xong 18:01:37);
+  - lệnh kế tiếp là đọc thông báo lúc 18:02:05.
+  - FE không gọi lệnh nào lúc 18:01:52.
+- Hook trong môi trường FE: `SessionStart` (báo lỗi script cài đặt) và `Stop` (kiểm git chưa commit/push). Không hook nào gọi
+  GitHub. `.claude/settings.json` của repo không có hook.
+- Diff giữa `5f710b7` và squash `46492c2` trên 3 file của PR: rỗng.
+- Run CI trên `main` chứa `ad131f0` (Việc 2): run 41100997464, 9/9 job success theo tên, xong 17:48–17:54. Run trên `main` chứa
+  `46492c2`: 41103352713, tạo 18:02:07, phải kiểm xanh trước việc kế tiếp.
 
 ## 4. Câu hỏi cho anh (CEO 31/10, ghi nguyên văn, chờ anh trả lời)
 

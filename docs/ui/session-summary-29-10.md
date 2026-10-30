@@ -156,13 +156,19 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
+- **#457 (docs, file điều tra) merge khi CI CHƯA CHẠY và FE chưa gửi "Sẵn sàng merge" (30/10, sự cố thứ 6).** GitHub timeline:
+  `ready_for_review` 18:01:52, `merged` 18:02:04, cùng tài khoản `hungmk88`, `app=none`. Lúc merge, run CI của PR (41103169210)
+  còn `queued`, chưa có check run nào của `ci.yml`. Lệnh ghi cuối của FE: sửa mô tả kèm `draft: true` (18:01:10), đọc lại
+  18:01:14 vẫn draft. Diff `5f710b7`/`46492c2` rỗng. Draft chặn được merge sớm: 0/4. Chi tiết: `dieu-tra-merge-30-10.md` mục 3b.
+  Phải kiểm run CI trên `main` chứa `46492c2` (41103352713) xanh trước việc kế tiếp. FE không tự xử lý; bản ghi này nằm trên
+  nhánh, **chưa mở PR**, chờ CEO quyết.
 - **#452 (docs) merge khi CI CHƯA CHẠY JOB NÀO và FE chưa gửi "Sẵn sàng merge" (30/10, sự cố thứ 5).** GitHub timeline:
   `ready_for_review` 17:42:46, `merged` 17:42:53, cùng tài khoản `hungmk88`, `app=none`. Lúc merge, CI trên HEAD `ecea0cb`
   chưa xong: lúc FE đọc (17:43:38) API trả 8/8 job `queued`; giờ GitHub ghi về sau cho thấy chỉ `terraform` (17:41:59) và
   GitGuardian xong trước merge, `coverage` chưa được tạo. Thao tác cuối của FE lên #452 là sửa mô tả kèm `draft: true` (PR
   `updated_at` 17:35:55), sau đó FE chỉ đọc trạng thái và push commit `98d4a1f` (sau lúc merge, nên commit này không vào
   `main`; PR kế tiếp mang lại). Diff giữa `ecea0cb` và `ad131f0` trên 2 file rỗng. Draft chặn được merge sớm: 0/3 (#447,
-  #450, #452). Theo luật mục 2: phải kiểm run CI trên `main` chứa `ad131f0`, mọi job xanh, trước việc kế tiếp; B2 dừng hoàn
+  #450, #452). Theo luật mục 2: phải kiểm run CI trên `main` chứa `ad131f0`, mọi job xanh, trước việc kế tiếp (đã kiểm: run 41100997464, 9/9 success); B2 dừng hoàn
   toàn (CEO 31/10).
 - **#450 (`retry: false`) cũng merge khi FE chưa gửi "Sẵn sàng merge" (30/10, 17:27 UTC).** PR rời draft lúc 17:27:06,
   merge lúc 17:27:12 (giờ sự kiện của GitHub timeline, không phải giờ thông báo đến phiên). CI 9/9 trên HEAD `ce544b50` đã xong success lúc 17:26:19; diff giữa `ce544b50` và `47bea27` trên 6
