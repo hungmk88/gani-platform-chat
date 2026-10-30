@@ -192,6 +192,12 @@ Trang mặc định sau đăng nhập:
 - **Kênh của team** (`GET /v1/channels?workspaceId=` + `PUT /v1/teams/{id}/channels`, A4-T3, N161): nút "Kênh" trên dòng team **không mặc định** (kênh không giao team nào đã về team mặc định), hộp thoại ô chọn mọi kênh của workspace: tên, loại, trạng thái kết nối (lời thường), team đang trả lời nếu không phải team này (`answeredBy`); kênh của team đã tích sẵn (`src/teams/team-channels.ts` + `team-channels-dialog.tsx`). Lưu = PUT cả danh sách: chọn kênh của team khác là chuyển sang, bỏ chọn là về team mặc định (`withAssigned`); không đổi gì thì đóng, không gọi API (`sameChannels`). Chờ máy chủ, không `Idempotency-Key`; cùng khóa cache `['channels', workspaceId]` với màn Kênh (#24). Kết nối kênh: chờ U26.
 - API giả: `e2e/stub-teams.ts` (mỗi phiên một bản sao, `teamsOf`; Manager thuộc team CSKH, `MANAGER_TEAMS`; người của workspace theo `peopleOf` của `e2e/stub-workspaces.ts`), `e2e/stub-channels.ts` (`CHANNELS`).
 
+## AI nội bộ (#26)
+
+- `/settings/ai`, Owner/Admin như menu; Đợt 1 **chỉ E20** (CEO 30/10): bảng phiên bản prompt **chỉ đọc** (prompt, phiên bản, "Đang dùng", ngày duyệt, người duyệt; `null` → "Chưa duyệt" / "—"), thứ tự như API. `GET /v1/ai/prompts`: hợp đồng **planned S5** (N167; `src/ai/prompts.ts` + `prompt-table.tsx`). Rỗng: một câu + "Làm mới"; lỗi: câu + mã + "Thử lại"; API trả 404 (chưa phục vụ) → `PendingPage` như #16, không danh sách giả, không toast "đã lưu".
+- Quyền đọc **tạm** Owner/Admin theo **U66** (`mayReadPrompts`, Phụ lục B chưa có dòng đọc prompt): đổi khi BE/CEO trả lời U66.
+- Môi trường, tính năng, ngân sách (chờ `ai-settings`, U61) và khối E1/E4/E7 **không dựng**: thay bằng đúng một dòng "Môi trường, tính năng và ngân sách AI chưa có trong bản hiện tại." (không "sắp có"). API giả: `e2e/stub-prompts.ts`; rỗng/lỗi/404 bằng `page.route` trong `e2e/ai.spec.ts`.
+
 ## Kênh (#24)
 
 - `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc; giao kênh cho team ở `/settings/teams` (nút "Kênh").
