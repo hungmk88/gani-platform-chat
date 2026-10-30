@@ -50,6 +50,36 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 - **Mốc thời gian (CEO 31/10):** mọi mốc thời gian ghi vào handoff phải lấy từ dòng thời gian GitHub (`issues/*/timeline`,
   trường `created_at`), không lấy từ giờ thông báo về phiên; chênh lệch thường 2–6 giây. Chỉ ghi dữ kiện (tài khoản nào),
   không suy diễn người làm.
+- **Lệnh dừng merge chỉ áp dụng FE; BE vẫn merge; trước mỗi bước phải kiểm lại HEAD `main` hiện tại** (CEO 31/10). Không dùng
+  kết quả CI cũ của một HEAD `main` đã qua.
+- **Phân tầng merge (CEO 31/10).** Có hiệu lực khi đủ cả ba điều kiện:
+  - (1) `main` có required check `lint, typecheck, test` và `enforce_admins` bật, CEO xác nhận với FE;
+  - (2) CEO comment vào #457: "Tôi hiểu tầng 1/2 do DEV merge; tầng 3 chờ tín hiệu; tôi không bấm merge khi chưa có tín hiệu.";
+  - (3) CI trên HEAD `main` hiện tại xanh 9/9 theo tên.
+
+  Trước đó, các luật "Sẵn sàng merge" và PR draft ở mục này giữ nguyên cho mọi PR.
+
+  | Tầng | Loại PR                                                                       | Người merge                                                       |
+  | ---- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+  | 1    | Docs, chỉ đọc, test, fix nhỏ                                                  | DEV                                                               |
+  | 2    | Thao tác ghi thông thường (B1)                                                | DEV                                                               |
+  | 3    | Thao tác ghi không hoàn tác (B2 xóa dữ liệu, PR B màn 2 hạ mức tự chủ)        | CEO, sau tín hiệu "Sẵn sàng merge" của DEV và comment phê duyệt   |
+
+  - **Tầng 1, 2:** bỏ nghi thức "Sẵn sàng merge".
+    - DEV tự kiểm **đủ 9 job theo tên**; required check 1 job chỉ là lưới an toàn cuối, không phải chuẩn chất lượng.
+    - DEV tự merge, rồi báo: HEAD, tên từng job, thời điểm merge, diff giữa HEAD và squash.
+  - **Tầng 3:**
+    - DEV gửi "Sẵn sàng merge" kèm HEAD đầy đủ, 9 job theo tên, `mergeable_state = clean` khi check đã kết thúc.
+    - Trước khi bấm merge, CEO comment vào PR: "Tôi đã đọc tín hiệu Sẵn sàng merge của FE (HEAD …, ngày …, giờ …). Tôi phê
+      duyệt thực hiện." Đây là biện pháp duy nhất còn lại, vì required check không chặn được merge khi CI đã xanh.
+  - **"PR có thao tác ghi"** = PR gửi POST/PATCH/DELETE lên API.
+  - Approval bị bỏ: không khả thi khi mọi PR do một tài khoản `hungmk88` mở (N36).
+- **"Ready" ≠ "xong" (CEO 31/10, nguyên văn):** "Ready" ≠ "xong". Chuyển PR khỏi draft chỉ có nghĩa "không còn là draft" — có
+  thể do lỗi công cụ, do sửa mô tả, do bất kỳ ai. Tín hiệu duy nhất để merge một PR tầng 3 là tin "Sẵn sàng merge" từ FE, kèm
+  đủ 3 thứ: HEAD đầy đủ, danh sách job theo tên, `mergeable_state = clean` khi check đã kết thúc. Không có tin đó → không merge,
+  kể cả khi PR ready và CI xanh.
+- **PR sửa file của bộ phận khác phải có review của bộ phận đó, kể cả comment** (CEO 31/10, sau #456 và #458 sửa file
+  `apps/admin` không qua FE).
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
@@ -156,6 +186,15 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
+- **#458 (BE) thêm 2 test E2E vào file của FE, FE đã đọc (CEO 31/10: đọc, không revert): test đúng, ghi nhận, không sửa.**
+  Hai file sửa: `apps/admin/e2e/privacy-write.spec.ts` và `reply.spec.ts`. Mỗi file thêm một ca: API trả 409
+  `idempotency_in_progress` cho POST đầu, màn hiện "Yêu cầu trước vẫn đang xử lý. Đợi một chút.", lần bấm sau gửi cùng
+  `Idempotency-Key`.
+  - Chạy trên `main` `7282f73`: 2 file 8/8 passed.
+  - Đột biến ở máy FE (đã hoàn lại):
+    - sinh khóa mới mỗi lần gửi: cả 2 test mới đỏ (thêm 1 test cũ);
+    - client tự thử lại 409: test ô trả lời đỏ. Test "Ghi nhận yêu cầu" xanh vì hộp thoại gửi `retry: false`; đây là đúng thiết
+      kế, không phải lỗ hổng của test.
 - **#457 (docs, file điều tra) merge khi CI CHƯA CHẠY và FE chưa gửi "Sẵn sàng merge" (30/10, sự cố thứ 6).** GitHub timeline:
   `ready_for_review` 18:01:52, `merged` 18:02:04, cùng tài khoản `hungmk88`, `app=none`. Lúc merge, run CI của PR (41103169210)
   còn `queued`, chưa có check run nào của `ci.yml`. Lệnh ghi cuối của FE: sửa mô tả kèm `draft: true` (18:01:10), đọc lại

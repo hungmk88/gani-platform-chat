@@ -116,6 +116,13 @@ Trả lời: _(chờ)_
 
 ## 5. Đề xuất
 
+**Kết quả (CEO 31/10):**
+- Chọn required check `lint, typecheck, test` và `enforce_admins`; bỏ approval.
+- Phân tầng merge: DEV merge tầng 1/2, CEO merge tầng 3 sau tín hiệu và comment phê duyệt. Xem handoff mục 2.
+- "PR có thao tác ghi" = PR gửi POST/PATCH/DELETE lên API.
+
+Đề xuất ban đầu:
+
 - **Tạm dừng mọi PR có thao tác ghi cho tới khi có branch protection tối thiểu** (CEO 31/10). FE hiểu: PR thêm thao tác ghi dữ
   liệu lên API, như B1/B2. PR chỉ đọc và PR docs không thuộc diện này. Anh sửa nếu khác.
 - **Branch protection tối thiểu** (U71, "mức tối thiểu trước, đầy đủ sau"). **Vướng, cần anh/BE quyết:**
@@ -138,7 +145,12 @@ Gửi "Sẵn sàng merge" kèm HEAD và tên từng job, **rồi mới** chuyể
 
 Không chỉ hoãn. Lý do: xóa dữ liệu không hoàn tác, không đặt lên `main` khi cơ chế merge chưa hiểu rõ. Chỉ mở lại khi đủ cả hai:
 
-1. Cơ chế merge đã hiểu, và đã tắt nếu là script/app.
-2. Có branch protection tối thiểu: 1 required check bất kỳ và 1 approval. Xem chỗ vướng ở mục 5.
+1. **Đổi bản chất, không bỏ (CEO 31/10):** CEO comment vào #457, xác nhận bằng văn bản: "Tôi hiểu tầng 1/2 do DEV merge;
+   tầng 3 chờ tín hiệu; tôi không bấm merge khi chưa có tín hiệu." Bản đầu: "cơ chế merge đã hiểu, và đã tắt nếu là script/app".
+2. **Branch protection tối thiểu (CEO 31/10):** required check `lint, typecheck, test` và `enforce_admins` bật. Approval bị bỏ
+   vì bất khả thi với một tài khoản (mục 5). Bản đầu: "1 required check bất kỳ và 1 approval".
+
+B2 là tầng 3 của phân tầng merge (handoff `session-summary-29-10.md` mục 2): CEO merge sau tín hiệu và comment phê duyệt. Giữ
+4 guardrail và audit trail `docs/ui/b2-audit.md`.
 
 Thiết kế đã duyệt giữ ở handoff `session-summary-29-10.md` mục 7. Chưa có nhánh, chưa có `docs/ui/b2-audit.md`.
