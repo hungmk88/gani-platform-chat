@@ -36,8 +36,9 @@ const TIME = new Intl.DateTimeFormat('vi-VN', {
 });
 
 /**
- * The last change in words: the API gives an id only, so the person is "Bạn" or "Người khác" (as the history of a ticket), and
- * "Hệ thống" for a change without one; a level never changed says so.
+ * The last change in words: the API gives an id only, so the person is "Bạn" or "Người khác" (as the history of a ticket); a
+ * level never changed says so. TẠM (U67): a change without an id says "Hệ thống" (the system lowers the level by itself, mục 26)
+ * until BE says what `changedBy = null` means; approved for now by the CEO 30/10, not a decision.
  */
 export function changeOf(a: Pick<Autonomy, 'changedBy' | 'changedAt'>, meId: string): string {
   if (!a.changedAt) return 'Chưa đổi lần nào';
