@@ -5,13 +5,20 @@ import { signIn } from './sign-in';
 import { accountOf, STATUS_DOWN_TRACE } from './stub-api';
 
 // The system pages (Phụ lục C v3 dòng 0): one sentence, one action, and axe.
-for (const [path, title, action] of [
-  ['/forbidden', 'Bạn không có quyền xem trang này.', 'Về trang chính'],
-  ['/maintenance', 'Hệ thống đang bảo trì.', 'Tải lại'],
+// The maintenance page says nothing of customers' messages being kept: there is no maintenance mode yet (U58).
+for (const [path, title, detail, action] of [
+  [
+    '/forbidden',
+    'Bạn không có quyền xem trang này.',
+    'Vai trò của bạn không dùng màn này. Nếu cần, nhờ Admin cấp quyền.',
+    'Về trang chính',
+  ],
+  ['/maintenance', 'Hệ thống đang bảo trì.', 'Thử lại sau ít phút.', 'Tải lại'],
 ] as const) {
   test(`${path} says one sentence with one action`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.getByText(detail, { exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: action })).toHaveAttribute('href', '/');
     await expectAccessible(page);
   });

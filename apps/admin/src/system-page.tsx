@@ -10,7 +10,8 @@ const PAGES = {
     'Vai trò của bạn không dùng màn này. Nếu cần, nhờ Admin cấp quyền.',
   ],
   'not-found': ['Không tìm thấy trang.', 'Trang không tồn tại hoặc thuộc công ty khác.'],
-  maintenance: ['Hệ thống đang bảo trì.', 'Tin khách gửi tới vẫn được lưu. Thử lại sau ít phút.'],
+  // Not "Tin khách gửi tới vẫn được lưu": there is no maintenance mode yet and the channel webhook runs in the API (U58, #414).
+  maintenance: ['Hệ thống đang bảo trì.', 'Thử lại sau ít phút.'],
   error: [
     'Đã có lỗi.',
     'Không phải do bạn. Thử lại sau ít phút; nếu còn lỗi, gửi mã bên dưới cho Admin.',

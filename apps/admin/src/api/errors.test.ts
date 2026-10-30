@@ -60,6 +60,10 @@ describe('errorOf', () => {
     expect(e).toMatchObject({ code: 'not_in_phase', action: 'show' });
     expect(e.message).toBe('Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.');
     expect(errorOf(409, { code: 'version_conflict' }).action).toBe('reload'); // its screens do read again
+    // U57: retried a limited number of times, then failed; never "kept to send later".
+    expect(errorOf(502, { code: 'channel_unavailable' }).message).toBe(
+      'Kênh đang lỗi. Tin đã được lưu, hệ thống sẽ thử gửi lại. Nếu không gửi được, tin sẽ chuyển sang trạng thái thất bại.',
+    );
   });
 
   it('keeps an unknown code as given, with the sentence of its status', () => {
