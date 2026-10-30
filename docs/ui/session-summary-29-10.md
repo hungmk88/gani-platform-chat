@@ -45,6 +45,8 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   đã có commit thêm job (`git merge-base --is-ancestor <commit> HEAD` exit 0). Một PR đã merge mà thiếu job mới (#438): **bắt
   buộc** kiểm run CI trên `main` chứa commit squash, mọi job kể cả job mới xanh, **trước khi** bắt đầu việc tiếp theo; run bị
   `cancel-in-progress` hủy thì tìm run kế tiếp chứa commit đó.
+- **PR mở ở trạng thái draft** (CEO 30/10, sau #438 và #441 merge khi chưa có "Sẵn sàng merge"): chỉ chuyển sang ready khi đã
+  kiểm đủ điều kiện và gửi "Sẵn sàng merge"; GitHub chặn merge PR draft. Đề xuất branch protection trên `main`: U71.
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
@@ -166,6 +168,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   - U70 (số lượng trong `GET /v1/privacy-requests/{id}`, "tại thời điểm xem") không chặn PR B.
 - **Hằng `button` trùng** giữa `apps/admin/src/paged-list.tsx` và `apps/admin/src/security/security-screen.tsx` (#441, CEO 30/10
   chấp nhận): gộp khi có PR đụng một trong hai file, không mở PR riêng.
+- **Dòng 28 `apps/admin/CLAUDE.md` sai định dạng** (thiếu dòng trống, `prettier --check` đỏ từ trước; file không nằm trong
+  `format:check`): sửa trong PR đụng file này, không mở PR riêng. #444 có đụng file nên đã sửa luôn trong #444.
+- **Sau khi #444 merge: xóa nhánh `backup/privacy-full`** (chỉ giữ bản đầy đủ màn 4 trong lúc tách #441/#444).
 
 ## 8. Lệnh kiểm
 

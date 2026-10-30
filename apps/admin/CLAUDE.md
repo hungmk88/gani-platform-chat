@@ -26,6 +26,7 @@ Dự án có **2 đợt** (Đợt 1 = 58 mã, go-live 15/02/2027; Đợt 2 = 77 
 Mục menu chưa có màn (đa số chờ API) hiện "<mục>: màn này chưa có trong bản hiện tại." + một link tới màn đã có (Hộp thư, hoặc Hồ sơ cá nhân cho vai trò không giữ hội thoại), không phải 404: `src/pending-page.tsx`, `menuItemAt`. Đường dẫn ngoài menu của vai trò vẫn là 404 trong khung.
 
 Trang mặc định sau đăng nhập:
+
 - Owner/Admin/Manager → `/overview`
 - Sales/Support → `/inbox`
 - Marketing/Viewer → `/overview` (Đợt 2: Marketing → `/reports`)
