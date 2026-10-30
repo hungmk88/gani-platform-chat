@@ -7,9 +7,18 @@ cho cả dự án. Mốc so sánh: `docs/reviews/backend-progress-20261030.md` (
 
 - Từ `b1c5a03` tới `7ac7881`: **không có tính năng mới**. Có 25 commit vào `main`, trong đó 15 PR Backend, cả 15 đều là test, CI,
   chặn PII trong log hoặc báo cáo; 7 PR là màn admin của FE; 3 PR là tài liệu.
-- Tiến độ theo hai mẫu số **giữ nguyên**: A = 17/50 (34 %), B ≈ 15/29 (≈ 52 %). Cách chấm như báo cáo 30/10, mục 1.
-- Mẫu số A là danh sách 50 mã Đợt 1 theo Brief v0.4. Brief v1.0 có 58 mã Đợt 1 (50 + 8 mã thêm); phần giải thích ở
-  `docs/reviews/backend-backlog-20261031.md`, mục "Mẫu số".
+- Tiến độ (cách chấm như báo cáo 30/10, mục 1):
+
+| Mẫu số | Nguồn | Đạt |
+|---|---|---|
+| **Tính năng Đợt 1, Brief v1.0 (chuẩn)** | Brief v1.0 QĐ4, P7: 58 mã | **17,5/58 ≈ 30 %** |
+| Tính năng Đợt 1, Brief v0.4 (chỉ để so với báo cáo 30/10) | `docs/danh-sach-109-tinh-nang.md`, cột Đợt = 1: 50 mã | 17/50 = 34 % (không đổi) |
+| Deliverable sprint S1–S5 | Brief v1.0 P21 | ≈ 15/29 ≈ 52 % (không đổi) |
+
+- **Đây là sửa mẫu số (v0.4 = 50 → v1.0 = 58), không phải giảm tiến độ. Việc làm không đổi.**
+  - 8 mã thêm ở v1.0: A13, A17, C20, D6, D15, E20, P7, P11. A13 chấm 0,5 (có bảng `feature_flags_*` + spec, API mới ở
+    `planned.json`); A17, C20, D15 chưa chấm được vì repo không có định nghĩa, tính 0; còn lại 0.
+  - Giải thích mẫu số ở `docs/reviews/backend-backlog-20261031.md`, mục "Mẫu số".
 - Rủi ro tiến độ nằm ở các quyết định chưa có (Q1/Q2, U57, Q7), không nằm ở code.
 
 ## 2. Việc Backend đã làm chiều 30/10 (chất lượng, không phải tính năng)
