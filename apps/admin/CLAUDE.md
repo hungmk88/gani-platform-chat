@@ -41,6 +41,7 @@ Trang mặc định sau đăng nhập:
 - Mỗi màn đủ 4 trạng thái: Đang tải · Trống · Lỗi (kèm `traceId` + Thử lại) · AI tắt. Màn không có
   phần AI ghi "Không áp dụng AI" có chủ đích. Mỗi trạng thái trống/lỗi có 1 câu + 1 hành động.
 - Nhãn lời đời thường, **không** hiện `HUMAN_WAITING_Q`, `Error 500`.
+- **Hộp thoại đọc dữ liệu sau khi mở** (`showModal()` lúc còn đang tải): `<dialog tabIndex={-1}>`, focus vào chính hộp thoại khi đang tải, rồi vào ô tìm hoặc ô đầu tiên của danh sách khi đọc xong; **không bao giờ** để trình duyệt tự đặt vào "Hủy" (#411; Người trong workspace, Người/Kênh của team). E2E giữ dữ liệu lại bằng `page.route` để kiểm lúc đang tải.
 
 ## State & realtime
 

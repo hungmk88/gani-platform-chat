@@ -39,6 +39,7 @@ export function TeamChannelsDialog({
   const scope = useScope();
   const queries = useQueryClient();
   const dialog = useRef<HTMLDialogElement>(null);
+  const list = useRef<HTMLFieldSetElement>(null);
   const channels = useApiQuery<ChannelList>(
     ['channels', team.workspaceId],
     channelsPath(team.workspaceId),
@@ -63,6 +64,13 @@ export function TeamChannelsDialog({
     },
   });
   useEffect(() => dialog.current?.showModal(), []);
+  const read = !channels.isPending;
+  // Where the keyboard starts (as #411): the dialog while it reads, then the first box of the list; never "Hủy", the only
+  // button while it reads (one Tab from it left the dialog, Enter closed it). An error or an empty list keeps the dialog.
+  useEffect(
+    () => (list.current?.querySelector('input') ?? dialog.current)?.focus(),
+    [read],
+  );
 
   const toggle = (id: string, on: boolean) => {
     const next = new Set(chosen);
@@ -80,6 +88,7 @@ export function TeamChannelsDialog({
     <dialog
       ref={dialog}
       aria-labelledby="team-channels-title"
+      tabIndex={-1}
       onClose={onClose}
       className="m-auto w-[520px] max-w-full rounded-dialog bg-surface p-6 shadow-dialog backdrop:bg-overlay"
     >
@@ -108,7 +117,7 @@ export function TeamChannelsDialog({
         ) : channels.data.data.length === 0 ? (
           <p>Workspace này chưa có kênh nào được kết nối.</p>
         ) : (
-          <fieldset className="flex max-h-[360px] flex-col gap-1 overflow-y-auto">
+          <fieldset ref={list} className="flex max-h-[360px] flex-col gap-1 overflow-y-auto">
             <legend className="pb-2">
               Team này trả lời {chosen.size} / {channels.data.data.length} kênh. Chọn kênh của team
               khác là chuyển sang team này; bỏ chọn là trả về team mặc định.

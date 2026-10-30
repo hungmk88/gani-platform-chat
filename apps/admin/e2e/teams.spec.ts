@@ -97,6 +97,7 @@ test('an Admin picks the people of a team among those of its workspace; the whol
   const dialog = page.getByRole('dialog', { name: /Người của team/ });
   // `ws-e2e` has the Owner and Sales only: the Admin, not in it, cannot be picked.
   await expect(dialog.getByRole('checkbox')).toHaveCount(2);
+  await expect(dialog.getByRole('checkbox').first()).toBeFocused(); // the keyboard starts on the list, not on "Hủy"
   await expect(dialog.getByRole('checkbox', { name: /Người thử sales/ })).toBeChecked();
   const owner = dialog.getByRole('checkbox', { name: /Người thử owner/ });
   await expect(owner).not.toBeChecked();
@@ -131,6 +132,7 @@ test('an Admin gives a team its channels: one taken from the default team, one s
   await list.getByRole('button', { name: 'Kênh của team CSKH' }).click();
   const dialog = page.getByRole('dialog', { name: /Kênh của team/ });
   await expect(dialog.getByRole('checkbox')).toHaveCount(CHANNELS.length);
+  await expect(dialog.getByRole('checkbox').first()).toBeFocused(); // the keyboard starts on the list, not on "Hủy"
   const zalo = dialog.getByRole('checkbox', { name: /Zalo OA Gani/ });
   const fanpage = dialog.getByRole('checkbox', { name: /Gani Fanpage/ });
   await expect(zalo).toBeChecked();

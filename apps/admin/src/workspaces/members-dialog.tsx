@@ -39,6 +39,7 @@ export function MembersDialog({
   const scope = useScope();
   const queries = useQueryClient();
   const dialog = useRef<HTMLDialogElement>(null);
+  const list = useRef<HTMLFieldSetElement>(null);
   const path = `/v1/workspaces/${encodeURIComponent(workspace.id)}/members`;
   const current = useApiQuery<WorkspaceMemberList>(['workspaces', workspace.id, 'members'], path);
   const members = useQuery<Member[], ApiFailure>({
@@ -60,6 +61,12 @@ export function MembersDialog({
 
   const loading = current.isPending || members.isPending;
   const failed = current.error ?? members.error;
+  // Where the keyboard starts (as #411): the dialog while it reads, then the first box of the list; never "Hủy", the only
+  // button while it reads (one Tab from it left the dialog, Enter closed it). An error or an empty list keeps the dialog.
+  useEffect(
+    () => (list.current?.querySelector('input') ?? dialog.current)?.focus(),
+    [loading],
+  );
   const people = pickable(members.data ?? []);
   const toggle = (id: string, on: boolean) => {
     const next = new Set(chosen);
@@ -77,6 +84,7 @@ export function MembersDialog({
     <dialog
       ref={dialog}
       aria-labelledby="ws-members-title"
+      tabIndex={-1}
       onClose={onClose}
       className="m-auto w-[520px] max-w-full rounded-dialog bg-surface p-6 shadow-dialog backdrop:bg-overlay"
     >
@@ -111,7 +119,7 @@ export function MembersDialog({
         ) : people.length === 0 ? (
           <p>Công ty chưa có thành viên nào nhận lời mời. Mời ở Cài đặt › Thành viên.</p>
         ) : (
-          <fieldset className="flex max-h-[360px] flex-col gap-1 overflow-y-auto">
+          <fieldset ref={list} className="flex max-h-[360px] flex-col gap-1 overflow-y-auto">
             <legend className="pb-2">
               Đã chọn {chosen.size} / {people.length} người. Ai được chọn mới làm việc trong
               workspace này.
