@@ -133,10 +133,19 @@ describe('listConversations', () => {
 
   it('sees only the workspaces of the session and never another organisation (RLS)', async () => {
     const hidden = await conversation({ ws: W2 });
-    const stranger = await conversation({}, B).catch(() => null);
+    // In a workspace of B: its foreign key names (org_id, workspace_id), so a workspace of A would refuse the row.
+    const { rows } = await admin.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE org_id = $1',
+      [B],
+    );
+    const WB = rows[0]?.id ?? '';
+    const stranger = await conversation({ ws: WB }, B);
     const visible = (await list({}, [W1])).rows.map((r) => r.id);
     expect(visible).not.toContain(hidden);
-    if (stranger) expect(visible).not.toContain(stranger);
+    expect(visible).not.toContain(stranger);
+    // Even a session of A that names the workspace of B sees nothing of B.
+    expect((await list({}, [W1, WB])).rows.map((r) => r.id)).not.toContain(stranger);
+    expect(await inA([W1, WB], (tx) => loadConversationView(tx, stranger))).toBeNull();
     expect(await inA([W1], (tx) => loadConversationView(tx, hidden))).toBeNull();
     expect(await inA([W2], (tx) => loadConversationView(tx, hidden))).toMatchObject({
       id: hidden,
