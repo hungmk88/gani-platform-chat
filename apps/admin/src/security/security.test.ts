@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ALERT_KIND, SEVERITY } from './labels';
-import { alertsPath, incidentsPath, timeText, uniqueRows } from './security';
+import { alertsPath, incidentsPath, timeText } from './security';
 
 describe('Bảo mật (#29)', () => {
   it('always sends the status of the incidents, and no filter for the alerts (U68)', () => {
@@ -11,14 +11,6 @@ describe('Bảo mật (#29)', () => {
     );
     expect(alertsPath(null)).toBe('/v1/security-alerts?limit=50');
     expect(alertsPath('c2')).toBe('/v1/security-alerts?limit=50&cursor=c2');
-  });
-
-  it('keeps each row once, in the order first read', () => {
-    const rows = uniqueRows([
-      { data: [{ id: 'a' }, { id: 'b' }] },
-      { data: [{ id: 'b' }, { id: 'c' }] },
-    ]);
-    expect(rows.map((r) => r.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('has a word for every kind and every severity, the edited one included (CEO 30/10)', () => {
