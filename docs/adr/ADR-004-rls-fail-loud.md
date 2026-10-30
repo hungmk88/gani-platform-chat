@@ -64,8 +64,9 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 | `app.audit_own_account_event` | `202610251000` | N162 (audit đổi/đặt lại mật khẩu của chính người đang đăng nhập, mỗi công ty họ còn active; chỉ hai action) |
 | `app.held_conversation_counts` | `202610281000` | N168 (số hội thoại mỗi người đang giữ trong mọi workspace còn sống của công ty hiện tại; chỉ id người và số). **Không còn ai gọi** từ `202610301000`; xóa ở PR riêng |
 | `app.held_conversation_counts_by_state` | `202610301000` | N168, U55 (thay hàm trên: tách `HUMAN_ACTIVE` (tải, Brief §M04) và `PENDING_CUSTOMER` (chờ khách); chỉ id người và hai số) |
+| `app.channel_refresh_due_orgs` | `202611021000` | N173 (công ty có kênh Zalo OA tới hạn làm mới token, B2; chỉ id công ty). `p_before_seconds` do job truyền, cho phép đổi ngưỡng theo cấu hình worker. Hàm thứ 17, anh chấp nhận 31/10 có điều kiện; chờ cố vấn cùng 16 hàm kia (#386) |
 
-`packages/db/test/security-definer.spec.ts` so tập hàm thật (16 hàm, 28/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
+`packages/db/test/security-definer.spec.ts` so tập hàm thật (17 hàm, 31/10/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 

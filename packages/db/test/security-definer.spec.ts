@@ -9,6 +9,7 @@ const ADR_004 = [
   'app.accept_invite',
   'app.audit_own_account_event',
   'app.channel_account_for_webhook',
+  'app.channel_refresh_due_orgs',
   'app.ensure_log_partitions',
   'app.held_conversation_counts',
   'app.held_conversation_counts_by_state',
