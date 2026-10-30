@@ -17,6 +17,8 @@ export interface ApiProcess {
   readonly url: string;
   /** The last lines it printed, for the message of a failure. */
   tail(): string;
+  /** Everything it printed so far, stdout and stderr. */
+  output(): string;
   stop(): Promise<void>;
 }
 
@@ -67,6 +69,7 @@ export async function spawnApi(channelKey: string): Promise<ApiProcess> {
   return {
     url,
     tail,
+    output: () => lines.join('\n'),
     async stop() {
       child.kill('SIGTERM');
       await Promise.race([exited, new Promise((done) => setTimeout(done, 10_000))]);
