@@ -1,7 +1,7 @@
 // #23 Dữ liệu khách (CEO 30/10): the requests on a customer's personal data (`export`, `erase`) of the company, newest first by
 // cursor, from `GET /v1/privacy-requests`, a contract planned for S5 (N167). It has no filter: the screen sends none. Until the API
-// serves it, the route answers 404 and the screen says it is not there yet. PR B1 records a request (`POST`); carrying out an
-// `erase` (`POST …/execute`, the dialog approved 30/10) is PR B2.
+// serves it, the route answers 404 and the screen says it is not there yet. PR B1 records a request (`POST`). PR B2a adds what
+// carrying out an `erase` (`POST …/execute`, the dialog approved 30/10) needs; the dialog itself is PR B2b. U70 does not hold it.
 import type { components } from '../api/planned';
 
 export type PrivacyRequest = components['schemas']['PrivacyRequest'];
@@ -48,4 +48,29 @@ export function requestBodyOf(d: RequestDraft): PrivacyRequestCreate | string {
   if (!reason) return 'Ghi lý do: lý do được lưu cùng yêu cầu.';
   if (reason.length > MAX_REASON) return `Lý do tối đa ${MAX_REASON} ký tự.`;
   return { customerId: d.customerId, kind: d.kind, reason };
+}
+
+export type PrivacyErasure = components['schemas']['PrivacyErasure'];
+
+/** The words a person types to carry out an erase (CEO 30/10): `XOA-` and the last 6 characters of the request, upper case. */
+export const confirmCodeOf = (id: string): string => `XOA-${id.slice(-6).toUpperCase()}`;
+
+/**
+ * Whether what was typed is the code (CEO 30/10, point (a)): spaces at both ends cut, case not counted; spaces inside and the
+ * dash are kept as typed, so "XOA 7F3A21" or "XOA7F3A21" do not match.
+ */
+export const confirmMatches = (typed: string, code: string): boolean =>
+  typed.trim().toUpperCase() === code.toUpperCase();
+
+/** The customer of a request in a title: the name, or "khách chưa có tên" with the request's code (CEO 30/10, point (d)). */
+export const customerTitleOf = (r: Pick<PrivacyRequest, 'id' | 'customer'>): string =>
+  r.customer.displayName ?? `khách chưa có tên (yêu cầu ${confirmCodeOf(r.id).slice(4)})`;
+
+/** What the API says it erased, in words, with its own figures (never an estimate: U70). */
+export function erasedLines(e: PrivacyErasure['erased']): readonly string[] {
+  return [
+    e.profile ? 'Hồ sơ khách: đã xóa' : 'Hồ sơ khách: không có gì để xóa',
+    `Định danh kênh đã xóa: ${e.identities}`,
+    `Tin đã xóa nội dung: ${e.messagesRedacted}`,
+  ];
 }
