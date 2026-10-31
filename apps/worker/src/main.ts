@@ -2,6 +2,8 @@ import { ConversationStateMachine, MessageService } from '@gani/conversations';
 import { createDbPool, withTenant } from '@gani/db';
 import { installCrashHandlers, redactPii } from '@gani/domain';
 
+import { createDbRefreshStore } from './channels/db-store.js';
+import { createTokenRefresher } from './channels/refresher.js';
 import { ConfigError, readConfig } from './config.js';
 import { realtimeHandlers } from './consumer/realtime-handlers.js';
 import { createDbInboundStore } from './inbound/db-store.js';
@@ -36,7 +38,12 @@ function configOrExit(): ReturnType<typeof readConfig> {
 const config = configOrExit();
 // The pool connects on its first query: making it before the HTTP endpoints only lets /metrics read the outbox through it.
 const pool = createDbPool(config.databaseUrl, {
-  max: config.outbox.orgParallel + config.inbound.orgParallel + config.events.concurrency + 2,
+  max:
+    config.outbox.orgParallel +
+    config.inbound.orgParallel +
+    config.refresh.orgParallel +
+    config.events.concurrency +
+    2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
 });
 // The same state machine and message service as the API (N138); the warnings of the message service carry ids only.
@@ -56,6 +63,8 @@ try {
 log.info('worker_http_listening', { port: http.port });
 // The packets of realtime (V8b): only with the consumer, whose handlers send them.
 const emitter = config.events.enabled ? createAgentEmitter(config.redisUrl, log) : null;
+// The renewal of the channel tokens (B2, N173): only when turned on and given the platform client, which comes with B2-3 (Q6).
+const refresher = config.refresh.enabled ? createTokenRefresher() : null;
 const worker = startWorker({
   store: createDbRelayStore({ pool }),
   queue: createBullmqPublisher(config.redisUrl, log),
@@ -67,6 +76,14 @@ const worker = startWorker({
     store: createDbInboundStore({ pool, services: { fsm, messages } }),
     settings: config.inbound,
   },
+  ...(refresher && {
+    refresh: {
+      store: createDbRefreshStore({ pool }),
+      refresher,
+      settings: config.refresh,
+      metrics,
+    },
+  }),
   ...(emitter && {
     events: {
       source: createBullmqSource(config.redisUrl, log, config.events.concurrency, metrics),

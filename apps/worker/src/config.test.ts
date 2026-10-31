@@ -24,6 +24,7 @@ describe('readConfig', () => {
       outbox: { pollMs: 500, leaseSeconds: 60, batchSize: 100, maxAttempts: 5, orgsPerTick: 50, orgParallel: 4, shutdownMs: 10_000, queueMaxWaiting: 10_000 },
       inbound: { pollMs: 500, leaseSeconds: 60, batchSize: 10, maxAttempts: 5, orgsPerTick: 50, orgParallel: 2 },
       events: { enabled: true, discoveryMs: 5000, maxQueues: 200, concurrency: 4 },
+      refresh: { enabled: false, pollMs: 30_000, beforeSeconds: 600, leaseSeconds: 120, timeoutMs: 15_000, warnSeconds: 86_400, orgsPerTick: 50, orgParallel: 1 },
       http: { port: 9464, healthMaxAgeMs: 120_000 },
     });
   });
@@ -36,6 +37,8 @@ describe('readConfig', () => {
     const events = { ...URLS, EVENTS_CONSUMER_ENABLED: '0', EVENTS_DISCOVERY_MS: '250', EVENTS_MAX_QUEUES: '7', EVENTS_CONCURRENCY: '2' };
     expect(readConfig(events).events).toEqual({ enabled: false, discoveryMs: 250, maxQueues: 7, concurrency: 2 });
     expect(readConfig(inbound).inbound).toEqual({ pollMs: 100, leaseSeconds: 20, batchSize: 3, maxAttempts: 2, orgsPerTick: 9, orgParallel: 6 });
+    const refresh = { ...URLS, CHANNEL_REFRESH_POLL_MS: '5000', CHANNEL_REFRESH_BEFORE_S: '0', CHANNEL_REFRESH_LEASE_S: '60', CHANNEL_REFRESH_TIMEOUT_MS: '30000', CHANNEL_REFRESH_WARN_S: '3600', CHANNEL_REFRESH_ORGS_PER_TICK: '8', CHANNEL_REFRESH_ORG_PARALLEL: '3' };
+    expect(readConfig(refresh).refresh).toEqual({ enabled: false, pollMs: 5000, beforeSeconds: 0, leaseSeconds: 60, timeoutMs: 30_000, warnSeconds: 3600, orgsPerTick: 8, orgParallel: 3 });
   });
 
   it('reads the HTTP settings, and takes port 0 (a free port)', () => {
@@ -62,10 +65,23 @@ describe('readConfig', () => {
     ['INBOUND_POLL_MS', '10'], ['INBOUND_LEASE_S', '0'], ['INBOUND_BATCH', '1001'], ['INBOUND_MAX_ATTEMPTS', '21'], ['INBOUND_ORGS_PER_TICK', '0'], ['INBOUND_ORG_PARALLEL', '33'],
     ['EVENTS_CONSUMER_ENABLED', 'yes'], ['EVENTS_CONSUMER_ENABLED', '2'], ['EVENTS_DISCOVERY_MS', '10'], ['EVENTS_MAX_QUEUES', '0'], ['EVENTS_CONCURRENCY', '65'],
     ['WORKER_HTTP_PORT', '65536'], ['WORKER_HEALTH_MAX_AGE_S', '5'],
+    ['CHANNEL_REFRESH_ENABLED', 'yes'], ['CHANNEL_REFRESH_POLL_MS', '999'], ['CHANNEL_REFRESH_BEFORE_S', '-1'], ['CHANNEL_REFRESH_LEASE_S', '3601'], ['CHANNEL_REFRESH_TIMEOUT_MS', '999'],
+    ['CHANNEL_REFRESH_WARN_S', '2592001'], ['CHANNEL_REFRESH_ORGS_PER_TICK', '1001'], ['CHANNEL_REFRESH_ORG_PARALLEL', '0'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);
     expect(only).toContain(`got "${value}"`);
+  });
+
+  it('refuses a lease shorter than two platform calls, and the refresh turned on before its platform client exists', () => {
+    const lease = { ...URLS, CHANNEL_REFRESH_LEASE_S: '29', CHANNEL_REFRESH_TIMEOUT_MS: '15000' };
+    expect(problems(lease)).toEqual([
+      'CHANNEL_REFRESH_LEASE_S × 1000 must be at least 2 × CHANNEL_REFRESH_TIMEOUT_MS, got 29 s and 15000 ms',
+    ]);
+    expect(readConfig({ ...lease, CHANNEL_REFRESH_LEASE_S: '30' }).refresh.leaseSeconds).toBe(30);
+    expect(problems({ ...URLS, CHANNEL_REFRESH_ENABLED: '1' })).toEqual([
+      'CHANNEL_REFRESH_ENABLED=1 needs the Zalo token client (B2-3, Q6), not built yet',
+    ]);
   });
 
   it('reports all the wrong variables together', () => {
