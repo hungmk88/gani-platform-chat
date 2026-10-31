@@ -63,7 +63,7 @@ Cần Docker. Trong `.env` đặt `APP_ROLE_PASSWORD`, `AUTH_ROLE_PASSWORD`, `MI
 ```bash
 pnpm dev:infra                          # lần đầu (volume rỗng) tự tạo 4 role: infra/db/bootstrap-roles.sql
 pnpm --filter @gani/db migrate          # áp migration bằng migration_role
-pnpm --filter @gani/db test:integration # test cần DB thật; thiếu DB thì báo lỗi, không bỏ qua
+pnpm --filter @gani/db test:integration # test cần DB thật; thiếu DB thì báo lỗi, không bỏ qua (trước đó `scripts/check-db.sh` bật cụm và kiểm DB đã migrate)
 ```
 
 Script tạo role chỉ chạy khi thư mục dữ liệu còn trống. Đổi mật khẩu hoặc làm lại từ đầu:

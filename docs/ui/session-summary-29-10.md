@@ -52,14 +52,27 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   không suy diễn người làm.
 - **Lệnh dừng merge chỉ áp dụng FE; BE vẫn merge; trước mỗi bước phải kiểm lại HEAD `main` hiện tại** (CEO 31/10). Không dùng
   kết quả CI cũ của một HEAD `main` đã qua.
-- **Phân tầng merge (CEO 31/10), có hiệu lực từ 01/11:**
-  - (1) `main` có required check `lint, typecheck, test` (`strict`: nhánh phải cập nhật từ `main` mới nhất trước khi merge) và
-    `enforce_admins` bật: CEO bật 01/11, FE đọc lại `branches/main/protection` lúc 07:56 UTC;
-  - (2) **Điều kiện comment #457 bỏ; thay bằng: CEO comment phê duyệt vào từng PR tầng 3 trước khi merge** (CEO 01/11);
+- **Phân tầng merge (CEO 31/10), có hiệu lực từ 31/10:**
+  - (1) `main` có required check `lint, typecheck, test` và `enforce_admins` bật: CEO bật 31/10, FE đọc lại 07:56 UTC;
+  - (2) **Điều kiện comment #457 bỏ; thay bằng: CEO comment phê duyệt vào từng PR tầng 3 trước khi merge** (CEO 31/10);
   - (3) trước mỗi bước, CI trên HEAD `main` hiện tại xanh 9/9 theo tên.
 
-  Các luật "Sẵn sàng merge" ở trên nay áp cho tầng 3; tầng 1/2 theo bảng dưới. `strict`: BE merge giữa chừng thì merge
-  `origin/main` lại vào nhánh (không rebase) và chờ CI mới.
+  Các luật "Sẵn sàng merge" ở trên nay áp cho tầng 3; tầng 1/2 theo bảng dưới.
+- **Branch protection + required check có hiệu lực từ 31/10 (FE đọc lại lúc 07:56 UTC).** Bằng chứng đầu tiên: #468 hiện
+  `mergeable_state = blocked` khi required check chưa xanh. (#466 bị `behind` vì `strict`, phải cập nhật từ `main` 2 lần trước
+  khi merge — không phải `blocked`.) Lần đầu cơ chế kỹ thuật chặn được merge sớm, khác 6 lần trước chỉ dựa vào quy trình.
+- **`strict` (nhánh phải cập nhật từ `main` trước khi merge) tạm tắt cho B2a/B2b** (CEO 31/10): `strict` phá chuỗi phê duyệt
+  tầng 3 (`main` đổi lúc chờ comment → HEAD đổi → comment ghi HEAD cũ). Required check và `enforce_admins` vẫn bật. **Bật lại
+  ngay sau khi B2b merge, bắt buộc**, 3 bước: CEO bật lại; FE đọc `branches/main/protection` thấy `strict: true`; không thấy thì
+  báo CEO ngay. Ghi: "B2b merged at …, strict re-enabled at …, verified strict: true at …".
+- **Chốt chặn thay `strict`** (chạy trước khi chuyển ready): `git diff <base> origin/main` chạm `apps/admin`, `apps/api`,
+  `apps/worker`, `packages/*` (trừ `*.md`), `package.json`, `pnpm-lock.yaml`, `.github/workflows`, `turbo.json`, `CLAUDE.md`
+  gốc hay `QUESTIONS.md` → merge `origin/main` vào nhánh (không rebase) và chờ CI như có `strict`. Sau merge: run CI trên `main`
+  chứa commit squash xanh 9/9, đỏ → báo CEO ngay.
+- **Công thức đếm job theo loại PR** (CEO 31/10) — PR có code: 9/9 success bắt buộc; PR doc-only: 8 success + 1 skipped
+  (`docker images`) hợp lệ. Không dùng lẫn. PR có code mà `docker images` skipped → dừng, báo CEO.
+- **Mốc sự kiện phải đọc từ GitHub timeline (`created_at`), không lấy theo tiêu đề brief hay tin nhắn — áp dụng cho cả ngày,
+  không chỉ giây** (CEO 31/10; brief ghi "01/11" cho việc bật protection, timeline là 31/10).
 
   | Tầng | Loại PR                                                                       | Người merge                                                       |
   | ---- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
