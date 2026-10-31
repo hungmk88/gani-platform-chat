@@ -40,6 +40,7 @@ function setup(
     join: (room: string) => rooms.add(room),
     leave: (room: string) => rooms.delete(room),
     on: () => undefined,
+    to: () => ({ emit: () => undefined }),
     emit: (event: string, data: unknown) => void events.push(`${event} ${JSON.stringify(data)}`),
     disconnect: () => (events.push('disconnect'), onDisconnect()),
     once: (_event, listener) => (onDisconnect = listener),

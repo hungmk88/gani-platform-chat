@@ -49,6 +49,8 @@ Mỗi handler sự kiện chạy trong `runWithRequestContext(socket.data.ctx, �
 
 `conversation.subscribe` đọc hội thoại dưới `withTenant` (RLS O+W). Không thấy → ack `{ ok:false, code:'not_found' }`: **giống hệt** id không tồn tại (404, không 403; P9). `conversation.unsubscribe` rời phòng.
 
+**Đang gõ (C2a, N175, 31/10/2026):** client gửi `conversation.typing { conversationId, typing }` (ack tùy chọn). Chỉ nhận khi socket đang ở phòng `conv:{id}` (đã qua `subscribe`/`resume`), không thì `not_found`; không đọc DB, không lưu gì. API phát `typing { conversationId, userId, typing }` vào phòng đó, **trừ chính socket gửi**. `typing: true` tối đa 1 lần/2 giây mỗi socket mỗi hội thoại (thừa thì bỏ, vẫn ack `ok`); `false` đi ngay; socket ngắt khi đang gõ → API phát `false` cho các phòng đó. Client nên gửi lại `true` mỗi 2 giây khi còn gõ, và tự tắt chỉ báo nếu 6 giây không nhận gói mới. Chỉ typing giữa agent: Zalo chưa có sự kiện "khách đang gõ" đã xác minh; `/widget` (đợt 2/3) chưa có.
+
 Định tuyến sự kiện outbox → socket (S2). Người tiêu thụ là worker; nó đọc dữ liệu cần thiết dưới `withTenant` rồi phát bằng emitter vào `/agent`:
 
 | Sự kiện outbox | Sự kiện socket | Phòng | Dữ liệu |
@@ -123,7 +125,7 @@ Bắt tay chỉ kiểm một lần, nhưng kết nối sống hàng giờ: ngư�
 | R6 | WebSocket-only hay sticky | WebSocket-only; kiểm với LB khi chốt Q2 | Q2 |
 | R7 | NestJS 12 với `@nestjs/platform-socket.io` chưa kiểm chứng | Thử ở PR đầu; không hợp thì gắn `socket.io` thẳng vào HTTP server | Quyết ở PR |
 | R8 | Không dựng được `UNIQUE` cho `sequence_number` do partition | **Đã chốt 06/10:** khóa tư vấn theo hội thoại + `MAX+1`; test N4 chứng minh | Xong |
-| R9 | `typing`, `agent.presence` | Ngoài S2; presence làm ở S4 cùng routing | Chốt phạm vi |
+| R9 | `typing`, `agent.presence` | Ngoài S2; presence làm ở S4 cùng routing. **`typing` giữa agent: C2a (N175, 31/10/2026)**, xem §3 | Chốt phạm vi |
 | R10 | Danh sách Inbox sau kết nối lại | Tải lại bằng REST | Cố vấn |
 | R11 | Phụ thuộc mới (§1) | Duyệt cùng PR | Anh |
 

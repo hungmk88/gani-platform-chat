@@ -26,6 +26,8 @@ export const convRoom = (conversationId: string): string => `conv:${conversation
 export const MAX_CONVERSATION_ROOMS = 20;
 /** Spec §5: `resume` calls per socket in a window. */
 export const RESUME_LIMIT = { calls: 10, windowMs: 10_000 } as const;
+/** C2a (N175): one `typing: true` per socket and conversation in this time at most; the others are dropped, not refused. */
+export const TYPING_EVERY_MS = 2_000;
 
 export type Ack = (answer: Record<string, unknown>) => void;
 
@@ -37,6 +39,8 @@ export interface AgentSocket {
   join(room: string): unknown;
   leave(room: string): unknown;
   on(event: string, listener: (...args: unknown[]) => void): unknown;
+  /** The others in a room: never this socket. */
+  to(room: string): { emit(event: string, ...args: unknown[]): unknown };
 }
 
 export interface AgentEventDeps {
@@ -49,6 +53,7 @@ export interface AgentEventDeps {
 
 const Subscribe = z.object({ conversationId: z.uuid() });
 const Resume = z.object({ conversationId: z.uuid(), lastSequenceNumber: z.number().int().min(0) });
+const Typing = z.object({ conversationId: z.uuid(), typing: z.boolean() });
 
 class Refusal extends Error {
   constructor(readonly code: string) {
@@ -173,4 +178,36 @@ export function registerAgentEvents(socket: AgentSocket, deps: AgentEventDeps): 
       };
     }),
   );
+
+  // C2a (N175): an agent typing, told to the others who follow the conversation as `typing {conversationId, userId, typing}`. Nothing
+  // is read or stored: the room was joined through subscribe or resume, which checked the conversation, and revalidate leaves it when
+  // the session changes, so a socket outside the room gets not_found. Ids only; the ack is optional.
+  const typingSince = new Map<string, number>();
+  const tell = (conversationId: string, typing: boolean): void => {
+    void socket
+      .to(convRoom(conversationId))
+      .emit('typing', { conversationId, userId: socket.data.ctx.userId, typing });
+  };
+  socket.on('conversation.typing', (args: unknown, ack: unknown): void => {
+    const reply: Ack = typeof ack === 'function' ? (ack as Ack) : () => undefined;
+    const parsed = Typing.safeParse(args);
+    if (!parsed.success)
+      return reply({ ok: false, code: 'validation_failed', traceId: randomUUID() });
+    const { conversationId, typing } = parsed.data;
+    if (!socket.rooms.has(convRoom(conversationId)))
+      return reply({ ok: false, code: 'not_found', traceId: randomUUID() });
+    const at = now();
+    const since = typingSince.get(conversationId);
+    if (typing && since !== undefined && at - since < TYPING_EVERY_MS) return reply({ ok: true });
+    if (typing) typingSince.set(conversationId, at);
+    else typingSince.delete(conversationId);
+    tell(conversationId, typing);
+    reply({ ok: true });
+  });
+  // A socket that goes while typing stops typing; its rooms are still there during `disconnecting`.
+  socket.on('disconnecting', () => {
+    for (const conversationId of typingSince.keys())
+      if (socket.rooms.has(convRoom(conversationId))) tell(conversationId, false);
+    typingSince.clear();
+  });
 }
