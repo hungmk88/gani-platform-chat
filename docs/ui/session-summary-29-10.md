@@ -65,10 +65,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   tầng 3 (`main` đổi lúc chờ comment → HEAD đổi → comment ghi HEAD cũ). Required check và `enforce_admins` vẫn bật. **Bật lại
   ngay sau khi B2b merge, bắt buộc**, 3 bước: CEO bật lại; FE đọc `branches/main/protection` thấy `strict: true`; không thấy thì
   báo CEO ngay. Ghi: "B2b merged at …, strict re-enabled at …, verified strict: true at …".
-- **Chốt chặn thay `strict`** (chạy trước khi chuyển ready): `git diff <base> origin/main` chạm `apps/admin`, `apps/api`,
-  `apps/worker`, `packages/*` (trừ `*.md`), `package.json`, `pnpm-lock.yaml`, `.github/workflows`, `turbo.json`, `CLAUDE.md`
-  gốc hay `QUESTIONS.md` → merge `origin/main` vào nhánh (không rebase) và chờ CI như có `strict`. Sau merge: run CI trên `main`
-  chứa commit squash xanh 9/9, đỏ → báo CEO ngay.
+- **Chốt chặn thay `strict`** (chạy trước khi chuyển ready; danh sách thu hẹp, CEO 31/10): `git diff <base> origin/main` chạm
+  `apps/admin`, `apps/api`, `packages/domain`, `packages/ui`, `packages/config`, `packages/db/src/schema/org-members.ts`,
+  `package.json`, `pnpm-lock.yaml`, `turbo.json`, `.github/workflows`, `CLAUDE.md` gốc hay `QUESTIONS.md` → merge `origin/main`
+  vào nhánh (không rebase) và chờ CI như có `strict`. Không theo dõi `apps/worker` và phần còn lại của `packages/db`. Sau merge:
+  run CI trên `main` chứa commit squash xanh 9/9, đỏ → báo CEO ngay.
 - **Công thức đếm job theo loại PR** (CEO 31/10) — PR có code: 9/9 success bắt buộc; PR doc-only: 8 success + 1 skipped
   (`docker images`) hợp lệ. Không dùng lẫn. PR có code mà `docker images` skipped → dừng, báo CEO.
 - **Mốc sự kiện phải đọc từ GitHub timeline (`created_at`), không lấy theo tiêu đề brief hay tin nhắn — áp dụng cho cả ngày,
@@ -217,6 +218,10 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **Chốt chặn thu hẹp sau 3 vòng cập nhật liên tiếp vì `apps/worker`; lý do: admin không import worker; `packages/db` chỉ theo
+  dõi `org-members.ts`** (CEO 31/10). Ba vòng của B2b (#472): #471, #473, #474 của BE, đều ở `apps/worker`.
+- **Script Postgres mở PR song song trên nhánh `claude/cool-carson-fp5o6t-db`, gắn nhãn `needs-be-review`, không tự merge trước
+  khi BE review** (CEO 31/10): PR sửa `packages/db/package.json`, `apps/api/package.json`, `infra/CLAUDE.md` của BE.
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
