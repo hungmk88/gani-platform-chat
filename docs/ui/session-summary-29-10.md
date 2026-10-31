@@ -241,6 +241,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   dõi `org-members.ts`** (CEO 31/10). Ba vòng của B2b (#472): #471, #473, #474 của BE, đều ở `apps/worker`.
 - **Script Postgres mở PR song song trên nhánh `claude/cool-carson-fp5o6t-db`, gắn nhãn `needs-be-review`, không tự merge trước
   khi BE review** (CEO 31/10): PR sửa `packages/db/package.json`, `apps/api/package.json`, `infra/CLAUDE.md` của BE.
+  BE review APPROVE (comment 17:43:38 UTC). Góp ý của BE: (1) so `schema_migrations` với số file migration, (3) kiểm có `psql`
+  trước: làm trong #477 (CEO 31/10); (2) **Windows không hỗ trợ hook `pretest:integration`; dùng WSL hoặc container** (CEO 31/10:
+  bỏ góp ý, repo đã dùng nhiều script `bash`/`sh`).
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
