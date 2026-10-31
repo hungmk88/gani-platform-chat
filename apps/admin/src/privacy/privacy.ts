@@ -1,7 +1,7 @@
 // #23 Dữ liệu khách (CEO 30/10): the requests on a customer's personal data (`export`, `erase`) of the company, newest first by
 // cursor, from `GET /v1/privacy-requests`, a contract planned for S5 (N167). It has no filter: the screen sends none. Until the API
-// serves it, the route answers 404 and the screen says it is not there yet. PR B1 records a request (`POST`). PR B2a adds what
-// carrying out an `erase` (`POST …/execute`, the dialog approved 30/10) needs; the dialog itself is PR B2b. U70 does not hold it.
+// serves it, the route answers 404 and the screen says it is not there yet. PR B1 records a request (`POST`); PR B2 carries out an
+// `erase` (`POST …/execute`) with the dialog approved 30/10; U70 (figures before erasing) does not hold it.
 import type { components } from '../api/planned';
 
 export type PrivacyRequest = components['schemas']['PrivacyRequest'];

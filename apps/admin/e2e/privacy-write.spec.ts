@@ -27,9 +27,11 @@ test('recording a request: the form checks, then the request joins the list', as
   await expect(rows(page).nth(1)).toHaveText(
     /^Lê Minh ChâuXóa dữ liệuChờ thực hiệnKhách gọi tổng đài xin xóa\./,
   );
-  // Recorded only: the new row is pending and carries nothing out (no button on any row, PR B2 adds the erase).
-  await expect(rows(page).nth(1).getByRole('cell')).toHaveCount(7);
-  await expect(rows(page).getByRole('button')).toHaveCount(0);
+  // Recorded only, nothing carried out: the new row is pending, and like every pending erase it has its button (PR B2).
+  await expect(rows(page).nth(1).getByRole('cell')).toHaveCount(8);
+  await expect(
+    rows(page).nth(1).getByRole('button', { name: 'Xóa dữ liệu của Lê Minh Châu' }),
+  ).toBeVisible();
 });
 
 test('a recording that fails keeps the form and its key; one already waiting says so', async ({
