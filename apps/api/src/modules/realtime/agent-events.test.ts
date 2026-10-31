@@ -2,7 +2,12 @@ import type { TenantTx } from '@gani/db';
 import { describe, expect, it, vi } from 'vitest';
 
 import { currentRequestContext } from '../request-context/request-context.js';
-import { MAX_CONVERSATION_ROOMS, registerAgentEvents, type AgentSocket } from './agent-events.js';
+import {
+  MAX_CONVERSATION_ROOMS,
+  registerAgentEvents,
+  TYPING_EVERY_MS,
+  type AgentSocket,
+} from './agent-events.js';
 import type { AgentContext } from './handshake.js';
 
 const C = '0197a3c0-0000-7000-8000-00000000000c';
@@ -55,6 +60,7 @@ function setup(o: { fresh?: boolean; now?: () => number } = {}) {
   db.page = { rows: [msg(4), msg(5)], hasMore: false, maxSequence: 5 };
   const handlers = new Map<string, (...args: unknown[]) => void>();
   const rooms = new Set<string>();
+  const sent: [room: string, event: string, packet: unknown][] = [];
   const socket: AgentSocket = {
     id: 'sock',
     data: { ctx },
@@ -62,6 +68,9 @@ function setup(o: { fresh?: boolean; now?: () => number } = {}) {
     join: (room: string) => (db.order.push(`join ${room}`), rooms.add(room)),
     leave: (room: string) => rooms.delete(room),
     on: (event, listener) => handlers.set(event, listener),
+    to: (room: string) => ({
+      emit: (event: string, packet: unknown) => sent.push([room, event, packet]),
+    }),
   };
   const tenants: unknown[] = [];
   registerAgentEvents(socket, {
@@ -75,7 +84,7 @@ function setup(o: { fresh?: boolean; now?: () => number } = {}) {
   });
   const ask = (event: string, args: unknown) =>
     new Promise<Record<string, unknown>>((resolve) => handlers.get(event)?.(args, resolve));
-  return { ask, rooms, tenants, handlers };
+  return { ask, rooms, tenants, handlers, sent };
 }
 
 describe('conversation.subscribe and unsubscribe', () => {
@@ -166,5 +175,58 @@ describe('resume', () => {
       code: 'internal_error',
       traceId: expect.any(String) as string,
     });
+  });
+});
+
+describe('conversation.typing (C2a)', () => {
+  const typing = (on: boolean) => [
+    'conv:' + C,
+    'typing',
+    { conversationId: C, userId: 'u1', typing: on },
+  ];
+
+  it('tells the others of a room the socket follows, a start at most once every 2 s and a stop at once, with no database', async () => {
+    let clock = 0;
+    const t = setup({ now: () => clock });
+    t.rooms.add(`conv:${C}`);
+    expect(await t.ask('conversation.typing', { conversationId: C, typing: true })).toEqual({
+      ok: true,
+    });
+    clock = TYPING_EVERY_MS - 1;
+    expect(await t.ask('conversation.typing', { conversationId: C, typing: true })).toEqual({
+      ok: true,
+    });
+    clock = TYPING_EVERY_MS;
+    await t.ask('conversation.typing', { conversationId: C, typing: true });
+    await t.ask('conversation.typing', { conversationId: C, typing: false });
+    await t.ask('conversation.typing', { conversationId: C, typing: true });
+    expect(t.sent).toEqual([typing(true), typing(true), typing(false), typing(true)]);
+    expect([t.tenants, db.order]).toEqual([[], []]);
+  });
+
+  it('answers not_found for a conversation the socket does not follow and validation_failed for a bad notice; the ack is optional', async () => {
+    const t = setup();
+    expect(await t.ask('conversation.typing', { conversationId: C, typing: true })).toEqual({
+      ok: false,
+      code: 'not_found',
+      traceId: expect.any(String) as string,
+    });
+    expect(await t.ask('conversation.typing', { conversationId: C })).toEqual({
+      ok: false,
+      code: 'validation_failed',
+      traceId: expect.any(String) as string,
+    });
+    t.rooms.add(`conv:${C}`);
+    t.handlers.get('conversation.typing')?.({ conversationId: C, typing: true });
+    expect(t.sent).toEqual([typing(true)]);
+  });
+
+  it('tells the rooms it was typing in that it stopped when the socket goes', () => {
+    const t = setup();
+    t.rooms.add(`conv:${C}`);
+    t.handlers.get('conversation.typing')?.({ conversationId: C, typing: true });
+    t.handlers.get('disconnecting')?.();
+    t.handlers.get('disconnecting')?.();
+    expect(t.sent).toEqual([typing(true), typing(false)]);
   });
 });

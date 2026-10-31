@@ -222,3 +222,38 @@ describe('the session checked again (N9)', () => {
     expect(got).toEqual([`ws:${W2}`, 'sentinel']);
   });
 });
+
+describe('conversation.typing (C2a, N175)', () => {
+  it('tells the others who follow the conversation, never the one typing nor a socket outside the room, and the stop when it goes', async () => {
+    const [manager, sales, colleague] = [
+      await connect('manager'),
+      await connect('sales'),
+      await connect('colleague'),
+    ];
+    for (const socket of [manager, sales])
+      expect(await ask(socket, 'conversation.subscribe', { conversationId: c['open'] })).toEqual({
+        ok: true,
+      });
+    const seen: [who: string, packet: unknown][] = [];
+    for (const [who, socket] of [
+      ['manager', manager],
+      ['sales', sales],
+      ['colleague', colleague],
+    ] as const)
+      socket.on('typing', (packet: unknown) => seen.push([who, packet]));
+    const typing = { conversationId: c['open'], userId: people['sales'] };
+    expect(await ask(sales, 'conversation.typing', { ...typing, typing: true })).toEqual({
+      ok: true,
+    });
+    await until(() => seen.length === 1, 'the notice of the one typing');
+    expect(
+      await ask(colleague, 'conversation.typing', { conversationId: c['open'], typing: true }),
+    ).toEqual({ ok: false, code: 'not_found', traceId: expect.any(String) as string });
+    sales.disconnect();
+    await until(() => seen.length === 2, 'the stop of the socket that went');
+    expect(seen).toEqual([
+      ['manager', { ...typing, typing: true }],
+      ['manager', { ...typing, typing: false }],
+    ]);
+  });
+});
