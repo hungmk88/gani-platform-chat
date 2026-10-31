@@ -12,6 +12,7 @@ export default defineConfig({
         ...coverage.exclude,
         'src/account-audit-store.ts',
         'src/audit-log.ts',
+        'src/channel-refresh-store.ts',
         'src/channel-store.ts',
         'src/channel-window-read.ts',
         'src/conversation-lock.ts',
