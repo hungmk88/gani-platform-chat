@@ -1,3 +1,10 @@
+import {
+  type ChannelRefreshSettings,
+  ChannelTokenRefreshJob,
+  type RefreshMetrics,
+  type RefreshStore,
+  type TokenRefresher,
+} from './channels/token-refresh.js';
 import type { WorkerConfig } from './config.js';
 import { EventConsumer, type EventHandlers, type QueueSource } from './consumer/event-consumer.js';
 import { InboundProcessor, type InboundStore } from './inbound/inbound-processor.js';
@@ -16,6 +23,14 @@ export interface WorkerDeps {
   readonly maintenance?: PartitionStore;
   /** The processing of stored webhooks (inbound spec §2–3): absent, it is not run (the tests of the relay do not need it). */
   readonly inbound?: { readonly store: InboundStore; readonly settings: WorkerConfig['inbound'] };
+  /** The renewal of the channel tokens (B2, N173): absent, it is not run (CHANNEL_REFRESH_ENABLED=0, and always until B2-3 builds
+   * the platform client). */
+  readonly refresh?: {
+    readonly store: RefreshStore;
+    readonly refresher: TokenRefresher;
+    readonly settings: ChannelRefreshSettings;
+    readonly metrics?: RefreshMetrics;
+  };
   /** The consumer of the event queues (N141): absent, it is not run (EVENTS_CONSUMER_ENABLED=0, and the tests of the relay). */
   readonly events?: {
     readonly source: QueueSource;
@@ -33,8 +48,8 @@ export interface WorkerDeps {
 }
 
 export interface RunningWorker {
-  /** Stops the relay, then closes the HTTP endpoints, then stops the inbound processor, then closes the queue and the pool. True when
-   * all went well; the second call gives the first answer. */
+  /** Stops the relay, then closes the HTTP endpoints, then stops the inbound processor and the token refresh, then closes the queue
+   * and the pool. True when all went well; the second call gives the first answer. */
   shutdown(): Promise<boolean>;
 }
 
@@ -51,6 +66,10 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
     ? new InboundProcessor({ ...deps.inbound, log, shutdownMs: settings.shutdownMs })
     : null;
   inbound?.start();
+  const refresh = deps.refresh
+    ? new ChannelTokenRefreshJob({ ...deps.refresh, log, shutdownMs: settings.shutdownMs })
+    : null;
+  refresh?.start();
   const consumer = deps.events
     ? new EventConsumer({ ...deps.events, log, shutdownMs: settings.shutdownMs })
     : null;
@@ -91,6 +110,8 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
         const served = http ? await step('http', () => http.close()) : true;
         // Like the relay, the processor has its own deadline; it uses the pool, so it ends before the pool closes.
         const drained = inbound ? await step('inbound', () => inbound.stop(), false) : true;
+        // The same for the token refresh: it writes the account in progress before it stops (its own deadline too).
+        const renewed = refresh ? await step('refresh', () => refresh.stop(), false) : true;
         // After the loops that feed the queues; it waits for the jobs running and has its own deadline too.
         const consumed = consumer ? await step('events', () => consumer.stop(), false) : true;
         const emitter = deps.events?.emitter;
@@ -99,7 +120,17 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
         const maintained = job ? await step('partition_job', () => job.stop()) : true;
         const closed = await step('queue', () => queue.close());
         const ended = await step('pool', () => pool.end());
-        return stopped && served && drained && consumed && silent && maintained && closed && ended;
+        return (
+          stopped &&
+          served &&
+          drained &&
+          renewed &&
+          consumed &&
+          silent &&
+          maintained &&
+          closed &&
+          ended
+        );
       })();
       return shutdown;
     },

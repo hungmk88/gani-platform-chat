@@ -1,3 +1,5 @@
+import type { RefreshMetrics } from './channels/token-refresh.js';
+
 /** What the relay reports as it goes (review OPS-02). Every method is cheap and never throws. */
 export interface RelayMetrics {
   /** A pass ended, well (`ok`) or with an error. */
@@ -30,7 +32,7 @@ export interface OutboxTotals {
  * numbers are for the platform, a label per tenant would leak who has work and grow without bound. The state of the outbox table
  * (pending, oldest age, dead letters) is not counted here: `scrape()` reads it from the database at each scrape (outbox spec §7).
  */
-export class WorkerMetrics implements RelayMetrics, ConsumerMetrics {
+export class WorkerMetrics implements RelayMetrics, ConsumerMetrics, RefreshMetrics {
   private passes = 0;
   private failedPasses = 0;
   private lastPassAt: number;
@@ -43,6 +45,7 @@ export class WorkerMetrics implements RelayMetrics, ConsumerMetrics {
   private jobsStalled = 0;
   private jobsFailed = 0;
   private queues = 0;
+  private readonly refreshes = { ok: 0, failed: 0, refused: 0, lease_lost: 0 };
 
   constructor(
     private readonly now: () => number = Date.now,
@@ -88,6 +91,10 @@ export class WorkerMetrics implements RelayMetrics, ConsumerMetrics {
     this.queues = count;
   }
 
+  refreshed(result: Parameters<RefreshMetrics['refreshed']>[0]): void {
+    this.refreshes[result]++;
+  }
+
   /** Alive while the relay ended a pass (even a failed one) within `maxAgeMs`: a loop that hangs stops the passes. */
   healthy(maxAgeMs: number): boolean {
     return this.now() - this.lastPassAt <= maxAgeMs;
@@ -108,6 +115,10 @@ export class WorkerMetrics implements RelayMetrics, ConsumerMetrics {
       ['event_jobs_stalled_total', 'counter', 'Event jobs taken back from a worker that stopped renewing its lock.', this.jobsStalled],
       ['event_jobs_failed_total', 'counter', 'Event jobs BullMQ failed for good.', this.jobsFailed],
       ['event_queues_subscribed', 'gauge', 'Event queues the consumer takes jobs from.', this.queues],
+      ['channel_token_refreshed_total', 'counter', 'Channel accounts whose tokens were renewed.', this.refreshes.ok],
+      ['channel_token_refresh_failed_total', 'counter', 'Renewals that failed and are tried again once their lease ends.', this.refreshes.failed],
+      ['channel_token_refresh_refused_total', 'counter', 'Renewals the platform refused: the account was disconnected.', this.refreshes.refused],
+      ['channel_token_refresh_lease_lost_total', 'counter', 'Renewals not written because their claim was taken back.', this.refreshes.lease_lost],
     ];
     return format(series);
   }
