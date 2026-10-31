@@ -54,7 +54,10 @@ async function list(who: string, query = '') {
   const res = await fetch(`${url}/v1/audit-logs${query}`, {
     headers: { cookie: cookies[who] ?? '', origin: ORIGIN },
   });
-  return { status: res.status, body: (await res.json()) as { data?: { id: string }[] } };
+  return {
+    status: res.status,
+    body: (await res.json()) as { data?: { id: string }[]; nextCursor?: string | null },
+  };
 }
 const ids = async (who: string, query = '') => (await list(who, query)).body.data?.map((r) => r.id);
 
@@ -134,6 +137,17 @@ describe('GET /v1/audit-logs', () => {
     expect(await ids('owner', '?action=member.two_factor_reset')).toEqual([r2]);
     expect(await ids('owner', `?from=${at(T - 2 * HOUR)}&to=${at(T - HOUR)}`)).toEqual([r2]);
     expect(await ids('owner', '?limit=1')).toEqual([r3]);
+    expect(await ids('owner', '?targetType=workspace')).toEqual([r3]);
+  });
+
+  it('gives the next page from nextCursor, in the same filters (A9b)', async () => {
+    const first = await list('owner', '?limit=2');
+    expect([first.body.data?.map((r) => r.id), typeof first.body.nextCursor]).toEqual([
+      [r3, r2],
+      'string',
+    ]);
+    const next = await list('owner', `?limit=2&cursor=${first.body.nextCursor ?? ''}`);
+    expect([next.body.data?.map((r) => r.id), next.body.nextCursor]).toEqual([[r1], null]);
   });
 
   it('refuses other roles, an organisation asked for, and bad filters', async () => {
@@ -144,8 +158,10 @@ describe('GET /v1/audit-logs', () => {
       await list('owner', '?limit=101'),
       await list('owner', '?actorUserId=x'),
       await list('owner', '?action=DROP'),
+      await list('owner', '?targetType=Member'),
+      await list('owner', '?cursor=x'),
       await list('nobody'),
     ];
-    expect(answers.map((a) => a.status)).toEqual([403, 400, 400, 400, 400, 400, 401]);
+    expect(answers.map((a) => a.status)).toEqual([403, 400, 400, 400, 400, 400, 400, 400, 401]);
   });
 });

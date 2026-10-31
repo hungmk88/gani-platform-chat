@@ -1632,10 +1632,18 @@
             "items": {
               "$ref": "#/components/schemas/AuditLog"
             }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The next page, with the same filters; null: no more."
           }
         },
         "required": [
-          "data"
+          "data",
+          "nextCursor"
         ]
       },
       "AuditLog": {
@@ -5652,7 +5660,7 @@
     },
     "/v1/audit-logs": {
       "get": {
-        "summary": "The audit log of the session's organisation, newest first, filtered by person, action and time (A9a; no cursor yet).",
+        "summary": "The audit log of the session's organisation, newest first, filtered by person, action, target type and time, by pages (A9a, A9b).",
         "tags": [
           "audit"
         ],
@@ -5674,6 +5682,17 @@
             },
             "required": false,
             "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "description": "member, workspace, team, customer…"
+            },
+            "required": false,
+            "description": "member, workspace, team, customer…",
+            "name": "targetType",
             "in": "query"
           },
           {
@@ -5708,11 +5727,21 @@
             "required": false,
             "name": "limit",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "At most `limit` rows.",
+            "description": "A page of at most `limit` rows.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5722,7 +5751,7 @@
             }
           },
           "400": {
-            "description": "validation_failed: a filter, `from` not before `to`, or an unknown parameter (the organisation is never one).",
+            "description": "validation_failed: a filter, `from` not before `to`, a cursor this API did not give, or an unknown parameter (the organisation is never one).",
             "content": {
               "application/problem+json": {
                 "schema": {
