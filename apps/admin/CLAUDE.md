@@ -123,7 +123,7 @@ Trang mặc định sau đăng nhập:
 ## Màn chạy trên hợp đồng planned (N167, CEO 30/10)
 
 - Các màn này đọc `docs/openapi/planned.json` (kiểu ở `src/api/planned.d.ts`), chưa phải API thật: API trả 404 thì màn hiện `PendingPage` chung ("<mục>: màn này chưa có trong bản hiện tại."). **Không** đưa "chưa nối API" hay banner dev lên giao diện; danh sách chỉ ghi ở đây. Hợp đồng chốt khác bản planned thì phải sửa màn.
-- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5) · #23 Dữ liệu khách, danh sách + ghi nhận yêu cầu (S5).
+- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5) · #23 Dữ liệu khách, danh sách + ghi nhận yêu cầu + thực hiện xóa (S5).
 
 ## Hộp thư (#6)
 
@@ -219,8 +219,14 @@ Trang mặc định sau đăng nhập:
 ## Dữ liệu khách (#23)
 
 - `/settings/customer-data`, Owner/Admin như menu và API (U36); Cấp **công ty**. `GET /v1/privacy-requests` (planned S5, `src/privacy/privacy.ts` + `privacy-screen.tsx`; nhãn ở `src/privacy/labels.ts`, `Record` theo enum của hợp đồng, dùng lại cho `/platform`): **không có bộ lọc** (hợp đồng chỉ có `cursor`, `limit`), mới nhất trước, cursor như #29 (`Paged`). Cột khách (`null` → "Khách chưa có tên"), yêu cầu (Xuất dữ liệu / Xóa dữ liệu), trạng thái (Chờ thực hiện; Đã thực hiện xanh; Không thực hiện được đỏ; luôn có chữ), lý do (chữ thuần, xuống dòng, không cắt), người ghi nhận, ghi nhận lúc, thực hiện lúc. Trống: một câu + "Làm mới"; 404 → `PendingPage`.
-- **PR B1 (CEO 30/10)**: nút chính **"Ghi nhận yêu cầu"** (`POST /v1/privacy-requests`, `src/privacy/request-dialog.tsx`): khách (ô tìm `CustomerField` của #359 với `label="Khách hàng"`, bắt buộc; prop `label` có mặc định nên Tạo ticket không đổi), loại, lý do 1–500 (`requestBodyOf`, chữ thuần); chờ máy chủ, một `Idempotency-Key` cho một nội dung; 404 → bỏ khách đã chọn; 409 `duplicate_resource` → "Khách này đã có một yêu cầu … đang chờ thực hiện.". Ghi nhận **chưa thực hiện gì**: không dòng nào có nút; màn ghi "Thực hiện yêu cầu chưa có trong bản hiện tại.".
-- **PR B2** (chưa làm): hộp thoại thực hiện xóa theo thiết kế CEO duyệt 30/10 (handoff mục 7 "Việc treo"; U70 không chặn). API giả: `e2e/stub-privacy.ts` (hai trang, trang 2 lặp một hàng; `POST` ghi vào bản sao của phiên); E2E `e2e/privacy.spec.ts` (danh sách), `e2e/privacy-write.spec.ts` (ghi nhận).
+- **PR B1 (CEO 30/10)**: nút chính **"Ghi nhận yêu cầu"** (`POST /v1/privacy-requests`, `src/privacy/request-dialog.tsx`): khách (ô tìm `CustomerField` của #359 với `label="Khách hàng"`, bắt buộc; prop `label` có mặc định nên Tạo ticket không đổi), loại, lý do 1–500 (`requestBodyOf`, chữ thuần); chờ máy chủ, một `Idempotency-Key` cho một nội dung; 404 → bỏ khách đã chọn; 409 `duplicate_resource` → "Khách này đã có một yêu cầu … đang chờ thực hiện.". Ghi nhận **chưa thực hiện gì**.
+- **PR B2 (CEO 30/10, 31/10)**: dòng `erase` đang chờ có nút "Xóa dữ liệu…" (tên: "Xóa dữ liệu của <khách>"), mở hộp thoại thực hiện xóa (`POST /v1/privacy-requests/{id}/execute`, `src/privacy/erase-dialog.tsx`). Dòng `export` không có nút (thực hiện xuất chưa có trong bản này; màn không ghi câu "chưa có"). Thiết kế đã duyệt:
+  - (a) gõ lại `XOA-<6 ký tự cuối mã yêu cầu>` (monospace, không nút "Sao chép"; `confirmCodeOf`), so khớp cắt khoảng trắng đầu/cuối, không phân biệt hoa thường, không chuẩn hóa gì khác (`confirmMatches`);
+  - (b) một `Idempotency-Key` sinh khi mở, giữ qua mọi "Thử lại", bỏ khi đóng; `retry: false`: không tự gửi lại, mỗi lần gửi là một lần bấm; đang xử lý thì khóa nút, Esc và "Hủy";
+  - (c) focus vào ô gõ; Enter không gửi; lỗi → focus `role="alert"`, thành công → `role="status"` với số thật của API (`erasedLines`, `PrivacyErasure`) và focus "Đóng"; đóng → focus về nút đã mở, dòng đã xóa không còn nút thì về tiêu đề danh sách;
+  - (d) tên khách `null` → "khách chưa có tên (yêu cầu XXXXXX)" (`customerTitleOf`); (e) lý do là chữ thuần, vùng cuộn, không cắt.
+  - 409 `request_not_pending` (đọc lại danh sách), 404, 403: nói lý do, chỉ còn "Đóng"; 503/mất mạng: "Chưa rõ đã xóa hay chưa. Bấm Thử lại…"; không bao giờ "đã xóa" khi API chưa nói. U70 không chặn.
+- API giả: `e2e/stub-privacy.ts` (hai trang, trang 2 lặp một hàng; `POST` ghi và `POST …/execute` xóa trong bản sao của phiên, `ERASED`); E2E `e2e/privacy.spec.ts` (danh sách), `e2e/privacy-write.spec.ts` (ghi nhận), `e2e/privacy-erase.spec.ts` (xóa).
 
 ## Kênh (#24)
 

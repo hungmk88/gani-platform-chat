@@ -5,7 +5,8 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 
 // #23 Dữ liệu khách (CEO 30/10): the requests on customers' personal data from a route planned for S5, by cursor as #29, with no
-// filter. Recording one (PR B1) is in privacy-write.spec.ts; nothing is carried out from this screen yet (PR B2).
+// filter. Recording one (PR B1) is in privacy-write.spec.ts, erasing (PR B2) in privacy-erase.spec.ts; here only where the
+// buttons are.
 const rows = (page: Page) =>
   page.getByRole('region', { name: 'Yêu cầu dữ liệu cá nhân' }).getByRole('table').getByRole('row');
 
@@ -15,9 +16,7 @@ const problem = (status: number, code: string, traceId: string) => ({
   body: JSON.stringify({ status, code, traceId }),
 });
 
-test('an Owner reads the requests; the one button records, no row carries anything out', async ({
-  page,
-}) => {
+test('an Owner reads the requests; only a pending erase can be carried out', async ({ page }) => {
   const asked: string[] = [];
   page.on('request', (r) => {
     if (r.url().includes('/v1/privacy-requests')) asked.push(new URL(r.url()).search);
@@ -27,20 +26,24 @@ test('an Owner reads the requests; the one button records, no row carries anythi
   await expect(page.getByRole('heading', { name: 'Dữ liệu khách', level: 1 })).toBeVisible();
   await expect(rows(page)).toHaveCount(3);
   await expect(rows(page).nth(0)).toHaveText(
-    /^KháchYêu cầuTrạng tháiLý doNgười ghi nhậnGhi nhận lúcThực hiện lúc$/,
+    /^KháchYêu cầuTrạng tháiLý doNgười ghi nhậnGhi nhận lúcThực hiện lúcThao tác$/,
   );
   await expect(rows(page).nth(1)).toHaveText(
-    /^Trần BìnhXóa dữ liệuChờ thực hiệnKhách gọi tổng đài xin xóa hồ sơ\.Nguyễn An00:30 29\/10\/2026—$/,
+    /^Trần BìnhXóa dữ liệuChờ thực hiệnKhách gọi tổng đài xin xóa hồ sơ\.Nguyễn An00:30 29\/10\/2026—Xóa dữ liệu…$/,
   );
   await expect(rows(page).nth(2)).toHaveText(/^Khách chưa có tênXuất dữ liệuĐã thực hiện/);
   expect(asked[0]).toBe('?limit=50');
   await expect(page.getByRole('main').getByRole('button', { name: 'Tải thêm' })).toHaveCount(1);
-  // The buttons of the screen are exactly "Ghi nhận yêu cầu" and "Tải thêm": no row has one (PR B2 adds the erase).
+  // One button per pending erase (Trần Bình), none for an export or a request carried out or failed.
   await expect(page.getByRole('main').getByRole('button')).toHaveText([
     'Ghi nhận yêu cầu',
+    'Xóa dữ liệu…',
     'Tải thêm',
   ]);
-  await expect(rows(page).getByRole('button')).toHaveCount(0);
+  await expect(rows(page).getByRole('button')).toHaveCount(1);
+  await expect(rows(page).getByRole('button', { name: 'Xóa dữ liệu của Trần Bình' })).toBeVisible();
+  await expect(page.getByText('Thực hiện yêu cầu chưa có trong bản hiện tại.')).toHaveCount(0);
+  await expect(page.getByText('Không áp dụng AI ở màn này.')).toBeVisible();
   await expect(page.getByRole('combobox')).toHaveCount(0);
   await expectAccessible(page);
 });
