@@ -1535,6 +1535,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{id}/ai-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The internal AI of a workspace: environment, E1/L1 on or off, the monthly budget in USD and what was spent this month (Owner, Admin). */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The settings. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AiSettings"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: a workspace not among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. Q1 (legal) not settled: `production` is refused with 409 `ai_production_locked`; it may open once Q1 is. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AiSettingsChange"];
+                };
+            };
+            responses: {
+                /** @description The settings after the change. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AiSettings"];
+                    };
+                };
+                /** @description validation_failed: an empty body, an unknown field, a budget out of 0–1 000 000. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: an Admin moving to `production`, or another role; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: a workspace not among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description ai_production_locked: `production` while Q1 (legal) is not settled. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1854,6 +2019,33 @@ export interface components {
             /** Format: date-time */
             approvedAt: string | null;
             approvedBy: string | null;
+        };
+        AiSettings: {
+            /** @enum {string} */
+            environment: "staging" | "production";
+            features: components["schemas"]["AiFeatures"];
+            /** @description The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow). */
+            monthlyBudgetUsd: number;
+            /** @description Spent since the month began in `workspace.timezone` (ai_usage_logs). */
+            usedThisMonthUsd: number;
+            /**
+             * Format: date-time
+             * @description When the next month begins in `workspace.timezone`, and the spending starts again at 0.
+             */
+            resetsAt: string;
+        };
+        AiFeatures: {
+            e1: boolean;
+            l1: boolean;
+        };
+        AiSettingsChange: {
+            /** @enum {string} */
+            environment?: "staging" | "production";
+            features?: {
+                e1?: boolean;
+                l1?: boolean;
+            };
+            monthlyBudgetUsd?: number;
         };
     };
     responses: never;
