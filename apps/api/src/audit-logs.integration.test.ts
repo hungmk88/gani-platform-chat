@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 import { createDbPool } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
