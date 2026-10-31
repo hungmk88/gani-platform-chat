@@ -32,6 +32,10 @@ describe('WorkerMetrics', () => {
       event_jobs_stalled_total: '0',
       event_jobs_failed_total: '0',
       event_queues_subscribed: '0',
+      channel_token_refreshed_total: '0',
+      channel_token_refresh_failed_total: '0',
+      channel_token_refresh_refused_total: '0',
+      channel_token_refresh_lease_lost_total: '0',
     });
     expect(text).not.toMatch(/[{}]/);
   });
@@ -56,6 +60,22 @@ describe('WorkerMetrics', () => {
       event_jobs_failed_total: '1',
       event_queues_subscribed: '3',
     });
+  });
+
+  it('counts each result of the token refresh in its own series, with no organisation (B2)', () => {
+    const m = new WorkerMetrics();
+    for (const result of ['ok', 'ok', 'ok', 'failed', 'failed', 'refused', 'lease_lost'] as const)
+      m.refreshed(result);
+    const text = m.render();
+    // prettier-ignore
+    const values = Object.fromEntries(text.split('\n').filter((l) => l.startsWith('channel_')).map((l) => l.split(' ') as [string, string]));
+    expect(values).toEqual({
+      channel_token_refreshed_total: '3',
+      channel_token_refresh_failed_total: '2',
+      channel_token_refresh_refused_total: '1',
+      channel_token_refresh_lease_lost_total: '1',
+    });
+    expect(text).not.toMatch(/[{}]/);
   });
 
   it('is healthy while a pass ended within the limit, counting from the start until the first one', () => {
