@@ -26,6 +26,12 @@ export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, shareTeam, type MemberContext } from './member-context.js';
 export { listAssigneeCandidates, type AssigneeCandidate } from './assignee-read.js';
 export { insertAuditLog } from './audit-log.js';
+export {
+  AUDIT_LOG_MAX_LIMIT,
+  type AuditLogEntry,
+  type AuditLogQuery,
+  listAuditLogs,
+} from './audit-log-read.js';
 export { readOrgSummary, type OrgSummary } from './org-summary.js';
 export * from './outbox-store.js';
 export * from './partition-store.js';
