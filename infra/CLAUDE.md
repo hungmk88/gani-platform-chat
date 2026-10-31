@@ -36,6 +36,7 @@ infra/
 - `dev` (docker compose trên máy dev) · `staging` (dữ liệu ẩn danh hoặc seed) · `production`.
 - Staging giống production: cùng module Terraform, cùng phiên bản PostgreSQL + extension, cùng role DB (không owner, không BYPASSRLS), cùng cờ tính năng mặc định. Chỉ khác dữ liệu.
 - Không copy dữ liệu production xuống staging khi chưa chạy pipeline ẩn danh (Phụ lục §19).
+- **Máy dev/VM (CEO 31/10):** VM có thể restart bất cứ lúc nào; Postgres không tự bật; script kiểm DB phải chạy trước test. `scripts/check-db.sh` (gọi bằng `pretest:integration` của `@gani/db` và `@gani/api`): cụm `pg_lsclusters` 16/main đang tắt thì bật (`pg_ctlcluster`), rồi DB của `DATABASE_URL_MIGRATION` phải có `pg_policies` > 0, không thì báo lỗi rõ. `check-db.sh` chỉ chạy ở local; CI bỏ qua vì job `database` đã có Postgres qua docker.
 
 ### Terraform (`infra/terraform/`)
 - `modules/<tên>/` là **interface**: `variables.tf`, `outputs.tf` cố định; `main.tf` gọi đúng một cài đặt con theo `platform` (`count = var.platform == "<x>" ? 1 : 0`, đầu ra gộp bằng `one(...)`, không chọn gì thì `null`). Env chỉ gọi interface, không bao giờ gọi resource.
