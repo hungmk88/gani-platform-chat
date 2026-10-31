@@ -224,6 +224,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   #472 (B2b, HEAD `30afd98`, CI 9/9, tín hiệu "Sẵn sàng merge" 09:25:53) bị `behind` từ khi `main` sang `0dd5430`, kẹt tới khi
   CEO quyết. Đúng quy trình là bật lại **sau B2b**, không phải sau B2a. CEO 31/10 chọn (a): tắt lại `strict`; bật lại ngay sau
   khi B2b merge, bắt buộc (3 bước ở mục 2).
+  **CEO tắt lại `strict`; FE đọc lại lúc 17:25:57 UTC:** `strict: false`, `enforce_admins: true`, required check
+  `lint, typecheck, test`. #472 về `clean`; tín hiệu "Sẵn sàng merge" gửi lại lúc 17:26:18 UTC (HEAD `30afd98`). Bật lại `strict`
+  ngay sau khi B2b merge, bắt buộc. Ghi sau merge: "B2b merged at …, strict re-enabled at …, verified strict: true at …".
 - **Chốt chặn thu hẹp sau 3 vòng cập nhật liên tiếp vì `apps/worker`; lý do: admin không import worker; `packages/db` chỉ theo
   dõi `org-members.ts`** (CEO 31/10). Ba vòng của B2b (#472): #471, #473, #474 của BE, đều ở `apps/worker`.
 - **Script Postgres mở PR song song trên nhánh `claude/cool-carson-fp5o6t-db`, gắn nhãn `needs-be-review`, không tự merge trước
