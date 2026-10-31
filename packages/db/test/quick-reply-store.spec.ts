@@ -13,6 +13,7 @@ import {
   updateQuickReply,
   withTenant,
 } from '../src/index.js';
+import { asApp } from './as-app.js';
 import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
@@ -151,5 +152,27 @@ describe('quick-reply-store', () => {
         ),
         shortcut,
       ).toBe('23514');
+  });
+});
+
+// A session of A that holds the workspace of B too: only the org_id of quick_replies_app refuses a template for B. Without org_id in
+// its WITH CHECK, A would write into B: the gap this case closes. In SQL of A's own, rolled back (asApp).
+describe('quick_replies_app: A writes no template for B', () => {
+  let app: pg.Client;
+  beforeAll(async () => {
+    app = new pg.Client({ connectionString: url('app') });
+    await app.connect();
+  });
+  afterAll(() => app.end());
+
+  it('refuses a template for B, with the workspace of B in the session (42501, WITH CHECK)', async () => {
+    const theirs = await admin.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE org_id = $1',
+      [B],
+    );
+    const wsB = theirs.rows[0]!.id;
+    const sql = `INSERT INTO quick_replies (id, org_id, workspace_id, shortcut, body) VALUES ($1, $2, $3, 'chen', 'X')`;
+    const insert = asApp(app, A, [ws, wsB], () => app.query(sql, [uuidv7(), B, wsB]));
+    expect(await sqlState(insert)).toBe('42501');
   });
 });
