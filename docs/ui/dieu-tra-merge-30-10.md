@@ -141,16 +141,17 @@ Trả lời: _(chờ)_
 `mergeable_state = clean` khi mọi check đã kết thúc (không tin `clean` lúc còn pending). HEAD khớp `git ls-remote`. PR vẫn draft.
 Gửi "Sẵn sàng merge" kèm HEAD và tên từng job, **rồi mới** chuyển ready.
 
-## 7. B2 (hộp thoại xóa, màn #23): DỪNG HOÀN TOÀN
+## 7. B2 (hộp thoại xóa, màn #23): mở lại 01/11
 
-Không chỉ hoãn. Lý do: xóa dữ liệu không hoàn tác, không đặt lên `main` khi cơ chế merge chưa hiểu rõ. Chỉ mở lại khi đủ cả hai:
+Đã dừng hoàn toàn 31/10. Lý do: xóa dữ liệu không hoàn tác, không đặt lên `main` khi cơ chế merge chưa hiểu rõ. Điều kiện mở
+lại:
 
-1. **Đổi bản chất, không bỏ (CEO 31/10):** CEO comment vào #457, xác nhận bằng văn bản: "Tôi hiểu tầng 1/2 do DEV merge;
-   tầng 3 chờ tín hiệu; tôi không bấm merge khi chưa có tín hiệu." Bản đầu: "cơ chế merge đã hiểu, và đã tắt nếu là script/app".
-2. **Branch protection tối thiểu (CEO 31/10):** required check `lint, typecheck, test` và `enforce_admins` bật. Approval bị bỏ
-   vì bất khả thi với một tài khoản (mục 5). Bản đầu: "1 required check bất kỳ và 1 approval".
+1. **CEO comment phê duyệt vào chính PR tầng 3 trước khi merge** (CEO 01/11; thay cho comment xác nhận vào #457 ngày 31/10).
+   Bản đầu: "cơ chế merge đã hiểu, và đã tắt nếu là script/app".
+2. **Branch protection tối thiểu:** required check `lint, typecheck, test` và `enforce_admins` bật (CEO bật 01/11). Approval
+   bị bỏ vì bất khả thi với một tài khoản (mục 5). Bản đầu: "1 required check bất kỳ và 1 approval".
 
 B2 là tầng 3 của phân tầng merge (handoff `session-summary-29-10.md` mục 2): CEO merge sau tín hiệu và comment phê duyệt. Giữ
 4 guardrail và audit trail `docs/ui/b2-audit.md`.
 
-Thiết kế đã duyệt giữ ở handoff `session-summary-29-10.md` mục 7. Chưa có nhánh, chưa có `docs/ui/b2-audit.md`.
+Thiết kế đã duyệt giữ ở handoff `session-summary-29-10.md` mục 7. B2 tách hai PR (CEO 31/10): B2a tầng 1, B2b tầng 3.

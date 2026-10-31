@@ -52,12 +52,14 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   không suy diễn người làm.
 - **Lệnh dừng merge chỉ áp dụng FE; BE vẫn merge; trước mỗi bước phải kiểm lại HEAD `main` hiện tại** (CEO 31/10). Không dùng
   kết quả CI cũ của một HEAD `main` đã qua.
-- **Phân tầng merge (CEO 31/10).** Có hiệu lực khi đủ cả ba điều kiện:
-  - (1) `main` có required check `lint, typecheck, test` và `enforce_admins` bật, CEO xác nhận với FE;
-  - (2) CEO comment vào #457: "Tôi hiểu tầng 1/2 do DEV merge; tầng 3 chờ tín hiệu; tôi không bấm merge khi chưa có tín hiệu.";
-  - (3) CI trên HEAD `main` hiện tại xanh 9/9 theo tên.
+- **Phân tầng merge (CEO 31/10), có hiệu lực từ 01/11:**
+  - (1) `main` có required check `lint, typecheck, test` (`strict`: nhánh phải cập nhật từ `main` mới nhất trước khi merge) và
+    `enforce_admins` bật: CEO bật 01/11, FE đọc lại `branches/main/protection` lúc 07:56 UTC;
+  - (2) **Điều kiện comment #457 bỏ; thay bằng: CEO comment phê duyệt vào từng PR tầng 3 trước khi merge** (CEO 01/11);
+  - (3) trước mỗi bước, CI trên HEAD `main` hiện tại xanh 9/9 theo tên.
 
-  Trước đó, các luật "Sẵn sàng merge" và PR draft ở mục này giữ nguyên cho mọi PR.
+  Các luật "Sẵn sàng merge" ở trên nay áp cho tầng 3; tầng 1/2 theo bảng dưới. `strict`: BE merge giữa chừng thì merge
+  `origin/main` lại vào nhánh (không rebase) và chờ CI mới.
 
   | Tầng | Loại PR                                                                       | Người merge                                                       |
   | ---- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
