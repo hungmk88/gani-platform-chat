@@ -218,6 +218,12 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **`strict` bị bật lại trước khi B2b merge (31/10). Câu hỏi cho anh: ai bật, khi nào?** Dữ kiện FE đọc được từ
+  `branches/main/protection`: `strict: false` lúc 08:39:35 UTC (ngay trước khi merge B2a #468), `strict: true` lúc 09:25:36 UTC;
+  khoảng giữa FE không đọc. FE không xem được nhật ký thay đổi cài đặt (tài khoản cá nhân, proxy chặn đường quản trị). Hệ quả:
+  #472 (B2b, HEAD `30afd98`, CI 9/9, tín hiệu "Sẵn sàng merge" 09:25:53) bị `behind` từ khi `main` sang `0dd5430`, kẹt tới khi
+  CEO quyết. Đúng quy trình là bật lại **sau B2b**, không phải sau B2a. CEO 31/10 chọn (a): tắt lại `strict`; bật lại ngay sau
+  khi B2b merge, bắt buộc (3 bước ở mục 2).
 - **Chốt chặn thu hẹp sau 3 vòng cập nhật liên tiếp vì `apps/worker`; lý do: admin không import worker; `packages/db` chỉ theo
   dõi `org-members.ts`** (CEO 31/10). Ba vòng của B2b (#472): #471, #473, #474 của BE, đều ở `apps/worker`.
 - **Script Postgres mở PR song song trên nhánh `claude/cool-carson-fp5o6t-db`, gắn nhãn `needs-be-review`, không tự merge trước
