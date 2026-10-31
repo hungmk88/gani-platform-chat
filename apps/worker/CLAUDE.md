@@ -2,7 +2,7 @@
 
 ## Cấu trúc (N98)
 
-- **Node thuần, không NestJS** (lệch Brief P5; relay nhỏ, không cần DI, test chạy không cần SWC). **Khi worker có ≥ 3 loại job thì xem lại** quyết định này.
+- **Node thuần, không NestJS** (lệch Brief P5; relay nhỏ, không cần DI, test chạy không cần SWC). **Xem lại quyết định này khi worker có ≥ 8 loại job, hoặc khi Node thuần không đáp ứng tải** (N100(4), đã xem lại tại B2 31/10/2026; ngưỡng cũ ≥ 3 không còn hiệu lực).
 - `src/config.ts`: đọc env, sai thì không khởi động. `src/tenant-job.ts`: `runForJob`. `src/relay/job.ts`: sự kiện → job, tên hàng đợi, backoff.
 - `src/relay/outbox-relay.ts`: `OutboxRelay` (`tick()`, `start()`, `stop()`: vòng poll, tắt gọn, backpressure) trên hai cổng `RelayStore` và `QueuePublisher`, không biết BullMQ. `src/logger.ts`: log JSON, chỉ id và mã; message và field chuỗi qua `redactPii` của `@gani/domain` (cùng hàm với API). `main.ts` cài `installCrashHandlers` (crash = một dòng `worker_crashed`, thoát 1).
 - `src/queue/bullmq-publisher.ts`: `BullmqPublisher` (cổng `QueuePublisher` trên BullMQ). **Chỉ `src/queue/` được import `bullmq`/`ioredis`** (ESLint chặn chỗ khác; ngược lại `src/queue/` không import `pg`/`drizzle-orm`).
