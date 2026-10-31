@@ -49,6 +49,21 @@ Chạy một lần trên mỗi môi trường có hội thoại từ trước mi
 - Chữ tiếng Việt để tìm kiếm lưu ở **NFC** lúc ghi, không chuẩn hóa từng dòng lúc đọc (`customers.display_name`: `updateCustomer` + `customers_display_name_nfc_check`, 202611010900; tìm kiếm chỉ chuẩn hóa `q`). Thêm cột chữ để tìm thì làm giống vậy.
 - Cột lưu sẵn chứa PII trên bảng có quyền theo cột (`conversations.last_message_preview`, N169): **không** cấp cho `support_role`, cấp UPDATE cho `app_role` trong cùng migration (`grants.spec` liệt kê đúng từng cột). File migration đã áp thì không sửa: runner từ chối, thêm migration mới.
 
+## Phân tầng merge của BE (CLAUDE.md gốc, #466; anh chốt 31/10/2026)
+
+Mọi PR mở ở draft. "Sẵn sàng merge" = 9 job `ci.yml` xanh trên đúng HEAD, HEAD khớp `git ls-remote`, `mergeable_state = clean`
+(đọc sau khi mọi job xong), job `docker` chạy thật có log Trivy (PR chỉ docs: Skipped, kèm log của job `changes`), GitGuardian
+success trên đúng HEAD.
+
+- **Tầng 1/2: BE tự merge** khi đủ các điều kiện trên, chuyển ready ngay trước khi merge. Gồm mọi PR không gây hậu quả không hoàn
+  tác được: migration **tạo mới** (hàm, bảng, cột), test RLS, code worker, code API thêm mới, docs, comment.
+- **Tầng 3: CEO bấm merge**, sau khi BE báo "Sẵn sàng merge" và CEO comment phê duyệt vào PR:
+  - migration `DROP` (bảng, cột, hàm; ví dụ #386);
+  - migration phá hủy dữ liệu (`ALTER TYPE`, `DROP CONSTRAINT` có dữ liệu phụ thuộc);
+  - đổi `key_version`, xoay khóa mã hóa (#461);
+  - sửa hoặc xóa audit log; đổi RLS policy làm lộ dữ liệu;
+  - rollback production.
+
 ## Cấm
 
 - Không dùng UUIDv4. Chỉ UUIDv7.
