@@ -218,6 +218,16 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **B2b (#472) merged with approval comment — tier 3 chạy đúng lần đầu** (31/10). HEAD `30afd98`, squash `f858192`, diff
+  trên 7 file của PR rỗng, CI post-merge trên `main` `f858192` (run 41224698093) 9/9 success. Dòng thời gian GitHub (UTC, cùng
+  tài khoản `hungmk88`): tín hiệu "Sẵn sàng merge" 17:26:18 → **approval comment at 17:28:21** (đúng câu, ghi HEAD `30afd98`) →
+  `ready_for_review` 17:28:24 → **merge at 17:28:30**. Đủ: required check + `enforce_admins` + comment phê duyệt + HEAD ổn định.
+  Audit trail: các comment `[b2-audit]` trên #472.
+- **B2b merged at 2026-10-31T17:28:30Z, strict re-enabled at (CEO báo, không có giờ trên GitHub), verified strict: true at
+  2026-10-31T17:34:38Z** (`enforce_admins: true`, required check `lint, typecheck, test`).
+- **Câu hỏi "ai bật `strict`, khi nào" (trước khi B2b merge): chưa có câu trả lời từ CEO, để mở.**
+- **#477 (script Postgres, nhánh `claude/cool-carson-fp5o6t-db`): CI 9/9, nhãn `needs-be-review`, chờ BE review; FE không tự
+  merge.**
 - **`strict` bị bật lại trước khi B2b merge (31/10). Câu hỏi cho anh: ai bật, khi nào?** Dữ kiện FE đọc được từ
   `branches/main/protection`: `strict: false` lúc 08:39:35 UTC (ngay trước khi merge B2a #468), `strict: true` lúc 09:25:36 UTC;
   khoảng giữa FE không đọc. FE không xem được nhật ký thay đổi cài đặt (tài khoản cá nhân, proxy chặn đường quản trị). Hệ quả:
