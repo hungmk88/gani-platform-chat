@@ -14,13 +14,15 @@ import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // listAuditLogs (A9a, GET /v1/audit-logs): the organisation is the tenant transaction's and never a filter (rule 1), so these tests
 // are the wall between tenants as much as the check of the filters. The rows sit in the next two months, two partitions, after the
-// row seedTenant writes now.
+// row seedTenant writes now. B also has three rows at the same instant to the microsecond, for the cursor (A9b).
 const [A, B] = [uuidv7(), uuidv7()];
 const [ACTOR, OTHER] = [uuidv7(), uuidv7()];
 const HOUR = 3_600_000;
 const today = new Date();
 const T = Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 10);
 const ids = { a1: uuidv7(), a2: uuidv7(), a3: uuidv7(), a4: uuidv7(), b1: uuidv7() };
+const ties = [uuidv7(), uuidv7(), uuidv7()]; // uuidv7 grows: newest first gives them backwards
+const TIE = new Date(T - 48 * HOUR).toISOString().replace('Z', '123Z'); // …:00.000123Z
 // prettier-ignore
 const rows: [id: string, org: string, actor: string | null, action: string, at: number][] = [
   [ids.a1, A, ACTOR, 'member.role_changed', T - 3 * HOUR],
@@ -38,19 +40,18 @@ const read = async (org: string, query: Partial<AuditLogQuery> = {}) =>
     await withTenant(pool, { orgId: org, workspaceIds: [] }, (tx) =>
       listAuditLogs(tx, { limit: 100, ...query }),
     )
-  ).map((row) => row.id);
+  ).rows.map((row) => row.id);
 
 beforeAll(async () => {
   admin = new pg.Client({ connectionString: url('migration') });
   await admin.connect();
   pool = createDbPool(url('app'), { max: 2 });
   for (const org of [A, B]) seedUsers.set(org, await seedTenant(admin, org));
+  const insert = `INSERT INTO audit_logs (id, org_id, actor_user_id, action, target_type, target_id, detail, created_at)
+    VALUES ($1, $2, $3, $4, split_part($4, '.', 1), $5, '{"from": "sales", "to": "manager"}', $6::timestamptz)`;
   for (const [id, org, actor, action, at] of rows)
-    await admin.query(
-      `INSERT INTO audit_logs (id, org_id, actor_user_id, action, target_type, target_id, detail, created_at)
-       VALUES ($1, $2, $3, $4, 'member', $5, '{"from": "sales", "to": "manager"}', $6)`,
-      [id, org, actor, action, uuidv7(), new Date(at)],
-    );
+    await admin.query(insert, [id, org, actor, action, uuidv7(), new Date(at).toISOString()]);
+  for (const id of ties) await admin.query(insert, [id, B, null, 'team.updated', uuidv7(), TIE]);
 });
 
 afterAll(async () => {
@@ -66,7 +67,9 @@ describe('listAuditLogs', () => {
     expect(seen).toHaveLength(5); // and the row seedTenant wrote, the oldest
     expect(seen).not.toContain(ids.b1);
     expect((await read(B)).slice(0, 1)).toEqual([ids.b1]);
-    const [entry] = await withTenant(pool, { orgId: A, workspaceIds: [] }, (tx) =>
+    const {
+      rows: [entry],
+    } = await withTenant(pool, { orgId: A, workspaceIds: [] }, (tx) =>
       listAuditLogs(tx, { actorUserId: OTHER, limit: 1 }),
     );
     expect(entry).toEqual({
@@ -90,6 +93,30 @@ describe('listAuditLogs', () => {
     expect(await read(A, { to: from })).toEqual([ids.a1, expect.any(String)]);
     expect(await read(A, { limit: 2 })).toEqual([ids.a4, ids.a3]);
     expect(await read(A, { action: 'nothing.done' })).toEqual([]);
+    expect(await read(A, { targetType: 'member' })).toEqual([ids.a3, ids.a1]);
+  });
+
+  it('gives the next page from the cursor in the same filter, rows at the same microsecond neither repeated nor skipped (A9b)', async () => {
+    const pages = async (org: string, query: Partial<AuditLogQuery>) => {
+      const seen: string[][] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await withTenant(pool, { orgId: org, workspaceIds: [] }, (tx) =>
+          listAuditLogs(tx, { limit: 2, ...query, ...(cursor ? { cursor } : {}) }),
+        );
+        seen.push(page.rows.map((row) => row.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+      return seen;
+    };
+    const [t1, t2, t3] = ties;
+    expect(await pages(B, { to: new Date(T) })).toEqual([
+      [ids.b1, t3],
+      [t2, t1],
+      [expect.any(String)],
+    ]);
+    expect(await pages(B, { targetType: 'team', limit: 1 })).toEqual([[t3], [t2], [t1]]);
+    expect(await pages(A, { actorUserId: ACTOR })).toEqual([[ids.a2, ids.a1]]);
   });
 
   it('refuses a wrong filter before it asks the database anything', async () => {
@@ -99,6 +126,9 @@ describe('listAuditLogs', () => {
       [{ limit: 0 }, /^limit must/], [{ limit: 101 }, /^limit must/], [{ limit: 1.5 }, /^limit must/],
       [{ action: ' ' }, /^action must/], [{ from: new Date('x') }, /^from must be a valid/], [{ to: new Date('x') }, /^to must be a valid/],
       [{ from: new Date(T), to: new Date(T) }, /^from must be before to$/], [{ actorUserId: 'x' }, /actorUserId is not a UUID/],
+      [{ targetType: 'Member' }, /^targetType must/], [{ cursor: 'x!' }, /cursor is not one/],
+      [{ cursor: Buffer.from('{"v":1,"at":"2026","id":"x"}').toString('base64url') }, /cursor is not one/],
+      [{ cursor: Buffer.from('{"v":1,"at":"2026-11-08T00:00:00.000123Z","id":"x"}').toString('base64url') }, /cursor is not one/],
     ];
     for (const [query, message] of wrong)
       await expect(listAuditLogs(untouched, { limit: 10, ...query })).rejects.toThrow(message);

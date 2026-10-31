@@ -9,16 +9,16 @@ export function registerAuditLogs(registry: OpenAPIRegistry): void {
     method: 'get',
     path: '/v1/audit-logs',
     summary:
-      "The audit log of the session's organisation, newest first, filtered by person, action and time (A9a; no cursor yet).",
+      "The audit log of the session's organisation, newest first, filtered by person, action, target type and time, by pages (A9a, A9b).",
     tags: ['audit'],
     request: { query: AuditLogQuerySchema },
     responses: {
       200: {
-        description: 'At most `limit` rows.',
+        description: 'A page of at most `limit` rows.',
         content: { 'application/json': { schema: AuditLogListSchema } },
       },
       400: problemResponse(
-        'validation_failed: a filter, `from` not before `to`, or an unknown parameter (the organisation is never one).',
+        'validation_failed: a filter, `from` not before `to`, a cursor this API did not give, or an unknown parameter (the organisation is never one).',
       ),
       403: problemResponse(
         'forbidden: only an Owner or an Admin reads the audit log (Brief P9); or a refusal of the edge.',

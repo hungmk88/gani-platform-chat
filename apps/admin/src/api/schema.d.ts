@@ -3685,18 +3685,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The audit log of the session's organisation, newest first, filtered by person, action and time (A9a; no cursor yet). */
+        /** The audit log of the session's organisation, newest first, filtered by person, action, target type and time, by pages (A9a, A9b). */
         get: {
             parameters: {
                 query?: {
                     /** @description UUIDv7. */
                     actorUserId?: components["schemas"]["Uuid"];
                     action?: string;
+                    /** @description member, workspace, team, customer… */
+                    targetType?: string;
                     /** @description Included. */
                     from?: string;
                     /** @description Left out; after `from`. */
                     to?: string;
                     limit?: number;
+                    cursor?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3704,7 +3707,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description At most `limit` rows. */
+                /** @description A page of at most `limit` rows. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3713,7 +3716,7 @@ export interface paths {
                         "application/json": components["schemas"]["AuditLogList"];
                     };
                 };
-                /** @description validation_failed: a filter, `from` not before `to`, or an unknown parameter (the organisation is never one). */
+                /** @description validation_failed: a filter, `from` not before `to`, a cursor this API did not give, or an unknown parameter (the organisation is never one). */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4170,6 +4173,8 @@ export interface components {
         };
         AuditLogList: {
             data: components["schemas"]["AuditLog"][];
+            /** @description The next page, with the same filters; null: no more. */
+            nextCursor: string | null;
         };
         AuditLog: {
             id: components["schemas"]["Uuid"];
