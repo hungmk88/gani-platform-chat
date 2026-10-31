@@ -3678,6 +3678,87 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The audit log of the session's organisation, newest first, filtered by person, action and time (A9a; no cursor yet). */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUIDv7. */
+                    actorUserId?: components["schemas"]["Uuid"];
+                    action?: string;
+                    /** @description Included. */
+                    from?: string;
+                    /** @description Left out; after `from`. */
+                    to?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description At most `limit` rows. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuditLogList"];
+                    };
+                };
+                /** @description validation_failed: a filter, `from` not before `to`, or an unknown parameter (the organisation is never one). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner or an Admin reads the audit log (Brief P9); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4086,6 +4167,31 @@ export interface components {
             /** Format: email */
             email?: string | null;
             humanOnly?: boolean;
+        };
+        AuditLogList: {
+            data: components["schemas"]["AuditLog"][];
+        };
+        AuditLog: {
+            id: components["schemas"]["Uuid"];
+            /**
+             * Format: uuid
+             * @description Who acted; null: the system.
+             */
+            actorUserId: string | null;
+            /** @description What was done, `<thing>.<verb>`: member.role_changed. */
+            action: string;
+            targetType: string | null;
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            targetId: string | null;
+            /** @description Ids and numbers of the action; for member.two_factor_reset the reason typed (N155), for this screen only. */
+            detail: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;

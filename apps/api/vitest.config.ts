@@ -27,6 +27,7 @@ export default defineConfig({
         'src/modules/channels/channels.controller.ts',
         'src/modules/quick-replies/quick-replies.controller.ts',
         'src/modules/customers/customers.controller.ts',
+        'src/modules/audit/audit.controller.ts',
       ],
     },
   },
