@@ -6,8 +6,16 @@ import type { NavItem } from '../nav';
 import { Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
+import { EraseDialog } from './erase-dialog';
 import { KIND, STATUS } from './labels';
-import { customerOf, requestsPath, timeText, type PrivacyRequestPage } from './privacy';
+import {
+  customerOf,
+  customerTitleOf,
+  requestsPath,
+  timeText,
+  type PrivacyRequest,
+  type PrivacyRequestPage,
+} from './privacy';
 import { RequestDialog } from './request-dialog';
 
 const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
@@ -16,13 +24,14 @@ const TONE = { ok: 'bg-ok-bg text-ok-text', error: 'bg-error-bg text-error-text'
 
 /**
  * #23 Dữ liệu khách of the company (CEO 30/10): the requests on customers' personal data, newest first, by cursor as #29
- * (`Paged`). PR B1: "Ghi nhận yêu cầu" records one (`RequestDialog`); nothing is carried out from this screen yet (the erase
- * dialog is PR B2). A 404 means the API does not serve the route yet (planned S5): the screen then says it is not there, never
- * a list made up here. The reason is plain text, wrapped, never cut.
+ * (`Paged`). PR B1: "Ghi nhận yêu cầu" records one (`RequestDialog`); PR B2: a pending `erase` is carried out with
+ * `EraseDialog`. Carrying out an `export` is not in this version. A 404 means the API does not serve the route yet (planned S5):
+ * the screen then says it is not there, never a list made up here. The reason is plain text, wrapped, never cut.
  */
 export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
   const requests = useApiPages<PrivacyRequestPage>(['privacy-requests'], requestsPath);
   const [recording, setRecording] = useState(false);
+  const [erasing, setErasing] = useState<PrivacyRequest | null>(null);
   if (requests.isError && requests.error.error.code === 'not_found')
     return <PendingPage item={item} go={go} />;
   return (
@@ -34,7 +43,7 @@ export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
         Ghi nhận yêu cầu
       </button>
       <section aria-labelledby="requests-title" className="flex flex-col gap-3">
-        <h2 id="requests-title" className="text-16 font-semibold">
+        <h2 id="requests-title" tabIndex={-1} className="text-16 font-semibold">
           Yêu cầu dữ liệu cá nhân
         </h2>
         <Paged
@@ -62,6 +71,7 @@ export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
             'Người ghi nhận',
             'Ghi nhận lúc',
             'Thực hiện lúc',
+            'Thao tác',
           ]}
           row={(r) => {
             const [word, tone] = STATUS[r.status];
@@ -80,15 +90,26 @@ export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
                 <td className="p-2">{r.requestedBy.name}</td>
                 <td className="p-2 whitespace-nowrap">{timeText(r.createdAt)}</td>
                 <td className="p-2 whitespace-nowrap">{timeText(r.executedAt)}</td>
+                <td className="p-2">
+                  {r.kind === 'erase' && r.status === 'pending' ? (
+                    <button
+                      type="button"
+                      className={button}
+                      aria-label={`Xóa dữ liệu của ${customerTitleOf(r)}`}
+                      onClick={() => setErasing(r)}
+                    >
+                      Xóa dữ liệu…
+                    </button>
+                  ) : null}
+                </td>
               </tr>
             );
           }}
         />
       </section>
-      <p className="text-12 text-text-muted">
-        Thực hiện yêu cầu chưa có trong bản hiện tại. Không áp dụng AI ở màn này.
-      </p>
+      <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
       {recording ? <RequestDialog onClose={() => setRecording(false)} /> : null}
+      {erasing ? <EraseDialog request={erasing} onClose={() => setErasing(null)} /> : null}
     </section>
   );
 }
