@@ -11,6 +11,7 @@ export default defineConfig({
       exclude: [
         ...coverage.exclude,
         'src/account-audit-store.ts',
+        'src/audit-log-read.ts',
         'src/audit-log.ts',
         'src/channel-refresh-store.ts',
         'src/channel-store.ts',
