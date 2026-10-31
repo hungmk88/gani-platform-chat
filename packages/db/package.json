@@ -20,6 +20,7 @@
     "backfill:last-message-preview": "node scripts/backfill-last-message-preview.mjs",
     "lint:migrations": "node lint/lint-migrations.mjs",
     "test": "node --test --experimental-test-coverage --test-coverage-lines=80 \"lint/*.test.mjs\" && vitest run --coverage",
+    "pretest:integration": "bash ../../scripts/check-db.sh",
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {

@@ -12,6 +12,7 @@
     "openapi": "node scripts/openapi.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
+    "pretest:integration": "bash ../../scripts/check-db.sh",
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {

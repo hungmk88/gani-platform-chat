@@ -52,14 +52,28 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   không suy diễn người làm.
 - **Lệnh dừng merge chỉ áp dụng FE; BE vẫn merge; trước mỗi bước phải kiểm lại HEAD `main` hiện tại** (CEO 31/10). Không dùng
   kết quả CI cũ của một HEAD `main` đã qua.
-- **Phân tầng merge (CEO 31/10), có hiệu lực từ 01/11:**
-  - (1) `main` có required check `lint, typecheck, test` (`strict`: nhánh phải cập nhật từ `main` mới nhất trước khi merge) và
-    `enforce_admins` bật: CEO bật 01/11, FE đọc lại `branches/main/protection` lúc 07:56 UTC;
-  - (2) **Điều kiện comment #457 bỏ; thay bằng: CEO comment phê duyệt vào từng PR tầng 3 trước khi merge** (CEO 01/11);
+- **Phân tầng merge (CEO 31/10), có hiệu lực từ 31/10:**
+  - (1) `main` có required check `lint, typecheck, test` và `enforce_admins` bật: CEO bật 31/10, FE đọc lại 07:56 UTC;
+  - (2) **Điều kiện comment #457 bỏ; thay bằng: CEO comment phê duyệt vào từng PR tầng 3 trước khi merge** (CEO 31/10);
   - (3) trước mỗi bước, CI trên HEAD `main` hiện tại xanh 9/9 theo tên.
 
-  Các luật "Sẵn sàng merge" ở trên nay áp cho tầng 3; tầng 1/2 theo bảng dưới. `strict`: BE merge giữa chừng thì merge
-  `origin/main` lại vào nhánh (không rebase) và chờ CI mới.
+  Các luật "Sẵn sàng merge" ở trên nay áp cho tầng 3; tầng 1/2 theo bảng dưới.
+- **Branch protection + required check có hiệu lực từ 31/10 (FE đọc lại lúc 07:56 UTC).** Bằng chứng đầu tiên: #468 hiện
+  `mergeable_state = blocked` khi required check chưa xanh. (#466 bị `behind` vì `strict`, phải cập nhật từ `main` 2 lần trước
+  khi merge — không phải `blocked`.) Lần đầu cơ chế kỹ thuật chặn được merge sớm, khác 6 lần trước chỉ dựa vào quy trình.
+- **`strict` (nhánh phải cập nhật từ `main` trước khi merge) tạm tắt cho B2a/B2b** (CEO 31/10): `strict` phá chuỗi phê duyệt
+  tầng 3 (`main` đổi lúc chờ comment → HEAD đổi → comment ghi HEAD cũ). Required check và `enforce_admins` vẫn bật. **Bật lại
+  ngay sau khi B2b merge, bắt buộc**, 3 bước: CEO bật lại; FE đọc `branches/main/protection` thấy `strict: true`; không thấy thì
+  báo CEO ngay. Ghi: "B2b merged at …, strict re-enabled at …, verified strict: true at …".
+- **Chốt chặn thay `strict`** (chạy trước khi chuyển ready; danh sách thu hẹp, CEO 31/10): `git diff <base> origin/main` chạm
+  `apps/admin`, `apps/api`, `packages/domain`, `packages/ui`, `packages/config`, `packages/db/src/schema/org-members.ts`,
+  `package.json`, `pnpm-lock.yaml`, `turbo.json`, `.github/workflows`, `CLAUDE.md` gốc hay `QUESTIONS.md` → merge `origin/main`
+  vào nhánh (không rebase) và chờ CI như có `strict`. Không theo dõi `apps/worker` và phần còn lại của `packages/db`. Sau merge:
+  run CI trên `main` chứa commit squash xanh 9/9, đỏ → báo CEO ngay.
+- **Công thức đếm job theo loại PR** (CEO 31/10) — PR có code: 9/9 success bắt buộc; PR doc-only: 8 success + 1 skipped
+  (`docker images`) hợp lệ. Không dùng lẫn. PR có code mà `docker images` skipped → dừng, báo CEO.
+- **Mốc sự kiện phải đọc từ GitHub timeline (`created_at`), không lấy theo tiêu đề brief hay tin nhắn — áp dụng cho cả ngày,
+  không chỉ giây** (CEO 31/10; brief ghi "01/11" cho việc bật protection, timeline là 31/10).
 
   | Tầng | Loại PR                                                                       | Người merge                                                       |
   | ---- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -204,6 +218,32 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **B2b (#472) merged with approval comment — tier 3 chạy đúng lần đầu** (31/10). HEAD `30afd98`, squash `f858192`, diff
+  trên 7 file của PR rỗng, CI post-merge trên `main` `f858192` (run 41224698093) 9/9 success. Dòng thời gian GitHub (UTC, cùng
+  tài khoản `hungmk88`): tín hiệu "Sẵn sàng merge" 17:26:18 → **approval comment at 17:28:21** (đúng câu, ghi HEAD `30afd98`) →
+  `ready_for_review` 17:28:24 → **merge at 17:28:30**. Đủ: required check + `enforce_admins` + comment phê duyệt + HEAD ổn định.
+  Audit trail: các comment `[b2-audit]` trên #472.
+- **B2b merged at 2026-10-31T17:28:30Z, strict re-enabled at (CEO báo, không có giờ trên GitHub), verified strict: true at
+  2026-10-31T17:34:38Z** (`enforce_admins: true`, required check `lint, typecheck, test`).
+- **Câu hỏi "ai bật `strict`, khi nào" (trước khi B2b merge): chưa có câu trả lời từ CEO, để mở.**
+- **#477 (script Postgres, nhánh `claude/cool-carson-fp5o6t-db`): CI 9/9, nhãn `needs-be-review`, chờ BE review; FE không tự
+  merge.**
+- **`strict` bị bật lại trước khi B2b merge (31/10). Câu hỏi cho anh: ai bật, khi nào?** Dữ kiện FE đọc được từ
+  `branches/main/protection`: `strict: false` lúc 08:39:35 UTC (ngay trước khi merge B2a #468), `strict: true` lúc 09:25:36 UTC;
+  khoảng giữa FE không đọc. FE không xem được nhật ký thay đổi cài đặt (tài khoản cá nhân, proxy chặn đường quản trị). Hệ quả:
+  #472 (B2b, HEAD `30afd98`, CI 9/9, tín hiệu "Sẵn sàng merge" 09:25:53) bị `behind` từ khi `main` sang `0dd5430`, kẹt tới khi
+  CEO quyết. Đúng quy trình là bật lại **sau B2b**, không phải sau B2a. CEO 31/10 chọn (a): tắt lại `strict`; bật lại ngay sau
+  khi B2b merge, bắt buộc (3 bước ở mục 2).
+  **CEO tắt lại `strict`; FE đọc lại lúc 17:25:57 UTC:** `strict: false`, `enforce_admins: true`, required check
+  `lint, typecheck, test`. #472 về `clean`; tín hiệu "Sẵn sàng merge" gửi lại lúc 17:26:18 UTC (HEAD `30afd98`). Bật lại `strict`
+  ngay sau khi B2b merge, bắt buộc. Ghi sau merge: "B2b merged at …, strict re-enabled at …, verified strict: true at …".
+- **Chốt chặn thu hẹp sau 3 vòng cập nhật liên tiếp vì `apps/worker`; lý do: admin không import worker; `packages/db` chỉ theo
+  dõi `org-members.ts`** (CEO 31/10). Ba vòng của B2b (#472): #471, #473, #474 của BE, đều ở `apps/worker`.
+- **Script Postgres mở PR song song trên nhánh `claude/cool-carson-fp5o6t-db`, gắn nhãn `needs-be-review`, không tự merge trước
+  khi BE review** (CEO 31/10): PR sửa `packages/db/package.json`, `apps/api/package.json`, `infra/CLAUDE.md` của BE.
+  BE review APPROVE (comment 17:43:38 UTC). Góp ý của BE: (1) so `schema_migrations` với số file migration, (3) kiểm có `psql`
+  trước: làm trong #477 (CEO 31/10); (2) **Windows không hỗ trợ hook `pretest:integration`; dùng WSL hoặc container** (CEO 31/10:
+  bỏ góp ý, repo đã dùng nhiều script `bash`/`sh`).
 - **DÂY CHUYỀN DỪNG (CEO 31/10)** sau năm lần merge khi FE chưa gửi "Sẵn sàng merge". Điều tra cơ chế merge, bảng năm sự cố,
   câu hỏi cho anh, đề xuất branch protection tối thiểu: `docs/ui/dieu-tra-merge-30-10.md`. **B2 dừng hoàn toàn**, điều kiện mở
   lại ở mục 7 của file đó.
