@@ -1,4 +1,4 @@
-import { type AuditLogEntry, listAuditLogs, type OrgRole } from '@gani/db';
+import { type AuditLogEntry, InvalidCursorError, listAuditLogs, type OrgRole } from '@gani/db';
 import { Controller, ForbiddenException, Get, Inject, Query } from '@nestjs/common';
 
 import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
@@ -27,15 +27,22 @@ export class AuditController {
     const from = q.from === undefined ? undefined : new Date(q.from);
     const to = q.to === undefined ? undefined : new Date(q.to);
     if (from && to && from >= to) throw new ValidationFailedError(['from: must be before to']);
-    const rows = await this.database.withTenant(ctx, (tx) =>
-      listAuditLogs(tx, {
-        limit: q.limit,
-        ...(q.actorUserId === undefined ? {} : { actorUserId: q.actorUserId }),
-        ...(q.action === undefined ? {} : { action: q.action }),
-        ...(from === undefined ? {} : { from }),
-        ...(to === undefined ? {} : { to }),
-      }),
-    );
-    return { data: rows.map(view) };
+    try {
+      const page = await this.database.withTenant(ctx, (tx) =>
+        listAuditLogs(tx, {
+          limit: q.limit,
+          ...(q.actorUserId === undefined ? {} : { actorUserId: q.actorUserId }),
+          ...(q.action === undefined ? {} : { action: q.action }),
+          ...(q.targetType === undefined ? {} : { targetType: q.targetType }),
+          ...(from === undefined ? {} : { from }),
+          ...(to === undefined ? {} : { to }),
+          ...(q.cursor === undefined ? {} : { cursor: q.cursor }),
+        }),
+      );
+      return { data: page.rows.map(view), nextCursor: page.nextCursor };
+    } catch (error) {
+      if (error instanceof InvalidCursorError) throw new ValidationFailedError(['cursor: invalid']);
+      throw error;
+    }
   }
 }
