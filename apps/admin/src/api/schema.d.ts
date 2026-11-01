@@ -3446,6 +3446,264 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/bot-flows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The live bot flows of a workspace, last changed first (at most 200). */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUIDv7. */
+                    workspaceId: components["schemas"]["Uuid"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The flows. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotFlowList"];
+                    };
+                };
+                /** @description validation_failed: the query. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager builds and reads bot flows (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Make a flow in a workspace, with an empty draft (not publishable until a graph is saved). */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
+                    "Idempotency-Key": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BotFlowCreate"];
+                };
+            };
+            responses: {
+                /** @description The flow, its empty draft, no published version. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotFlowDetail"];
+                    };
+                };
+                /** @description validation_failed: a field (name 1–100); or the Idempotency-Key header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager builds and reads bot flows (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no workspace with this id among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_in_progress. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_key_reused: the same key with another request. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bot-flows/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A flow with the graph of its draft and of its latest published version. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The flow. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotFlowDetail"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager builds and reads bot flows (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no live flow with this id in the session’s workspaces. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers": {
         parameters: {
             query?: never;
@@ -4136,6 +4394,154 @@ export interface components {
         QuickReplyDraft: {
             workspaceId: components["schemas"]["Uuid"];
             body: string;
+        };
+        BotFlowList: {
+            data: components["schemas"]["BotFlow"][];
+        };
+        BotFlow: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            name: string;
+            /** @enum {string} */
+            status: "draft" | "active" | "inactive";
+            version: number;
+            publishedVersion: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        BotFlowDetail: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            name: string;
+            /** @enum {string} */
+            status: "draft" | "active" | "inactive";
+            version: number;
+            publishedVersion: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            draft: components["schemas"]["BotFlowVersion"];
+            published: components["schemas"]["BotFlowVersion"] | null;
+        };
+        BotFlowVersion: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            status: "draft" | "published";
+            version: number | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            graph: components["schemas"]["BotGraph"];
+        };
+        BotGraph: {
+            nodes: components["schemas"]["BotNode"][];
+            edges: components["schemas"]["BotEdge"][];
+        };
+        BotNode: {
+            key: string;
+            /** @enum {string} */
+            type: "trigger";
+            config: {
+                /** @enum {string} */
+                on: "first_message" | "keyword" | "intent" | "after_hours";
+                keywords?: string[];
+                intent?: string;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "message";
+            config: {
+                text: string;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "question";
+            config: {
+                text: string;
+                /** @enum {string} */
+                kind: "text" | "phone" | "number" | "choice";
+                choices?: string[];
+                variable: string;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "condition";
+            config: {
+                expression: {
+                    [key: string]: unknown;
+                };
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "set_variable";
+            config: {
+                variable: string;
+                value: string | number | boolean;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "collect";
+            config: {
+                field: string;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "tag";
+            config: {
+                tag: string;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "api_call";
+            config: {
+                tool: string;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "delay";
+            config: {
+                seconds: number;
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "handoff";
+            config: {
+                reason: string;
+                /** @enum {string} */
+                priority: "normal" | "high" | "urgent";
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "jump_to_flow";
+            config: {
+                flowId: components["schemas"]["Uuid"];
+            };
+        } | {
+            key: string;
+            /** @enum {string} */
+            type: "end";
+            config: Record<string, never>;
+        };
+        BotEdge: {
+            from: string;
+            to: string;
+            label: string | null;
+        };
+        BotFlowCreate: {
+            workspaceId: components["schemas"]["Uuid"];
+            name: string;
         };
         CustomerPage: {
             data: components["schemas"]["Customer"][];

@@ -313,3 +313,27 @@ export async function listBotFlows(
     .orderBy(desc(botFlows.updatedAt), desc(botFlows.id))
     .limit(200);
 }
+
+/**
+ * The live flow `id` with the ids of its draft and of its latest published version (null when never published), or null when there is
+ * no such flow in the organisation.
+ */
+export async function loadBotFlow(
+  tx: TenantTx,
+  id: string,
+): Promise<(BotFlowRow & { draftVersionId: string; publishedVersionId: string | null }) | null> {
+  const flowId = assertUuid(id, 'id');
+  const [flow] = await tx
+    .select(flowColumns)
+    .from(botFlows)
+    .where(and(eq(botFlows.id, flowId), isNull(botFlows.deletedAt)));
+  if (!flow) return null;
+  const versions = await tx
+    .select({ id: botFlowVersions.id, status: botFlowVersions.status })
+    .from(botFlowVersions)
+    .where(and(eq(botFlowVersions.flowId, flowId), sql`${botFlowVersions.status} <> 'discarded'`))
+    .orderBy(desc(botFlowVersions.version));
+  const draft = versions.find((v) => v.status === 'draft');
+  const published = versions.find((v) => v.status === 'published');
+  return { ...flow, draftVersionId: draft!.id, publishedVersionId: published?.id ?? null };
+}
