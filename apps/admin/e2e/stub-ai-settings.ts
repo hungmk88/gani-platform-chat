@@ -35,7 +35,7 @@ function changeOf(body: Record<string, unknown>): Partial<AiSettings> | null {
     const f = Object.entries(features);
     if (f.some(([k, v]) => !['e1', 'l1'].includes(k) || typeof v !== 'boolean')) return null;
   }
-  return body as Partial<AiSettings>;
+  return body;
 }
 
 /** Answers the routes of #26 ai-settings and says true, or says false for any other route. `who` is null when signed out. */

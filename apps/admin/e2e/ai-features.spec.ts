@@ -70,7 +70,8 @@ test('in production turning on is refused before anything is sent, with the reas
   // Playwright waits for an aria-disabled button; force clicks it as assistive tech can: the handler must refuse.
   await on.click({ force: true });
   await expect(on).toBeVisible();
-  expect(calls.length).toBe(before);
+  // Nothing at all was sent for it: no PATCH, not even the read again.
+  expect(calls.slice(before)).toEqual([]);
   await features(page)
     .getByRole('button', { name: `Tắt ${E1}` })
     .click();
@@ -78,7 +79,14 @@ test('in production turning on is refused before anything is sent, with the reas
     'aria-disabled',
     'true',
   );
-  expect(calls.slice(before).map((c) => c.method)).toEqual(['GET', 'PATCH']);
+  // Requests come in order: all that was sent since the forced click is the turning off of E1, never a PATCH of L1.
+  expect(calls.slice(before)).toEqual([
+    { method: 'GET', body: null },
+    { method: 'PATCH', body: { features: { e1: false } } },
+  ]);
+  expect(
+    calls.filter((c) => c.method === 'PATCH' && JSON.stringify(c.body).includes('l1')),
+  ).toEqual([]);
 });
 
 test('if the workspace went to production since the screen read it, turning on is not sent', async ({

@@ -42,6 +42,11 @@ test('an Owner reads the prompt versions, with nothing to change them', async ({
     '00:00 01/12/2026 (múi giờ của workspace: Asia/Ho_Chi_Minh)',
   );
   await expect(page.getByText(LATER, { exact: true })).toHaveCount(0);
+  // The positive side of the selectors the 404 and fallback tests count to 0 (#401).
+  await expect(page.getByRole('heading', { name: /Môi trường|Tính năng|Ngân sách/ })).toHaveCount(
+    3,
+  );
+  await expect(page.getByText(/múi giờ của workspace/)).toBeVisible();
   // Only E1/L1 turn on or off (B1a, e2e/ai-features.spec.ts); nothing changes the environment or the budget.
   await expect(page.getByRole('main').getByRole('button')).toHaveCount(2);
   await expect(page.getByRole('main').getByRole('checkbox')).toHaveCount(0);
