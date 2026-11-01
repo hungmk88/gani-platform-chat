@@ -1,4 +1,4 @@
-// #378 A1–A6: who the admin offers a screen, a button or a field to follows the API's own rules, read from its source, never
+// #378 A1–A7: who the admin offers a screen, a button or a field to follows the API's own rules, read from its source, never
 // copied here (the five buttons of an open conversation are in inbox/rules-sync.test.ts).
 // Why an admin test imports apps/api: these permission files belong to the BE and carry no note of this test.
 // - Red at an import (a file moved or was renamed): fix the import path. First read `git log --follow -p` of that file: if it
@@ -7,6 +7,7 @@
 // apps/admin/turbo.json lists every file this test reads outside the admin, so that turbo's cache never hides a change.
 import { describe, expect, it } from 'vitest';
 
+import { mayBuildBotFlows } from '../../api/src/modules/bot-flows/bot-flows.permissions';
 import { ANSWERABLE, mayAct, readScope } from '../../api/src/modules/conversations/permissions';
 import {
   mayEditCustomers as apiMayEditCustomers,
@@ -52,7 +53,7 @@ const inMenu = (role: OrgRole, href: string) =>
 const disagree = (fe: (r: OrgRole) => boolean, api: (r: OrgRole) => boolean) =>
   ROLES.filter((r) => fe(r) !== api(r)).map((r) => `${r}: fe=${fe(r)} api=${api(r)}`);
 
-describe('the admin offers what the API allows (permission files of apps/api, #378 A1–A6)', () => {
+describe('the admin offers what the API allows (permission files of apps/api, #378 A1–A7)', () => {
   it('A1 the reply box: role × state × holder as send_message and ANSWERABLE of permissions.ts', () => {
     // The API takes a reply when mayAct lets the person send and the state is one of ANSWERABLE (send-message.controller.ts;
     // exported for this test, U59).
@@ -154,6 +155,13 @@ describe('the admin offers what the API allows (permission files of apps/api, #3
     expect(
       unread,
       'a role answers customers but cannot read the templates of its reply box',
+    ).toEqual([]);
+  });
+
+  it('A7 bot flows: the menu opens /bots to the roles the API lets read the flows', () => {
+    expect(
+      disagree((r) => inMenu(r, '/bots'), mayBuildBotFlows),
+      'change the menu (nav.ts)',
     ).toEqual([]);
   });
 });
