@@ -43,6 +43,8 @@ export interface TransitionOptions {
   readonly actor: Actor;
   /** Explicit: the request context carries none (N96). */
   readonly traceId: string;
+  /** Kept in the history with the transition (conversation_events.detail): a code or the reason of a handoff, never a customer's words. */
+  readonly detail?: Readonly<Record<string, string>>;
   /** The version the client saw. Required for the actions of a person; ignored for a claim. */
   readonly expectedVersion?: number;
 }
@@ -186,14 +188,14 @@ export class ConversationStateMachine {
     row: ConversationRecord,
     from: ConversationRow | null,
     d: { transition: TransitionId; history: string; next: ConversationSnapshot; effects: readonly ConversationEffect[] },
-    by: { actor: Actor; traceId: string },
+    by: { actor: Actor; traceId: string; detail?: Readonly<Record<string, string>> },
   ): Promise<void> {
     const fact = { conversationId: row.id, workspaceId: row.workspaceId, version: row.version, transition: d.transition, from, to: d.next, actor: by.actor, traceId: by.traceId };
     for (const effect of d.effects) await this.outbox.add(tx, conversationOutboxEvent(effect, fact));
     await this.store.insertConversationEvent(tx, {
       id: uuidv7(), conversationId: row.id, eventType: d.history, fromState: from?.state ?? null, toState: d.next.state,
       fromHold: from?.afterHoursHold ?? null, toHold: d.next.afterHoursHold, actorKind: by.actor.kind, actorId: by.actor.id ?? null,
-      versionAfter: row.version, outcome: d.next.outcome, traceId: by.traceId, detail: { transition: d.transition },
+      versionAfter: row.version, outcome: d.next.outcome, traceId: by.traceId, detail: { ...by.detail, transition: d.transition },
     });
   }
 }
