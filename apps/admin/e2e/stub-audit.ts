@@ -1,11 +1,15 @@
 // #28 Audit log for the e2e stub API only: `GET /v1/audit-logs` as the real API serves it (openapi.json, A9a #478, A9b #480),
-// Owner and Admin. Rows are dated back from now, so the screen's 7 days always hold them; the filters and the cursor work as the
-// API's: page 1 is 3 rows, page 2 repeats its last row (a row written between the two would make it). A query the API refuses is a
-// 400 `validation_failed`. Never deployed.
+// Owner and Admin. Rows are dated back from AUDIT_NOW, the time e2e/audit.spec.ts fixes the browser's clock to, so the screen's 7
+// days hold them whatever the machine's clock says (01/11: a test on the machine's clock can break at Viet Nam's midnight or when
+// the clock is off); the filters and the cursor work as the API's: page 1 is 3 rows, page 2 repeats its last row (a row written
+// between the two would make it). A query the API refuses is a 400 `validation_failed`. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditLog } from '../src/audit/audit';
 import type { Edge } from './stub-members';
+
+/** 31/10/2026 12:00 in Viet Nam: the "now" of the audit e2e, for the stub's rows and the browser's clock alike. */
+export const AUDIT_NOW = Date.parse('2026-10-31T05:00:00.000Z');
 
 const id = (n: number) => `0190f100-0000-7000-8000-${String(n).padStart(12, '0')}`;
 /** Someone who is not the person signed in: the screen names them by the last 8 characters. */
@@ -64,7 +68,7 @@ export function routeAudit(
   if (targetType !== null && !TARGET_TYPE.test(targetType)) return bad();
   if (from && to && Date.parse(from) >= Date.parse(to)) return bad();
   if (cursor !== null && cursor !== 'trang-2') return bad();
-  const now = Date.now();
+  const now = AUDIT_NOW;
   const rows: AuditLog[] = ROWS.map(({ hoursAgo, ...r }) => ({
     ...r,
     createdAt: new Date(now - hoursAgo * 3_600_000).toISOString(),
