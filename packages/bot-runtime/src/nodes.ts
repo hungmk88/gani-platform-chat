@@ -45,7 +45,7 @@ function choicesOf(node: RuntimeNode): readonly string[] {
 }
 
 /** Lower case, no diacritics, single spaces: "Có ạ" and "co a" are the same answer. */
-const fold = (s: string) =>
+export const foldText = (s: string): string =>
   s
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
@@ -77,7 +77,7 @@ export function parseAnswer(node: RuntimeNode, text: string): VarValue | null {
   if (kind === 'choice') {
     const choices = choicesOf(node);
     const index = /^\d{1,2}$/.test(answer) ? Number(answer) - 1 : -1;
-    return choices[index] ?? choices.find((c) => fold(c) === fold(answer)) ?? null;
+    return choices[index] ?? choices.find((c) => foldText(c) === foldText(answer)) ?? null;
   }
   return answer === '' ? null : answer.slice(0, MAX_TEXT_ANSWER);
 }
