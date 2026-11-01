@@ -78,6 +78,14 @@ export interface NodeHandler {
 
 export type Handlers = Readonly<Record<string, NodeHandler>>;
 
+/** Thrown by a handler whose node's config it cannot run (the API checks configs on save; this guards older or hand-made graphs). */
+export class NodeConfigError extends Error {
+  constructor(readonly problem: string) {
+    super(`The node's config cannot run: ${problem}.`);
+    this.name = 'NodeConfigError';
+  }
+}
+
 export type TurnStatus = 'active' | 'completed' | 'handed_off' | 'abandoned';
 
 export interface TurnResult {
@@ -86,7 +94,7 @@ export interface TurnResult {
   readonly effects: readonly Effect[];
   readonly steps: readonly StepRecord[];
   /** Why the turn stopped short: the flow is broken or spins; the caller hands the conversation to a person. */
-  readonly error?: 'no_trigger' | 'unknown_node' | 'no_handler' | 'step_limit';
+  readonly error?: 'no_trigger' | 'unknown_node' | 'no_handler' | 'bad_config' | 'step_limit';
 }
 
 /** The edge that leaves `from`: the one with `label`, else the unlabelled one; null when there is none (the flow ends there). */
@@ -118,23 +126,35 @@ export function step(
     ...(error ? { error } : {}),
   });
 
-  let result: NodeResult;
+  // A handler that throws NodeConfigError abandons the turn with bad_config; any other error is a bug and goes up.
+  const run = (fn: () => NodeResult): NodeResult | null => {
+    try {
+      return fn();
+    } catch (error) {
+      if (error instanceof NodeConfigError) return null;
+      throw error;
+    }
+  };
+
+  let result: NodeResult | null;
   let node: RuntimeNode | undefined;
   if (input.kind === 'message' && state.nodeKey !== null && state.awaiting !== null) {
     node = nodes.get(state.nodeKey);
     const resume = node ? handlers[node.type]?.resume : undefined;
     if (!node) return stop('abandoned', state.nodeKey, 'unknown_node');
     if (!resume) return stop('abandoned', node.key, 'no_handler');
-    result = resume(node, state.awaiting, input.text, vars);
+    const { awaiting } = state;
+    result = run(() => resume(node!, awaiting, input.text, vars));
   } else {
     node = graph.nodes.find((n) => n.type === 'trigger');
     if (!node) return stop('abandoned', null, 'no_trigger');
     const handler = handlers[node.type];
     if (!handler) return stop('abandoned', node.key, 'no_handler');
-    result = handler.enter(node, vars);
+    result = run(() => handler.enter(node!, vars));
   }
 
   for (;;) {
+    if (!result) return stop('abandoned', node.key, 'bad_config');
     effects.push(...(result.effects ?? []));
     vars = { ...vars, ...result.vars };
     const { outcome } = result;
@@ -160,6 +180,7 @@ export function step(
     if (!node) return stop('abandoned', edge!.to, 'unknown_node');
     const handler = handlers[node.type];
     if (!handler) return stop('abandoned', node.key, 'no_handler');
-    result = handler.enter(node, vars);
+    const reached = node;
+    result = run(() => handler.enter(reached, vars));
   }
 }
