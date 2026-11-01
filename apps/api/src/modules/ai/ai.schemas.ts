@@ -23,8 +23,8 @@ export const PromptVersionListSchema = z
 
 // U61 (Brief P9 "GET/PATCH /v1/workspaces/{id}/ai-settings", Brief §599, Phụ lục B dòng 41; anh duyệt 31/10/2026): the internal AI
 // of a workspace. Who changes what: an Owner or an Admin turns E1/L1 on or off and sets the budget; only an Owner moves the
-// environment to `production` (an Admin gets 403). Q1 settled (CEO, option A, 01/11/2026): no lock on `production`; E1/L1 may be on
-// in any environment, the budget bounds the cost (U74, U75).
+// environment to `production` (an Admin gets 403). Q1 (legal) is not settled: the API refuses `production` with 409
+// `ai_production_locked`, and may open it once Q1 is.
 
 export const AI_ENVIRONMENTS = ['staging', 'production'] as const;
 
@@ -43,14 +43,14 @@ export const AiSettingsSchema = z
     features: AiFeaturesSchema,
     monthlyBudgetUsd: z.number().min(0).meta({
       description:
-        'The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow): it stops once `usedThisMonthUsd >= monthlyBudgetUsd`, so 0 turns the internal AI off. It stays as set when a month begins (U74).',
+        'The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow).',
     }),
     usedThisMonthUsd: z.number().min(0).meta({
       description: 'Spent since the month began in `workspace.timezone` (ai_usage_logs).',
     }),
     resetsAt: z.iso.datetime().meta({
       description:
-        'When the next month begins in `workspace.timezone`: `usedThisMonthUsd` starts again at 0, `monthlyBudgetUsd` does not change.',
+        'When the next month begins in `workspace.timezone`, and the spending starts again at 0.',
     }),
   })
   .meta({ id: 'AiSettings' });
