@@ -284,25 +284,34 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **Nguyên tắc: quyết định pháp lý (Q1) chỉ CEO có thẩm quyền, phải có văn bản. Không chấp nhận 'luật A' hay 'A đã chốt'.**
   (CEO 01/11.)
 - **#498 vi phạm hold: BE push `a11473f` lúc 10:27:25 sau hold 10:26:44, đăng 2 heads-up sau hold, hẹn tự merge 11:03:38. BE
-  tự sửa lúc 10:50:53 (hủy auto-merge, dừng heads-up mọi PR). Commit `a11473f` chứa quyết định Q2 FPT Cloud 'theo yêu cầu của A'
-  vẫn trong #498 — CEO đang xử lý.** (CEO 01/11.) Giờ: commit `a11473f` tạo 10:27:21, PR cập nhật 10:27:25; heads-up 10:27:46 và
+  tự sửa lúc 10:50:53 (hủy auto-merge, dừng heads-up mọi PR). Commit `a11473f` chứa quyết định Q2 FPT Cloud 'theo yêu cầu của A'.
+  CEO đã phê duyệt Phân tầng tự quyết, #498 merge hợp lệ, Q1/U75 giữ nguyên.** (CEO 01/11.) Giờ: commit `a11473f` tạo 10:27:21, PR cập nhật 10:27:25; heads-up 10:27:46 và
   10:33:38 (hạn 11:03:38); BE nhận lỗi 10:50:53. FE đọc lại 10:56:38: #498 draft, chưa merge, HEAD `9ed1908`.
 - **Luật bổ sung: `hold` = dừng MỌI hoạt động trên PR (push, comment heads-up, merge), không chỉ dừng merge.** (CEO 01/11.)
 - **Sự cố 'A' / 'luật A' / 'theo A': 4 lần trong ngày (#498 Q1, Q2, brief lạ, heads-up). CEO cần xác định A là ai — đây là
   vấn đề thẩm quyền.** (CEO 01/11.)
-- **Brief 'CEO XÁC NHẬN: ÁP DỤNG QUY TẮC PHÂN TẦNG & SỬA HỢP ĐỒNG' (01/11), chưa được CEO xác nhận nguồn:** FE không làm theo ba
-  điểm mâu thuẫn luật đã chốt (bật auto-merge cho tầng 1; làm UI Bot Engine D1a trước khi CEO quyết; coi "A" là người duyệt và
-  người ký). Hai điểm khớp luật cũ (giữ khóa `production` ở UI; nợ kỹ thuật) vốn đã làm theo luật của CEO.
+- **Brief 'CEO XÁC NHẬN: ÁP DỤNG QUY TẮC PHÂN TẦNG & SỬA HỢP ĐỒNG' (01/11):** lúc nhận, FE không làm theo ba điểm mâu thuẫn luật
+  khi đó (bật auto-merge cho tầng 1; làm UI Bot Engine D1a trước khi CEO quyết; coi "A" là người duyệt và người ký) và hỏi CEO.
+  Sau đó CEO phê duyệt Phân tầng tự quyết (dưới); UI Bot Engine vẫn chờ CEO quyết Đợt 1 hay Đợt 2.
+- **01/11: CEO phê duyệt `Phân tầng tự quyết` (auto-merge tầng 1, heads-up tầng 2, APPROVED tầng 3). Comment `APPROVED - LIFT
+  HOLD` lúc 11:05:15 là của CEO — không phải sự cố bảo mật.** (CEO 01/11; brief ký "Người ký: A (CEO)".)
+- **Điều kiện kỹ thuật: auto-merge tầng 1 chỉ an toàn khi đủ 9 required check. Hiện 1 job → chưa bật auto-merge, dùng quy trình
+  tự kiểm 9/9 như cũ. Heads-up tầng 2 phải có luật hủy khi có comment `hold`.** (CEO 01/11; luật hủy: có `hold` bất kỳ trong 30
+  phút → auto-merge hủy vĩnh viễn cho PR đó, không gia hạn, không hẹn lại.) **Dữ kiện FE đọc lúc 11:16:50 UTC:** `main` **đã có đủ
+  9 required check** (đúng tên 9 job của `ci.yml`), `strict` và `enforce_admins` bật, repo `allow_auto_merge: true`; FE không đọc
+  được ai bật, lúc nào (proxy chặn audit log). FE vẫn tự kiểm 9/9 rồi merge cho tới khi CEO xác nhận dùng auto-merge.
+- **#498 merge lúc 11:06:39, squash `89d656d`. Q1 chưa chốt (chờ văn bản luật sư), U75 giữ nguyên, `ai-settings` vẫn khóa production
+  + 409. FE không phải sửa gì.** (CEO 01/11.) Trên `main` từ #498: Q2 "A báo 01/11/2026: CEO chốt FPT Cloud", Q6 "A chốt phương án
+  (b)", N179–N182, U57, U63, U76 (mới).
 - **Rà `Intl.DateTimeFormat` (01/11):** cả 10 formatter của admin đều ghi `timeZone`; không có `toLocale…String`. Giữ bằng test
   `apps/admin/src/time-format.test.ts` (đọc mã nguồn như `permissions-sync.test.ts`): formatter thiếu `timeZone` hay dùng
   `toLocale…String` → đỏ (đã thử: bỏ `timeZone` ở `members/invite.ts` → đỏ).
 - **Bot flows D1a3a (#496, API thật `GET/POST /v1/bot-flows`, `GET /v1/bot-flows/{id}`):** FE đã ghi nhận, chưa lên phương án,
   chờ CEO quyết có thuộc Đợt 1. Không mở PR.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
-  (CEO cần xác định); nguồn brief 'CEO XÁC NHẬN: ÁP DỤNG QUY TẮC PHÂN TẦNG & SỬA HỢP ĐỒNG'; "A" và "luật A" là
-  ai, là gì; các quyết định ghi trong #498 (Q1 phương án A, Q2 FPT Cloud,
-  Q6 phương án (b), U74, U75) chờ CEO xác nhận; U60, U62–U75 chờ BE; nguyên nhân lệch giờ của GitHub trong 08:00–09:00 UTC (giả
-  thuyết DST vùng Mountain, chưa kiểm được).
+  (CEO cần xác định); ai bật 9 required check trên `main` và FE dùng auto-merge từ khi nào (CEO xác nhận); Bot Engine D1a3a/D1a3b
+  thuộc Đợt 1 hay Đợt 2 (CEO quyết); U60, U62, U64–U75 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
+  GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
 
