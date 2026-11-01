@@ -14,6 +14,7 @@ import { sqlState, url } from './db.js';
 // finds it by itself and that case goes red on purpose: update the list (and the rest of the file) with the table.
 const PARENTS = [
   'audit_logs',
+  'bot_session_steps',
   'conversation_events',
   'inbound_events',
   'messages',

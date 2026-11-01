@@ -14,6 +14,7 @@ const PARENTS = [
   'conversation_events',
   'outbox_events',
   'inbound_events',
+  'bot_session_steps',
 ];
 const ROLES = ['app_role', 'auth_role', 'support_role'];
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];

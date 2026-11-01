@@ -17,6 +17,7 @@ import { url } from './db.js';
 // it by itself and that case goes red on purpose. Update the list with the table.
 const PARENTS = [
   'audit_logs',
+  'bot_session_steps',
   'conversation_events',
   'inbound_events',
   'messages',

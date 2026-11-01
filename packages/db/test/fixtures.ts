@@ -8,6 +8,8 @@ const TENANT_TABLES = [
   'message_deliveries',
   'outbox_events',
   'conversation_events',
+  'bot_session_steps',
+  'bot_sessions',
   'messages',
   'conversations',
   'feature_flags_overrides',
@@ -55,7 +57,19 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     botFlow,
     botVersion,
     botNode,
-  ] = [uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7()];
+    botSession,
+  ] = [
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+    uuidv7(),
+  ];
   // Every value is generated here (UUIDs, random hex), never client input.
   await admin.query(`
     INSERT INTO organizations (id, slug, name) VALUES ('${org}', 't-${org}', 'T');
@@ -85,6 +99,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
     INSERT INTO message_deliveries (id, org_id, workspace_id, conversation_id, message_id, channel_account_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', '${uuidv7()}', '${channelAccount}');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');
+    INSERT INTO bot_sessions (id, org_id, conversation_id, version_id) VALUES ('${botSession}', '${org}', '${conversation}', '${botVersion}');
+    INSERT INTO bot_session_steps (id, org_id, session_id, conversation_id, step_index, node_key, node_type) VALUES ('${uuidv7()}', '${org}', '${botSession}', '${conversation}', 0, 'start', 'trigger');
     INSERT INTO outbox_events (id, org_id, event_type, aggregate_type, aggregate_id, actor_kind, trace_id) VALUES ('${uuidv7()}', '${org}', 'conversation.created', 'conversation', '${conversation}', 'system', 'seed');
     INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);
   return user;
