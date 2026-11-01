@@ -1,15 +1,22 @@
 import {
+  BotGraphInvalidError,
   createBotFlow,
+  deleteBotFlow,
+  insertAuditLog,
   listBotFlows,
   loadBotFlow,
   loadBotFlowVersion,
+  publishBotFlow,
+  saveBotFlowDraft,
   type BotFlowVersionRow,
+  type BotGraph,
   type TenantTx,
 } from '@gani/db';
 import { uuidv7 } from '@gani/domain';
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
@@ -17,6 +24,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 
@@ -29,13 +37,24 @@ import {
   BotFlowCreateSchema,
   BotFlowIdSchema,
   BotFlowListQuerySchema,
+  BotGraphSchema,
 } from './bot-flows.schemas.js';
 import { botFlowVersionView, botFlowView } from './bot-flows.view.js';
 
+/** 422: the graph cannot run (bot-flow-store's rules); the detail names the rule, never a node's content. */
+export class BotFlowGraphHttpError extends Error {
+  readonly status = 422;
+  readonly code = 'bot_flow_graph_invalid';
+  constructor(problem: string) {
+    super(`The graph breaks a rule: ${problem}.`);
+    this.name = 'BotFlowGraphHttpError';
+  }
+}
+
 /**
- * The scripted bot flows of a workspace (D1a3a, Brief P9, U63): list, make, read with the graph. Only an Owner, an Admin or a Manager
- * (Phụ lục B); a workspace or a flow outside the session's workspaces is a 404, as row-level security hides another organisation's.
- * Saving a draft, publishing and deleting come in D1a3b.
+ * The scripted bot flows of a workspace (D1a3, Brief P9, U63): list, make, read with the graph (D1a3a); save the draft, publish it,
+ * delete the flow (D1a3b). Only an Owner, an Admin or a Manager (Phụ lục B); a workspace or a flow outside the session's workspaces is
+ * a 404, as row-level security hides another organisation's. Publishing and deleting are audited (bot_flow.published, bot_flow.deleted).
  */
 @Controller('v1/bot-flows')
 export class BotFlowsController {
@@ -76,6 +95,80 @@ export class BotFlowsController {
     );
     if (!found) throw new NotFoundException();
     return found;
+  }
+
+  /** Saves the whole graph as the new draft (the old draft is given up, never deleted). */
+  @Put(':id/draft')
+  async saveDraft(
+    @Param('id', new ZodPipe(BotFlowIdSchema)) id: string,
+    @Body(new ZodPipe(BotGraphSchema)) graph: BotGraph,
+  ) {
+    const ctx = this.allowed();
+    return this.database.withTenant(ctx, async (tx) => {
+      await this.mine(tx, id, ctx.workspaceIds);
+      await this.graphRules(() =>
+        saveBotFlowDraft(tx, { flowId: id, graph, savedBy: ctx.userId, newId: uuidv7 }),
+      );
+      return (await this.detail(tx, id, ctx.workspaceIds))!;
+    });
+  }
+
+  /** Publishes the draft as the next version; an empty or broken draft is a 422 and nothing changes. */
+  @Post(':id/versions')
+  @HttpCode(201)
+  @Idempotent()
+  async publish(@Param('id', new ZodPipe(BotFlowIdSchema)) id: string) {
+    const ctx = this.allowed();
+    return this.database.withTenant(ctx, async (tx) => {
+      await this.mine(tx, id, ctx.workspaceIds);
+      const { version } = await this.graphRules(() =>
+        publishBotFlow(tx, { flowId: id, publishedBy: ctx.userId, newId: uuidv7 }),
+      );
+      await this.audit(tx, 'bot_flow.published', id, { version });
+      return (await this.detail(tx, id, ctx.workspaceIds))!;
+    });
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@Param('id', new ZodPipe(BotFlowIdSchema)) id: string) {
+    const ctx = this.allowed();
+    await this.database.withTenant(ctx, async (tx) => {
+      await this.mine(tx, id, ctx.workspaceIds);
+      if (!(await deleteBotFlow(tx, id))) throw new NotFoundException();
+      await this.audit(tx, 'bot_flow.deleted', id, {});
+    });
+  }
+
+  /** 404 unless the live flow `id` is in one of the session's workspaces. */
+  private async mine(tx: TenantTx, id: string, workspaceIds: readonly string[]) {
+    const flow = await loadBotFlow(tx, id);
+    if (!flow || !workspaceIds.includes(flow.workspaceId)) throw new NotFoundException();
+  }
+
+  private async graphRules<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error instanceof BotGraphInvalidError) throw new BotFlowGraphHttpError(error.problem);
+      throw error;
+    }
+  }
+
+  private audit(
+    tx: TenantTx,
+    action: string,
+    targetId: string,
+    detail: Readonly<Record<string, number>>,
+  ) {
+    return insertAuditLog(tx, {
+      id: uuidv7(),
+      actorUserId: currentRequestContext().userId,
+      action,
+      targetType: 'bot_flow',
+      targetId,
+      detail,
+    });
   }
 
   /** The flow `id` with its draft and its latest published version, or null when the session's workspaces do not hold it. */
