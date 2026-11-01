@@ -47,7 +47,8 @@ test('a Manager opens a flow: the version published last, the draft against it, 
   await open(page, 'manager');
   await page.getByRole('link', { name: 'Chào khách mới' }).click();
   await expect(page).toHaveURL(`/bots/${BOT_FLOWS[0]!.id}`);
-  const facts = page.getByRole('main').locator('dl');
+  // The facts of the flow: the first list of the page, before the steps (part B) and their own lists.
+  const facts = page.getByRole('main').locator('dl').first();
   await expect(page.getByRole('heading', { name: 'Chào khách mới', level: 1 })).toBeVisible();
   await expect(facts).toContainText('Trạng tháiĐang chạy');
   await expect(facts).toContainText(
