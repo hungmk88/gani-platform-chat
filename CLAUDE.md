@@ -10,7 +10,7 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 1. Mọi yêu cầu code → **vào Plan Mode trước** (Shift+Tab ×2).
    Đọc code, hiểu ngữ cảnh, trình phương án. KHÔNG code ở lượt đầu.
 2. Chờ tôi duyệt phương án rồi mới code.
-3. Chia PR ≤ 400 dòng (mục tiêu, xem "KÍCH THƯỚC PR"). Trunk-based. Conventional Commits.
+3. Chia PR ≤ 400 dòng (mục tiêu; 500 cho PR code có test bắt buộc, xem "KÍCH THƯỚC PR"). Trunk-based. Conventional Commits.
 4. Gặp chỗ chưa chốt trong Brief → ghi vào `QUESTIONS.md`, KHÔNG tự đoán.
 
 ## GIT WORKFLOW
@@ -40,6 +40,18 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   - "Ready" ≠ "xong": PR rời draft không phải tín hiệu merge.
   - PR sửa file của bộ phận khác phải có review của bộ phận đó, kể cả comment.
   - Chi tiết và lịch sử: `docs/ui/session-summary-29-10.md` mục 2; required check (9 context) và `enforce_admins`: U71.
+- **Tầng 1 code: tự push, tự merge, báo sau** (01/11/2026, ký A (CEO)). Chỉ PR tầng 1 có code; không áp cho PR docs, tầng 2/3:
+  - Kiểm ở local trước khi push: lint, typecheck, unit test, format, build, E2E xanh. **Không** chạy `docker images`,
+    `database`, `queue`, `terraform`, `coverage` ở local (không mirror, không `dockerd`, không chờ Docker Hub): CI kiểm thật.
+  - Push, mở PR draft; trên CI tự kiểm đủ 9 job theo tên. 9/9 success thật (`docker images` không skip) và `clean`: chuyển
+    ready, merge (auto-merge nếu còn check chờ, merge trực tiếp nếu đã `clean`), truyền `commit_title` và `expectedHeadSha`.
+  - `main` đi trước: dùng "Update branch" của GitHub, không merge ở local.
+  - Sau merge báo CEO **một lần, gộp cả phiên**, mỗi PR 3 mục: giờ merge từ commit squash, commit squash, 9 job trước và
+    sau merge theo tên.
+  - Dừng, báo CEO ngay khi: `docker images` skip hoặc lỗi hạ tầng; có job fail; `main` bất thường; có PR merge không qua
+    tín hiệu.
+  - Chỉ áp khi branch protection còn `strict`, `enforce_admins`, 9 required check gồm `docker images`; đổi thì quay về luật
+    cũ, báo CEO.
 - **Luật hủy heads-up** (CEO 01/11, nguyên văn): Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó, gồm push,
   heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment gỡ hold
   từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff.
@@ -61,7 +73,10 @@ Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ đ�
 ## KÍCH THƯỚC PR
 
 - **≤ 400 dòng là mục tiêu, không phải trần cứng** (không tính file sinh tự động). Mỗi file ≤ 500 dòng.
-- Vượt 400: **báo trước khi push**, kèm số dòng, lý do không tách được và phương án tách. Anh quyết giữ hay tách.
+- **500 cho PR code có test bắt buộc** (01/11/2026, ký A (CEO)): chỉ khi phần vượt 400 là test bắt buộc theo phạm vi đã
+  duyệt (ví dụ đủ 12 loại bước, ca 200 bước, axe cho từng trạng thái). Vượt 500 vẫn báo trước khi push. PR docs và PR không
+  có test bắt buộc giữ 400.
+- Vượt trần (400, hoặc 500 như trên): **báo trước khi push**, kèm số dòng, lý do không tách được và phương án tách. Anh quyết giữ hay tách.
   Đã có ca được chấp nhận ở 454–464 dòng vì tách ra làm mất tính nguyên tử.
 - Tách theo ranh giới nghiệp vụ: mỗi PR đứng một mình và CI xanh; không cắt đôi một thay đổi cho vừa số dòng.
 - PR báo cáo rà soát (docs): mỗi file ≤ 400 dòng, cả PR ≤ 450.
