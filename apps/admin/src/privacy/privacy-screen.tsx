@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import type { NavItem } from '../nav';
-import { Paged } from '../paged-list';
+import { button, Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
 import { EraseDialog } from './erase-dialog';
@@ -18,7 +18,6 @@ import {
 } from './privacy';
 import { RequestDialog } from './request-dialog';
 
-const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
 const primary = 'self-start rounded-input bg-accent px-4 py-2 text-accent-on';
 const TONE = { ok: 'bg-ok-bg text-ok-text', error: 'bg-error-bg text-error-text' };
 

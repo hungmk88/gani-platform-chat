@@ -6,7 +6,9 @@ import { uniqueRows } from './paged';
 import type { useApiPages } from './query/provider';
 import { RetryAction } from './retry-button';
 
-const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
+/** The secondary button of the screens that read a list by cursor (#23, #28, #29): one class, not three copies. */
+export const button =
+  'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
 
 type Pages<P> = ReturnType<typeof useApiPages<P & { readonly nextCursor: string | null }>>;
 
