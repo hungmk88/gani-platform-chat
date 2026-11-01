@@ -89,6 +89,8 @@ const APP_UPDATE: Record<string, string[]> = {
   organizations: ['deleted_at', 'name', 'slug', 'updated_at'],
   outbox_events: ['attempts', 'available_at', 'claimed_at', 'last_error', 'published_at', 'status'],
   quick_replies: ['body', 'deleted_at', 'shortcut', 'tags', 'updated_at', 'use_count'],
+  bot_flows: ['deleted_at', 'name', 'status', 'updated_at', 'version'],
+  bot_flow_versions: ['published_at', 'published_by', 'status', 'updated_at', 'version'],
   team_members: ['deleted_at', 'updated_at'],
   teams: ['deleted_at', 'description', 'is_default', 'name', 'slug', 'updated_at'],
   workspace_members: ['deleted_at', 'updated_at'],
