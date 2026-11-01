@@ -46,19 +46,31 @@ export function budgetOf(s: Pick<AiSettings, 'monthlyBudgetUsd' | 'usedThisMonth
   return { used: text, tone: null, note: null };
 }
 
+/** A clock of `zone`, or null when the browser has no such zone: an empty or unknown name makes `Intl` throw a RangeError. */
+function clockOf(zone: string): Intl.DateTimeFormat | null {
+  try {
+    return new Intl.DateTimeFormat('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: zone,
+    });
+  } catch {
+    return null;
+  }
+}
+
+const VN_CLOCK = clockOf('Asia/Ho_Chi_Minh') as Intl.DateTimeFormat;
+
 /**
  * When the month starts again, in the time zone of the workspace (the month of the budget is its month), named; without that zone,
- * in Viet Nam's time and said so, never passed off as the workspace's.
+ * or with one the browser does not know (the contract says a string, never null, yet old data or a zone newer than the browser's
+ * may come), in Viet Nam's time and said so, never passed off as the workspace's.
  */
 export function resetText(resetsAt: string, timezone: string | null): string {
-  const zone = timezone ?? 'Asia/Ho_Chi_Minh';
-  const at = new Intl.DateTimeFormat('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: zone,
-  }).format(new Date(resetsAt));
-  return `${at} (${timezone ? `múi giờ của workspace: ${timezone}` : 'giờ Việt Nam'})`;
+  const own = timezone ? clockOf(timezone) : null;
+  const at = (own ?? VN_CLOCK).format(new Date(resetsAt));
+  return `${at} (${own ? `múi giờ của workspace: ${timezone}` : 'giờ Việt Nam'})`;
 }
