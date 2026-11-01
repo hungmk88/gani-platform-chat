@@ -2,7 +2,7 @@
 
 Nạp cho phiên mới, đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/admin/CLAUDE.md` → file này → `QUESTIONS.md` (U57–U60).
 Phiên trước: `docs/ui/session-summary-28-10.md` (mục 2–4, 9 vẫn đúng, trừ chỗ file này sửa). Người giao việc: CEO (xưng "anh",
-FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 01/11, `main` ở `803d0bd`.
+FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 01/11, `main` ở `a7c66e9`.
 
 ## 1. Đã merge vào `main` trong phiên
 
@@ -352,15 +352,20 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   14:19:32), B #516 các bước dạng danh sách (`803d0bd`, 14:46:47; 416 dòng, trần 500 vì test bắt buộc). Mỗi PR: CI 9/9 trước
   và sau merge, `docker images` chạy thật. Nhánh `feat/bot-a1-list`, `feat/bot-a2-detail`, `feat/bot-b-graph` (đổi tên nhánh
   mỗi PR để hook không đếm nhầm commit squash).
-- **Rà tính năng BE (FE đọc mã, `main` `6356b02`, 01/11):** 58 mã Đợt 1 theo bảng P7 của Brief Backend (file "135 mã" không có
-  trong repo): có 12, một phần 19, chưa 25, chưa xác định 2 (C20, D15 không có định nghĩa). Bảng đủ 58 dòng kèm bằng chứng đã
-  gửi CEO trong phiên; báo cáo BE 31/10 (`docs/reviews/backend-progress-20261031.md`) ghi 17,5/58.
+- **Tiến độ 01/11 (CEO duyệt cách đo; chi tiết, bảng 58 mã và bằng chứng: `docs/reviews/progress-20261101.md`, đo trên
+  `803d0bd`):** không có một % cho cả dự án, 4 mẫu số. **A** tính năng Đợt 1 (58 mã) 21,5/58 ≈ 37 % (31/10: 17,5/58); **B**
+  deliverable S1–S5 16/29 ≈ 55 % (30/10: 15/29); **C** màn FE Đợt 1 17/30 ≈ 57 %; **D** cả dự án (135 mã) 21,5/135 ≈ 16 %. Bảng
+  58 mã: có 12, một phần 19, chưa 25, chưa xác định 2 (C20, D15: P7 có dòng, không định nghĩa). **A17 = một phần** (CEO 01/11):
+  định nghĩa ở U28 (`QUESTIONS.md`, CEO 26/10); có đọc và lọc audit, chưa Xuất CSV, chưa `/platform`.
+- **Bot Engine chỉ đọc (A1, A2, B) xong.** Bước tiếp của Bot Engine chờ BE trả lời U77; trong lúc chờ FE không mở code mới
+  (CEO 01/11).
 - **Luật hủy heads-up (CEO 01/11, nguyên văn, áp dụng ngay):** Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó,
   gồm push, heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment
   gỡ hold từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff. Đã ghi vào `CLAUDE.md` gốc, mục GIT WORKFLOW, cùng dòng "tự
   kiểm đủ 9 job theo tên". Không áp heads-up cho PR nào cho tới khi luật này vào `CLAUDE.md` gốc trên `main`.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
   (CEO cần xác định); nguồn mốc giờ của sự kiện không có commit squash (comment `hold`, chuyển ready, heads-up), mục 2;
+  định nghĩa C20, D15 (cần file "Phạm vi triển khai — 135 mã"); số U78 BE đã dùng ở #515, FE không dùng trùng;
   U60, U62, U64–U77 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
   GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
