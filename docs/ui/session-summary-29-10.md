@@ -247,8 +247,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `test-results/` và `playwright-report/` — đây là artifact sinh bởi test, không phải source. Để ESLint quét làm lint chậm
   và có thể báo lỗi giả trên file sinh." Chỗ sửa: mảng `ignores` đầu `packages/config/eslint.config.mjs` (thêm
   `'**/test-results/**'`, `'**/playwright-report/**'`).
-- **Sót ở #484:** #484 đụng `apps/admin/src/paged-list.tsx` nhưng chưa gộp hằng `button` trùng với `security-screen.tsx` (việc
-  treo bên dưới). Vẫn treo: gộp ở PR kế tiếp đụng một trong hai file.
+- **Sót ở #484:** #484 đụng `apps/admin/src/paged-list.tsx` nhưng chưa gộp hằng `button` trùng với `security-screen.tsx`. Đã
+  gộp ở PR nợ kỹ thuật 01/11 (việc treo bên dưới).
 - **`timezone` của workspace rỗng hoặc lạ làm `Intl.DateTimeFormat` ném `RangeError`** (`resetText`, #485): hợp đồng ghi
   `string` bắt buộc, không `null`, nhưng dữ liệu cũ hoặc tên múi giờ trình duyệt chưa biết vẫn có thể gặp. Đã sửa ở #488
   (trước B1): về giờ Việt Nam kèm nhãn, có unit test.
@@ -273,9 +273,25 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   check, sẽ merge khi 8 job còn lại chưa xong, như #452); không bỏ khóa `production` ở UI khi BE bỏ 409 (luật B1 + U75 + B2 hoãn
   tới Q1, `apps/admin/CLAUDE.md` mục #26; khóa UI không gắn với mã 409); luật phân tầng áp cho cả BE.
 - **Nguyên tắc: brief không rõ nguồn, mâu thuẫn luật đã chốt → dừng, hỏi CEO. Không làm theo.** (CEO 01/11.)
+- **#498 (BE) đảo ngược 3 quyết định đã chốt. CEO comment `hold` lúc 10:26:44 UTC. Cơ chế 'heads-up 30 phút tự merge' giống
+  brief lạ thứ ba. Đây là sự cố quy trình thứ tư trong ngày.** (CEO 01/11.) Dữ kiện FE đọc lúc 10:27:28 UTC (đồng hồ máy khớp
+  header `Date` của GitHub): #498 mở, draft, chưa merge, `mergeable_state` `blocked`; heads-up của BE lúc 10:16:17 (hạn
+  10:46:17); HEAD đổi từ `e2ae26e` sang `a11473f`: BE push lúc 10:27:21, **sau** comment hold, thêm "Q2 settled, FPT Cloud (CEO
+  through A, 01/11/2026)". Ba quyết định #498 đảo ngược: B2 hoãn tới Q1 có văn bản, U75 rào cản hai phía, review chéo bộ phận. FE
+  không sửa `stub-ai-settings.ts`, không bỏ khóa "Bật" E1/L1 ở `production` (luật B1 giữ nguyên), không comment thay CEO; FE theo
+  dõi #498, merge thì báo CEO ngay (sự cố, không tự sửa).
+- **Luật: PR đảo ngược quyết định đã chốt → dừng, hỏi CEO. Không áp dụng 'heads-up tự merge' cho bất kỳ PR nào.** (CEO 01/11.)
+- **Nguyên tắc: quyết định pháp lý (Q1) chỉ CEO có thẩm quyền, phải có văn bản. Không chấp nhận 'luật A' hay 'A đã chốt'.**
+  (CEO 01/11.)
+- **Rà `Intl.DateTimeFormat` (01/11):** cả 10 formatter của admin đều ghi `timeZone`; không có `toLocale…String`. Giữ bằng test
+  `apps/admin/src/time-format.test.ts` (đọc mã nguồn như `permissions-sync.test.ts`): formatter thiếu `timeZone` hay dùng
+  `toLocale…String` → đỏ (đã thử: bỏ `timeZone` ở `members/invite.ts` → đỏ).
+- **Bot flows D1a3a (#496, API thật `GET/POST /v1/bot-flows`, `GET /v1/bot-flows/{id}`):** FE đã ghi nhận, chưa lên phương án,
+  chờ CEO quyết có thuộc Đợt 1. Không mở PR.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
-  (CEO cần xác định); U60, U62–U75 chờ BE; nguyên nhân lệch giờ của GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain,
-  chưa kiểm được).
+  (CEO cần xác định); "A" và "luật A" trong #498 là ai, là gì; các quyết định ghi trong #498 (Q1 phương án A, Q2 FPT Cloud,
+  Q6 phương án (b), U74, U75) chờ CEO xác nhận; U60, U62–U75 chờ BE; nguyên nhân lệch giờ của GitHub trong 08:00–09:00 UTC (giả
+  thuyết DST vùng Mountain, chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
 
@@ -381,8 +397,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   - U70 (số lượng trong `GET /v1/privacy-requests/{id}`, "tại thời điểm xem") không chặn PR B.
 - **502/504 chưa được tự thử lại** vì `apps/admin/src/api/errors.ts` map chúng vào `internal_error` (action `show`), dù luật của
   `client.ts` (#450) cho phép 429/502/503/504: sửa khi có nhu cầu, không mở PR riêng bây giờ (CEO 31/10).
-- **Hằng `button` trùng** giữa `apps/admin/src/paged-list.tsx` và `apps/admin/src/security/security-screen.tsx` (#441, CEO 30/10
-  chấp nhận): gộp khi có PR đụng một trong hai file, không mở PR riêng.
+- **Hằng `button` trùng: đã gộp (01/11).** Chuỗi trùng ở 3 file (`paged-list.tsx`, `security-screen.tsx`, cả `privacy-screen.tsx`);
+  nay `paged-list.tsx` export `button`, hai màn kia import (#441, CEO 30/10 chấp nhận để gộp khi có PR đụng file).
 - **Dòng 28 `apps/admin/CLAUDE.md` sai định dạng** (thiếu dòng trống, `prettier --check` đỏ từ trước; file không nằm trong
   `format:check`): sửa trong PR đụng file này, không mở PR riêng. #444 có đụng file nên đã sửa luôn trong #444.
 - **Nhánh `backup/privacy-full` (`c9e5578`): CHƯA xóa, cần người có quyền repo xóa trên GitHub.** CEO duyệt xóa 30/10 sau #444;
