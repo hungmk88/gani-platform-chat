@@ -78,6 +78,14 @@ export interface NodeHandler {
 
 export type Handlers = Readonly<Record<string, NodeHandler>>;
 
+/** Thrown by a handler whose node's config it cannot run (the API checks configs on save; this guards older or hand-made graphs). */
+export class NodeConfigError extends Error {
+  constructor(readonly problem: string) {
+    super(`The node's config cannot run: ${problem}.`);
+    this.name = 'NodeConfigError';
+  }
+}
+
 export type TurnStatus = 'active' | 'completed' | 'handed_off' | 'abandoned';
 
 export interface TurnResult {
