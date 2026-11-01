@@ -15,10 +15,26 @@ export const ENVIRONMENT: Readonly<Record<AiSettings['environment'], string>> = 
 };
 
 /** The features of Đợt 1, by their names in "Danh sách 109 tính năng". */
-export const FEATURES: readonly (readonly [keyof AiSettings['features'], string])[] = [
+export const FEATURES: readonly (readonly [FeatureKey, string])[] = [
   ['e1', 'Phân loại ý định và trích thông tin (E1)'],
   ['l1', 'Tóm tắt hội thoại (L1)'],
 ];
+
+export type FeatureKey = keyof AiSettings['features'];
+
+/**
+ * B1 (CEO 01/11): turning E1/L1 on is tier 1/2 only while `staging`; in `production` it sends the customers' conversations to a
+ * provider abroad, as B2 does: tier 3, not in this screen. Turning off is allowed anywhere (it sends less). Only `staging` is named,
+ * so an environment added later is refused too.
+ */
+export const mayTurn = (environment: AiSettings['environment'], on: boolean): boolean =>
+  !on || environment === 'staging';
+
+export const PRODUCTION_LOCK =
+  'Bật tính năng AI ở môi trường Chính thức cần phê duyệt riêng (tầng 3).';
+
+/** The PATCH of one feature: only what changes (contract `AiSettingsChange`). */
+export const featureBody = (key: FeatureKey, on: boolean) => ({ features: { [key]: on } });
 
 const USD = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'USD' });
 export const usdText = (n: number): string => USD.format(n);

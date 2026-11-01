@@ -33,7 +33,7 @@ test('an Owner reads the prompt versions, with nothing to change them', async ({
   await expect(page.getByText('Đang dùng', { exact: true })).toHaveCount(1);
   await expect(block(page, 'Môi trường')).toHaveText(/Đang chạy ởThử nghiệm \(staging\)/);
   await expect(block(page, 'Tính năng')).toHaveText(
-    /Phân loại ý định và trích thông tin \(E1\)Đang bậtTóm tắt hội thoại \(L1\)Đang tắt/,
+    /Phân loại ý định và trích thông tin \(E1\)Đang bậtTắtTóm tắt hội thoại \(L1\)Đang tắtBật/,
   );
   // 85 % spent: BudgetGuard warns from 80 %; the month starts again in the workspace's zone (#21).
   await expect(block(page, 'Ngân sách tháng')).toContainText(/170,00.*\/ 200,00.*\(85 %\)/);
@@ -42,8 +42,8 @@ test('an Owner reads the prompt versions, with nothing to change them', async ({
     '00:00 01/12/2026 (múi giờ của workspace: Asia/Ho_Chi_Minh)',
   );
   await expect(page.getByText(LATER, { exact: true })).toHaveCount(0);
-  // Read only (B1 and B2 write).
-  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0);
+  // Only E1/L1 turn on or off (B1a, e2e/ai-features.spec.ts); nothing changes the environment or the budget.
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(2);
   await expect(page.getByRole('main').getByRole('checkbox')).toHaveCount(0);
   await expect(page.getByText(/sắp có|đang phát triển/i)).toHaveCount(0);
   await expectAccessible(page);
