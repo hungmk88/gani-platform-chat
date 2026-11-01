@@ -22,6 +22,8 @@ const TENANT_TABLES = [
   'customers',
   'channel_accounts',
   'quick_replies',
+  'bot_edges',
+  'bot_nodes',
   'bot_flow_versions',
   'bot_flows',
   'team_members',
@@ -31,20 +33,29 @@ const TENANT_TABLES = [
   'org_members',
 ];
 
+/** The tables whose trigger refuses a DELETE (BF001), and that trigger. */
+const FROZEN_GUARDS: Record<string, string> = {
+  bot_edges: 'bot_edges_guard',
+  bot_nodes: 'bot_nodes_guard',
+  bot_flow_versions: 'bot_flow_versions_guard',
+};
+
 /** Key of the global flag that seedTenant creates for an organization (flag keys are global, so one per org). */
 export const flagKeyOf = (org: string) => `f_${org.replaceAll('-', '')}`;
 
 /** Inserts an organization and one row in every RLS table (as migration_role); returns the id of its user. */
 export async function seedTenant(admin: pg.Client, org: string): Promise<string> {
-  const [user, workspace, team, conversation, channelAccount, customer, botFlow] = [
-    uuidv7(),
-    uuidv7(),
-    uuidv7(),
-    uuidv7(),
-    uuidv7(),
-    uuidv7(),
-    uuidv7(),
-  ];
+  const [
+    user,
+    workspace,
+    team,
+    conversation,
+    channelAccount,
+    customer,
+    botFlow,
+    botVersion,
+    botNode,
+  ] = [uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7()];
   // Every value is generated here (UUIDs, random hex), never client input.
   await admin.query(`
     INSERT INTO organizations (id, slug, name) VALUES ('${org}', 't-${org}', 'T');
@@ -61,7 +72,9 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
     INSERT INTO quick_replies (id, org_id, workspace_id, shortcut, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'seed', 'Seed');
     INSERT INTO bot_flows (id, org_id, workspace_id, name) VALUES ('${botFlow}', '${org}', '${workspace}', 'Seed');
-    INSERT INTO bot_flow_versions (id, org_id, flow_id) VALUES ('${uuidv7()}', '${org}', '${botFlow}');
+    INSERT INTO bot_flow_versions (id, org_id, flow_id) VALUES ('${botVersion}', '${org}', '${botFlow}');
+    INSERT INTO bot_nodes (id, org_id, version_id, key, type) VALUES ('${botNode}', '${org}', '${botVersion}', 'start', 'trigger');
+    INSERT INTO bot_edges (id, org_id, version_id, from_node_id, to_node_id) VALUES ('${uuidv7()}', '${org}', '${botVersion}', '${botNode}', '${botNode}');
     INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ('${channelAccount}', '${org}', '${workspace}', 'zalo_oa', 'oa-${org}', 'OA', 'app-seed', decode('${randomBytes(32).toString('hex')}', 'hex'));
     INSERT INTO inbound_events (id, org_id, workspace_id, channel_account_id, platform_message_id, event_type, payload) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${channelAccount}', 'm-seed', 'user_send_text', '{"seed": true}');
     INSERT INTO inbound_event_keys (org_id, channel_account_id, platform_message_id) VALUES ('${org}', '${channelAccount}', 'm-seed');
@@ -80,13 +93,15 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
 /** Removes what seedTenant made. A failing step never throws: the CI database is thrown away after the job. */
 export async function cleanupTenant(admin: pg.Client, org: string, user: string): Promise<void> {
   const steps = [
-    ...TENANT_TABLES.map((t) =>
-      // A published bot flow version is never deleted, by any role (BF001); only the table's owner gets past it, for the test's own
-      // rows, with the trigger off for this one statement: the three run as one implicit transaction, so a failure leaves it on.
-      t === 'bot_flow_versions'
-        ? `ALTER TABLE ${t} DISABLE TRIGGER bot_flow_versions_guard; DELETE FROM ${t} WHERE org_id = '${org}'; ALTER TABLE ${t} ENABLE TRIGGER bot_flow_versions_guard`
-        : `DELETE FROM ${t} WHERE org_id = '${org}'`,
-    ),
+    ...TENANT_TABLES.map((t) => {
+      // A published bot flow version, and its graph, is never deleted, by any role (BF001); only the table's owner gets past it, for
+      // the test's own rows, with the trigger off for this one statement: the three run as one implicit transaction, so a failure
+      // leaves it on.
+      const guard = FROZEN_GUARDS[t];
+      return guard
+        ? `ALTER TABLE ${t} DISABLE TRIGGER ${guard}; DELETE FROM ${t} WHERE org_id = '${org}'; ALTER TABLE ${t} ENABLE TRIGGER ${guard}`
+        : `DELETE FROM ${t} WHERE org_id = '${org}'`;
+    }),
     `DELETE FROM feature_flags_global WHERE key = '${flagKeyOf(org)}'`,
     `DELETE FROM users WHERE id = '${user}'`,
     `DELETE FROM organizations WHERE id = '${org}'`,

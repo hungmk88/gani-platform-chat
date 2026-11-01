@@ -61,7 +61,7 @@ export { organizations } from './schema/organizations.js';
 export { outboxEvents } from './schema/outbox-events.js';
 export { platformAccessLogs } from './schema/platform-access-logs.js';
 export { quickReplies } from './schema/quick-replies.js';
-export { botFlowVersions, botFlows } from './schema/bot-flows.js';
+export { botEdges, botFlowVersions, botFlows, botNodes } from './schema/bot-flows.js';
 export { customerIdentities, customers } from './schema/customers.js';
 export { sessions } from './schema/sessions.js';
 export { teamMembers } from './schema/team-members.js';
