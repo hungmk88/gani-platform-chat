@@ -50,6 +50,10 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 - **Mốc thời gian (CEO 31/10):** mọi mốc thời gian ghi vào handoff phải lấy từ dòng thời gian GitHub (`issues/*/timeline`,
   trường `created_at`), không lấy từ giờ thông báo về phiên; chênh lệch thường 2–6 giây. Chỉ ghi dữ kiện (tài khoản nào),
   không suy diễn người làm.
+- **Giờ merge lấy từ commit squash, ghi kèm timeline** (CEO 01/11): từ khoảng 08:00 UTC ngày 01/11, `created_at` của timeline
+  và giờ các run Actions nhanh hơn giờ thật 1 giờ (mục 7, "Lệch giờ"). Giờ merge = ngày giờ committer của commit squash
+  (`git log -1 --format=%cI <squash>`), ghi kèm giờ timeline. **Timeline lệch >5 phút → ghi cả hai, đánh dấu 'timeline
+  suspect'. Lệch >24h → escalate người quản lý proxy.**
 - **Lệnh dừng merge chỉ áp dụng FE; BE vẫn merge; trước mỗi bước phải kiểm lại HEAD `main` hiện tại** (CEO 31/10). Không dùng
   kết quả CI cũ của một HEAD `main` đã qua.
 - **Phân tầng merge (CEO 31/10), có hiệu lực từ 31/10:**
@@ -150,6 +154,10 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 - **`@typescript-eslint/no-base-to-string` — không phải lint hình thức. `String(File)`/`String(Symbol)`/`String(Object)` đều ra
   chuỗi vô nghĩa. Sửa defensive, không chỉ im lint** (CEO 01/11). Ca đầu: `audit-screen.tsx` (#484), `FormData.get` có thể trả
   `File`; giờ chỉ lấy giá trị là chữ.
+- **Test local dùng `new Date()` có thể sai khi máy lệch giờ (DST, tzdata). Dùng thời gian cố định hoặc inject clock**
+  (CEO 01/11). Ca đầu: `e2e/audit.spec.ts` cố định giờ trình duyệt (`page.clock.setFixedTime`) bằng `AUDIT_NOW` của
+  `e2e/stub-audit.ts`. Giờ giả chỉ ở trình duyệt, máy chủ Next vẫn giờ thật: màn nào tính ngày lúc render trên máy chủ sẽ lệch
+  hydration (React #418), nên giờ của người dùng chỉ đọc sau hydration (`useBrowserNow`, `audit-screen.tsx`).
 - **Lint không chạy cùng lúc với E2E:** Playwright ghi CSS tạm vào `apps/admin/test-results/`, ESLint quét phải và báo lỗi giả
   (01/11). `.gitignore` đã chặn `test-results/`, `playwright-report/` (không commit), nhưng danh sách bỏ qua của ESLint chưa có:
   xem đề xuất ở mục 7.
@@ -242,8 +250,23 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **Sót ở #484:** #484 đụng `apps/admin/src/paged-list.tsx` nhưng chưa gộp hằng `button` trùng với `security-screen.tsx` (việc
   treo bên dưới). Vẫn treo: gộp ở PR kế tiếp đụng một trong hai file.
 - **`timezone` của workspace rỗng hoặc lạ làm `Intl.DateTimeFormat` ném `RangeError`** (`resetText`, #485): hợp đồng ghi
-  `string` bắt buộc, không `null`, nhưng dữ liệu cũ hoặc tên múi giờ trình duyệt chưa biết vẫn có thể gặp. Sửa ở PR riêng
-  trước B1: về giờ Việt Nam kèm nhãn, có unit test.
+  `string` bắt buộc, không `null`, nhưng dữ liệu cũ hoặc tên múi giờ trình duyệt chưa biết vẫn có thể gặp. Đã sửa ở #488
+  (trước B1): về giờ Việt Nam kèm nhãn, có unit test.
+
+- **Lệch giờ (điều tra 01/11, CEO chấp nhận kết luận):** đồng hồ máy FE **đúng**. Bằng chứng: `date -u` của máy = header
+  `Date` của API GitHub = header `Date` của `registry.npmjs.org` = ngày giờ commit squash do GitHub tạo; các máy chủ giờ công
+  khai khác bị chặn bởi chính sách mạng. Lệch nằm ở `created_at` của timeline GitHub và giờ run Actions: **+60 phút từ khoảng
+  08:00 UTC 01/11** (run tạo 07:48:39 còn khớp ngày giờ commit, run kế tiếp đã lệch). Trùng giờ vùng Mountain (Mỹ) đổi sang giờ
+  mùa đông (08:00 UTC): **giả thuyết, chưa kiểm được**. Container không có systemd (`timedatectl` không chạy); múi giờ máy
+  `Etc/UTC`; `tzdata` hệ thống 2026e, Node 22 dùng tzdata đóng gói 2025b; `Asia/Ho_Chi_Minh` không đổi giờ.
+- **Giờ merge sửa lại (commit squash; timeline suspect):** **#490 = 08:20:57** (timeline 09:20:58), **#491 = 08:44:54**
+  (timeline 09:44:54). Từ #485 về trước merge trước 08:00, timeline đúng.
+- **Chỗ dùng đồng hồ máy trong admin (rà 01/11):** sản phẩm có `audit-screen.tsx` (7 ngày mặc định, đã sửa: đọc sau
+  hydration) và `reply-box.tsx:98` (trong handler gửi tin, không lúc render). Không màn nào khác tính giờ lúc render; mọi
+  `Intl.DateTimeFormat` đều ghi `timeZone`. API giả: `createdAt`/`updatedAt` của bản ghi mới dùng giờ máy, rủi ro thấp (chỉ cần
+  muộn hơn dữ liệu mẫu tháng 10).
+- **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); U60, U62–U75 chờ BE; nguyên nhân lệch giờ của
+  GitHub (giả thuyết DST vùng Mountain, chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
 

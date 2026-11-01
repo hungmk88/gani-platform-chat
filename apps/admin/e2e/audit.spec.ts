@@ -4,10 +4,10 @@ import { addDays, dayText, defaultWindow, vnDay } from '../src/audit/audit';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
-import { OTHER } from './stub-audit';
+import { AUDIT_NOW, OTHER } from './stub-audit';
 
 // #28 Audit log (CEO 31/10), real API (N174): the last 7 days of Viet Nam unless other days are chosen, the filters in the URL,
-// pages by cursor. The stub's rows are dated back from now; page 1 is 3 rows, page 2 repeats one.
+// pages by cursor. The stub's rows are dated back from AUDIT_NOW, the browser's fixed clock; page 1 is 3 rows, page 2 repeats one.
 const rows = (page: Page) => page.getByRole('main').getByRole('table').getByRole('row');
 const asked = (page: Page) => {
   const seen: URLSearchParams[] = [];
@@ -16,8 +16,11 @@ const asked = (page: Page) => {
   });
   return seen;
 };
-const week = () => defaultWindow(new Date());
+// A fixed time, not the machine's clock: the browser's clock is set to the stub's AUDIT_NOW before anything runs.
+const NOW = new Date(AUDIT_NOW);
+const week = () => defaultWindow(NOW);
 const open = async (page: Page, who = 'owner', query = '') => {
+  await page.clock.setFixedTime(NOW);
   await signIn(page, accountOf(who));
   await page.goto(`/settings/audit${query}`);
   await expect(page.getByRole('heading', { name: 'Audit log', level: 1 })).toBeVisible();
@@ -27,11 +30,20 @@ test('an Owner reads the last 7 days: who, what, on what, the detail as plain te
   page,
 }) => {
   const seen = asked(page);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
   await open(page);
   const { from, to } = week();
   await expect(
     page.getByText(`Đang xem từ ${dayText(from)} đến ${dayText(to)} (giờ Việt Nam)`),
   ).toBeVisible();
+  // The server renders no days (its clock is not the browser's): the page hydrates without React #418 (01/11).
+  const html = await (await page.request.get('/settings/audit')).text();
+  expect([html.includes('Đang tải khoảng thời gian…'), html.includes('Đang xem từ')]).toEqual([
+    true,
+    false,
+  ]);
+  expect(errors).toEqual([]);
   await expect(rows(page)).toHaveCount(4);
   await expect(rows(page).nth(0)).toHaveText('Thời điểmNgười thực hiệnHành độngĐối tượngChi tiết');
   await expect(rows(page).nth(1)).toContainText(
@@ -90,11 +102,11 @@ test('what the API would refuse is said before asking; good filters go to the UR
   const alert = page.getByRole('main').getByRole('alert');
   await expect(alert).toHaveText(/^Hành động viết dạng <vật>\.<động từ>/);
   await field('Hành động').fill('team.created');
-  await field('Từ ngày').fill(addDays(vnDay(new Date()), 1));
+  await field('Từ ngày').fill(addDays(vnDay(NOW), 1));
   await page.getByRole('button', { name: 'Lọc', exact: true }).click();
   await expect(alert).toHaveText('Ngày bắt đầu phải trước hoặc trùng ngày kết thúc.');
   expect(seen.length).toBe(before);
-  const from = addDays(vnDay(new Date()), -10);
+  const from = addDays(vnDay(NOW), -10);
   await field('Từ ngày').fill(from);
   await page.getByRole('button', { name: 'Lọc', exact: true }).click();
   await expect(page).toHaveURL(`/settings/audit?action=team.created&from=${from}&to=${week().to}`);
