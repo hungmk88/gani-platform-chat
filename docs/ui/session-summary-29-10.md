@@ -50,8 +50,8 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
 - **Mốc thời gian (CEO 31/10):** mọi mốc thời gian ghi vào handoff phải lấy từ dòng thời gian GitHub (`issues/*/timeline`,
   trường `created_at`), không lấy từ giờ thông báo về phiên; chênh lệch thường 2–6 giây. Chỉ ghi dữ kiện (tài khoản nào),
   không suy diễn người làm.
-- **Giờ merge lấy từ commit squash, ghi kèm timeline** (CEO 01/11): từ khoảng 08:00 UTC ngày 01/11, `created_at` của timeline
-  và giờ các run Actions nhanh hơn giờ thật 1 giờ (mục 7, "Lệch giờ"). Giờ merge = ngày giờ committer của commit squash
+- **Giờ merge lấy từ commit squash, ghi kèm timeline** (CEO 01/11): sự kiện xảy ra trong khoảng 08:00–09:00 UTC ngày 01/11 bị
+  GitHub ghi `created_at` (timeline, run Actions) nhanh hơn giờ thật 1 giờ; từ khoảng 09:00 khớp lại (mục 7, "Lệch giờ"). Giờ merge = ngày giờ committer của commit squash
   (`git log -1 --format=%cI <squash>`), ghi kèm giờ timeline. **Timeline lệch >5 phút → ghi cả hai, đánh dấu 'timeline
   suspect'. Lệch >24h → escalate người quản lý proxy.**
 - **Lệnh dừng merge chỉ áp dụng FE; BE vẫn merge; trước mỗi bước phải kiểm lại HEAD `main` hiện tại** (CEO 31/10). Không dùng
@@ -255,9 +255,11 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 - **Lệch giờ (điều tra 01/11, CEO chấp nhận kết luận):** đồng hồ máy FE **đúng**. Bằng chứng: `date -u` của máy = header
   `Date` của API GitHub = header `Date` của `registry.npmjs.org` = ngày giờ commit squash do GitHub tạo; các máy chủ giờ công
-  khai khác bị chặn bởi chính sách mạng. Lệch nằm ở `created_at` của timeline GitHub và giờ run Actions: **+60 phút từ khoảng
-  08:00 UTC 01/11** (run tạo 07:48:39 còn khớp ngày giờ commit, run kế tiếp đã lệch). Trùng giờ vùng Mountain (Mỹ) đổi sang giờ
-  mùa đông (08:00 UTC): **giả thuyết, chưa kiểm được**. Container không có systemd (`timedatectl` không chạy); múi giờ máy
+  khai khác bị chặn bởi chính sách mạng. Lệch nằm ở `created_at` của timeline GitHub và giờ run Actions: **+60 phút cho sự
+  kiện xảy ra trong khoảng 08:00–09:00 UTC 01/11** (run lúc 07:48 còn khớp ngày giờ commit; run lúc 08:12–08:47 lệch +60 phút;
+  run lúc 09:12, 09:18, 09:29 khớp lại; kiểm lại 09:33: máy, header `Date` của GitHub và npm cùng 09:33:12). Các mốc đã ghi
+  trong giờ đó vẫn sai trên GitHub. Khung 08:00–09:00 UTC đúng bằng giờ lặp lại 01:00–02:00 của vùng Mountain (Mỹ) khi đổi sang
+  giờ mùa đông: **giả thuyết, chưa kiểm được**. Container không có systemd (`timedatectl` không chạy); múi giờ máy
   `Etc/UTC`; `tzdata` hệ thống 2026e, Node 22 dùng tzdata đóng gói 2025b; `Asia/Ho_Chi_Minh` không đổi giờ.
 - **Giờ merge sửa lại (commit squash; timeline suspect):** **#490 = 08:20:57** (timeline 09:20:58), **#491 = 08:44:54**
   (timeline 09:44:54). Từ #485 về trước merge trước 08:00, timeline đúng.
@@ -266,7 +268,7 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `Intl.DateTimeFormat` đều ghi `timeZone`. API giả: `createdAt`/`updatedAt` của bản ghi mới dùng giờ máy, rủi ro thấp (chỉ cần
   muộn hơn dữ liệu mẫu tháng 10).
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); U60, U62–U75 chờ BE; nguyên nhân lệch giờ của
-  GitHub (giả thuyết DST vùng Mountain, chưa kiểm được).
+  GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
 
