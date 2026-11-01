@@ -117,6 +117,12 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   `apps/admin` không qua FE).
 - **CEO chỉ merge khi nhận "Sẵn sàng merge" kèm mã HEAD.** Em báo "HEAD đổi" thì CEO không merge (CEO xác nhận 28/10, sau khi
   #408 merge lúc CI trên HEAD mới chưa xong).
+- **Khi merge, luôn truyền `commit_title` bằng tiêu đề PR** (CEO 01/11), kèm ` (#<số PR>)`. Không truyền thì PR chỉ có một
+  commit thường (merge commit không tính) lấy message của commit đó làm tiêu đề squash: #485 thành `a57e282` "… (bản đang làm,
+  chưa push)". Trước khi bấm merge, đọc lại `commit_title`: không rỗng, không chứa "(bản đang làm", "WIP", "chưa push".
+- **Báo loại lint trước khi sửa** (CEO 01/11): tên luật, dòng, có phải bug thật không; chờ anh biết rồi mới sửa. Loại cần cảnh
+  giác nhất là `react-hooks/exhaustive-deps` (effect thiếu phụ thuộc chạy sai khi bộ lọc đổi): viết test bắt được hành vi sai
+  trước khi sửa, không chỉ thêm phụ thuộc cho lint im.
 - **Merge kiểu squash:** commit trên `main` có mã khác HEAD của PR. Kiểm lại bằng `git diff <HEAD PR> <commit main> -- <file của PR>`
   (rỗng là đúng).
 - **CI của `main` có `cancel-in-progress`:** lần chạy của một commit có thể "cancelled" khi PR sau merge ngay. Xem lần chạy kế
@@ -141,6 +147,12 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   - mỗi hộp thoại một `useEffect` theo trạng thái tải. **Không** gom thành hook chung: `react-hooks/exhaustive-deps` sẽ đòi đưa
     các ref vào phụ thuộc, effect chạy lại mỗi lần render và giật focus;
   - E2E: giữ API lại bằng `page.route` (promise "gate"), kiểm `toBeFocused` lúc đang tải và sau khi thả.
+- **`@typescript-eslint/no-base-to-string` — không phải lint hình thức. `String(File)`/`String(Symbol)`/`String(Object)` đều ra
+  chuỗi vô nghĩa. Sửa defensive, không chỉ im lint** (CEO 01/11). Ca đầu: `audit-screen.tsx` (#484), `FormData.get` có thể trả
+  `File`; giờ chỉ lấy giá trị là chữ.
+- **Lint không chạy cùng lúc với E2E:** Playwright ghi CSS tạm vào `apps/admin/test-results/`, ESLint quét phải và báo lỗi giả
+  (01/11). `.gitignore` đã chặn `test-results/`, `playwright-report/` (không commit), nhưng danh sách bỏ qua của ESLint chưa có:
+  xem đề xuất ở mục 7.
 - **Spec đo tạm** (bundle, focus): đặt ở `apps/admin/e2e/` để Playwright chạy, **không commit**, xóa cùng `test-results/` sau
   khi đo.
 - 404 của `POST /v1/tickets` có 3 nguồn (workspace, khách, hội thoại); API không nói nguồn nào. `goneOf` (`ticket-create.ts`)
@@ -215,6 +227,23 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - 404: POST có 3 nguồn; đã có câu riêng cho trường hợp mở từ hội thoại (#408).
 - 409: `idempotency_in_progress`; `version_conflict` / `invalid_transition`.
 - 422: `invalid_assignee`, `idempotency_key_reused`.
+
+### Ghi nhận 01/11 (CEO)
+
+- **Commit `a57e282` có đuôi '(bản đang làm, chưa push)' do merge không truyền `commit_title`. Nội dung đúng, chỉ tiêu đề
+  sai. Không sửa vì sẽ phải force-push.** Luật mới ở mục 2.
+- **Đề xuất kiểm `commit_title` trong script merge:** repo **chưa có** script merge (`scripts/` chỉ có `check-db.sh`,
+  `setup-hooks.mjs`; FE merge qua GitHub API). Nếu thêm script merge: chặn khi `commit_title` rỗng hoặc chứa "(bản đang làm",
+  "WIP", "chưa push". Trong lúc chưa có: FE tự kiểm trước mỗi lần merge (mục 2), prompt check-in 2 tiếng có ghi.
+- **Đề xuất ESLint (chưa sửa, cần review bộ phận liên quan vì `packages/config` dùng chung):** "ESLint không nên quét
+  `test-results/` và `playwright-report/` — đây là artifact sinh bởi test, không phải source. Để ESLint quét làm lint chậm
+  và có thể báo lỗi giả trên file sinh." Chỗ sửa: mảng `ignores` đầu `packages/config/eslint.config.mjs` (thêm
+  `'**/test-results/**'`, `'**/playwright-report/**'`).
+- **Sót ở #484:** #484 đụng `apps/admin/src/paged-list.tsx` nhưng chưa gộp hằng `button` trùng với `security-screen.tsx` (việc
+  treo bên dưới). Vẫn treo: gộp ở PR kế tiếp đụng một trong hai file.
+- **`timezone` của workspace rỗng hoặc lạ làm `Intl.DateTimeFormat` ném `RangeError`** (`resetText`, #485): hợp đồng ghi
+  `string` bắt buộc, không `null`, nhưng dữ liệu cũ hoặc tên múi giờ trình duyệt chưa biết vẫn có thể gặp. Sửa ở PR riêng
+  trước B1: về giờ Việt Nam kèm nhãn, có unit test.
 
 ### Việc treo (CEO 30/10 chiều)
 
@@ -329,4 +358,4 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ## 8. Lệnh kiểm
 
-Như mục 9 của `session-summary-28-10.md`. Playwright admin hiện **158 test**.
+Như mục 9 của `session-summary-28-10.md`. Playwright admin hiện **207 test** (01/11, sau #485).
