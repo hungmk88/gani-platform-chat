@@ -1,4 +1,8 @@
-import { ConversationStateMachine, MessageService } from '@gani/conversations';
+import {
+  ChannelPolicyService,
+  ConversationStateMachine,
+  MessageService,
+} from '@gani/conversations';
 import { createDbPool, withTenant } from '@gani/db';
 import { installCrashHandlers, redactPii } from '@gani/domain';
 
@@ -6,6 +10,7 @@ import { createDbRefreshStore } from './channels/db-store.js';
 import { createTokenRefresher } from './channels/refresher.js';
 import { ConfigError, readConfig } from './config.js';
 import { realtimeHandlers } from './consumer/realtime-handlers.js';
+import { createBotTurn } from './inbound/bot-turn.js';
 import { createDbInboundStore } from './inbound/db-store.js';
 import { startHttp, type WorkerHttp } from './http.js';
 import { createLogger } from './logger.js';
@@ -73,7 +78,15 @@ const worker = startWorker({
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
   inbound: {
-    store: createDbInboundStore({ pool, services: { fsm, messages } }),
+    store: createDbInboundStore({
+      pool,
+      services: {
+        fsm,
+        messages,
+        // The scripted bot's turn on each message (D1b3a).
+        bot: createBotTurn({ fsm, messages, policy: new ChannelPolicyService(), log }),
+      },
+    }),
     settings: config.inbound,
   },
   ...(refresher && {

@@ -8,13 +8,18 @@
 // (config, pool, store, publisher, startWorker) must change them too (apps/worker/CLAUDE.md).
 import process from 'node:process';
 
-import { ConversationStateMachine, MessageService } from '@gani/conversations';
+import {
+  ChannelPolicyService,
+  ConversationStateMachine,
+  MessageService,
+} from '@gani/conversations';
 import { createDbPool, withTenant } from '@gani/db';
 
 import { createDbRefreshStore } from '../../dist/channels/db-store.js';
 import { createTokenRefresher } from '../../dist/channels/refresher.js';
 import { readConfig } from '../../dist/config.js';
 import { realtimeHandlers } from '../../dist/consumer/realtime-handlers.js';
+import { createBotTurn } from '../../dist/inbound/bot-turn.js';
 import { createDbInboundStore } from '../../dist/inbound/db-store.js';
 import { startHttp } from '../../dist/http.js';
 import { createLogger } from '../../dist/logger.js';
@@ -80,7 +85,14 @@ startWorker({
   settings: config.outbox,
   maintenance: createDbPartitionStore({ pool }),
   inbound: {
-    store: createDbInboundStore({ pool, services: { fsm, messages } }),
+    store: createDbInboundStore({
+      pool,
+      services: {
+        fsm,
+        messages,
+        bot: createBotTurn({ fsm, messages, policy: new ChannelPolicyService(), log }),
+      },
+    }), // same as main.ts
     settings: config.inbound,
   },
   ...(refresher && {
