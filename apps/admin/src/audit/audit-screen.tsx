@@ -90,7 +90,11 @@ export function AuditScreen({ meId }: { meId: string }) {
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    const text = (name: string) => String(data.get(name) ?? '').trim();
+    // Every field of the form is text (no file).
+    const text = (name: string) => {
+      const value = data.get(name);
+      return typeof value === 'string' ? value.trim() : '';
+    };
     const next = {
       ...filter,
       action: text('action'),
