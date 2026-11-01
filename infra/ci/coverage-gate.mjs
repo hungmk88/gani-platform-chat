@@ -19,6 +19,7 @@ export const PACKAGES = [
   'apps/api',
   'apps/worker',
   'packages/ai-core',
+  'packages/bot-runtime',
   'packages/db',
   'packages/domain',
   'packages/conversations',
