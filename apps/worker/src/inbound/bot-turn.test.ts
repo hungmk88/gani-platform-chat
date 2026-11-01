@@ -93,6 +93,9 @@ function setup(over: Partial<{ [K in keyof BotTurnStore]: unknown }> = {}, graph
     runBotTurn(tx, services, { ...INPUT, ...input });
   return { store, messages, fsm, policy, log, services, run };
 }
+/** What the turn wrote to the session (the first advance). */
+const advanced = (t: ReturnType<typeof setup>): unknown =>
+  ((t.store.advanceBotSession as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[])[1];
 const NEEDS_HUMAN = [
   tx,
   'c1',
@@ -223,6 +226,73 @@ describe('runBotTurn', () => {
     expect(await t.run({ text: 'gì cũng được' })).toBe('handed_off');
     expect(t.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
     expect(t.log.warn).not.toHaveBeenCalled();
+  });
+
+  it('jumps to the published version of another flow with the variables, at most MAX_JUMPS a turn', async () => {
+    const other = '0190a000-0000-7000-8000-000000000002';
+    const JUMPER: RuntimeGraph = {
+      nodes: [
+        n('start', 'trigger', { on: 'first_message' }),
+        n('mark', 'set_variable', { variable: 'from', value: 'jumper' }),
+        n('go', 'jump_to_flow', { flowId: other }),
+      ],
+      edges: [
+        { from: 'start', to: 'mark', label: null },
+        { from: 'mark', to: 'go', label: null },
+      ],
+    };
+    const triggers = [
+      { flowId: 'f1', versionId: 'v1', trigger: { on: 'first_message' } },
+      { flowId: other, versionId: 'v2', trigger: { on: 'keyword', keywords: ['x'] } },
+    ];
+    const versions = (second: RuntimeGraph) =>
+      vi.fn((_tx: unknown, id: string) =>
+        Promise.resolve({ graph: id === 'v1' ? JUMPER : second }),
+      );
+    const t = setup({ listBotTriggers: resolves(triggers), loadBotFlowVersion: versions(GRAPH) });
+    expect(await t.run()).toBe('active');
+    expect(t.messages.append).toHaveBeenCalledTimes(2);
+    expect(t.store.advanceBotSession).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ versionId: 'v2', nodeKey: 'pack', vars: { from: 'jumper' } }),
+    );
+    const steps = advanced(t) as {
+      steps: { nodeKey: string }[];
+    };
+    expect(steps.steps.map((x) => x.nodeKey)).toEqual([
+      'start',
+      'mark',
+      'go',
+      'start',
+      'hi',
+      'pack',
+    ]);
+    // Two flows that jump to each other: stopped after MAX_JUMPS, abandoned and handed over.
+    const loop = setup({
+      listBotTriggers: resolves(triggers),
+      loadBotFlowVersion: resolves({ graph: { ...JUMPER } }),
+    });
+    expect(await loop.run()).toBe('abandoned');
+    expect(loop.log.warn).toHaveBeenCalledWith(
+      'bot_flow_broken',
+      expect.objectContaining({ code: 'jump_limit' }),
+    );
+    expect(loop.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    // A flow that is not there: abandoned and handed over.
+    const lost = setup({
+      listBotTriggers: resolves([triggers[0]]),
+      loadBotFlowVersion: versions(GRAPH),
+    });
+    expect(await lost.run()).toBe('abandoned');
+    expect(lost.log.warn).toHaveBeenCalledWith(
+      'bot_flow_broken',
+      expect.objectContaining({ code: 'jump_target' }),
+    );
+    expect(lost.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    // Without a jump the session keeps its version.
+    const plain = setup();
+    await plain.run();
+    expect(advanced(plain)).not.toHaveProperty('versionId');
   });
 
   it('fails loud when the version of the session is missing', async () => {

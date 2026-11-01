@@ -139,6 +139,8 @@ export async function advanceBotSession(
     readonly status: BotSessionStatus;
     readonly steps: readonly BotStepRecord[];
     readonly newId: () => string;
+    /** The published version the session runs from now on: a jump_to_flow moves it to the other flow's (D1b3b, P13). */
+    readonly versionId?: string;
   },
 ): Promise<BotSessionRow> {
   const { session } = q;
@@ -146,6 +148,7 @@ export async function advanceBotSession(
   const [moved] = await tx
     .update(botSessions)
     .set({
+      ...(q.versionId === undefined ? {} : { versionId: assertUuid(q.versionId, 'versionId') }),
       currentNodeKey: q.nodeKey,
       awaiting: q.awaiting,
       vars: q.vars,

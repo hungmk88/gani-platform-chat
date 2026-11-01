@@ -26,10 +26,11 @@ import { adminPool, appPool, seedOrg, type Pool } from './db.js';
 let admin: Pool;
 let app: Pool;
 let org = '';
-const [user, withFlow, noFlow] = [uuidv7(), uuidv7(), uuidv7()];
+const [user, withFlow, noFlow, jumpWs] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const accounts = new Map<string, string>([
   [withFlow, uuidv7()],
   [noFlow, uuidv7()],
+  [jumpWs, uuidv7()],
 ]);
 const fsm = new ConversationStateMachine();
 const messages = new MessageService(fsm, undefined, undefined, { warn: () => undefined });
@@ -58,7 +59,7 @@ const GRAPH: BotGraph = {
   ],
 };
 
-async function makeFlow(ws: string, publishTimes: number) {
+async function makeFlow(ws: string, publishTimes: number, graph: BotGraph = GRAPH) {
   return withTenant(app, tenant(ws), async (tx) => {
     const { flow } = await createBotFlow(tx, {
       workspaceId: ws,
@@ -66,7 +67,7 @@ async function makeFlow(ws: string, publishTimes: number) {
       createdBy: user,
       newId: uuidv7,
     });
-    await saveBotFlowDraft(tx, { flowId: flow.id, graph: GRAPH, savedBy: user, newId: uuidv7 });
+    await saveBotFlowDraft(tx, { flowId: flow.id, graph, savedBy: user, newId: uuidv7 });
     let versionId = '';
     for (let i = 0; i < publishTimes; i++)
       ({ versionId } = await publishBotFlow(tx, {
@@ -183,6 +184,39 @@ describe('the bot in the inbound transaction', () => {
       { node_key: 'pack', edge_label: null, variable: 'pack' },
       { node_key: 'done', edge_label: null, variable: null },
     ]);
+  });
+
+  it('jumps to the published version of another flow of the workspace, the session moved to it (D1b3b)', async () => {
+    const target = await makeFlow(jumpWs, 1, {
+      ...GRAPH,
+      nodes: GRAPH.nodes.map((node) =>
+        node.type === 'trigger' ? { ...node, config: { on: 'keyword', keywords: ['zzz'] } } : node,
+      ),
+    });
+    await makeFlow(jumpWs, 1, {
+      nodes: [
+        { key: 'start', type: 'trigger', config: { on: 'first_message' } },
+        { key: 'go', type: 'jump_to_flow', config: { flowId: target.flowId } },
+      ],
+      edges: [{ from: 'start', to: 'go', label: null }],
+    });
+    const person = `zu-${uuidv7()}`;
+    await say(jumpWs, person, 'xin chào');
+    const conversation = await conversationOf(person);
+    expect(
+      await rows(
+        'SELECT version_id, status, current_node_key FROM bot_sessions WHERE conversation_id = $1',
+        [conversation.id],
+      ),
+    ).toEqual([{ version_id: target.versionId, status: 'active', current_node_key: 'pack' }]);
+    expect(
+      (
+        await rows<{ node_key: string }>(
+          'SELECT node_key FROM bot_session_steps WHERE conversation_id = $1 ORDER BY step_index',
+          [conversation.id],
+        )
+      ).map((r) => r.node_key),
+    ).toEqual(['start', 'go', 'start', 'hi', 'pack']);
   });
 
   it('hands a conversation to a person when no flow fits (T02)', async () => {

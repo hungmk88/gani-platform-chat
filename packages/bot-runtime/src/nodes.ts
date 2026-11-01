@@ -1,7 +1,7 @@
-// The core node types of the scripted bot (D1b2, Brief P13): trigger, message, question, condition, set_variable, end. Each is a
-// pure handler for BotRuntime.step; the config of a node is the set A approved for D1a3 (bot-flows.schemas.ts). The handlers keep no
-// state of their own and read no clock, so a turn the worker runs again after a crash (the session was not advanced) gives the same
-// result. Which flow starts (keyword, intent, after hours) is chosen by the caller before the trigger runs (D1b3).
+// The node types of the scripted bot (Brief P13): trigger, message, question, condition, set_variable, end (D1b2); handoff and
+// jump_to_flow (D1b3b). Each is a pure handler for BotRuntime.step; the config of a node is the set A approved for D1a3
+// (bot-flows.schemas.ts). The handlers keep no state of their own and read no clock, so a turn the worker runs again after a crash
+// (the session was not advanced) gives the same result. Which flow starts (keyword, intent, after hours) is chosen by the caller before the trigger runs (D1b3).
 //
 // Edges: a condition takes the edge labelled "true" or "false", else the unlabelled one; a choice question takes the edge labelled
 // with the chosen choice, else the unlabelled one. A question asked MAX_ATTEMPTS times without a valid answer hands over.
@@ -23,6 +23,8 @@ export const MAX_ATTEMPTS = 3;
 const MAX_TEXT_ANSWER = 500;
 const VARIABLE = /^[a-z][a-z0-9_]{0,63}$/;
 const KINDS = new Set(['text', 'phone', 'number', 'choice']);
+const PRIORITY = /^(?:normal|high|urgent)$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const NEXT: NodeResult = { outcome: { kind: 'next' } };
 
@@ -150,5 +152,20 @@ export function coreHandlers(context: Readonly<Record<string, ScopeGroup>>): Han
       },
     },
     end: { enter: () => ({ outcome: { kind: 'end' } }) },
+    // The caller asks the state machine for a person (T02); the reason and the priority go with the effect (D1b3b).
+    handoff: {
+      enter: (node) => {
+        const reason = configString(node, 'reason');
+        const priority = configString(node, 'priority', PRIORITY);
+        return { outcome: { kind: 'handoff' }, effects: [{ kind: 'handoff', reason, priority }] };
+      },
+    },
+    // The session ends here and goes on in the published version of the other flow, its variables kept (P13); the caller loads it.
+    jump_to_flow: {
+      enter: (node) => ({
+        outcome: { kind: 'end' },
+        effects: [{ kind: 'jump', flowId: configString(node, 'flowId', UUID) }],
+      }),
+    },
   };
 }
