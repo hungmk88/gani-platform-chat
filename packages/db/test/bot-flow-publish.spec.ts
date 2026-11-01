@@ -8,6 +8,7 @@ import {
   BotGraphInvalidError,
   createBotFlow,
   createDbPool,
+  deleteBotFlow,
   listBotFlows,
   loadBotFlow,
   loadBotFlowVersion,
@@ -181,7 +182,9 @@ describe('bot-flow-store: publish and list', () => {
     });
     expect(first.versionId).not.toBe(second.versionId);
     expect(await as(B, (tx) => loadBotFlow(tx, flow.id))).toBeNull();
-    await admin.query('UPDATE bot_flows SET deleted_at = now() WHERE id = $1', [flow.id]);
+    expect(await as(B, (tx) => deleteBotFlow(tx, flow.id))).toBe(false);
+    expect(await as(A, (tx) => deleteBotFlow(tx, flow.id))).toBe(true);
+    expect(await as(A, (tx) => deleteBotFlow(tx, flow.id))).toBe(false);
     expect(await as(A, (tx) => loadBotFlow(tx, flow.id))).toBeNull();
   });
 });

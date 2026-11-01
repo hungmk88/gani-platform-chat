@@ -18,7 +18,7 @@ import { setupApp } from './app-setup.js';
 import { AppModule } from './app.module.js';
 import { hashPassword } from './modules/auth/password.js';
 
-// /v1/bot-flows (D1a3a, U63) over HTTP with the whole application and PostgreSQL. Org A: an owner (with a second factor), a manager, a
+// /v1/bot-flows (D1a3a and D1a3b, U63) over HTTP with the whole application and PostgreSQL. Org A: an owner (with a second factor), a manager, a
 // sales and a marketing, all in workspace W; W2 has nobody of them but a flow. Org B: a workspace.
 const need = (name: string): string => {
   const value = process.env[name];
@@ -202,5 +202,98 @@ describe('/v1/bot-flows', () => {
       { workspaceId: W },
     ])
       expect((await call('manager', 'POST', '', bad)).status).toBe(400);
+  });
+
+  it('saves a draft, refuses a node of Đợt 2 (400) and a graph that cannot run (422), publishes and audits it', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Lưu' })).body['id'],
+    );
+    expect((await call('manager', 'POST', `/${id}/versions`)).body).toMatchObject({
+      status: 422,
+      code: 'bot_flow_graph_invalid',
+    });
+    const saved = await call('manager', 'PUT', `/${id}/draft`, GRAPH);
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({
+      version: 1,
+      draft: { status: 'draft', graph: GRAPH },
+      published: null,
+    });
+    const ai = { ...GRAPH, nodes: [...GRAPH.nodes, { key: 'ai', type: 'ai_answer', config: {} }] };
+    expect((await call('manager', 'PUT', `/${id}/draft`, ai)).status).toBe(400);
+    const extra = {
+      ...GRAPH,
+      nodes: [{ key: 'done', type: 'end', config: { x: 1 } }, GRAPH.nodes[1]],
+    };
+    expect((await call('manager', 'PUT', `/${id}/draft`, extra)).status).toBe(400);
+    const two = {
+      nodes: [...GRAPH.nodes, { key: 's2', type: 'trigger', config: { on: 'first_message' } }],
+      edges: [],
+    };
+    const refused = await call('manager', 'PUT', `/${id}/draft`, two);
+    expect(refused.body).toMatchObject({ status: 422, code: 'bot_flow_graph_invalid' });
+    expect(String(refused.body['detail'])).toContain('trigger_count');
+    const first = await call('owner', 'POST', `/${id}/versions`);
+    expect(first.status).toBe(201);
+    expect(first.body).toMatchObject({
+      status: 'active',
+      publishedVersion: 1,
+      published: { version: 1, graph: GRAPH },
+    });
+    expect((await call('owner', 'POST', `/${id}/versions`)).body).toMatchObject({
+      publishedVersion: 2,
+    });
+    const { rows } = await q(
+      `SELECT action, actor_user_id, detail FROM audit_logs WHERE org_id = $1 AND target_id = $2 ORDER BY created_at, id`,
+      [orgA, id],
+    );
+    expect(rows).toEqual([
+      { action: 'bot_flow.published', actor_user_id: people['owner'], detail: { version: 1 } },
+      { action: 'bot_flow.published', actor_user_id: people['owner'], detail: { version: 2 } },
+    ]);
+  });
+
+  it('deletes a flow (soft, audited), after which it is gone from the list and from every path', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Xóa' })).body['id'],
+    );
+    expect((await call('manager', 'DELETE', `/${id}`)).status).toBe(204);
+    const { rows } = await q(
+      `SELECT action, detail FROM audit_logs WHERE org_id = $1 AND target_id = $2`,
+      [orgA, id],
+    );
+    expect(rows).toEqual([{ action: 'bot_flow.deleted', detail: {} }]);
+    expect((await call('manager', 'GET', `?workspaceId=${W}`)).body['data']).not.toContainEqual(
+      expect.objectContaining({ id }),
+    );
+    for (const [method, path, body] of [
+      ['GET', `/${id}`],
+      ['DELETE', `/${id}`],
+      ['PUT', `/${id}/draft`, GRAPH],
+      ['POST', `/${id}/versions`],
+    ] as const)
+      expect((await call('manager', method, path, body)).status).toBe(404);
+  });
+
+  it('keeps the writes to builders of the session’s workspaces', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Quyền' })).body['id'],
+    );
+    const writes = (flow: string) =>
+      [
+        ['PUT', `/${flow}/draft`, GRAPH],
+        ['POST', `/${flow}/versions`],
+        ['DELETE', `/${flow}`],
+      ] as const;
+    for (const [method, path, body] of writes(id))
+      expect((await call('sales', method, path, body)).status).toBe(403);
+    // Publishing makes data: without its Idempotency-Key it is a 400 (N134), and nothing is published.
+    const bare = await fetch(`${url}/v1/bot-flows/${id}/versions`, {
+      method: 'POST',
+      headers: { cookie: cookies['manager'] ?? '', origin: ORIGIN },
+    });
+    expect(bare.status).toBe(400);
+    for (const [method, path, body] of writes(inW2))
+      expect((await call('manager', method, path, body)).status).toBe(404);
   });
 });

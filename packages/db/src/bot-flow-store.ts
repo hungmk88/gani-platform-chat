@@ -337,3 +337,13 @@ export async function loadBotFlow(
   const published = versions.find((v) => v.status === 'published');
   return { ...flow, draftVersionId: draft!.id, publishedVersionId: published?.id ?? null };
 }
+
+/** Ends the live flow `id` (deleted_at); its versions stay, frozen. False when there is no such live flow. */
+export async function deleteBotFlow(tx: TenantTx, id: string): Promise<boolean> {
+  const rows = await tx
+    .update(botFlows)
+    .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+    .where(and(eq(botFlows.id, assertUuid(id, 'id')), isNull(botFlows.deletedAt)))
+    .returning({ id: botFlows.id });
+  return rows.length === 1;
+}
