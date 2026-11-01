@@ -1,11 +1,11 @@
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 
 import { botEdges, botFlowVersions, botFlows, botNodes } from './schema/bot-flows.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
 import { assertUuid } from './validate.js';
 
-// The scripted bot flows of a workspace and their graphs (D1a2a, Brief P13, N178). Row-level security keeps them to the transaction's
+// The scripted bot flows of a workspace and their graphs (D1a2a and D1a2b, Brief P13, N178, N179). Row-level security keeps them to the transaction's
 // organisation; who may write them (an Owner, an Admin or a Manager) and whether the workspace is the session's are the caller's
 // checks (D1a3). Nothing is deleted (spec RLS M01 §2, option (a)): saving a draft gives the old draft up (discarded) and writes the
 // whole graph as a new draft version, so a graph is written once (BF001 refuses it afterwards).
@@ -240,4 +240,76 @@ export async function loadBotFlowVersion(
         .sort((x, y) => (byKeys(x) < byKeys(y) ? -1 : 1)),
     },
   };
+}
+
+/**
+ * Publishes the draft of the flow: the flow is locked, the draft's graph checked again (an empty draft is never published), the draft
+ * becomes published version max + 1, a new draft copies its graph, and the flow is active. BotGraphInvalidError, nothing written,
+ * when the draft cannot run; BotFlowNotFoundError for no live flow.
+ */
+export async function publishBotFlow(
+  tx: TenantTx,
+  q: { readonly flowId: string; readonly publishedBy: string; readonly newId: () => string },
+): Promise<{ flow: BotFlowRow; versionId: string; version: number; draftVersionId: string }> {
+  const flowId = assertUuid(q.flowId, 'flowId');
+  if (!(await lockBotFlow(tx, flowId))) throw new BotFlowNotFoundError();
+  const [draft] = await tx
+    .select({ id: botFlowVersions.id })
+    .from(botFlowVersions)
+    .where(and(eq(botFlowVersions.flowId, flowId), eq(botFlowVersions.status, 'draft')));
+  const { graph } = (await loadBotFlowVersion(tx, draft!.id)) as BotFlowVersionRow;
+  const problem = botGraphProblem(graph);
+  if (problem) throw new BotGraphInvalidError(problem);
+  const [{ version }] = (await tx
+    .select({ version: sql<number>`coalesce(max(${botFlowVersions.version}), 0)::int + 1` })
+    .from(botFlowVersions)
+    .where(eq(botFlowVersions.flowId, flowId))) as [{ version: number }];
+  const publishedBy = assertUuid(q.publishedBy, 'publishedBy');
+  await tx
+    .update(botFlowVersions)
+    .set({
+      status: 'published',
+      version,
+      publishedAt: sql`now()`,
+      publishedBy,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(botFlowVersions.id, draft!.id));
+  const draftVersionId = assertUuid(q.newId(), 'newId');
+  await tx.insert(botFlowVersions).values({
+    id: draftVersionId,
+    orgId: currentTenantContext().orgId,
+    flowId,
+    createdBy: publishedBy,
+  });
+  await insertGraph(tx, draftVersionId, graph, q.newId);
+  await tx
+    .update(botFlows)
+    .set({ status: 'active', version: sql`${botFlows.version} + 1`, updatedAt: sql`now()` })
+    .where(eq(botFlows.id, flowId));
+  const flow = (await lockBotFlow(tx, flowId)) as BotFlowRow;
+  return { flow, versionId: draft!.id, version, draftVersionId };
+}
+
+/** The live flows of a workspace, last changed first, each with the number of its latest published version (null: never published). */
+export async function listBotFlows(
+  tx: TenantTx,
+  q: { readonly workspaceId: string },
+): Promise<(BotFlowRow & { publishedVersion: number | null })[]> {
+  // Written out: in a one-table select, Drizzle leaves the outer columns unqualified, and they would bind to bot_flow_versions.
+  return tx
+    .select({
+      ...flowColumns,
+      publishedVersion: sql<number | null>`(SELECT max(v.version) FROM bot_flow_versions v
+        WHERE v.org_id = bot_flows.org_id AND v.flow_id = bot_flows.id)`,
+    })
+    .from(botFlows)
+    .where(
+      and(
+        eq(botFlows.workspaceId, assertUuid(q.workspaceId, 'workspaceId')),
+        isNull(botFlows.deletedAt),
+      ),
+    )
+    .orderBy(desc(botFlows.updatedAt), desc(botFlows.id))
+    .limit(200);
 }
