@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import type { NavItem } from '../nav';
-import { Paged } from '../paged-list';
+import { button, Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
 import { ALERT_KIND, SEVERITY, type Severity } from './labels';
@@ -17,7 +17,6 @@ import {
 } from './security';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
-const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
 const TONE = { warn: 'bg-warn-bg text-warn-text', error: 'bg-error-bg text-error-text' };
 const STATUS: Readonly<Record<IncidentStatus, string>> = { open: 'Đang mở', closed: 'Đã đóng' };
 
