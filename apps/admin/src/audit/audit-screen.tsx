@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useState, useSyncExternalStore, type FormEvent } from 'react';
 
 import { Paged } from '../paged-list';
 import { useApiPages } from '../query/provider';
@@ -68,6 +68,14 @@ function Detail({ detail }: { detail: AuditLog['detail'] }) {
   );
 }
 
+/** The browser's time for the 7 days: null on the server and while hydrating, so both render the same (React #418, 01/11). */
+function useBrowserNow(): Date | null {
+  const [opened] = useState(() => new Date());
+  return useSyncExternalStore(noChange, () => opened, serverNull);
+}
+const noChange = () => () => {};
+const serverNull = () => null;
+
 /**
  * #28 Audit log of the company (CEO 31/10), read only: the filters in the URL like the Inbox, the last 7 days of Viet Nam unless
  * other days are chosen, pages by cursor. A person is named by the last 8 characters of their id until the API gives names (U72);
@@ -76,17 +84,19 @@ function Detail({ detail }: { detail: AuditLog['detail'] }) {
 export function AuditScreen({ meId }: { meId: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [now] = useState(() => new Date());
-  const filter = auditFilterOf(useSearchParams(), now, meId);
-  const logs = useApiPages<AuditLogList>(['audit-logs', filter], (c) => logsPath(filter, c));
+  const now = useBrowserNow();
+  const at = now ?? new Date(0); // until the browser's time is known: no days shown, nothing asked
+  const filter = auditFilterOf(useSearchParams(), at, meId);
+  const logs = useApiPages<AuditLogList>(['audit-logs', filter], (c) => logsPath(filter, c), !!now);
   const [problem, setProblem] = useState<string | null>(null);
-  const query = auditParamsOf(filter, now).toString();
+  const query = auditParamsOf(filter, at).toString();
+  const formKey = now ? query : 'waiting'; // the days fill in once the browser's time is known
   const go = (f: AuditFilter) => {
     setProblem(null);
-    const q = auditParamsOf(f, now).toString();
+    const q = auditParamsOf(f, at).toString();
     router.replace(q ? `${pathname}?${q}` : pathname);
   };
-  const clear = () => go({ actorUserId: null, action: '', targetType: '', ...defaultWindow(now) });
+  const clear = () => go({ actorUserId: null, action: '', targetType: '', ...defaultWindow(at) });
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
@@ -142,14 +152,14 @@ export function AuditScreen({ meId }: { meId: string }) {
           </span>
         ) : null}
       </div>
-      <form key={query} noValidate onSubmit={submit} className="flex flex-wrap items-end gap-4">
+      <form key={formKey} noValidate onSubmit={submit} className="flex flex-wrap items-end gap-4">
         {FIELDS.map(([label, name, hint]) => (
           <label key={name} className="flex flex-col gap-1">
             {label}
             <input
               name={name}
-              defaultValue={filter[name]}
-              {...(hint ? { placeholder: hint, maxLength: 64 } : { type: 'date', max: vnDay(now) })}
+              defaultValue={hint || now ? filter[name] : ''}
+              {...(hint ? { placeholder: hint, maxLength: 64 } : { type: 'date', max: vnDay(at) })}
               className={`${field} ${hint ? 'font-mono' : ''}`}
             />
           </label>
@@ -164,11 +174,13 @@ export function AuditScreen({ meId }: { meId: string }) {
           {problem}
         </p>
       ) : null}
-      {isDefaultWindow(filter, now) ? null : (
+      {!now || isDefaultWindow(filter, now) ? null : (
         <p className="text-12 text-text-muted">Bỏ lọc sẽ đưa về 7 ngày gần nhất.</p>
       )}
-      <p>
-        Đang xem từ {dayText(filter.from)} đến {dayText(filter.to)} (giờ Việt Nam)
+      <p role={now ? undefined : 'status'} className={now ? undefined : 'text-text-muted'}>
+        {now
+          ? `Đang xem từ ${dayText(filter.from)} đến ${dayText(filter.to)} (giờ Việt Nam)`
+          : 'Đang tải khoảng thời gian…'}
       </p>
       <Paged
         query={logs}

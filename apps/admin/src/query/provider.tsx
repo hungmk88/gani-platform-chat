@@ -56,6 +56,7 @@ export function useApiQuery<T>(parts: readonly unknown[], path: string, enabled 
 export function useApiPages<T extends { readonly nextCursor: string | null }>(
   parts: readonly unknown[],
   pathOf: (cursor: string | null) => string,
+  enabled = true,
 ) {
   const scope = useContext(ScopeContext);
   if (!scope) throw new Error('useApiPages outside QueryProvider');
@@ -64,6 +65,7 @@ export function useApiPages<T extends { readonly nextCursor: string | null }>(
     queryFn: ({ pageParam, signal }) => getter<T>(pathOf(pageParam))({ signal }),
     initialPageParam: null,
     getNextPageParam: (last) => last.nextCursor,
+    enabled,
   });
 }
 
