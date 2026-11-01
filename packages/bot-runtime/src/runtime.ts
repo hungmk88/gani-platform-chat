@@ -63,16 +63,17 @@ export interface NodeResult {
   readonly variable?: string;
 }
 
+/** Plain functions, not methods: the runtime calls them detached from the handler object. */
 export interface NodeHandler {
   /** The node is reached. */
-  enter(node: RuntimeNode, vars: Readonly<Record<string, VarValue>>): NodeResult;
+  readonly enter: (node: RuntimeNode, vars: Readonly<Record<string, VarValue>>) => NodeResult;
   /** The customer answered while the node waited; only for nodes that wait. */
-  resume?(
+  readonly resume?: (
     node: RuntimeNode,
     awaiting: Readonly<Record<string, unknown>>,
     text: string,
     vars: Readonly<Record<string, VarValue>>,
-  ): NodeResult;
+  ) => NodeResult;
 }
 
 export type Handlers = Readonly<Record<string, NodeHandler>>;
