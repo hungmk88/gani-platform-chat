@@ -35,6 +35,7 @@ export default defineConfig({
         'src/outbox-store.ts',
         'src/password-reset-store.ts',
         'src/quick-reply-store.ts',
+        'src/bot-flow-store.ts',
         'src/customer-store.ts',
         'src/customer-read.ts',
         'src/tenant-tx.ts',
