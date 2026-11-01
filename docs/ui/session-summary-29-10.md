@@ -2,7 +2,7 @@
 
 Nạp cho phiên mới, đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/admin/CLAUDE.md` → file này → `QUESTIONS.md` (U57–U60).
 Phiên trước: `docs/ui/session-summary-28-10.md` (mục 2–4, 9 vẫn đúng, trừ chỗ file này sửa). Người giao việc: CEO (xưng "anh",
-FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 01/11, `main` ở `14a8fdc`.
+FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 01/11, `main` ở `803d0bd`.
 
 ## 1. Đã merge vào `main` trong phiên
 
@@ -339,6 +339,22 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **Race `requestAnimationFrame` của "Chèn biến" (#22, `quick-reply-form.tsx` + `quick-reply-dialogs.tsx`): đã xong ở #504**
   (squash `477f704`, merge 12:02:34 UTC theo commit squash; E2E làm chậm `requestAnimationFrame` 300 ms, đỏ trên mã cũ). Brief
   CEO 01/11 (việc 6) giao lại việc này: không mở PR mới.
+- **Ba luật mới (01/11/2026, ký A (CEO)), đã ghi vào `CLAUDE.md` gốc:** (1) bỏ docker ở local: local chỉ cần lint, typecheck,
+  unit test, format, build, E2E; `docker images`, `database`, `queue`, `terraform`, `coverage` để CI kiểm, không mirror, không
+  `dockerd`; (2) trần dòng 400 mặc định, 500 cho PR code khi phần vượt là test bắt buộc; (3) tầng 1 code tự push, tự merge, báo
+  sau (gộp cả phiên, 3 mục mỗi PR), chỉ khi protection còn `strict`, `enforce_admins`, 9 required check. Luật "chạy docker ở
+  local, không chạy được thì dừng" chỉ có trong brief chiều 01/11, handoff chưa từng ghi: nay hết hiệu lực. Lý do: mỗi PR mất 4–5
+  vòng brief.
+- **`main` đi trước khi PR đang chờ: dùng "Update branch" của GitHub** (CEO 01/11, sau khi `git merge origin/main` ở local bị
+  hệ thống quyền từ chối hai lần trên #514). GitHub tạo commit merge trên nhánh (ví dụ `7c82839`); squash-merge vẫn cho một
+  commit một cha trên `main`.
+- **Bot Engine (CEO 01/11) đã merge:** A1 #512 danh sách (squash `5aa652a`, 13:53:23 UTC), A2 #514 chi tiết (`6356b02`,
+  14:19:32), B #516 các bước dạng danh sách (`803d0bd`, 14:46:47; 416 dòng, trần 500 vì test bắt buộc). Mỗi PR: CI 9/9 trước
+  và sau merge, `docker images` chạy thật. Nhánh `feat/bot-a1-list`, `feat/bot-a2-detail`, `feat/bot-b-graph` (đổi tên nhánh
+  mỗi PR để hook không đếm nhầm commit squash).
+- **Rà tính năng BE (FE đọc mã, `main` `6356b02`, 01/11):** 58 mã Đợt 1 theo bảng P7 của Brief Backend (file "135 mã" không có
+  trong repo): có 12, một phần 19, chưa 25, chưa xác định 2 (C20, D15 không có định nghĩa). Bảng đủ 58 dòng kèm bằng chứng đã
+  gửi CEO trong phiên; báo cáo BE 31/10 (`docs/reviews/backend-progress-20261031.md`) ghi 17,5/58.
 - **Luật hủy heads-up (CEO 01/11, nguyên văn, áp dụng ngay):** Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó,
   gồm push, heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment
   gỡ hold từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff. Đã ghi vào `CLAUDE.md` gốc, mục GIT WORKFLOW, cùng dòng "tự
