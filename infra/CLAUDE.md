@@ -80,7 +80,7 @@ infra/
   - **Lý do ngoại lệ an toàn:** nhờ fail-safe ở trên, docker chỉ bị bỏ khi đã xác định chắc PR không đụng thứ image đọc. Mọi trường hợp không chắc đều làm docker chạy.
 
 ### Coverage (job `coverage`, `infra/ci/coverage-gate.mjs` + test cùng thư mục; anh duyệt 30/10)
-- **Ngưỡng từng file** của backend (`apps/api`, `apps/worker`, `packages/{ai-core,db,domain,conversations,channels,email}`): dòng ≥ 80 %, nhánh ≥ 70 %, tính trên unit **gộp** integration.
+- **Ngưỡng từng file** của backend (`apps/api`, `apps/worker`, `packages/{ai-core,bot-runtime,db,domain,conversations,channels,email}`): dòng ≥ 80 %, nhánh ≥ 70 %, tính trên unit **gộp** integration.
 - **Cách gộp:** theo vị trí trong mã nguồn, không theo số thứ tự câu lệnh (như bản rà 30/10, #423). Script chỉ dùng Node, không cần cài workspace.
 - **Đổi config có chủ đích, không phải nhầm:**
   - `packages/config/vitest.base.mjs` thêm reporter `json` để job `coverage` đọc được `coverage/coverage-final.json` của unit.
