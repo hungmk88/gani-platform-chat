@@ -43,7 +43,13 @@ export function Paged<R extends { readonly id: string }>({
   ) : null;
   if (!query.data) return failed;
   const rows = uniqueRows(query.data.pages);
-  if (rows.length === 0) return empty;
+  if (rows.length === 0)
+    return (
+      <>
+        {empty}
+        {failed}
+      </>
+    );
   return (
     <>
       <div className="overflow-x-auto rounded-card border border-border">

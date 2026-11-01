@@ -23,6 +23,7 @@ const ACTION = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/;
 const MAX_ACTION = 64;
 const TARGET_TYPE = /^[a-z][a-z0-9_]{0,63}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Viet Nam has no summer time: a day starts at 00:00 +07:00 all year. */
 const VN = '+07:00';
 const DAYS_SHOWN = 7;
@@ -50,20 +51,59 @@ export function defaultWindow(now: Date): Pick<AuditFilter, 'from' | 'to'> {
   return { from: addDays(today, 1 - DAYS_SHOWN), to: today };
 }
 
+/** A real `YYYY-MM-DD` day (not 2026-02-30, which a Date reads as 2026-03-02). */
+const isDay = (day: string): boolean =>
+  DAY.test(day) && !Number.isNaN(Date.parse(`${day}T00:00:00Z`)) && addDays(day, 0) === day;
+const isAction = (a: string): boolean => a.length <= MAX_ACTION && ACTION.test(a);
+
 /** `dd/mm/yyyy` of a `YYYY-MM-DD` day, for the line above the table. */
 export const dayText = (day: string): string => day.split('-').reverse().join('/');
 
 /** What is wrong with the filter, as the API would refuse it (400), or null. */
 export function filterProblem(f: AuditFilter): string | null {
   const action = f.action.trim();
-  if (action && (action.length > MAX_ACTION || !ACTION.test(action)))
+  if (action && !isAction(action))
     return 'Hành động viết dạng <vật>.<động từ>, chữ thường không dấu, ví dụ member.role_changed.';
   const target = f.targetType.trim();
   if (target && !TARGET_TYPE.test(target))
     return 'Loại đối tượng viết chữ thường không dấu, ví dụ member.';
-  if (!DAY.test(f.from) || !DAY.test(f.to)) return 'Chọn ngày bắt đầu và ngày kết thúc.';
+  if (!isDay(f.from) || !isDay(f.to)) return 'Chọn ngày bắt đầu và ngày kết thúc.';
   if (f.from > f.to) return 'Ngày bắt đầu phải trước hoặc trùng ngày kết thúc.';
   return null;
+}
+
+/** The days are the 7 the screen opens on. */
+export function isDefaultWindow(f: AuditFilter, now: Date): boolean {
+  const w = defaultWindow(now);
+  return f.from === w.from && f.to === w.to;
+}
+
+/** The filter of the page's URL: a part the API would refuse is dropped, never sent; no days or bad days are the 7 days. */
+export function auditFilterOf(params: URLSearchParams, now: Date, meId: string): AuditFilter {
+  const actor = params.get('actor') ?? '';
+  const action = (params.get('action') ?? '').trim();
+  const target = (params.get('target') ?? '').trim();
+  const from = params.get('from') ?? '';
+  const to = params.get('to') ?? '';
+  return {
+    actorUserId: actor && (actor === meId || UUID.test(actor)) ? actor : null,
+    action: isAction(action) ? action : '',
+    targetType: TARGET_TYPE.test(target) ? target : '',
+    ...(isDay(from) && isDay(to) && from <= to ? { from, to } : defaultWindow(now)),
+  };
+}
+
+/** The URL of a filter: the 7 days and no filter are an empty query. */
+export function auditParamsOf(f: AuditFilter, now: Date): URLSearchParams {
+  const p = new URLSearchParams();
+  if (f.actorUserId) p.set('actor', f.actorUserId);
+  if (f.action.trim()) p.set('action', f.action.trim());
+  if (f.targetType.trim()) p.set('target', f.targetType.trim());
+  if (!isDefaultWindow(f, now)) {
+    p.set('from', f.from);
+    p.set('to', f.to);
+  }
+  return p;
 }
 
 /** The request of one page: `to` is the day after the last day shown (the API leaves `to` out). */
