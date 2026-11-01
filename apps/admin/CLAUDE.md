@@ -155,10 +155,10 @@ Trang mặc định sau đăng nhập:
 
 ## Bot (#17, D1a3a)
 
-- `/bots`, **Owner/Admin/Manager** như menu và API (`bot-flows.permissions.ts`, A7 của `permissions-sync.test.ts`); vai trò khác 404 trong khung. **API thật** (#496), Đợt 1 **chỉ đọc** (CEO 01/11, chọn C): **không** nút tạo, sửa, lưu nháp, xuất bản, xóa (hợp đồng có các đường đó, FE không gọi). Không áp dụng AI.
+- `/bots` và `/bots/[id]`, **Owner/Admin/Manager** như menu và API (`bot-flows.permissions.ts`, A7 của `permissions-sync.test.ts`); vai trò khác 404 trong khung. **API thật** (#496), Đợt 1 **chỉ đọc** (CEO 01/11, chọn C): **không** nút tạo, sửa, lưu nháp, xuất bản, xóa (hợp đồng có các đường đó, FE không gọi). Không áp dụng AI.
 - Danh sách: `GET /v1/bot-flows?workspaceId=` của **workspace đang chọn**, đổi gần nhất trước, **tối đa 200, không cursor**: tên (link `/bots/[id]`), trạng thái (`draft` "Nháp, chưa xuất bản", `active` "Đang chạy" xanh, `inactive` "Tạm dừng" vàng), "Phiên bản n" / "Chưa xuất bản", cập nhật (giờ Việt Nam). Đủ 200 dòng thì "Đang hiện 200 flow đổi gần nhất." (200 có cắt flow hay không: U77 (c)). Trống: "Workspace chưa có flow nào." + "Làm mới"; lỗi: câu + mã + "Thử lại"; 404 → `PendingPage` (`src/bots/bot-flows.ts` + `flow-list.tsx`). Mô tả flow: chưa có trong hợp đồng (U77 (a)).
-- Chi tiết `/bots/[id]` (không đồ thị): PR A2, sau A1 (CEO 01/11); tới lúc đó link trên dòng ra 404 trong khung. Đồ thị chỉ đọc: phần B (danh sách có cấu trúc, không thêm thư viện).
-- API giả: `e2e/stub-bot-flows.ts` (ba flow: đang chạy, tạm dừng, nháp chưa xuất bản; phần chi tiết thêm ở A2); trống/lỗi/404/200 flow bằng `page.route` trong `e2e/bots.spec.ts`.
+- Chi tiết `/bots/[id]` (A2, CEO 01/11): `GET /v1/bot-flows/{id}`: tên, trạng thái, bản đã xuất bản (phiên bản, giờ xuất bản, số bước và đường nối), bản nháp (số bước và đường nối; trống / chưa xuất bản lần nào / giống / có thay đổi so với bản đã xuất bản: so đồ thị không phụ thuộc thứ tự node, cạnh, khóa config, `draftText`), tạo lúc, cập nhật lúc. Đang tải; lỗi: câu + mã + "Thử lại"; không có hoặc không được xem (404, cả id sai dạng): "Không tìm thấy flow" + link về danh sách (`flow-view.tsx`). **Không đồ thị**: phần B (danh sách có cấu trúc, không thêm thư viện).
+- API giả: `e2e/stub-bot-flows.ts` (ba flow: đang chạy có nháp khác, tạm dừng nháp giống, nháp trống chưa xuất bản; danh sách và `GET /v1/bot-flows/{id}`); trống/lỗi/404/200 flow, chi tiết đang tải/lỗi bằng `page.route` trong `e2e/bots.spec.ts`.
 
 ## Tổng quan (#16)
 

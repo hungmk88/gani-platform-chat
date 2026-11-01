@@ -16,7 +16,7 @@ import {
 } from './bot-flows';
 
 const button = 'self-start rounded-input border border-border-strong px-3 py-1 disabled:opacity-70';
-const TONE = { ok: 'bg-ok-bg text-ok-text', warn: 'bg-warn-bg text-warn-text' };
+export const TONE = { ok: 'bg-ok-bg text-ok-text', warn: 'bg-warn-bg text-warn-text' };
 
 /**
  * #17 Danh sách bot flow of the workspace being worked in (T1), last changed first, read only (CEO 01/11: no create, edit, publish,
