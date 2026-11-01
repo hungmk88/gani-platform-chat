@@ -182,6 +182,31 @@ describe('core nodes', () => {
     expect(() => step(GRAPH, FRESH, { kind: 'start' }, boom)).toThrow('bug');
   });
 
+  it('hands over with the reason and priority, and jumps to another flow by ending with a jump', () => {
+    const flowId = '0190a000-0000-7000-8000-000000000001';
+    const run = (node: RuntimeNode) =>
+      step(
+        { nodes: [n('start', 'trigger'), node], edges: [e('start', node.key)] },
+        FRESH,
+        { kind: 'start' },
+        handlers,
+      );
+    expect(run(n('h', 'handoff', { reason: 'Khiếu nại', priority: 'urgent' }))).toMatchObject({
+      status: 'handed_off',
+      effects: [{ kind: 'handoff', reason: 'Khiếu nại', priority: 'urgent' }],
+    });
+    expect(run(n('j', 'jump_to_flow', { flowId }))).toMatchObject({
+      status: 'completed',
+      effects: [{ kind: 'jump', flowId }],
+    });
+    for (const node of [
+      n('h', 'handoff', { reason: 'x', priority: 'asap' }),
+      n('h', 'handoff', { priority: 'high' }),
+      n('j', 'jump_to_flow', { flowId: 'not-a-uuid' }),
+    ])
+      expect(run(node).error, JSON.stringify(node)).toBe('bad_config');
+  });
+
   it('counts an attempt from zero when the awaiting state lost it', () => {
     const lost: SessionState = { nodeKey: 'phone', awaiting: {}, vars: {} };
     expect(step(GRAPH, lost, { kind: 'message', text: 'x' }, handlers).state.awaiting).toEqual({
