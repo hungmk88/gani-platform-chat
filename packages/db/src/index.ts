@@ -39,6 +39,7 @@ export * from './password-reset-store.js';
 export * from './quick-reply-store.js';
 export * from './bot-flow-store.js';
 export * from './bot-session-store.js';
+export * from './bot-trigger-read.js';
 export * from './customer-store.js';
 export * from './customer-read.js';
 export { pingDb } from './ping.js';
