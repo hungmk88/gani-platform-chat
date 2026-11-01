@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   actorOf,
   addDays,
+  auditFilterOf,
+  auditParamsOf,
   dayText,
   defaultWindow,
   detailLines,
@@ -76,6 +78,31 @@ describe('Audit log (#28)', () => {
       'Ngày bắt đầu phải trước hoặc trùng ngày kết thúc.',
     );
     expect(filterProblem({ ...week, from: '2026-10-31' })).toBeNull();
+    expect(filterProblem({ ...week, from: '2026-02-30' })).toBe(
+      'Chọn ngày bắt đầu và ngày kết thúc.',
+    );
+  });
+
+  it('keeps the filter in the URL, dropping what the API would refuse; the 7 days and no filter are no query', () => {
+    const now = new Date('2026-10-31T05:00:00Z');
+    const of = (q: string) => auditFilterOf(new URLSearchParams(q), now, ME);
+    expect(of('')).toEqual(week);
+    expect(auditParamsOf(week, now).toString()).toBe('');
+    const all = {
+      actorUserId: OTHER,
+      action: 'team.created',
+      targetType: 'team',
+      from: '2026-10-01',
+      to: '2026-10-02',
+    };
+    expect(of(auditParamsOf(all, now).toString())).toEqual(all);
+    // The stub's ids are not UUIDs: the person signed in is always taken.
+    expect(
+      auditFilterOf(new URLSearchParams('actor=user-owner'), now, 'user-owner').actorUserId,
+    ).toBe('user-owner');
+    expect(of('actor=nobody&action=Team&target=Team&from=2026-10-05&to=2026-10-01')).toEqual(week);
+    expect(of('from=2026-02-30&to=2026-10-31')).toEqual(week);
+    expect(of('from=2026-10-30&to=2026-10-31').from).toBe('2026-10-30');
   });
 
   it('cuts an action in two for the list of codes (U73)', () => {
