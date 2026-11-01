@@ -13,6 +13,7 @@ import {
   timeText,
   type BotFlowDetail,
 } from './bot-flows';
+import { FlowGraph } from './flow-graph';
 import { TONE } from './flow-list';
 
 const back = (
@@ -23,7 +24,7 @@ const back = (
 
 /**
  * Chi tiết bot flow (#17, CEO 01/11, read only): its state, the version published last and when, what the draft holds against it,
- * the size of each, when it was made and changed. No graph here (part B), no button that writes.
+ * the size of each, when it was made and changed; then the steps of one version (part B). No button that writes.
  */
 export function FlowView({ id }: { id: string }) {
   const flow = useApiQuery<BotFlowDetail>(['bot-flow', id], flowPath(id));
@@ -81,6 +82,7 @@ export function FlowView({ id }: { id: string }) {
         <dt className="text-text-muted">Cập nhật lúc</dt>
         <dd>{timeText(f.updatedAt)}</dd>
       </dl>
+      <FlowGraph flow={f} />
     </>
   );
 }
