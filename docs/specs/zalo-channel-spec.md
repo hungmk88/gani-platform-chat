@@ -62,7 +62,7 @@ Thứ tự bước (mỗi bước lỗi dừng ngay, không ghi gì):
 - **Gọi Zalo ngoài transaction** (không giữ kết nối DB khi gọi mạng, timeout rõ), rồi **một `UPDATE` duy nhất** ghi bản mã mới (access + refresh + hạn + `key_version`) với điều kiện còn giữ thuê.
 - **Chết giữa lúc Zalo đã trả lời và lúc ghi:** refresh token cũ đã bị tiêu thụ, token mới mất: kênh phải nối lại bằng tay. Không có cách tránh hoàn toàn; giảm cửa sổ bằng việc ghi ngay sau khi nhận và **ghi nhận trong "Giới hạn thành thật"**.
 - Lỗi: thử lại có hạn với backoff; hết thử hoặc Zalo từ chối (token hỏng) → `status='disconnected'`, `last_error=<mã>`, **không retry mù**, cảnh báo.
-- **Cảnh báo:** token (access hoặc refresh) còn < 24 giờ mà chưa làm mới được → `token_expiring` và cảnh báo trên bảng điều khiển vận hành; `disconnected` → cảnh báo khẩn. Ô gửi báo "kênh đang lỗi" (`channel_unavailable` 502, Brief P9), tin được giữ để gửi lại.
+- **Cảnh báo:** token (access hoặc refresh) còn < 24 giờ mà chưa làm mới được → `token_expiring` và cảnh báo trên bảng điều khiển vận hành; `disconnected` → cảnh báo khẩn. Ô gửi báo "kênh đang lỗi" theo trạng thái kênh; `POST …/messages` **không** trả 502 `channel_unavailable` (gửi bất đồng bộ, U57 chốt 01/11/2026): tin được lưu, bản giao `pending`, outbound worker thử lại có giới hạn rồi `failed`.
 
 ## 5. Gửi tin (`ZaloAdapter.send`, hợp đồng; chưa viết mã, phụ thuộc §7)
 
@@ -102,7 +102,7 @@ Fixture payload và chữ ký **tính theo công thức đã ghi**, **stub Zalo*
 
 ## 9. Giới hạn thành thật
 
-Chữ ký webhook ở đây là **băm có khóa nối chuỗi**, không có tính chất của HMAC (nếu đúng như nguồn thứ cấp nói); độ an toàn dựa vào bí mật và việc so sánh thời gian hằng số, và không có cách chống phát lại ngoài dung sai timestamp (chống trùng thật nằm ở `UNIQUE` của `inbound_events`). Khóa chủ trong biến môi trường **không bằng** KMS (lộ biến môi trường là lộ mọi bí mật kênh). Refresh token dùng một lần: có cửa sổ nhỏ mất token khi chết giữa chừng. `< 100 ms` là mục tiêu đo, không phải cam kết.
+Chữ ký webhook ở đây là **băm có khóa nối chuỗi**, không có tính chất của HMAC (nếu đúng như nguồn thứ cấp nói); độ an toàn dựa vào bí mật và việc so sánh thời gian hằng số, và không có cách chống phát lại ngoài dung sai timestamp (chống trùng thật nằm ở `UNIQUE` của `inbound_events`). Khóa chủ trong biến môi trường **không bằng** KMS (lộ biến môi trường là lộ mọi bí mật kênh). Refresh token dùng một lần: có cửa sổ nhỏ mất token khi chết giữa chừng. **A chấp nhận rủi ro này (Q6, 01/11/2026):** B2-3 viết với `// Q6: unverified`, bật (`CHANNEL_REFRESH_ENABLED=1`) chỉ sau khi kiểm với OA test; giả định sai thì kênh `disconnected`, nối lại bằng tay. `< 100 ms` là mục tiêu đo, không phải cam kết.
 
 ## 10. Nghiệm thu
 
