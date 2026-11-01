@@ -218,6 +218,11 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 
 ### Việc treo (CEO 30/10 chiều)
 
+- **Contract có thể đổi giữa lúc duyệt phương án và lúc code. Trước khi push, rà lại `openapi.json` so với phương án, không
+  chỉ những điểm đã biết** (CEO 31/10). Ca đầu: #28 Audit log, phương án duyệt khi `/v1/audit-logs` chưa có cursor (#478); #480
+  (A9b) thêm `cursor`, `nextCursor`, lọc `targetType` sau đó. Rà toàn bộ `openapi.json` từ `f91164a` tới `ffe978d`: chỉ 3 thay đổi
+  đó, `AuditLog` không đổi.
+- **Đang gõ (#479) — Đợt 2, cần BE làm rõ tần suất gửi, timeout tự tắt, rate limit. Không làm trong Đợt 1** (CEO 31/10).
 - **B2b (#472) merged with approval comment — tier 3 chạy đúng lần đầu** (31/10). HEAD `30afd98`, squash `f858192`, diff
   trên 7 file của PR rỗng, CI post-merge trên `main` `f858192` (run 41224698093) 9/9 success. Dòng thời gian GitHub (UTC, cùng
   tài khoản `hungmk88`): tín hiệu "Sẵn sàng merge" 17:26:18 → **approval comment at 17:28:21** (đúng câu, ghi HEAD `30afd98`) →
