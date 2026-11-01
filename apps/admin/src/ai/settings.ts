@@ -36,12 +36,34 @@ export const PRODUCTION_LOCK =
 /** The PATCH of one feature: only what changes (contract `AiSettingsChange`). */
 export const featureBody = (key: FeatureKey, on: boolean) => ({ features: { [key]: on } });
 
+export const MAX_BUDGET = 1_000_000;
+const BUDGET_ZERO = '0 USD = AI nội bộ tắt hoàn toàn.';
+
+/** The budget typed, as the API takes it (a number from 0 to 1 000 000, contract `AiSettingsChange`), or what is wrong. */
+export function budgetValue(raw: string): number | string {
+  const n = Number(raw.trim());
+  if (!raw.trim() || !Number.isFinite(n) || n < 0 || n > MAX_BUDGET)
+    return 'Nhập số tiền từ 0 đến 1.000.000 USD.';
+  return n;
+}
+
+/**
+ * What saving `budget` does at once (CEO 01/11), or null: 0 turns the internal AI off for good (not only until the month starts
+ * again); at or under what was spent this month, it stops now, until `reset`.
+ */
+export function budgetStop(budget: number, used: number, reset: string): string | null {
+  if (budget === 0) return BUDGET_ZERO;
+  if (budget <= used)
+    return `Ngân sách mới (${usdText(budget)}) không lớn hơn số đã dùng tháng này (${usdText(used)}): AI nội bộ sẽ dừng ngay tới ${reset}.`;
+  return null;
+}
+
 const USD = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'USD' });
 export const usdText = (n: number): string => USD.format(n);
 
 /**
  * What was spent of the budget, in words, with the state of BudgetGuard: it warns at 80 % and stops at 100 % (contract). A budget of
- * 0 has no share and no state: what it means is asked in U74.
+ * 0 has no share: read as the contract says (BudgetGuard stops when spent ≥ budget), the internal AI is off (CEO 01/11; U74 asks BE).
  */
 export function budgetOf(s: Pick<AiSettings, 'monthlyBudgetUsd' | 'usedThisMonthUsd'>): {
   readonly used: string;
@@ -49,7 +71,7 @@ export function budgetOf(s: Pick<AiSettings, 'monthlyBudgetUsd' | 'usedThisMonth
   readonly note: string | null;
 } {
   const used = `${usdText(s.usedThisMonthUsd)} / ${usdText(s.monthlyBudgetUsd)}`;
-  if (s.monthlyBudgetUsd <= 0) return { used, tone: null, note: null };
+  if (s.monthlyBudgetUsd <= 0) return { used, tone: 'error', note: BUDGET_ZERO };
   const share = Math.floor((s.usedThisMonthUsd / s.monthlyBudgetUsd) * 100);
   const text = `${used} (${share} %)`;
   if (share >= 100)
