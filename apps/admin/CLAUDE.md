@@ -123,7 +123,7 @@ Trang mặc định sau đăng nhập:
 ## Màn chạy trên hợp đồng planned (N167, CEO 30/10)
 
 - Các màn này đọc `docs/openapi/planned.json` (kiểu ở `src/api/planned.d.ts`), chưa phải API thật: API trả 404 thì màn hiện `PendingPage` chung ("<mục>: màn này chưa có trong bản hiện tại."). **Không** đưa "chưa nối API" hay banner dev lên giao diện; danh sách chỉ ghi ở đây. Hợp đồng chốt khác bản planned thì phải sửa màn.
-- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, chỉ E20 (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5) · #23 Dữ liệu khách, danh sách + ghi nhận yêu cầu + thực hiện xóa (S5).
+- #16 Tổng quan (S5) · #14/#15 Ticket, cả tạo ticket (S4) · #26 AI nội bộ, E20 + môi trường/tính năng/ngân sách chỉ đọc (S5) · #27 Tự chủ & feature flag, chỉ đọc (S5) · #29 Bảo mật, chỉ đọc (S5) · #23 Dữ liệu khách, danh sách + ghi nhận yêu cầu + thực hiện xóa (S5).
 
 ## Hộp thư (#6)
 
@@ -200,9 +200,11 @@ Trang mặc định sau đăng nhập:
 
 ## AI nội bộ (#26)
 
-- `/settings/ai`, Owner/Admin như menu; Đợt 1 **chỉ E20** (CEO 30/10): bảng phiên bản prompt **chỉ đọc** (prompt, phiên bản, "Đang dùng", ngày duyệt, người duyệt; `null` → "Chưa duyệt" / "—"), thứ tự như API. `GET /v1/ai/prompts`: hợp đồng **planned S5** (N167; `src/ai/prompts.ts` + `prompt-table.tsx`). Rỗng: một câu + "Làm mới"; lỗi: câu + mã + "Thử lại"; API trả 404 (chưa phục vụ) → `PendingPage` như #16, không danh sách giả, không toast "đã lưu".
+- `/settings/ai`, Owner/Admin như menu; Đợt 1: E20 (CEO 30/10) và phần A (dưới): bảng phiên bản prompt **chỉ đọc** (prompt, phiên bản, "Đang dùng", ngày duyệt, người duyệt; `null` → "Chưa duyệt" / "—"), thứ tự như API. `GET /v1/ai/prompts`: hợp đồng **planned S5** (N167; `src/ai/prompts.ts` + `prompt-table.tsx`). Rỗng: một câu + "Làm mới"; lỗi: câu + mã + "Thử lại"; API trả 404 (chưa phục vụ) → `PendingPage` như #16, không danh sách giả, không toast "đã lưu".
 - Quyền đọc **tạm** Owner/Admin theo **U66** (`mayReadPrompts`, Phụ lục B chưa có dòng đọc prompt): đổi khi BE/CEO trả lời U66.
-- Môi trường, tính năng, ngân sách (chờ `ai-settings`, U61) và khối E1/E4/E7 **không dựng**: thay bằng đúng một dòng "Môi trường, tính năng và ngân sách AI chưa có trong bản hiện tại." (không "sắp có"). API giả: `e2e/stub-prompts.ts`; rỗng/lỗi/404 bằng `page.route` trong `e2e/ai.spec.ts`.
+- **Phần A (CEO 01/11, U61)**, dưới bảng prompt: ba khối **chỉ đọc** của workspace đang chọn từ `GET /v1/workspaces/{id}/ai-settings` (planned S5, #481; `src/ai/settings.ts` + `ai-settings.tsx`): **Môi trường** ("Thử nghiệm (staging)" / "Chính thức (production)"), **Tính năng** (E1 "Phân loại ý định và trích thông tin", L1 "Tóm tắt hội thoại", tên theo `docs/danh-sach-109-tinh-nang.md`; "Đang bật" / "Đang tắt"), **Ngân sách tháng** (USD, "Đã dùng / ngân sách (n %)"; từ 80 % vàng, từ 100 % đỏ "AI nội bộ dừng, quay về kịch bản" như BudgetGuard; ngân sách 0 không có % và màu, U74; "Đặt lại lúc" theo `resetsAt` ở **múi giờ của workspace** từ `GET /v1/workspaces`, không đọc được thì giờ Việt Nam và ghi rõ "giờ Việt Nam"). **Mỗi phần tự có** đang tải / lỗi (mã + "Thử lại"); ai-settings trả 404 → vẫn đúng một dòng "Môi trường, tính năng và ngân sách AI chưa có trong bản hiện tại.", bảng prompt giữ nguyên (CEO 01/11: không đưa cả màn về `PendingPage`); prompt trả 404 vẫn là cả màn `PendingPage` như trước. Khối E4/E7 không dựng.
+- **B1** (bật/tắt E1/L1, sửa ngân sách) là tier 1/2 chỉ khi `environment = staging`. Khi `environment = production`, bật E1/L1 là gửi nội dung hội thoại khách ra provider nước ngoài — cùng bản chất với B2, phải là tier 3. UI disable nút bật E1/L1 khi production, tooltip: 'Bật tính năng AI ở môi trường Chính thức cần phê duyệt riêng (tầng 3).' (CEO 01/11). `production` chỉ Owner: với Admin ô chọn `aria-disabled` + tooltip + một dòng chữ, **và** handler chặn trước khi gọi API (`aria-disabled` không tự chặn bấm); Admin vẫn chuyển về `staging` được (hợp đồng). **B2** (chuyển sang `production`, tầng 3) **hoãn** tới khi Q1 có văn bản và CEO duyệt thiết kế hộp thoại; khi làm, thêm 409 `ai_production_locked` vào `errors.ts`. GET chưa trả trạng thái khóa Q1: U74.
+- API giả: `e2e/stub-prompts.ts`, `e2e/stub-ai-settings.ts` (85 % ngân sách, đi trước `routeWorkspaces` trong `e2e/stub-routes.ts`); rỗng/lỗi/404/100 % bằng `page.route` trong `e2e/ai.spec.ts`.
 
 ## Tự chủ & feature flag (#27)
 
