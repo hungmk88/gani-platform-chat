@@ -1,0 +1,7 @@
+{
+  "extends": "@gani/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src", "vitest.config.ts"]
+}
