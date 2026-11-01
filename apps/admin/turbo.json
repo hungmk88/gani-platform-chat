@@ -9,7 +9,8 @@
         "$TURBO_ROOT$/packages/domain/src/conversation/**",
         "$TURBO_ROOT$/apps/api/src/modules/customers/customers.permissions.ts",
         "$TURBO_ROOT$/apps/api/src/modules/members/members.permissions.ts",
-        "$TURBO_ROOT$/apps/api/src/modules/quick-replies/quick-replies.permissions.ts"
+        "$TURBO_ROOT$/apps/api/src/modules/quick-replies/quick-replies.permissions.ts",
+        "$TURBO_ROOT$/apps/api/src/modules/bot-flows/bot-flows.permissions.ts"
       ]
     },
     "typecheck": {
@@ -20,6 +21,7 @@
         "$TURBO_ROOT$/apps/api/src/modules/customers/customers.permissions.ts",
         "$TURBO_ROOT$/apps/api/src/modules/members/members.permissions.ts",
         "$TURBO_ROOT$/apps/api/src/modules/quick-replies/quick-replies.permissions.ts",
+        "$TURBO_ROOT$/apps/api/src/modules/bot-flows/bot-flows.permissions.ts",
         "$TURBO_ROOT$/packages/db/src/schema/org-members.ts"
       ]
     }
