@@ -26,6 +26,13 @@ const field = 'rounded-input border border-border-strong px-3 py-2';
 const button = 'rounded-input border border-border-strong px-3 py-1';
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on';
 const code = 'font-mono text-12';
+/** The form's fields: a text field has a hint and the API's longest code (64), a day is a date up to today. */
+const FIELDS = [
+  ['Hành động', 'action', 'member.role_changed'],
+  ['Loại đối tượng', 'targetType', 'member'],
+  ['Từ ngày', 'from', ''],
+  ['Đến ngày', 'to', ''],
+] as const;
 
 /** Who acted: the system in words, a person as a button that shows what they alone did (their whole id in the tooltip). */
 function Actor({
@@ -132,46 +139,17 @@ export function AuditScreen({ meId }: { meId: string }) {
         ) : null}
       </div>
       <form key={query} noValidate onSubmit={submit} className="flex flex-wrap items-end gap-4">
-        <label className="flex flex-col gap-1">
-          Hành động
-          <input
-            name="action"
-            defaultValue={filter.action}
-            placeholder="member.role_changed"
-            maxLength={64}
-            className={`${field} font-mono`}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          Loại đối tượng
-          <input
-            name="targetType"
-            defaultValue={filter.targetType}
-            placeholder="member"
-            maxLength={64}
-            className={`${field} font-mono`}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          Từ ngày
-          <input
-            type="date"
-            name="from"
-            defaultValue={filter.from}
-            max={vnDay(now)}
-            className={field}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          Đến ngày
-          <input
-            type="date"
-            name="to"
-            defaultValue={filter.to}
-            max={vnDay(now)}
-            className={field}
-          />
-        </label>
+        {FIELDS.map(([label, name, hint]) => (
+          <label key={name} className="flex flex-col gap-1">
+            {label}
+            <input
+              name={name}
+              defaultValue={filter[name]}
+              {...(hint ? { placeholder: hint, maxLength: 64 } : { type: 'date', max: vnDay(now) })}
+              className={`${field} ${hint ? 'font-mono' : ''}`}
+            />
+          </label>
+        ))}
         <button type="submit" className={primary}>
           Lọc
         </button>
@@ -192,19 +170,26 @@ export function AuditScreen({ meId }: { meId: string }) {
         query={logs}
         loading="Đang tải audit log…"
         empty={
-          query ? (
-            <div className="flex flex-col items-start gap-2">
-              <p>Không có hoạt động nào khớp bộ lọc.</p>
-              {clearButton}
-            </div>
-          ) : (
-            <div className="flex flex-col items-start gap-2">
-              <p>Chưa có hoạt động nào trong 7 ngày gần nhất.</p>
-              <button type="button" className={button} onClick={() => void logs.refetch()}>
+          <div className="flex flex-col items-start gap-2">
+            <p>
+              {query
+                ? 'Không có hoạt động nào khớp bộ lọc.'
+                : 'Chưa có hoạt động nào trong 7 ngày gần nhất.'}
+            </p>
+            {query ? (
+              clearButton
+            ) : (
+              <button
+                type="button"
+                className={button}
+                disabled={logs.isFetching}
+                aria-busy={logs.isFetching}
+                onClick={() => void logs.refetch()}
+              >
                 Làm mới
               </button>
-            </div>
-          )
+            )}
+          </div>
         }
         head={['Thời điểm', 'Người thực hiện', 'Hành động', 'Đối tượng', 'Chi tiết']}
         row={(log) => (

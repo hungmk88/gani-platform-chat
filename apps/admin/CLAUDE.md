@@ -211,7 +211,7 @@ Trang mặc định sau đăng nhập:
 
 ## Bảo mật (#29)
 
-- `/settings/security`, Owner/Admin như menu (Phụ lục B "Mở sự cố bảo mật"; góc nhìn của platform operator chờ `/platform`); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**, không theo workspace. Hai hợp đồng **planned S5** (`src/security/security.ts` + `security-screen.tsx`), mới nhất trước, cursor "Tải thêm"; hàng trùng giữa hai trang (bản ghi mới chèn lên đầu) chỉ hiện một lần (`uniqueRows`); hết trang thì "Đã hiện hết."; trang sau lỗi thì giữ hàng đã đọc, "Thử lại" đọc lại đúng trang đó. Danh sách cursor dùng chung `Paged` (`src/paged-list.tsx`) + `uniqueRows` (`src/paged.ts`) với #23.
+- `/settings/security`, Owner/Admin như menu (Phụ lục B "Mở sự cố bảo mật"; góc nhìn của platform operator chờ `/platform`); Đợt 1 **chỉ đọc** (PR A, CEO 30/10). Cấp **công ty**, không theo workspace. Hai hợp đồng **planned S5** (`src/security/security.ts` + `security-screen.tsx`), mới nhất trước, cursor "Tải thêm"; hàng trùng giữa hai trang (bản ghi mới chèn lên đầu) chỉ hiện một lần (`uniqueRows`); hết trang thì "Đã hiện hết."; trang sau lỗi thì giữ hàng đã đọc, "Thử lại" đọc lại đúng trang đó. Danh sách cursor dùng chung `Paged` (`src/paged-list.tsx`) + `uniqueRows` (`src/paged.ts`) với #23 và #28; đọc lại một danh sách trống mà lỗi thì lỗi hiện dưới câu trống (#28).
 - **Sự cố** (`GET /v1/security-incidents?status=`): lọc "Đang mở" / "Đã đóng", **luôn gửi** `status` (mặc định `open`, U68); cột tiêu đề, mức độ, người xử lý, người mở (tên của API), mở lúc, đóng lúc (khi xem đã đóng). Trống: một câu + nút sang trạng thái kia.
 - **Cảnh báo** (`GET /v1/security-alerts`, **không lọc**, U68): loại, mức độ, thời điểm, số lần, "Đã gắn sự cố" / "Chưa gắn sự cố". **Không** có cột người liên quan và kênh tới khi API trả tên (U69). Nhãn loại và mức độ ở `src/security/labels.ts` (dùng lại cho `/platform`); mức độ luôn có chữ, màu chỉ thêm (Trung bình vàng, Cao/Nghiêm trọng đỏ).
 - Một trong hai đường trả 404 → cả màn `PendingPage`. **Không có nút** mở, đóng, giao sự cố: PR B, khi S5 chốt hợp đồng, U35 hết "dữ liệu tạm" và CEO duyệt thiết kế hộp thoại. API giả: `e2e/stub-security.ts` (cảnh báo hai trang, trang 2 lặp một hàng); rỗng/lỗi/404 bằng `page.route` trong `e2e/security.spec.ts`.
@@ -227,6 +227,14 @@ Trang mặc định sau đăng nhập:
   - (d) tên khách `null` → "khách chưa có tên (yêu cầu XXXXXX)" (`customerTitleOf`); (e) lý do là chữ thuần, vùng cuộn, không cắt.
   - 409 `request_not_pending` (đọc lại danh sách), 404, 403: nói lý do, chỉ còn "Đóng"; 503/mất mạng: "Chưa rõ đã xóa hay chưa. Bấm Thử lại…"; không bao giờ "đã xóa" khi API chưa nói. U70 không chặn.
 - API giả: `e2e/stub-privacy.ts` (hai trang, trang 2 lặp một hàng; `POST` ghi và `POST …/execute` xóa trong bản sao của phiên, `ERASED`); E2E `e2e/privacy.spec.ts` (danh sách), `e2e/privacy-write.spec.ts` (ghi nhận), `e2e/privacy-erase.spec.ts` (xóa).
+
+## Audit log (#28)
+
+- `/settings/audit`, Owner/Admin như menu và API. **API thật** `GET /v1/audit-logs` (A9a #478, A9b #480, N174), không phải hợp đồng planned: không có `PendingPage`. Cấp **công ty**, mới nhất trước, cursor `limit=50` như #29 (`Paged`); chỉ đọc. Không áp dụng AI.
+- Mặc định **7 ngày gần nhất tính cả hôm nay**, giờ Việt Nam (CEO 31/10): từ 00:00 của 6 ngày trước tới nay; dòng "Đang xem từ dd/mm/yyyy đến dd/mm/yyyy (giờ Việt Nam)". Gửi `from` = 00:00 +07:00 ngày đầu, `to` = 00:00 +07:00 **ngày sau** ngày cuối (API không lấy `to`) (`logsPath`).
+- Bộ lọc trên URL như Hộp thư (`?actor=&action=&target=&from=&to=`; 7 ngày và không lọc là URL trống, `auditParamsOf`). Phần API sẽ từ chối bị bỏ khi đọc URL, không gửi đi (`auditFilterOf`); form kiểm như API trước khi gửi (`filterProblem`), sai thì `role="alert"`, không gọi API. "Người thực hiện: Tất cả / Tôi"; bấm vào người trên dòng là chỉ xem việc của người đó ("Hệ thống" không bấm được). "Hành động", "Loại đối tượng": chữ tự do theo `pattern` của API. "Bỏ lọc" bỏ mọi bộ lọc và về 7 ngày; câu "Bỏ lọc sẽ đưa về 7 ngày gần nhất." chỉ hiện khi ngày khác mặc định.
+- Người: "Bạn", "Hệ thống" (`null`), hoặc "Người dùng …<8 ký tự cuối>" với `<abbr>` id đầy đủ (8 ký tự đầu của UUIDv7 là thời gian, trùng nhau; `actorOf`), tới khi API trả tên (U72). Hành động hiện đúng mã của API, monospace, kèm câu "Hành động hiện theo mã của API" (U73). `detail`: mỗi khóa một dòng chữ thuần, giá trị lồng là JSON trong `<code>`, rỗng là "—" (`detailLines`); **không** `dangerouslySetInnerHTML`.
+- `src/audit/audit.ts` + `audit-screen.tsx`. API giả: `e2e/stub-audit.ts` (5 dòng tính lùi từ lúc chạy, trang 1 ba dòng, trang 2 lặp một dòng; id người của API giả là `user-<vai trò>`, không phải UUID: URL chỉ nhận id của chính người xem hoặc UUID); E2E `e2e/audit.spec.ts`.
 
 ## Kênh (#24)
 
