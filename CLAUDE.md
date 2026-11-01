@@ -34,11 +34,15 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - Kèm theo phân tầng (CEO 31/10). 5 dòng dưới đây là chi tiết bắt buộc của tầng 1/2, không phải tùy chọn:
   - Mọi PR mở ở draft. Tầng 1/2: DEV tự chuyển ready ngay trước khi tự merge, trong cùng một lượt. Draft không thay required
     check, phải có cả hai.
-  - Tầng 1/2: DEV tự kiểm đủ mọi job của `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD; required
-    check chỉ là lưới an toàn cuối. Sau merge báo HEAD, tên từng job, thời điểm, diff giữa HEAD và commit squash.
+  - Tầng 1/2: DEV tự kiểm đủ 9 job của `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD, trước khi
+    merge, không chỉ nhìn required check (CEO 01/11). Required check (9 context, gồm `docker images`; job `skipped` tính là
+    đạt) chỉ là lưới an toàn cuối. Sau merge báo HEAD, tên từng job, thời điểm, diff giữa HEAD và commit squash.
   - "Ready" ≠ "xong": PR rời draft không phải tín hiệu merge.
   - PR sửa file của bộ phận khác phải có review của bộ phận đó, kể cả comment.
-  - Chi tiết và lịch sử: `docs/ui/session-summary-29-10.md` mục 2; required check `lint, typecheck, test` và `enforce_admins`: U71.
+  - Chi tiết và lịch sử: `docs/ui/session-summary-29-10.md` mục 2; required check (9 context) và `enforce_admins`: U71.
+- **Luật hủy heads-up** (CEO 01/11, nguyên văn): Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó, gồm push,
+  heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment gỡ hold
+  từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff.
 
 ### Quy trình mỗi PR
 

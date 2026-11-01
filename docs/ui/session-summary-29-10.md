@@ -2,9 +2,13 @@
 
 Nạp cho phiên mới, đọc theo thứ tự: `CLAUDE.md` (gốc) → `apps/admin/CLAUDE.md` → file này → `QUESTIONS.md` (U57–U60).
 Phiên trước: `docs/ui/session-summary-28-10.md` (mục 2–4, 9 vẫn đúng, trừ chỗ file này sửa). Người giao việc: CEO (xưng "anh",
-FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 30/10, `main` ở `0503a00`.
+FE xưng "em", trả lời tiếng Việt). Cập nhật lần cuối: 01/11, `main` ở `14a8fdc`.
 
 ## 1. Đã merge vào `main` trong phiên
+
+**Trạng thái 01/11 (CEO xác nhận):** `main` `14a8fdc` (#506, merge 12:55:07 UTC theo commit squash, CI 9/9 run `41308741601`).
+**Required check: 9 context, gồm `docker images`** (CEO chốt giữ, mục 7); job `skipped` tính là đạt, PR chỉ có docs vẫn `clean`
+(#503, #506). `strict` và `enforce_admins` bật. PR FE đang mở: không.
 
 | PR   | Nội dung                                                                                                       | Ghi chú                        |
 | ---- | -------------------------------------------------------------------------------------------------------------- | ------------------------------ |
@@ -31,14 +35,14 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   - đã push hết;
   - HEAD của PR trên GitHub khớp `git ls-remote` của nhánh;
   - **TẤT CẢ job CI xanh trên đúng HEAD đó**, đếm theo `.github/workflows/ci.yml` của `main`. Không dùng con số cứng (CEO 29/10).
-    Hiện 8 check (từ #420): changes (docker needed?), lint/typecheck/test, admin (e2e, axe), database, queue,
-    dependency audit/secret scan, docker images, terraform;
+    Hiện 9 job (#436 thêm `coverage`), cả 9 là required check từ 01/11: changes (docker needed?), lint/typecheck/test,
+    coverage, admin (e2e, axe), database, queue, dependency audit/secret scan, docker images, terraform;
   - job `admin (e2e, axe)` chạy thật (bước `pnpm --filter "@gani/admin..." build` success);
   - `mergeable_state` clean.
 - **Job `skipped` (CEO 30/10, sửa luật sau #420):** **chỉ job `docker images`** được `skipped`, và chỉ trên PR chỉ sửa `*.md`
   (do job `changes (docker needed?)` quyết định). Mọi job khác, **kể cả `terraform`**, phải chạy và xanh. PR có file code,
   config hay dependency mà job `docker` bị `skipped` là bất thường: dừng, báo CEO. Khi báo "Sẵn sàng merge": nêu tên từng job,
-  đếm đúng số check thực tế (hiện 8), ghi "N success + M skipped (doc-only)". `unstable` khi CI còn chạy là bình thường; chỉ báo
+  đếm đúng số check thực tế (hiện 9), ghi "N success + M skipped (doc-only)". `unstable` khi CI còn chạy là bình thường; chỉ báo
   khi mọi check đã xong và `mergeable_state = clean`. (Bản trước ghi "docker/terraform" là sai.)
 - **Job CI mới trên `main` (CEO 30/10, sau #436 thêm `coverage`, nay 9 job):** mọi PR đang mở phải cập nhật từ `main`
   (merge `origin/main` vào nhánh, **không rebase**) để chạy đủ job mới **trước khi** báo "Sẵn sàng merge". PR mới: kiểm nhánh
@@ -49,8 +53,10 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   kiểm đủ điều kiện và gửi "Sẵn sàng merge"; GitHub chặn merge PR draft. Đề xuất branch protection trên `main`: U71.
 - **Mốc thời gian (CEO 31/10):** mọi mốc thời gian ghi vào handoff phải lấy từ dòng thời gian GitHub (`issues/*/timeline`,
   trường `created_at`), không lấy từ giờ thông báo về phiên; chênh lệch thường 2–6 giây. Chỉ ghi dữ kiện (tài khoản nào),
-  không suy diễn người làm.
-- **Giờ merge lấy từ commit squash, ghi kèm timeline** (CEO 01/11): sự kiện xảy ra trong khoảng 08:00–09:00 UTC ngày 01/11 bị
+  không suy diễn người làm. **Thay bằng luật 01/11 ở dòng dưới: "Mọi mốc giờ lấy từ commit squash, không lấy timeline."**
+  Sự kiện không có commit (comment `hold`, chuyển ready, heads-up): luật mới chưa nói nguồn, FE ghi giờ timeline kèm nguồn
+  tới khi CEO chốt (câu hỏi mở, mục 7).
+- **Mọi mốc giờ lấy từ commit squash, không lấy timeline** (CEO 01/11, ghi nhớ chung). **Giờ merge lấy từ commit squash, ghi kèm timeline** (CEO 01/11): sự kiện xảy ra trong khoảng 08:00–09:00 UTC ngày 01/11 bị
   GitHub ghi `created_at` (timeline, run Actions) nhanh hơn giờ thật 1 giờ; từ khoảng 09:00 khớp lại (mục 7, "Lệch giờ"). Giờ merge = ngày giờ committer của commit squash
   (`git log -1 --format=%cI <squash>`), ghi kèm giờ timeline. **Timeline lệch >5 phút → ghi cả hai, đánh dấu 'timeline
   suspect'. Lệch >24h → escalate người quản lý proxy.**
@@ -270,7 +276,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **Brief 'Thay đổi quy trình phối hợp với BE' không rõ nguồn, không phải CEO gửi. Ba điểm mâu thuẫn luật đã chốt: auto-merge,
   bỏ khóa production, BE tự merge. FE dừng lại hỏi — đúng. Đây là brief lạ thứ ba trong ngày (sau #459 và B2-local-coding). Cần
   CEO xác định nguồn.** (CEO 01/11.) Giữ nguyên luật cũ: không bật auto-merge (luật tầng 1/2, mục 2: auto-merge chỉ chờ required
-  check, sẽ merge khi 8 job còn lại chưa xong, như #452); không bỏ khóa `production` ở UI khi BE bỏ 409 (luật B1 + U75 + B2 hoãn
+  check, sẽ merge khi 8 job còn lại chưa xong, như #452; khi đó required check chỉ có 1 job, từ 11:16 01/11 đủ 9 và CEO cho dùng
+  auto-merge cho PR code/UI tầng 1, mục Auto-merge dưới); không bỏ khóa `production` ở UI khi BE bỏ 409 (luật B1 + U75 + B2 hoãn
   tới Q1, `apps/admin/CLAUDE.md` mục #26; khóa UI không gắn với mã 409); luật phân tầng áp cho cả BE.
 - **Nguyên tắc: brief không rõ nguồn, mâu thuẫn luật đã chốt → dừng, hỏi CEO. Không làm theo.** (CEO 01/11.)
 - **#498 (BE) đảo ngược 3 quyết định đã chốt. CEO comment `hold` lúc 10:26:44 UTC. Cơ chế 'heads-up 30 phút tự merge' giống
@@ -297,9 +304,10 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   HOLD` lúc 11:05:15 là của CEO — không phải sự cố bảo mật.** (CEO 01/11; brief ký "Người ký: A (CEO)".)
 - **Điều kiện kỹ thuật: auto-merge tầng 1 chỉ an toàn khi đủ 9 required check. Hiện 1 job → chưa bật auto-merge, dùng quy trình
   tự kiểm 9/9 như cũ. Heads-up tầng 2 phải có luật hủy khi có comment `hold`.** (CEO 01/11; luật hủy: có `hold` bất kỳ trong 30
-  phút → auto-merge hủy vĩnh viễn cho PR đó, không gia hạn, không hẹn lại.) **Dữ kiện FE đọc lúc 11:16:50 UTC:** `main` **đã có đủ
+  phút → auto-merge hủy vĩnh viễn cho PR đó, không gia hạn, không hẹn lại; nay thay bằng **Luật hủy heads-up** nguyên văn
+  bên dưới.) **Dữ kiện FE đọc lúc 11:16:50 UTC:** `main` **đã có đủ
   9 required check** (đúng tên 9 job của `ci.yml`), `strict` và `enforce_admins` bật, repo `allow_auto_merge: true`; FE không đọc
-  được ai bật, lúc nào (proxy chặn audit log). FE vẫn tự kiểm 9/9 rồi merge cho tới khi CEO xác nhận dùng auto-merge.
+  được ai bật, lúc nào (proxy chặn audit log). FE vẫn tự kiểm 9/9 rồi merge cho tới khi CEO xác nhận dùng auto-merge (đã xác nhận, mục Auto-merge dưới).
 - **#498 merge lúc 11:06:39, squash `89d656d`. Q1 chưa chốt (chờ văn bản luật sư), U75 giữ nguyên, `ai-settings` vẫn khóa production
   + 409. FE không phải sửa gì.** (CEO 01/11.) Trên `main` từ #498: Q2 "A báo 01/11/2026: CEO chốt FPT Cloud", Q6 "A chốt phương án
   (b)", N179–N182, U57, U63, U76 (mới).
@@ -308,9 +316,36 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `toLocale…String` → đỏ (đã thử: bỏ `timeZone` ở `members/invite.ts` → đỏ).
 - **Bot flows D1a3a (#496, API thật `GET/POST /v1/bot-flows`, `GET /v1/bot-flows/{id}`):** FE đã ghi nhận, chưa lên phương án,
   chờ CEO quyết có thuộc Đợt 1. Không mở PR.
+- **Required check: 9 context, gồm `docker images`. CEO chốt GIỮ, không bỏ (01/11): không gây hại cho PR doc-only; bỏ thì
+  PR code mất lưới build docker.** Dòng "Hiện 8 check" ở mục 2 là số cũ (trước #436), đã sửa thành 9. Dữ kiện FE đọc
+  `branches/main/protection` lúc 12:08:12 và 13:01 UTC: 9 context (đủ tên 9 job của `ci.yml`), `strict` và `enforce_admins`
+  bật. PR chỉ có docs **không** bị `blocked`: `docker images` skipped vẫn tính là đạt, #503 (merge 11:22:48) và #506 (merge
+  12:55:07, squash `14a8fdc`) đều `clean`. Kiểm "`blocked` khi CI chưa xong": **đạt**, #506 ở `blocked` suốt lúc CI chạy (đọc
+  12:09:28 đến 12:09:58 UTC, 0–4 trong 8 job chạy thật đã xong; `docker images` skipped): required check có hiệu lực.
+- **Auto-merge (CEO 01/11):** sau khi xác nhận đủ 9 check, FE được dùng auto-merge tầng 1 cho PR code/UI; PR docs vẫn tự kiểm rồi
+  merge tay (`docker images` skip, auto-merge có thể chờ nhầm). Không tự áp dụng heads-up cho bất kỳ PR nào. Bot Engine A và
+  B: tầng 1, auto-merge khi đủ 9 job (CEO 01/11).
+- **Bot Engine D1a3a/D1a3b: CEO chọn C — Đợt 1, chỉ đọc. Hợp đồng đã có trên `main` (#496, #499). FE trình phương án trước khi
+  code.** (CEO 01/11.) Phạm vi: `/bots` danh sách, xem chi tiết, xem đồ thị chỉ đọc; không tạo, sửa, xuất bản, xóa, lưu nháp;
+  Owner/Admin theo menu; đủ 4 trạng thái; tầng 1. Tách A (danh sách + chi tiết) trước, B (đồ thị) sau.
+- **Bot Engine: CEO chốt phương án (01/11).** (1) **Có Manager**, đúng menu `/bots` và hợp đồng API; màn chỉ đọc, không nút ghi.
+  (2) Đồ thị: **danh sách có cấu trúc, không thêm thư viện** (qua axe, bàn phím, trình đọc màn hình; không tốn bundle; chịu 200
+  node); canvas chỉ xét lại khi làm trình dựng #18, lúc đó đo gzip thật. (3) **U77** ghi vào `QUESTIONS.md` (nguyên văn CEO).
+  (4) **A trước:** `/bots` (tên, trạng thái, phiên bản đã xuất bản, cập nhật lúc; tên là link `/bots/[id]`) và chi tiết (tên,
+  trạng thái, phiên bản + giờ xuất bản, thông tin bản nháp, số node/cạnh mỗi bản, ngày tạo/cập nhật; không đồ thị), đủ 4 trạng
+  thái, `stub-bot-flows.ts`, E2E có axe, mục mới trong `apps/admin/CLAUDE.md`. **B sau khi A merge:** đồ thị chỉ đọc, chọn "Bản
+  đã xuất bản" / "Bản nháp" qua tham số URL, E2E đủ 12 loại node + ca 200 node. Hợp đồng trên `main` nay có thêm
+  `DELETE /v1/bot-flows/{id}` (xóa mềm): FE không dùng.
+- **Race `requestAnimationFrame` của "Chèn biến" (#22, `quick-reply-form.tsx` + `quick-reply-dialogs.tsx`): đã xong ở #504**
+  (squash `477f704`, merge 12:02:34 UTC theo commit squash; E2E làm chậm `requestAnimationFrame` 300 ms, đỏ trên mã cũ). Brief
+  CEO 01/11 (việc 6) giao lại việc này: không mở PR mới.
+- **Luật hủy heads-up (CEO 01/11, nguyên văn, áp dụng ngay):** Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó,
+  gồm push, heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment
+  gỡ hold từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff. Đã ghi vào `CLAUDE.md` gốc, mục GIT WORKFLOW, cùng dòng "tự
+  kiểm đủ 9 job theo tên". Không áp heads-up cho PR nào cho tới khi luật này vào `CLAUDE.md` gốc trên `main`.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
-  (CEO cần xác định); ai bật 9 required check trên `main` và FE dùng auto-merge từ khi nào (CEO xác nhận); Bot Engine D1a3a/D1a3b
-  thuộc Đợt 1 hay Đợt 2 (CEO quyết); U60, U62, U64–U75 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
+  (CEO cần xác định); nguồn mốc giờ của sự kiện không có commit squash (comment `hold`, chuyển ready, heads-up), mục 2;
+  U60, U62, U64–U77 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
   GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
