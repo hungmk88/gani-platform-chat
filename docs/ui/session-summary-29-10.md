@@ -308,9 +308,19 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `toLocale…String` → đỏ (đã thử: bỏ `timeZone` ở `members/invite.ts` → đỏ).
 - **Bot flows D1a3a (#496, API thật `GET/POST /v1/bot-flows`, `GET /v1/bot-flows/{id}`):** FE đã ghi nhận, chưa lên phương án,
   chờ CEO quyết có thuộc Đợt 1. Không mở PR.
+- **Required check (kiểm 01/11):** CEO báo đã bật thêm 8 required check, ý định bỏ `docker images` (job này skip trên PR chỉ có
+  docs). FE đọc `branches/main/protection` lúc 12:08:12 UTC: **9 context, gồm cả `docker images`** (đủ tên 9 job của `ci.yml`),
+  `strict` và `enforce_admins` bật. PR chỉ có docs **không bị `blocked` vĩnh viễn**: #503 (`docker images` skipped) vẫn `clean` và
+  merge lúc 11:22:48, khi 9 check này đã có hiệu lực (FE đọc lúc 11:16:50); GitHub tính check skipped là đạt. Đã báo CEO để quyết
+  có bỏ `docker images` khỏi required check không. Kết quả kiểm "`blocked` khi CI chưa xong": ở PR docs ghi mục này.
+- **Auto-merge (CEO 01/11):** sau khi xác nhận đủ 9 check, FE được dùng auto-merge tầng 1 cho PR code/UI; PR docs vẫn tự kiểm rồi
+  merge tay (`docker images` skip, auto-merge có thể chờ nhầm). Không tự áp dụng heads-up cho bất kỳ PR nào.
+- **Bot Engine D1a3a/D1a3b: CEO chọn C — Đợt 1, chỉ đọc. Hợp đồng đã có trên `main` (#496, #499). FE trình phương án trước khi
+  code.** (CEO 01/11.) Phạm vi: `/bots` danh sách, xem chi tiết, xem đồ thị chỉ đọc; không tạo, sửa, xuất bản, xóa, lưu nháp;
+  Owner/Admin theo menu; đủ 4 trạng thái; tầng 1. Tách A (danh sách + chi tiết) trước, B (đồ thị) sau.
+- **Luật hủy heads-up: chờ brief tiếp theo của CEO.** (CEO 01/11.)
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
-  (CEO cần xác định); ai bật 9 required check trên `main` và FE dùng auto-merge từ khi nào (CEO xác nhận); Bot Engine D1a3a/D1a3b
-  thuộc Đợt 1 hay Đợt 2 (CEO quyết); U60, U62, U64–U75 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
+  (CEO cần xác định); có bỏ `docker images` khỏi required check không (CEO quyết); luật hủy heads-up (chờ CEO); U60, U62, U64–U75 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
   GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
