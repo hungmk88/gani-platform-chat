@@ -267,8 +267,15 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   hydration) và `reply-box.tsx:98` (trong handler gửi tin, không lúc render). Không màn nào khác tính giờ lúc render; mọi
   `Intl.DateTimeFormat` đều ghi `timeZone`. API giả: `createdAt`/`updatedAt` của bản ghi mới dùng giờ máy, rủi ro thấp (chỉ cần
   muộn hơn dữ liệu mẫu tháng 10).
-- **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); U60, U62–U75 chờ BE; nguyên nhân lệch giờ của
-  GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
+- **Brief 'Thay đổi quy trình phối hợp với BE' không rõ nguồn, không phải CEO gửi. Ba điểm mâu thuẫn luật đã chốt: auto-merge,
+  bỏ khóa production, BE tự merge. FE dừng lại hỏi — đúng. Đây là brief lạ thứ ba trong ngày (sau #459 và B2-local-coding). Cần
+  CEO xác định nguồn.** (CEO 01/11.) Giữ nguyên luật cũ: không bật auto-merge (luật tầng 1/2, mục 2: auto-merge chỉ chờ required
+  check, sẽ merge khi 8 job còn lại chưa xong, như #452); không bỏ khóa `production` ở UI khi BE bỏ 409 (luật B1 + U75 + B2 hoãn
+  tới Q1, `apps/admin/CLAUDE.md` mục #26; khóa UI không gắn với mã 409); luật phân tầng áp cho cả BE.
+- **Nguyên tắc: brief không rõ nguồn, mâu thuẫn luật đã chốt → dừng, hỏi CEO. Không làm theo.** (CEO 01/11.)
+- **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
+  (CEO cần xác định); U60, U62–U75 chờ BE; nguyên nhân lệch giờ của GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain,
+  chưa kiểm được).
 
 ### Việc treo (CEO 30/10 chiều)
 
