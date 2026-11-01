@@ -44,6 +44,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'last_message_kind',
     'last_message_preview',
     'outcome',
+    'priority',
     'state',
     'updated_at',
     'version',

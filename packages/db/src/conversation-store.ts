@@ -5,6 +5,7 @@ import { conversationEvents } from './schema/conversation-events.js';
 import { conversations } from './schema/conversations.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
+import { assertUuid } from './validate.js';
 
 // The only code that writes the columns of `conversations` the ConversationStateMachine owns (CLAUDE.md rule 4, FSM spec §5).
 // Every function takes the caller's TenantTx and never commits, so a transition, its event and (later) its outbox rows are one
@@ -142,4 +143,25 @@ export async function insertConversationEvent(
   event: NewConversationEvent,
 ): Promise<void> {
   await tx.insert(conversationEvents).values({ ...event, orgId: currentTenantContext().orgId });
+}
+
+/** The priority of a conversation that waits for a person (U78, 202611061000): not a state, so not the state machine's column. */
+export const CONVERSATION_PRIORITIES = ['normal', 'high', 'urgent'] as const;
+export type ConversationPriority = (typeof CONVERSATION_PRIORITIES)[number];
+
+/**
+ * Sets the priority of the conversation `id` the tenant sees, from the handoff node of the bot (U78); the queue, the SLA and the
+ * routing read it (C8, I3). False when the tenant does not see it.
+ */
+export async function setConversationPriority(
+  tx: TenantTx,
+  id: string,
+  priority: ConversationPriority,
+): Promise<boolean> {
+  const rows = await tx
+    .update(conversations)
+    .set({ priority, updatedAt: sql`now()` })
+    .where(eq(conversations.id, assertUuid(id, 'id')))
+    .returning({ id: conversations.id });
+  return rows.length === 1;
 }

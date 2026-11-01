@@ -224,6 +224,13 @@ describe('the bot in the inbound transaction', () => {
     await say(noFlow, person, 'xin chào');
     const conversation = await conversationOf(person);
     expect(conversation.state).toBe('HUMAN_WAITING_Q');
+    // The reason in the history, the priority on the conversation (U78).
+    expect(
+      await rows(
+        "SELECT detail->>'reason' AS reason, c.priority FROM conversation_events e JOIN conversations c ON c.id = e.conversation_id WHERE e.conversation_id = $1 AND e.to_state = 'HUMAN_WAITING_Q'",
+        [conversation.id],
+      ),
+    ).toEqual([{ reason: 'no_flow', priority: 'normal' }]);
     expect(
       await rows('SELECT 1 FROM bot_sessions WHERE conversation_id = $1', [conversation.id]),
     ).toEqual([]);

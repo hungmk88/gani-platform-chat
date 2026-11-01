@@ -75,6 +75,7 @@ function setup(over: Partial<{ [K in keyof BotTurnStore]: unknown }> = {}, graph
     loadCustomer: resolves({ displayName: 'Lan' }),
     insertPendingDelivery: resolves(undefined),
     advanceBotSession: resolves(session()),
+    setConversationPriority: resolves(true),
     ...over,
   };
   let sent = 0;
@@ -96,11 +97,12 @@ function setup(over: Partial<{ [K in keyof BotTurnStore]: unknown }> = {}, graph
 /** What the turn wrote to the session (the first advance). */
 const advanced = (t: ReturnType<typeof setup>): unknown =>
   ((t.store.advanceBotSession as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[])[1];
-const NEEDS_HUMAN = [
+/** T02 asked by the bot, with the reason kept in the history (U78). */
+const needsHuman = (reason: string) => [
   tx,
   'c1',
   { type: 'needs_human', inHours: true },
-  { actor: { kind: 'bot' }, traceId: 't1' },
+  { actor: { kind: 'bot' }, traceId: 't1', detail: { reason } },
 ];
 
 describe('runBotTurn', () => {
@@ -119,8 +121,14 @@ describe('runBotTurn', () => {
   it('hands over when no session runs and no flow fits', async () => {
     const t = setup({ listBotTriggers: resolves([]) });
     expect(await t.run()).toBe('no_flow');
-    expect(t.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    expect(t.fsm.transition).toHaveBeenCalledWith(...needsHuman('no_flow'));
+    expect(t.store.setConversationPriority).toHaveBeenCalledWith(tx, 'c1', 'normal');
     expect(t.store.startBotSession).not.toHaveBeenCalled();
+    // A conversation the state machine does not move keeps its priority.
+    const waiting = setup({ listBotTriggers: resolves([]) });
+    waiting.fsm.transition.mockResolvedValueOnce({ kind: 'unchanged' });
+    await waiting.run();
+    expect(waiting.store.setConversationPriority).not.toHaveBeenCalled();
   });
 
   it('starts the flow, sends each message as a pending delivery, and waits for the answer', async () => {
@@ -220,12 +228,26 @@ describe('runBotTurn', () => {
       'bot_flow_broken',
       expect.objectContaining({ code: 'bad_config' }),
     );
-    expect(broken.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    expect(broken.fsm.transition).toHaveBeenCalledWith(...needsHuman('bad_config'));
     const tired = session({ currentNodeKey: 'pack', awaiting: { attempts: 2 } });
     const t = setup({ lockActiveBotSession: resolves(tired) });
     expect(await t.run({ text: 'gì cũng được' })).toBe('handed_off');
-    expect(t.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    expect(t.fsm.transition).toHaveBeenCalledWith(...needsHuman('question_unanswered'));
     expect(t.log.warn).not.toHaveBeenCalled();
+    // A handoff node: its reason in the history, its priority on the conversation.
+    const node = setup(
+      {},
+      {
+        nodes: [
+          n('start', 'trigger'),
+          n('h', 'handoff', { reason: 'Khiếu nại', priority: 'urgent' }),
+        ],
+        edges: [{ from: 'start', to: 'h', label: null }],
+      },
+    );
+    expect(await node.run()).toBe('handed_off');
+    expect(node.fsm.transition).toHaveBeenCalledWith(...needsHuman('Khiếu nại'));
+    expect(node.store.setConversationPriority).toHaveBeenCalledWith(tx, 'c1', 'urgent');
   });
 
   it('jumps to the published version of another flow with the variables, at most MAX_JUMPS a turn', async () => {
@@ -277,7 +299,7 @@ describe('runBotTurn', () => {
       'bot_flow_broken',
       expect.objectContaining({ code: 'jump_limit' }),
     );
-    expect(loop.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    expect(loop.fsm.transition).toHaveBeenCalledWith(...needsHuman('jump_limit'));
     // A flow that is not there: abandoned and handed over.
     const lost = setup({
       listBotTriggers: resolves([triggers[0]]),
@@ -288,7 +310,7 @@ describe('runBotTurn', () => {
       'bot_flow_broken',
       expect.objectContaining({ code: 'jump_target' }),
     );
-    expect(lost.fsm.transition).toHaveBeenCalledWith(...NEEDS_HUMAN);
+    expect(lost.fsm.transition).toHaveBeenCalledWith(...needsHuman('jump_target'));
     // Without a jump the session keeps its version.
     const plain = setup();
     await plain.run();

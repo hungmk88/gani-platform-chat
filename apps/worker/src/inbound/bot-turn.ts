@@ -14,12 +14,14 @@ import {
 } from '@gani/conversations';
 import {
   advanceBotSession,
+  CONVERSATION_PRIORITIES,
   insertPendingDelivery,
   listBotTriggers,
   loadBotFlowVersion,
   loadConversation,
   loadCustomer,
   lockActiveBotSession,
+  setConversationPriority,
   startBotSession,
   type TenantTx,
 } from '@gani/db';
@@ -36,7 +38,7 @@ import type { Logger } from '../logger.js';
 // abandons the session; a broken flow is abandoned and handed over. Logs carry ids and codes only.
 
 // prettier-ignore
-export const botTurnStore = { loadConversation, lockActiveBotSession, listBotTriggers, startBotSession, loadBotFlowVersion, loadCustomer, insertPendingDelivery, advanceBotSession };
+export const botTurnStore = { loadConversation, lockActiveBotSession, listBotTriggers, startBotSession, loadBotFlowVersion, loadCustomer, insertPendingDelivery, advanceBotSession, setConversationPriority };
 /** The SQL of packages/db the turn uses; a unit test passes a fake. */
 export type BotTurnStore = typeof botTurnStore;
 
@@ -85,20 +87,26 @@ export async function runBotTurn(
     workspaceId: input.workspaceId,
     traceId: input.traceId,
   };
-  const handOver = () =>
-    services.fsm.transition(
+  // T02 with the reason in the history (conversation_events.detail) and the priority on the conversation (U78): the handoff node's,
+  // else normal. A conversation the state machine did not move (already waiting) keeps its priority.
+  const handOver = async (reason: string, priority?: unknown) => {
+    const moved = await services.fsm.transition(
       tx,
       input.conversationId,
       { type: 'needs_human', inHours: true },
-      { actor: { kind: 'bot' }, traceId: input.traceId },
+      { actor: { kind: 'bot' }, traceId: input.traceId, detail: { reason } },
     );
+    if (moved.kind !== 'changed') return;
+    const known = CONVERSATION_PRIORITIES.find((p) => p === priority);
+    await db.setConversationPriority(tx, input.conversationId, known ?? 'normal');
+  };
 
   let session = await db.lockActiveBotSession(tx, input.conversationId);
   let fresh = false;
   if (!session) {
     const chosen = chooseTrigger(await db.listBotTriggers(tx, input.workspaceId), input);
     if (!chosen) {
-      await handOver();
+      await handOver('no_flow');
       return 'no_flow';
     }
     session = await db.startBotSession(tx, {
@@ -194,8 +202,11 @@ export async function runBotTurn(
     ...(versionId === session.versionId ? {} : { versionId }),
   });
   if (problem) services.log.warn('bot_flow_broken', { ...ids, code: problem });
-  if (turn.status === 'handed_off' || (turn.status === 'abandoned' && !windowClosed))
-    await handOver();
+  if (turn.status === 'handed_off' || (turn.status === 'abandoned' && !windowClosed)) {
+    const asked = turn.effects.find((e) => e.kind === 'handoff');
+    const reason = typeof asked?.reason === 'string' ? asked.reason : (problem ?? 'bot_abandoned');
+    await handOver(reason, asked?.priority);
+  }
   return turn.status;
 }
 

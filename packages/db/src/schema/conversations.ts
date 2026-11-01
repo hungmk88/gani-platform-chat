@@ -1,7 +1,7 @@
 import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Mirrors migrations 202610031830_create_conversations.sql, 202610061100_add_conversations_fsm_columns.sql and
-// 202610071310_add_conversations_channel_columns.sql (+ customer_id of 202610271000, last_message_* of 202610291000).
+// 202610071310_add_conversations_channel_columns.sql (+ customer_id of 202610271000, last_message_* of 202610291000, priority of 202611061000).
 // state, version, assignedUserId, afterHoursHold, closedAt and outcome belong to the ConversationStateMachine (a trigger refuses
 // any other writer, 202610061110); the rest is written by the message flow.
 export const conversations = pgTable('conversations', {
@@ -24,6 +24,8 @@ export const conversations = pgTable('conversations', {
   // The line of the Inbox (202610291000, U30, N169): kind of the last message that is not of the system, and its text when it is text.
   lastMessagePreview: text('last_message_preview'),
   lastMessageKind: text('last_message_kind'),
+  // The priority while it waits for a person (202611061000, U78): set when the bot hands over; normal, high or urgent.
+  priority: text('priority').notNull().default('normal'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
