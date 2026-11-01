@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { budgetOf, featureBody, mayTurn, resetText, settingsPath, usdText } from './settings';
+import {
+  budgetOf,
+  budgetStop,
+  budgetValue,
+  featureBody,
+  mayTurn,
+  resetText,
+  settingsPath,
+  usdText,
+} from './settings';
 
 describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () => {
   it('asks the settings of one workspace', () => {
@@ -21,11 +30,11 @@ describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () =
       tone: 'error',
       note: 'Hết ngân sách tháng: AI nội bộ dừng, quay về kịch bản.',
     });
-    // A budget of 0: no share, no state (U74).
+    // A budget of 0: no share; off, as the contract reads (CEO 01/11, U74).
     expect(budgetOf({ monthlyBudgetUsd: 0, usedThisMonthUsd: 0 })).toEqual({
       used: `${usdText(0)} / ${usdText(0)}`,
-      tone: null,
-      note: null,
+      tone: 'error',
+      note: '0 USD = AI nội bộ tắt hoàn toàn.',
     });
   });
 
@@ -49,5 +58,18 @@ describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () =
     expect(mayTurn('staging', false)).toBe(true);
     expect(mayTurn('production', false)).toBe(true);
     expect(featureBody('l1', true)).toEqual({ features: { l1: true } });
+  });
+
+  it('takes a budget as the API does and says what saving it does at once (B1b, CEO 01/11)', () => {
+    for (const raw of ['', '  ', '-1', '1000000.01', 'abc'])
+      expect(budgetValue(raw)).toBe('Nhập số tiền từ 0 đến 1.000.000 USD.');
+    expect([budgetValue('0'), budgetValue(' 150.5 '), budgetValue('1000000')]).toEqual([
+      0, 150.5, 1_000_000,
+    ]);
+    expect(budgetStop(0, 0, 'x')).toBe('0 USD = AI nội bộ tắt hoàn toàn.');
+    expect(budgetStop(170, 170, '00:00 01/12/2026')).toBe(
+      `Ngân sách mới (${usdText(170)}) không lớn hơn số đã dùng tháng này (${usdText(170)}): AI nội bộ sẽ dừng ngay tới 00:00 01/12/2026.`,
+    );
+    expect(budgetStop(170.01, 170, 'x')).toBeNull();
   });
 });
