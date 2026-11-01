@@ -37,6 +37,7 @@ export default defineConfig({
         'src/quick-reply-store.ts',
         'src/bot-flow-store.ts',
         'src/bot-session-store.ts',
+        'src/bot-trigger-read.ts',
         'src/customer-store.ts',
         'src/customer-read.ts',
         'src/tenant-tx.ts',
