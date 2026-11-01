@@ -26,6 +26,8 @@ const tables: PgTable[] = [
   db.quickReplies,
   db.botFlows,
   db.botFlowVersions,
+  db.botNodes,
+  db.botEdges,
   db.customers,
   db.customerIdentities,
   db.sessions,
