@@ -31,6 +31,7 @@ const CHILD = 'runs in a child process that the spec starts; v8 does not collect
 // Below the threshold on purpose, never a debt (approved 30/10).
 export const EXEMPT = {
   'packages/db/src/schema/audit-logs.ts': SCHEMA,
+  'packages/db/src/schema/bot-sessions.ts': SCHEMA,
   'packages/db/src/schema/conversation-events.ts': SCHEMA,
   'packages/db/src/schema/idempotency-keys.ts': SCHEMA,
   'packages/db/src/schema/inbound-event-keys.ts': SCHEMA,
