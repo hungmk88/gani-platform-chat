@@ -18,6 +18,7 @@ export const THRESHOLD = { lines: 80, branches: 70 };
 export const PACKAGES = [
   'apps/api',
   'apps/worker',
+  'packages/ai-core',
   'packages/db',
   'packages/domain',
   'packages/conversations',
