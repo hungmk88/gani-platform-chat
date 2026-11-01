@@ -2,6 +2,14 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 01/11/2026: luật hủy heads-up, tự kiểm đủ 9 job (CEO, brief `2810-01112026-FE-BRIEF-01` mục 7)
+
+- GIT WORKFLOW thêm **Luật hủy heads-up** (nguyên văn CEO): `hold` dừng mọi hoạt động trên PR (push, heads-up, đổi draft/ready,
+  merge), hủy vĩnh viễn auto-merge của PR đó tới khi CEO comment gỡ hold; vi phạm là sự cố quy trình, ghi vào handoff.
+- Dòng tự kiểm của tầng 1/2 ghi rõ **9 job theo tên**, trước khi merge; required check nay là 9 context, gồm `docker images`
+  (CEO chốt giữ, 01/11), job `skipped` tính là đạt.
+- Ghi bởi FE, theo lệnh CEO; `CLAUDE.md` gốc là file dùng chung FE + BE, BE lead chưa review.
+
 ## 13/10/2026: tách nhật ký khỏi `CLAUDE.md` (review G-04, N126)
 
 - `CLAUDE.md` còn **một** H1. Hai bài học (bảo mật tài liệu, kiểm tra lệnh) thành mục của file; phần "Cách apply" và bảng "Lịch sử" chuyển về đây.
