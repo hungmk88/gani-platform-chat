@@ -1,6 +1,6 @@
 // #26 AI nội bộ, Đợt 1 only E20 (U35, CEO 30/10): the versions of the prompts the internal AI uses, read only, from
 // `GET /v1/ai/prompts`, a contract planned for S5 (docs/openapi/planned.json, N167). Until the API serves it, the route answers 404
-// and the screen says it is not there yet. Environment, features and budget wait for `ai-settings` (U61) and are not shown.
+// and the screen says it is not there yet. Environment, features and budget: `settings.ts` (part A, U61).
 import type { components } from '../api/planned';
 import type { Role } from '../nav';
 
