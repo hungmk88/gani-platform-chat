@@ -222,6 +222,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@gani/bot-runtime':
+        specifier: workspace:*
+        version: link:../../packages/bot-runtime
       '@gani/channels':
         specifier: workspace:*
         version: link:../../packages/channels

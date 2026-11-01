@@ -12,9 +12,11 @@ import {
 } from '@gani/db';
 import { REOPEN_WINDOW_MS, uuidv7 } from '@gani/domain';
 
+import type { BotTurnInput, BotTurnOutcome } from './bot-turn.js';
+
 // One inbound event in one transaction (inbound spec §3): normalise → lock the person → find or make their customer (N165) → find,
-// reopen or create the conversation and name its customer → store the message and let the state machine react → mark the event
-// processed. The caller opens the transaction in the tenant of the event, its workspace included (conversations and messages are
+// reopen or create the conversation and name its customer → store the message and let the state machine react → the bot's turn
+// (D1b3a) → mark the event processed. The caller opens the transaction in the tenant of the event, its workspace included (conversations and messages are
 // filtered by workspace). Nothing here logs the payload.
 
 /** The claim of the event was lost (the lease expired and another worker took it): everything of this transaction must roll back. */
@@ -29,6 +31,8 @@ export class InboundLeaseLostError extends Error {
 export interface InboundServices {
   readonly fsm: ConversationStateMachine;
   readonly messages: MessageService;
+  /** The scripted bot's turn after the message (D1b3a); absent, the message is only stored. */
+  readonly bot?: (tx: TenantTx, input: BotTurnInput) => Promise<BotTurnOutcome>;
 }
 
 export async function processInboundEvent(
@@ -71,6 +75,7 @@ export async function processInboundEvent(
     found.closedAt !== null &&
     now.getTime() - found.closedAt.getTime() > REOPEN_WINDOW_MS;
   let conversationId = found && !expired ? found.id : null;
+  const firstOfConversation = conversationId === null;
   if (conversationId === null) {
     const created = await services.fsm.create(tx, {
       workspaceId: event.workspaceId,
@@ -92,6 +97,16 @@ export async function processInboundEvent(
     platformSentAt: normalized.platformSentAt,
     traceId: event.id,
     agentOnline: false,
+    now,
+  });
+  await services.bot?.(tx, {
+    conversationId,
+    workspaceId: event.workspaceId,
+    channelAccountId: event.channelAccountId,
+    customerId,
+    text: normalized.messageKind === 'text' ? (normalized.body ?? null) : null,
+    firstOfConversation,
+    traceId: event.id,
     now,
   });
   if (!(await markInboundProcessed(tx, key))) throw new InboundLeaseLostError();
