@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
@@ -94,6 +94,36 @@ test('an Admin makes a template with a variable and tags; a wrong one is said be
   await body.fill('Xin chào');
   await form.getByRole('button', { name: 'Tạo mẫu' }).click();
   await expect(form.getByRole('alert')).toContainText('đã có mẫu khác dùng phím tắt /chao');
+});
+
+test('a variable put in, then another field at once: the caret is not pulled back to the text', async ({
+  page,
+}) => {
+  // A late frame (a busy machine, CI 01/11): the focus that follows "Chèn biến" comes after the person has moved to the tags.
+  await page.addInitScript(() => {
+    const frame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (run) => window.setTimeout(() => frame(run), 300);
+  });
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/quick-replies');
+  const late = () => page.evaluate(() => new Promise((done) => window.setTimeout(done, 500)));
+  const check = async (scope: Locator) => {
+    await scope.getByLabel('Nội dung').fill('Cảm ơn ');
+    await scope
+      .getByRole('group', { name: 'Chèn biến' })
+      .getByRole('button', { name: 'Tên khách' })
+      .click();
+    const tags = scope.getByLabel(/^Tag/);
+    await tags.fill(''); // the person moves to the tags before the frame comes
+    await late();
+    await page.keyboard.type('sau');
+    await expect(tags).toHaveValue('sau');
+    await expect(tags).toBeFocused();
+    await expect(scope.getByLabel('Nội dung')).toHaveValue('Cảm ơn {{customer_name}}');
+  };
+  await check(page.getByRole('form', { name: 'Tạo mẫu' }));
+  await page.getByRole('button', { name: 'Sửa mẫu /gia-si' }).click();
+  await check(page.getByRole('dialog', { name: 'Sửa mẫu /gia-si' }));
 });
 
 test('a Manager changes a template, only what changed is sent, then removes another', async ({

@@ -54,9 +54,12 @@ export function QuickReplyForm({ workspaceId }: { workspaceId: string }) {
   };
   /** Puts `{{name}}` where the caret is, or at the end. */
   const insert = (name: string) => {
+    const from = document.activeElement; // the button pressed (the page, where a pressed button takes no focus)
     const next = insertVariable(body, text.current?.selectionStart ?? body.length, name);
     edit(setBody)(next.text);
     requestAnimationFrame(() => {
+      // Back to the text only if the person has not moved on: a late frame must not pull the caret out of the field they type in.
+      if (document.activeElement !== from) return;
       text.current?.focus();
       text.current?.setSelectionRange(next.caret, next.caret);
     });
