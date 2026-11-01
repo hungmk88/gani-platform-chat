@@ -312,7 +312,8 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   docs). FE đọc `branches/main/protection` lúc 12:08:12 UTC: **9 context, gồm cả `docker images`** (đủ tên 9 job của `ci.yml`),
   `strict` và `enforce_admins` bật. PR chỉ có docs **không bị `blocked` vĩnh viễn**: #503 (`docker images` skipped) vẫn `clean` và
   merge lúc 11:22:48, khi 9 check này đã có hiệu lực (FE đọc lúc 11:16:50); GitHub tính check skipped là đạt. Đã báo CEO để quyết
-  có bỏ `docker images` khỏi required check không. Kết quả kiểm "`blocked` khi CI chưa xong": ở PR docs ghi mục này.
+  có bỏ `docker images` khỏi required check không. Kết quả kiểm "`blocked` khi CI chưa xong": **đạt**, PR #506 (PR ghi mục này) ở `blocked` suốt lúc CI chạy (đọc 12:09:28 đến
+  12:09:58 UTC, 0–4/8 job xong): required check có hiệu lực.
 - **Auto-merge (CEO 01/11):** sau khi xác nhận đủ 9 check, FE được dùng auto-merge tầng 1 cho PR code/UI; PR docs vẫn tự kiểm rồi
   merge tay (`docker images` skip, auto-merge có thể chờ nhầm). Không tự áp dụng heads-up cho bất kỳ PR nào.
 - **Bot Engine D1a3a/D1a3b: CEO chọn C — Đợt 1, chỉ đọc. Hợp đồng đã có trên `main` (#496, #499). FE trình phương án trước khi
