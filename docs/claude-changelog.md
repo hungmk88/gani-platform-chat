@@ -2,6 +2,14 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 01/11/2026: tầng 1 code tự push tự merge, bỏ docker ở local, trần 500 cho test bắt buộc (ký A (CEO))
+
+- GIT WORKFLOW thêm **Tầng 1 code: tự push, tự merge, báo sau**: kiểm local lint/typecheck/unit test/format/build/E2E, không chạy
+  docker, database, queue, terraform, coverage ở local; CI 9/9 thật; `main` đi trước thì "Update branch" của GitHub; báo sau merge
+  gộp cả phiên; chỉ áp khi protection còn `strict`, `enforce_admins`, 9 required check.
+- KÍCH THƯỚC PR: 400 mặc định, 500 cho PR code khi phần vượt là test bắt buộc; vượt trần báo trước khi push.
+- Lý do (CEO): mỗi PR đang mất 4–5 vòng brief; luật để cắt số vòng.
+
 ## 01/11/2026: luật hủy heads-up, tự kiểm đủ 9 job (CEO, brief `2810-01112026-FE-BRIEF-01` mục 7)
 
 - GIT WORKFLOW thêm **Luật hủy heads-up** (nguyên văn CEO): `hold` dừng mọi hoạt động trên PR (push, heads-up, đổi draft/ready,
