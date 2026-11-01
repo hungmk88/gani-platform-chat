@@ -9,6 +9,7 @@ import {
   createBotFlow,
   createDbPool,
   listBotFlows,
+  loadBotFlow,
   loadBotFlowVersion,
   publishBotFlow,
   saveBotFlowDraft,
@@ -161,5 +162,26 @@ describe('bot-flow-store: publish and list', () => {
     // Last changed first: the flow just published comes before the one made before it.
     expect(ids.indexOf(live.flow.id)).toBeLessThan(ids.indexOf(never.flow.id));
     await expect(publish(live.flow.id, B)).rejects.toBeInstanceOf(BotFlowNotFoundError);
+  });
+
+  it('loads a live flow with its draft and its latest published version, nothing of another organisation', async () => {
+    const { flow, draftVersionId } = await make();
+    expect(await as(A, (tx) => loadBotFlow(tx, flow.id))).toMatchObject({
+      id: flow.id,
+      draftVersionId,
+      publishedVersionId: null,
+    });
+    await save(flow.id);
+    const first = await publish(flow.id);
+    const second = await publish(flow.id);
+    expect(await as(A, (tx) => loadBotFlow(tx, flow.id))).toMatchObject({
+      status: 'active',
+      draftVersionId: second.draftVersionId,
+      publishedVersionId: second.versionId,
+    });
+    expect(first.versionId).not.toBe(second.versionId);
+    expect(await as(B, (tx) => loadBotFlow(tx, flow.id))).toBeNull();
+    await admin.query('UPDATE bot_flows SET deleted_at = now() WHERE id = $1', [flow.id]);
+    expect(await as(A, (tx) => loadBotFlow(tx, flow.id))).toBeNull();
   });
 });

@@ -28,6 +28,7 @@ export default defineConfig({
         'src/modules/quick-replies/quick-replies.controller.ts',
         'src/modules/customers/customers.controller.ts',
         'src/modules/audit/audit.controller.ts',
+        'src/modules/bot-flows/bot-flows.controller.ts',
       ],
     },
   },

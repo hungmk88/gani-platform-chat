@@ -7,6 +7,7 @@ import { registerChannels } from '../modules/channels/channels.openapi.js';
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
 import { registerCustomers } from '../modules/customers/customers.openapi.js';
+import { registerBotFlows } from '../modules/bot-flows/bot-flows.openapi.js';
 import { registerQuickReplies } from '../modules/quick-replies/quick-replies.openapi.js';
 import { MeChangeSchema } from '../modules/request-context/me.schemas.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
@@ -134,6 +135,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerTeams,
   registerChannels,
   registerQuickReplies,
+  registerBotFlows,
   registerCustomers,
   registerAuditLogs,
 ];
