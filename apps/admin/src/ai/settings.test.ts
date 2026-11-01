@@ -38,5 +38,8 @@ describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () =
       '02:00 01/12/2026 (múi giờ của workspace: Asia/Tokyo)',
     );
     expect(resetText(resetsAt, null)).toBe('00:00 01/12/2026 (giờ Việt Nam)');
+    // Empty, blank or unknown: Intl would throw a RangeError and break the screen; Viet Nam's time, said so.
+    for (const zone of ['', '   ', 'Not/AZone'])
+      expect(resetText(resetsAt, zone)).toBe('00:00 01/12/2026 (giờ Việt Nam)');
   });
 });
