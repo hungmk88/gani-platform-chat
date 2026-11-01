@@ -1616,7 +1616,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. Q1 (legal) not settled: `production` is refused with 409 `ai_production_locked`; it may open once Q1 is. */
+        /** Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. No lock on `production` (Q1 settled, U74); E1/L1 may be on in any environment (U75). */
         patch: {
             parameters: {
                 query?: never;
@@ -1671,15 +1671,6 @@ export interface paths {
                 };
                 /** @description not_found: a workspace not among the session’s. */
                 404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description ai_production_locked: `production` while Q1 (legal) is not settled. */
-                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2024,13 +2015,13 @@ export interface components {
             /** @enum {string} */
             environment: "staging" | "production";
             features: components["schemas"]["AiFeatures"];
-            /** @description The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow). */
+            /** @description The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow): it stops once `usedThisMonthUsd >= monthlyBudgetUsd`, so 0 turns the internal AI off. It stays as set when a month begins (U74). */
             monthlyBudgetUsd: number;
             /** @description Spent since the month began in `workspace.timezone` (ai_usage_logs). */
             usedThisMonthUsd: number;
             /**
              * Format: date-time
-             * @description When the next month begins in `workspace.timezone`, and the spending starts again at 0.
+             * @description When the next month begins in `workspace.timezone`: `usedThisMonthUsd` starts again at 0, `monthlyBudgetUsd` does not change.
              */
             resetsAt: string;
         };

@@ -51,7 +51,7 @@ export function registerAi(registry: OpenAPIRegistry): void {
     method: 'patch',
     path: '/v1/workspaces/{id}/ai-settings',
     summary:
-      'Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. Q1 (legal) not settled: `production` is refused with 409 `ai_production_locked`; it may open once Q1 is.',
+      'Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. No lock on `production` (Q1 settled, U74); E1/L1 may be on in any environment (U75).',
     tags: ['ai'],
     request: { params, body: { required: true, ...json(AiSettingsChangeSchema) } },
     responses: {
@@ -63,7 +63,6 @@ export function registerAi(registry: OpenAPIRegistry): void {
         'forbidden: an Admin moving to `production`, or another role; or a refusal of the edge.',
       ),
       404: notFound,
-      409: problemResponse('ai_production_locked: `production` while Q1 (legal) is not settled.'),
       ...edge,
     },
   });

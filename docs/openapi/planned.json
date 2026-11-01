@@ -1290,7 +1290,7 @@
           "monthlyBudgetUsd": {
             "type": "number",
             "minimum": 0,
-            "description": "The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow)."
+            "description": "The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow): it stops once `usedThisMonthUsd >= monthlyBudgetUsd`, so 0 turns the internal AI off. It stays as set when a month begins (U74)."
           },
           "usedThisMonthUsd": {
             "type": "number",
@@ -1300,7 +1300,7 @@
           "resetsAt": {
             "type": "string",
             "format": "date-time",
-            "description": "When the next month begins in `workspace.timezone`, and the spending starts again at 0."
+            "description": "When the next month begins in `workspace.timezone`: `usedThisMonthUsd` starts again at 0, `monthlyBudgetUsd` does not change."
           }
         },
         "required": [
@@ -3225,7 +3225,7 @@
       "patch": {
         "x-status": "planned",
         "x-sprint": "S5",
-        "summary": "Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. Q1 (legal) not settled: `production` is refused with 409 `ai_production_locked`; it may open once Q1 is.",
+        "summary": "Change only what is sent (audited: `workspace.ai_settings_changed`). E1/L1 and the budget: Owner or Admin; `environment: production`: the Owner alone. No lock on `production` (Q1 settled, U74); E1/L1 may be on in any environment (U75).",
         "tags": [
           "ai"
         ],
@@ -3293,16 +3293,6 @@
           },
           "404": {
             "description": "not_found: a workspace not among the session’s.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "ai_production_locked: `production` while Q1 (legal) is not settled.",
             "content": {
               "application/problem+json": {
                 "schema": {
