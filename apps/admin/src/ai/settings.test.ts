@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { budgetOf, resetText, settingsPath, usdText } from './settings';
+import { budgetOf, featureBody, mayTurn, resetText, settingsPath, usdText } from './settings';
 
 describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () => {
   it('asks the settings of one workspace', () => {
@@ -41,5 +41,13 @@ describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () =
     // Empty, blank or unknown: Intl would throw a RangeError and break the screen; Viet Nam's time, said so.
     for (const zone of ['', '   ', 'Not/AZone'])
       expect(resetText(resetsAt, zone)).toBe('00:00 01/12/2026 (giờ Việt Nam)');
+  });
+
+  it('turns a feature on only in staging, off anywhere, sending that feature only (B1, CEO 01/11)', () => {
+    expect(mayTurn('staging', true)).toBe(true);
+    expect(mayTurn('production', true)).toBe(false);
+    expect(mayTurn('staging', false)).toBe(true);
+    expect(mayTurn('production', false)).toBe(true);
+    expect(featureBody('l1', true)).toEqual({ features: { l1: true } });
   });
 });

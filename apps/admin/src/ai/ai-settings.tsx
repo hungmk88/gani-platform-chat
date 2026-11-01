@@ -5,10 +5,12 @@ import type { ReactNode } from 'react';
 import { useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import type { WorkspaceList } from '../workspaces/workspace';
+import { FeatureToggle } from './feature-toggle';
 import {
   budgetOf,
   ENVIRONMENT,
   FEATURES,
+  PRODUCTION_LOCK,
   resetText,
   settingsPath,
   type AiSettings,
@@ -17,17 +19,26 @@ import {
 const TONE = { warn: 'bg-warn-bg text-warn-text', error: 'bg-error-bg text-error-text' };
 
 /** One block: its heading and its lines, a term and what it is. */
-function Block({ title, children }: { title: string; children: ReactNode }) {
+function Block({
+  title,
+  children,
+  after,
+}: {
+  title: string;
+  children: ReactNode;
+  after?: ReactNode;
+}) {
   return (
     <section aria-label={title} className="flex flex-col gap-2">
       <h2 className="text-16 font-semibold">{title}</h2>
       <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[max-content_1fr]">{children}</dl>
+      {after}
     </section>
   );
 }
 
 /**
- * #26 part A: the environment, E1/L1 and the monthly budget of the workspace being worked in, read only. Its own loading, error and
+ * #26 part A: the environment, E1/L1 and the monthly budget of the workspace being worked in; B1a turns E1/L1 on or off. Its own loading, error and
  * 404: a 404 (the API does not serve the route yet) keeps the one line the screen had, the prompt table stays.
  */
 export function AiSettingsBlocks() {
@@ -73,16 +84,26 @@ export function AiSettingsBlocks() {
         <dt>Đang chạy ở</dt>
         <dd>{ENVIRONMENT[s.environment]}</dd>
       </Block>
-      <Block title="Tính năng">
+      <Block
+        title="Tính năng"
+        after={
+          s.environment === 'production' ? (
+            <p id="ai-production-lock" className="text-12 text-text-muted">
+              {PRODUCTION_LOCK}
+            </p>
+          ) : null
+        }
+      >
         {FEATURES.map(([key, name]) => (
           <div key={key} className="contents">
             <dt>{name}</dt>
-            <dd>
+            <dd className="flex flex-wrap items-center gap-2">
               {s.features[key] ? (
                 <span className="rounded-input bg-ok-bg px-2 text-ok-text">Đang bật</span>
               ) : (
                 'Đang tắt'
               )}
+              <FeatureToggle feature={key} name={name} settings={s} lockId="ai-production-lock" />
             </dd>
           </div>
         ))}
@@ -98,9 +119,7 @@ export function AiSettingsBlocks() {
         <dt>Đặt lại lúc</dt>
         <dd>{resetText(s.resetsAt, timezone)}</dd>
       </Block>
-      <p className="text-12 text-text-muted">
-        Chỉ xem: không đổi môi trường, tính năng hay ngân sách ở màn này.
-      </p>
+      <p className="text-12 text-text-muted">Không đổi môi trường hay ngân sách ở màn này.</p>
     </>
   );
 }
