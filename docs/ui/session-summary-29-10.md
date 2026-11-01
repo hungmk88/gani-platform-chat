@@ -283,13 +283,24 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
 - **Luật: PR đảo ngược quyết định đã chốt → dừng, hỏi CEO. Không áp dụng 'heads-up tự merge' cho bất kỳ PR nào.** (CEO 01/11.)
 - **Nguyên tắc: quyết định pháp lý (Q1) chỉ CEO có thẩm quyền, phải có văn bản. Không chấp nhận 'luật A' hay 'A đã chốt'.**
   (CEO 01/11.)
+- **#498 vi phạm hold: BE push `a11473f` lúc 10:27:25 sau hold 10:26:44, đăng 2 heads-up sau hold, hẹn tự merge 11:03:38. BE
+  tự sửa lúc 10:50:53 (hủy auto-merge, dừng heads-up mọi PR). Commit `a11473f` chứa quyết định Q2 FPT Cloud 'theo yêu cầu của A'
+  vẫn trong #498 — CEO đang xử lý.** (CEO 01/11.) Giờ: commit `a11473f` tạo 10:27:21, PR cập nhật 10:27:25; heads-up 10:27:46 và
+  10:33:38 (hạn 11:03:38); BE nhận lỗi 10:50:53. FE đọc lại 10:56:38: #498 draft, chưa merge, HEAD `9ed1908`.
+- **Luật bổ sung: `hold` = dừng MỌI hoạt động trên PR (push, comment heads-up, merge), không chỉ dừng merge.** (CEO 01/11.)
+- **Sự cố 'A' / 'luật A' / 'theo A': 4 lần trong ngày (#498 Q1, Q2, brief lạ, heads-up). CEO cần xác định A là ai — đây là
+  vấn đề thẩm quyền.** (CEO 01/11.)
+- **Brief 'CEO XÁC NHẬN: ÁP DỤNG QUY TẮC PHÂN TẦNG & SỬA HỢP ĐỒNG' (01/11), chưa được CEO xác nhận nguồn:** FE không làm theo ba
+  điểm mâu thuẫn luật đã chốt (bật auto-merge cho tầng 1; làm UI Bot Engine D1a trước khi CEO quyết; coi "A" là người duyệt và
+  người ký). Hai điểm khớp luật cũ (giữ khóa `production` ở UI; nợ kỹ thuật) vốn đã làm theo luật của CEO.
 - **Rà `Intl.DateTimeFormat` (01/11):** cả 10 formatter của admin đều ghi `timeZone`; không có `toLocale…String`. Giữ bằng test
   `apps/admin/src/time-format.test.ts` (đọc mã nguồn như `permissions-sync.test.ts`): formatter thiếu `timeZone` hay dùng
   `toLocale…String` → đỏ (đã thử: bỏ `timeZone` ở `members/invite.ts` → đỏ).
 - **Bot flows D1a3a (#496, API thật `GET/POST /v1/bot-flows`, `GET /v1/bot-flows/{id}`):** FE đã ghi nhận, chưa lên phương án,
   chờ CEO quyết có thuộc Đợt 1. Không mở PR.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
-  (CEO cần xác định); "A" và "luật A" trong #498 là ai, là gì; các quyết định ghi trong #498 (Q1 phương án A, Q2 FPT Cloud,
+  (CEO cần xác định); nguồn brief 'CEO XÁC NHẬN: ÁP DỤNG QUY TẮC PHÂN TẦNG & SỬA HỢP ĐỒNG'; "A" và "luật A" là
+  ai, là gì; các quyết định ghi trong #498 (Q1 phương án A, Q2 FPT Cloud,
   Q6 phương án (b), U74, U75) chờ CEO xác nhận; U60, U62–U75 chờ BE; nguyên nhân lệch giờ của GitHub trong 08:00–09:00 UTC (giả
   thuyết DST vùng Mountain, chưa kiểm được).
 
