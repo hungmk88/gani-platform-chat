@@ -63,6 +63,9 @@ export interface BotTurnInput {
 
 export type BotTurnOutcome = 'skipped' | 'no_flow' | TurnStatus;
 
+/** Jumps from flow to flow in one turn before the session is abandoned (jump_limit). */
+export const MAX_JUMPS = 3;
+
 /** A send effect as the customer reads it: the choices of a question numbered under its text, so "2" answers it. */
 const textOf = (effect: Effect): string => {
   const choices = Array.isArray(effect.choices) ? effect.choices.map(String) : [];
@@ -120,6 +123,38 @@ export async function runBotTurn(
     fresh ? { kind: 'start' } : { kind: 'message', text: input.text ?? '' },
     handlers,
   );
+  // jump_to_flow (D1b3b): the turn goes on at the trigger of the other flow's published version, in the same workspace, with the
+  // session's variables; at most MAX_JUMPS a turn, so two flows that jump to each other never spin. A flow that is not there
+  // (deleted, inactive, never published, another workspace) abandons the session and hands over.
+  let versionId = session.versionId;
+  let problem: string | undefined = turn.error;
+  for (let jumps = 0; turn.status === 'completed'; jumps++) {
+    const jump = turn.effects.find((e) => e.kind === 'jump');
+    if (!jump) break;
+    const target =
+      jumps < MAX_JUMPS
+        ? (await db.listBotTriggers(tx, input.workspaceId)).find((t) => t.flowId === jump.flowId)
+        : undefined;
+    const next = target ? await db.loadBotFlowVersion(tx, target.versionId) : null;
+    if (!target || !next) {
+      problem = jumps < MAX_JUMPS ? 'jump_target' : 'jump_limit';
+      turn = { ...turn, status: 'abandoned' };
+      break;
+    }
+    versionId = target.versionId;
+    const after = step(
+      next.graph,
+      { nodeKey: null, awaiting: null, vars: turn.state.vars },
+      { kind: 'start' },
+      handlers,
+    );
+    problem = after.error;
+    turn = {
+      ...after,
+      effects: [...turn.effects.filter((e) => e.kind !== 'jump'), ...after.effects],
+      steps: [...turn.steps, ...after.steps],
+    };
+  }
 
   let windowClosed = false;
   for (const effect of turn.effects.filter((e) => e.kind === 'send')) {
@@ -156,8 +191,9 @@ export async function runBotTurn(
     status: turn.status,
     steps: turn.steps,
     newId: uuidv7,
+    ...(versionId === session.versionId ? {} : { versionId }),
   });
-  if (turn.error) services.log.warn('bot_flow_broken', { ...ids, code: turn.error });
+  if (problem) services.log.warn('bot_flow_broken', { ...ids, code: problem });
   if (turn.status === 'handed_off' || (turn.status === 'abandoned' && !windowClosed))
     await handOver();
   return turn.status;
