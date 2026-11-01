@@ -1,10 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import type { WorkspaceList } from '../workspaces/workspace';
+import { BudgetDialog } from './budget-dialog';
 import { FeatureToggle } from './feature-toggle';
 import {
   budgetOf,
@@ -16,6 +17,7 @@ import {
   type AiSettings,
 } from './settings';
 
+const button = 'self-start rounded-input border border-border-strong px-3 py-1';
 const TONE = { warn: 'bg-warn-bg text-warn-text', error: 'bg-error-bg text-error-text' };
 
 /** One block: its heading and its lines, a term and what it is. */
@@ -38,8 +40,9 @@ function Block({
 }
 
 /**
- * #26 part A: the environment, E1/L1 and the monthly budget of the workspace being worked in; B1a turns E1/L1 on or off. Its own loading, error and
- * 404: a 404 (the API does not serve the route yet) keeps the one line the screen had, the prompt table stays.
+ * #26 part A: the environment, E1/L1 and the monthly budget of the workspace being worked in; B1a turns E1/L1 on or off, B1b changes
+ * the budget. Its own loading, error and 404: a 404 (the API does not serve the route yet) keeps the one line the screen had, the
+ * prompt table stays.
  */
 export function AiSettingsBlocks() {
   const { workspaceId } = useScope();
@@ -52,6 +55,7 @@ export function AiSettingsBlocks() {
   // The zone of the month: the workspace's, from the list Owner and Admin read (#21); without it, Viet Nam's time, said so.
   const workspaces = useApiQuery<WorkspaceList>(['workspaces'], '/v1/workspaces');
   const timezone = workspaces.data?.data.find((w) => w.id === workspaceId)?.timezone ?? null;
+  const [editing, setEditing] = useState(false);
   if (!workspaceId)
     return <p>Bạn chưa thuộc workspace nào. Nhờ Owner thêm bạn ở Cài đặt › Workspace.</p>;
   if (settings.isPending)
@@ -78,6 +82,7 @@ export function AiSettingsBlocks() {
   }
   const s = settings.data;
   const budget = budgetOf(s);
+  const reset = resetText(s.resetsAt, timezone);
   return (
     <>
       <Block title="Môi trường">
@@ -108,7 +113,14 @@ export function AiSettingsBlocks() {
           </div>
         ))}
       </Block>
-      <Block title="Ngân sách tháng">
+      <Block
+        title="Ngân sách tháng"
+        after={
+          <button type="button" className={button} onClick={() => setEditing(true)}>
+            Sửa ngân sách
+          </button>
+        }
+      >
         <dt>Đã dùng / ngân sách</dt>
         <dd>
           {budget.used}
@@ -117,9 +129,12 @@ export function AiSettingsBlocks() {
           ) : null}
         </dd>
         <dt>Đặt lại lúc</dt>
-        <dd>{resetText(s.resetsAt, timezone)}</dd>
+        <dd>{reset}</dd>
       </Block>
-      <p className="text-12 text-text-muted">Không đổi môi trường hay ngân sách ở màn này.</p>
+      {editing ? (
+        <BudgetDialog settings={s} reset={reset} onClose={() => setEditing(false)} />
+      ) : null}
+      <p className="text-12 text-text-muted">Không đổi môi trường ở màn này.</p>
     </>
   );
 }

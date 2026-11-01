@@ -47,8 +47,8 @@ test('an Owner reads the prompt versions, with nothing to change them', async ({
     3,
   );
   await expect(page.getByText(/múi giờ của workspace/)).toBeVisible();
-  // Only E1/L1 turn on or off (B1a, e2e/ai-features.spec.ts); nothing changes the environment or the budget.
-  await expect(page.getByRole('main').getByRole('button')).toHaveCount(2);
+  // E1/L1 turn on or off (B1a, e2e/ai-features.spec.ts) and the budget changes (B1b, e2e/ai-budget.spec.ts); never the environment.
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(3);
   await expect(page.getByRole('main').getByRole('checkbox')).toHaveCount(0);
   await expect(page.getByText(/sắp có|đang phát triển/i)).toHaveCount(0);
   await expectAccessible(page);
