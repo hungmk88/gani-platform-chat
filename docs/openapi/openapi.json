@@ -2196,6 +2196,218 @@
         ],
         "additionalProperties": false
       },
+      "BotDryRunResult": {
+        "type": "object",
+        "properties": {
+          "flowId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published"
+                ]
+              },
+              "number": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "number"
+            ]
+          },
+          "triggerMatched": {
+            "type": "boolean"
+          },
+          "businessHoursAssumed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "handed_off",
+              "abandoned"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "no_trigger",
+              "unknown_node",
+              "no_handler",
+              "bad_config",
+              "step_limit",
+              "jump_target",
+              "jump_limit",
+              null
+            ]
+          },
+          "turns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "replies": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "nodeKey": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "nodeKey",
+                      "text"
+                    ]
+                  }
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "nodeKey": {
+                        "type": "string"
+                      },
+                      "nodeType": {
+                        "type": "string"
+                      },
+                      "edgeLabel": {
+                        "type": "string"
+                      },
+                      "variable": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "nodeKey",
+                      "nodeType"
+                    ]
+                  }
+                },
+                "handoff": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "high",
+                            "urgent"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "reason",
+                        "priority"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "replies",
+                "steps",
+                "handoff"
+              ]
+            }
+          },
+          "vars": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "unusedMessages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "flowId",
+          "version",
+          "triggerMatched",
+          "businessHoursAssumed",
+          "status",
+          "error",
+          "turns",
+          "vars",
+          "unusedMessages"
+        ]
+      },
+      "BotDryRun": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "default": "draft"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "customerName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "additionalProperties": false
+      },
       "CustomerPage": {
         "type": "object",
         "properties": {
@@ -6642,6 +6854,106 @@
           },
           "422": {
             "description": "bot_flow_graph_invalid: the draft cannot run (an empty draft: trigger_count); or idempotency_key_reused.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bot-flows/{id}/dry-run": {
+      "post": {
+        "summary": "Run a sample script through the draft or the published version as the bot would (D1d): the first message starts the flow, each next one answers the node that waits. Nothing is sent, stored nor audited; the channel window is not checked; a jump goes to the published version of the other flow. A broken flow is a 200 with status abandoned and its code. To compare two versions, run the same script on each.",
+        "tags": [
+          "bot-flows"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BotDryRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "What the bot would answer, turn by turn.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotDryRunResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, or the script (1–20 messages of 1–1000 characters, customerName 1–100, version draft or published, no other field).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner, an Admin or a Manager builds and reads bot flows (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live flow with this id in the session’s workspaces.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "bot_flow_not_published: version published asked of a flow never published.",
             "content": {
               "application/problem+json": {
                 "schema": {

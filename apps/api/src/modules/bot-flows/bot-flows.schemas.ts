@@ -119,3 +119,65 @@ export const BotFlowCreateSchema = z
   .object({ workspaceId: UuidSchema, name: z.string().trim().min(1).max(100) })
   .strict()
   .meta({ id: 'BotFlowCreate' });
+
+/** `POST /v1/bot-flows/{id}/dry-run` (D1d, Brief P13): a sample script, as a customer would send it. */
+export const BotDryRunSchema = z
+  .object({
+    version: z.enum(['draft', 'published']).default('draft'),
+    messages: z.array(z.string().trim().min(1).max(1000)).min(1).max(20),
+    /** What `{{customer.name}}` reads; empty text when absent. */
+    customerName: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict()
+  .meta({ id: 'BotDryRun' });
+
+const BotDryRunTurnSchema = z.object({
+  /** What the bot would send, as the customer reads it (the choices numbered). */
+  replies: z.array(z.object({ nodeKey: z.string(), text: z.string() })),
+  steps: z.array(
+    z.object({
+      nodeKey: z.string(),
+      nodeType: z.string(),
+      edgeLabel: z.string().optional(),
+      variable: z.string().optional(),
+    }),
+  ),
+  /** Who the conversation would go to when the turn stops there (handed over or abandoned); null otherwise. */
+  handoff: z.union([
+    z.object({ reason: z.string(), priority: z.enum(['normal', 'high', 'urgent']) }),
+    z.null(),
+  ]),
+});
+
+export const BotDryRunResultSchema = z
+  .object({
+    flowId: UuidSchema,
+    version: z.object({
+      id: UuidSchema,
+      kind: z.enum(['draft', 'published']),
+      /** The published number; null for the draft. */
+      number: z.int().nullable(),
+    }),
+    /** Whether the first message fits this flow's trigger (keyword or first message); the run starts the flow either way. */
+    triggerMatched: z.boolean(),
+    /** The run takes the workspace as in business hours, as the bot does until business hours exist (C8/C10). */
+    businessHoursAssumed: z.literal(true),
+    status: z.enum(['active', 'completed', 'handed_off', 'abandoned']),
+    /** Why the flow stopped short: a code, never a message. */
+    error: z
+      .enum([
+        'no_trigger',
+        'unknown_node',
+        'no_handler',
+        'bad_config',
+        'step_limit',
+        'jump_target',
+        'jump_limit',
+      ])
+      .nullable(),
+    turns: z.array(BotDryRunTurnSchema),
+    vars: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+    /** Messages of the script left over after the session stopped. */
+    unusedMessages: z.int(),
+  })
+  .meta({ id: 'BotDryRunResult' });

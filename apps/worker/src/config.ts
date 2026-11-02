@@ -1,4 +1,5 @@
 import type { ChannelRefreshSettings } from './channels/token-refresh.js';
+import type { OutboundSettings } from './outbound/outbound-sender.js';
 
 /** What the worker needs to run. Read once at start: a wrong setting stops the process, it does not run half configured (N90). */
 export interface WorkerConfig {
@@ -39,6 +40,8 @@ export interface WorkerConfig {
   };
   /** The renewal of the channel tokens (zalo-channel spec §4, B2, N173): off until the platform client exists (B2-3, Q6). */
   readonly refresh: ChannelRefreshSettings & { readonly enabled: boolean };
+  /** The sending of the pending deliveries to their channel (O2, N185): off until a channel sender exists (O3, Q6). */
+  readonly outbound: OutboundSettings & { readonly enabled: boolean };
   /** The worker's own HTTP endpoints (`/healthz`, `/metrics`), for the probes and the monitoring (review OPS-02). */
   readonly http: {
     /** 0: a free port the system picks (the tests); the port is logged in `worker_http_listening`. */
@@ -116,6 +119,17 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       orgsPerTick: whole('CHANNEL_REFRESH_ORGS_PER_TICK', 50, 1, 1_000),
       orgParallel: whole('CHANNEL_REFRESH_ORG_PARALLEL', 1, 1, 32),
     },
+    outbound: {
+      enabled: whole('OUTBOUND_ENABLED', 0, 0, 1) === 1,
+      pollMs: whole('OUTBOUND_POLL_MS', 2_000, 100, 600_000),
+      leaseSeconds: whole('OUTBOUND_LEASE_S', 60, 1, 3_600),
+      timeoutMs: whole('OUTBOUND_TIMEOUT_MS', 10_000, 1_000, 120_000),
+      // A 02/11/2026: 5 attempts with the relay's backoff, then failed.
+      maxAttempts: whole('OUTBOUND_MAX_ATTEMPTS', 5, 1, 20),
+      // 1..1000 is what app.outbound_pending_orgs accepts (22023 otherwise).
+      orgsPerTick: whole('OUTBOUND_ORGS_PER_TICK', 50, 1, 1_000),
+      orgParallel: whole('OUTBOUND_ORG_PARALLEL', 1, 1, 32),
+    },
     http: {
       port: whole('WORKER_HTTP_PORT', 9464, 0, 65_535),
       // A pass is short, but one over many organisations with Valkey down waits 5 s for each: 120 s leaves room for that.
@@ -133,6 +147,16 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
     problems.push(
       'CHANNEL_REFRESH_ENABLED=1 needs the Zalo token client (B2-3, Q6), not built yet',
     );
+  }
+  const { outbound } = config;
+  // A claim taken back while its call still runs gets the message sent twice.
+  if (outbound.leaseSeconds * 1000 < 2 * outbound.timeoutMs) {
+    problems.push(
+      `OUTBOUND_LEASE_S × 1000 must be at least 2 × OUTBOUND_TIMEOUT_MS, got ${outbound.leaseSeconds} s and ${outbound.timeoutMs} ms`,
+    );
+  }
+  if (outbound.enabled) {
+    problems.push('OUTBOUND_ENABLED=1 needs a channel sender (O3, Q6), not built yet');
   }
   if (problems.length > 0) throw new ConfigError(problems);
   return config;

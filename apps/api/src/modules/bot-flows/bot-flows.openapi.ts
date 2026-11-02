@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
+  BotDryRunResultSchema,
+  BotDryRunSchema,
   BotFlowCreateSchema,
   BotFlowDetailSchema,
   BotFlowIdSchema,
@@ -112,6 +114,29 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
       409: problemResponse('idempotency_in_progress.'),
       422: problemResponse(
         'bot_flow_graph_invalid: the draft cannot run (an empty draft: trigger_count); or idempotency_key_reused.',
+      ),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/bot-flows/{id}/dry-run',
+    summary:
+      'Run a sample script through the draft or the published version as the bot would (D1d): the first message starts the flow, each next one answers the node that waits. Nothing is sent, stored nor audited; the channel window is not checked; a jump goes to the published version of the other flow. A broken flow is a 200 with status abandoned and its code. To compare two versions, run the same script on each.',
+    tags: ['bot-flows'],
+    request: {
+      params,
+      body: { content: { 'application/json': { schema: BotDryRunSchema } } },
+    },
+    responses: {
+      200: json('What the bot would answer, turn by turn.', BotDryRunResultSchema),
+      400: problemResponse(
+        'validation_failed: the id, or the script (1–20 messages of 1–1000 characters, customerName 1–100, version draft or published, no other field).',
+      ),
+      403: builder,
+      404: noFlow,
+      422: problemResponse(
+        'bot_flow_not_published: version published asked of a flow never published.',
       ),
       ...edge,
     },

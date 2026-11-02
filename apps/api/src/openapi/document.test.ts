@@ -61,6 +61,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/bot-flows/{id}',
       '/v1/bot-flows/{id}/draft',
       '/v1/bot-flows/{id}/versions',
+      '/v1/bot-flows/{id}/dry-run',
       '/v1/customers',
       '/v1/customers/{id}',
       '/v1/audit-logs',

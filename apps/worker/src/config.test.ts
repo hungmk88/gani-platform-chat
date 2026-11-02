@@ -25,6 +25,7 @@ describe('readConfig', () => {
       inbound: { pollMs: 500, leaseSeconds: 60, batchSize: 10, maxAttempts: 5, orgsPerTick: 50, orgParallel: 2 },
       events: { enabled: true, discoveryMs: 5000, maxQueues: 200, concurrency: 4 },
       refresh: { enabled: false, pollMs: 30_000, beforeSeconds: 600, leaseSeconds: 120, timeoutMs: 15_000, warnSeconds: 86_400, orgsPerTick: 50, orgParallel: 1 },
+      outbound: { enabled: false, pollMs: 2000, leaseSeconds: 60, timeoutMs: 10_000, maxAttempts: 5, orgsPerTick: 50, orgParallel: 1 },
       http: { port: 9464, healthMaxAgeMs: 120_000 },
     });
   });
@@ -39,6 +40,8 @@ describe('readConfig', () => {
     expect(readConfig(inbound).inbound).toEqual({ pollMs: 100, leaseSeconds: 20, batchSize: 3, maxAttempts: 2, orgsPerTick: 9, orgParallel: 6 });
     const refresh = { ...URLS, CHANNEL_REFRESH_POLL_MS: '5000', CHANNEL_REFRESH_BEFORE_S: '0', CHANNEL_REFRESH_LEASE_S: '60', CHANNEL_REFRESH_TIMEOUT_MS: '30000', CHANNEL_REFRESH_WARN_S: '3600', CHANNEL_REFRESH_ORGS_PER_TICK: '8', CHANNEL_REFRESH_ORG_PARALLEL: '3' };
     expect(readConfig(refresh).refresh).toEqual({ enabled: false, pollMs: 5000, beforeSeconds: 0, leaseSeconds: 60, timeoutMs: 30_000, warnSeconds: 3600, orgsPerTick: 8, orgParallel: 3 });
+    const outbound = { ...URLS, OUTBOUND_POLL_MS: '500', OUTBOUND_LEASE_S: '90', OUTBOUND_TIMEOUT_MS: '20000', OUTBOUND_MAX_ATTEMPTS: '3', OUTBOUND_ORGS_PER_TICK: '6', OUTBOUND_ORG_PARALLEL: '2' };
+    expect(readConfig(outbound).outbound).toEqual({ enabled: false, pollMs: 500, leaseSeconds: 90, timeoutMs: 20_000, maxAttempts: 3, orgsPerTick: 6, orgParallel: 2 });
   });
 
   it('reads the HTTP settings, and takes port 0 (a free port)', () => {
@@ -67,6 +70,8 @@ describe('readConfig', () => {
     ['WORKER_HTTP_PORT', '65536'], ['WORKER_HEALTH_MAX_AGE_S', '5'],
     ['CHANNEL_REFRESH_ENABLED', 'yes'], ['CHANNEL_REFRESH_POLL_MS', '999'], ['CHANNEL_REFRESH_BEFORE_S', '-1'], ['CHANNEL_REFRESH_LEASE_S', '3601'], ['CHANNEL_REFRESH_TIMEOUT_MS', '999'],
     ['CHANNEL_REFRESH_WARN_S', '2592001'], ['CHANNEL_REFRESH_ORGS_PER_TICK', '1001'], ['CHANNEL_REFRESH_ORG_PARALLEL', '0'],
+    ['OUTBOUND_ENABLED', '2'], ['OUTBOUND_POLL_MS', '99'], ['OUTBOUND_LEASE_S', '3601'], ['OUTBOUND_TIMEOUT_MS', '999'], ['OUTBOUND_MAX_ATTEMPTS', '0'],
+    ['OUTBOUND_ORGS_PER_TICK', '1001'], ['OUTBOUND_ORG_PARALLEL', '33'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);
@@ -81,6 +86,16 @@ describe('readConfig', () => {
     expect(readConfig({ ...lease, CHANNEL_REFRESH_LEASE_S: '30' }).refresh.leaseSeconds).toBe(30);
     expect(problems({ ...URLS, CHANNEL_REFRESH_ENABLED: '1' })).toEqual([
       'CHANNEL_REFRESH_ENABLED=1 needs the Zalo token client (B2-3, Q6), not built yet',
+    ]);
+  });
+
+  it('refuses an outbound lease shorter than two calls, and the outbound worker turned on before a channel sender exists', () => {
+    expect(problems({ ...URLS, OUTBOUND_LEASE_S: '19', OUTBOUND_TIMEOUT_MS: '10000' })).toEqual([
+      'OUTBOUND_LEASE_S × 1000 must be at least 2 × OUTBOUND_TIMEOUT_MS, got 19 s and 10000 ms',
+    ]);
+    expect(readConfig({ ...URLS, OUTBOUND_LEASE_S: '20' }).outbound.leaseSeconds).toBe(20);
+    expect(problems({ ...URLS, OUTBOUND_ENABLED: '1' })).toEqual([
+      'OUTBOUND_ENABLED=1 needs a channel sender (O3, Q6), not built yet',
     ]);
   });
 
