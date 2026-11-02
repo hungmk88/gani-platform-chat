@@ -163,7 +163,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     tầng 1 code, auto-merge 05:13:02 sau CI 9/9) chỉ kho của outbound worker; #524 (O2b, 05:20:21) chỉ job gửi + interface
     `ChannelSender`; #525 (O2c, merge 05:37:05, squash `c0a843c`) nối worker nhưng tắt: chưa có sender kênh, `OUTBOUND_ENABLED=1` bị
     từ chối. Client Zalo (O3) chưa có. Bằng chứng
-    B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do.
+    B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do. **B1 chỉ chuyển "có" khi đủ đồng thời** (CEO 02/11): (a) O3 xong,
+    có adapter Zalo thật, `createChannelSenders` trả về ít nhất một sender; (b) `OUTBOUND_ENABLED=1` không bị từ chối; (c) có bằng
+    chứng tin thật ra được Zalo (test E2E hoặc log production mẫu). O2d, O2e… không đổi B1: chuyển "có" sớm là báo cáo sai.
+  - Prettier cảnh báo 2 file .md có từ trước, không thuộc phạm vi #523 (`docs/reviews/progress-20261101.md`,
+    `docs/ui/session-summary-29-10.md`; `format:check` của repo không kiểm `docs/*.md`).
   - **Kênh 2, chu kỳ kiểm:** `trig_01Br6sSpPXw9Xej9KzBakxUt` phút 06 mỗi 2 giờ UTC (phiên `session_015SNdqeCQvNjK6rFoqzt5Su`)
     khi không có việc mở, một dòng "không đổi". Có việc mở (PR đang mở; câu hỏi U FE đang làm dở; việc chờ CEO duyệt): thêm lần
     kiểm 30 phút một lần bằng `send_later` nối tiếp, ghi lý do tăng tần suất trong báo cáo; hết việc mở thì quay lại 2 giờ
