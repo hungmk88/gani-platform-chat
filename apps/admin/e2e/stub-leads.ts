@@ -1,6 +1,5 @@
-// #12 Pipeline lead for the e2e stub API only, on the DRAFT contract (brief 28–30; src/leads/leads.ts, docs/ui/lead-shape-from-be.md):
-// `GET /v1/workspaces/{id}/pipeline` (from a BE brief of 02/11) and `GET /v1/leads` (Brief P9) of a workspace, by cursor, in the
-// shape the BE brief gives. Every role of the company reads them. The steps and the reason a lead is lost are placeholders,
+// #12 Pipeline lead for the e2e stub API only, on the contract planned for S4 (docs/openapi/planned.json, #544; src/leads/leads.ts):
+// `GET /v1/workspaces/{id}/pipeline` and `GET /v1/leads` of a workspace, by cursor. Every role of the company reads them. The steps and the reason a lead is lost are placeholders,
 // "chờ Q9, dữ liệu tạm", as the API would give them. The empty board, errors and the 404 of an API that does not serve the routes
 // yet are given by the tests with page.route. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -11,6 +10,7 @@ import type { Edge } from './stub-members';
 export const STAGES: readonly PipelineStage[] = [1, 2, 3, 4, 5, 6].map((n) => ({
   id: `stage-${n}`,
   name: `Bước ${n} (chờ Q9, dữ liệu tạm)`,
+  position: n - 1,
 }));
 export const LOST_REASON = 'Lý do tạm (chờ Q9, dữ liệu tạm)';
 
@@ -31,6 +31,7 @@ const lead = (
   stage: STAGES[stage - 1]!,
   status,
   owner: owner ? { id: `user-${owner}`, name: `Người thử ${owner}` } : null,
+  createdBy: 'user-sales',
   lostReason: status === 'lost' ? LOST_REASON : null,
   closedAt: status === 'open' ? null : at(n),
   score: null,
@@ -66,7 +67,13 @@ export function routeLeads(
   if (!session.role || session.role === 'platform_operator')
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
   if (pipeline)
-    return (edge.send(res, 200, { data: pipeline[1] === 'ws-e2e' ? STAGES : [] }), true);
+    return (
+      edge.send(res, 200, {
+        data: pipeline[1] === 'ws-e2e' ? STAGES : [],
+        lostReasons: [LOST_REASON],
+      }),
+      true
+    );
   const q = new URL(req.url ?? '/', 'http://stub').searchParams;
   const ws = q.get('workspaceId');
   if (!ws) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
