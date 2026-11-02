@@ -12,6 +12,10 @@ chưa có đường và trường cụ thể cho #13a và chưa code #13a. Nguy�
 `main` (#544, merge 15:57:07 UTC, squash `9e29bea`; N188). 12a dùng kiểu sinh (`apps/admin/src/api/planned.d.ts`), bỏ kiểu viết
 tay. Câu 8–9 (mục 4) **đã có** trả lời trong hợp đồng. Mục 1–4 dưới giữ làm lịch sử; mục 5 đối chiếu với hợp đồng.
 
+**T-2 (brief CEO `2810-03112026-FE-BRIEF-46`, 03/11/2026): chưa chốt.** N188 trong `QUESTIONS.md` vẫn "Chờ APPROVED". Support
+vẫn ở menu `/leads` và mở được `/leads/[id]`; FE không chặn UI. CEO xác nhận thì FE làm PR riêng (bỏ Support khỏi menu, E2E
+Support → 403).
+
 ## 1. Lead (`GET /v1/leads`, Brief P9 dòng 443)
 
 Brief BE ghi (mục 2, "hợp đồng Lead đã trình (mục 1 brief Lead)"), nguyên văn danh sách trường:
