@@ -20,6 +20,7 @@ export default defineConfig({
         'src/conversation-read.ts',
         'src/conversation-store.ts',
         'src/delivery-store.ts',
+        'src/outbound-store.ts',
         'src/idempotency-store.ts',
         'src/inbound-store.ts',
         'src/invite-store.ts',
