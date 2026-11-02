@@ -11,8 +11,10 @@ import {
   FIELDS_PATH,
   optionsText,
   TABS,
+  TAGS_PATH,
   type CustomerField,
   type Tab,
+  type Tag,
 } from './catalog';
 
 /** The links between the tabs of /settings/customer-data (links, not a tablist, as /me). */
@@ -129,6 +131,25 @@ function FieldList() {
   );
 }
 
+/** The tags of the company, by name (the API's order), hidden ones too. */
+function TagList() {
+  return (
+    <ReadList<Tag>
+      title="Tag"
+      path={TAGS_PATH}
+      empty="Công ty chưa có tag nào."
+      head={['Tag', 'Số khách', 'Trạng thái']}
+      row={(t) => (
+        <tr key={t.id}>
+          <td className="p-2">{t.name}</td>
+          <td className="p-2">{t.customerCount}</td>
+          <td className="p-2">{shown(t.hidden)}</td>
+        </tr>
+      )}
+    />
+  );
+}
+
 /**
  * #23 Dữ liệu khách, a tab of the company's catalog (CEO 02/11, brief 33, 46: 23a), read only: no create, edit, hide or delete
  * here (23b). Owner and Admin, as the menu (U36).
@@ -147,9 +168,16 @@ export function CatalogScreen({ tab, nav }: { tab: Exclude<Tab, 'requests'>; nav
             Giá trị của trường nhạy cảm được che với Marketing và Viewer.
           </p>
         </>
-      ) : null}
+      ) : (
+        <>
+          <TagList />
+          <p className="text-12 text-text-muted">
+            Tag đã ẩn không gắn thêm cho khách được; khách đang mang vẫn giữ.
+          </p>
+        </>
+      )}
       <p className="text-12 text-text-muted">
-        Chỉ xem: không tạo, sửa, ẩn hay xóa ở màn này. Không áp dụng AI.
+        Chỉ xem: không tạo, sửa, ẩn, gộp hay xóa ở màn này. Không áp dụng AI.
       </p>
     </section>
   );
