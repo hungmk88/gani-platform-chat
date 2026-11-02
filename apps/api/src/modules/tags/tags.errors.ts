@@ -1,4 +1,5 @@
-import { TagLimitError, TagNameTakenError } from '@gani/db';
+import { TagHiddenError, TagLimitError, TagNameTakenError, TagNotFoundError } from '@gani/db';
+import { NotFoundException } from '@nestjs/common';
 
 // The answers of /v1/tags to the refusals of the tag store (N190). Messages are fixed sentences: no user data.
 
@@ -22,9 +23,21 @@ export class TagLimitHttpError extends Error {
   }
 }
 
+/** 422: a hidden tag the customer does not have yet (T-4). */
+export class TagHiddenHttpError extends Error {
+  readonly status = 422;
+  readonly code = 'tag_hidden';
+  constructor() {
+    super('A hidden tag cannot be given to a customer.');
+    this.name = 'TagHiddenHttpError';
+  }
+}
+
 /** The HTTP error of a refusal of the store; anything else as it is. */
 export function tagHttpErrorOf(error: unknown): unknown {
   if (error instanceof TagNameTakenError) return new TagNameTakenHttpError();
   if (error instanceof TagLimitError) return new TagLimitHttpError();
+  if (error instanceof TagHiddenError) return new TagHiddenHttpError();
+  if (error instanceof TagNotFoundError) return new NotFoundException();
   return error;
 }

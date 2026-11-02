@@ -7,10 +7,15 @@ import {
   createTag,
   listTags,
   lockTags,
+  listCustomers,
+  loadCustomer,
   mergeTag,
+  setCustomerTags,
   TAG_LIMIT,
+  TagHiddenError,
   TagLimitError,
   TagNameTakenError,
+  TagNotFoundError,
   updateTag,
   withTenant,
 } from '../src/index.js';
@@ -147,5 +152,34 @@ describe('tag-store', () => {
       into.id,
     ]);
     expect((await make('nguồn')).name).toBe('nguồn');
+  });
+
+  it("sets a customer's whole set of tags, keeps a hidden one it has, and reads and filters customers by tag", async () => {
+    const [a, b, hidden] = [await make('Tag A'), await make('Tag B'), await make('Tag C ẩn')];
+    const [c] = await customers(1, [hidden.id], [b.id]);
+    const [other] = await customers(1);
+    await admin.query('UPDATE tags SET hidden = true WHERE id = $1', [hidden.id]);
+    const set = (ids: string[], customer = c!) => inA((tx) => setCustomerTags(tx, customer, ids));
+    expect((await set([a.id, b.id, hidden.id]))!.map((t) => [t.name, t.hidden])).toEqual([
+      ['Tag A', false],
+      ['Tag B', false],
+      ['Tag C ẩn', true],
+    ]);
+    expect(await failure(set([hidden.id], other))).toBeInstanceOf(TagHiddenError);
+    expect(await failure(set([uuidv7()]))).toBeInstanceOf(TagNotFoundError);
+    expect(await set([], uuidv7())).toBeNull();
+    expect((await set([b.id]))!.map((t) => t.name)).toEqual(['Tag B']);
+    const links = await admin.query<{ n: number }>(
+      'SELECT count(*)::int AS n FROM customer_tags WHERE customer_id = $1',
+      [c],
+    );
+    expect(links.rows[0]!.n).toBe(3);
+    expect((await inA((tx) => loadCustomer(tx, c!)))!.tags).toEqual([
+      { id: b.id, name: 'Tag B', hidden: false },
+    ]);
+    const byTag = (tagId: string) =>
+      inA(async (tx) => (await listCustomers(tx, { tagId, limit: 100 })).rows.map((r) => r.id));
+    expect(await byTag(b.id)).toEqual([c]);
+    expect(await byTag(hidden.id)).toEqual([]);
   });
 });

@@ -49,8 +49,13 @@ async function person(role: string, hash: string) {
 }
 type Tag = { id: string; name: string; hidden: boolean; customerCount: number };
 type Answer = { status: number; body: Record<string, unknown> };
-async function call(who: string, method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown) {
-  const res = await fetch(`${url}/v1/tags${path}`, {
+async function call(
+  who: string,
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT',
+  path: string,
+  body?: unknown,
+) {
+  const res = await fetch(`${url}${path.startsWith('/v1/') ? '' : '/v1/tags'}${path}`, {
     method,
     headers: {
       'content-type': 'application/json',
@@ -161,5 +166,27 @@ describe('/v1/tags', () => {
       [orgA, from],
     );
     expect(audit.rows).toEqual([{ detail: { intoTagId: into, movedCount: 1 } }]);
+  });
+
+  it("sets a customer's tags (editors only, existing ones, no new hidden one), shows them and filters by them", async () => {
+    const [vip, si, an] = await Promise.all(
+      ['K VIP', 'K Sỉ', 'K Ẩn'].map(async (n) => ((await make(n)).body as Tag).id),
+    );
+    await call('owner', 'PATCH', `/${an}`, { hidden: true });
+    const put = (who: string, ids: string[], c = customers[0]) =>
+      call(who, 'PUT', `/v1/customers/${c}/tags`, { tagIds: ids });
+    expect(await put('manager', [si!, vip!])).toMatchObject({
+      status: 200,
+      body: { data: [{ name: 'K Sỉ' }, { name: 'K VIP' }] },
+    });
+    expect((await put('marketing', [vip!])).status).toBe(403);
+    expect(await put('owner', [an!])).toMatchObject({ status: 422, body: { code: 'tag_hidden' } });
+    expect((await put('owner', [tagB])).status).toBe(404);
+    expect((await put('owner', [], uuidv7())).status).toBe(404);
+    expect((await put('owner', [vip!, vip!])).status).toBe(400);
+    const page = await call('marketing', 'GET', `/v1/customers?tagId=${si}`);
+    expect((page.body['data'] as { id: string }[]).map((c) => c.id)).toEqual([customers[0]]);
+    const one = await call('marketing', 'GET', `/v1/customers/${customers[0]}`);
+    expect((one.body['tags'] as Tag[]).map((t) => t.name)).toEqual(['K Sỉ', 'K VIP']);
   });
 });

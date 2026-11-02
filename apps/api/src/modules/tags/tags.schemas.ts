@@ -57,14 +57,13 @@ export const CustomerTagsChangeSchema = z
   .strict()
   .meta({ id: 'CustomerTagsChange' });
 
+/** A tag of a customer (Customer.tags, N190): hidden ones too, a customer keeps a tag that was hidden after (T-4). */
+export const CustomerTagSchema = z
+  .object({ id: UuidSchema, name: z.string(), hidden: z.boolean() })
+  .meta({ id: 'CustomerTag' });
+
 export const CustomerTagsSchema = z
-  .object({
-    data: z.array(
-      z
-        .object({ id: UuidSchema, name: z.string(), hidden: z.boolean() })
-        .meta({ id: 'CustomerTag' }),
-    ),
-  })
+  .object({ data: z.array(CustomerTagSchema) })
   .meta({ id: 'CustomerTags' });
 
 export const TagIdSchema = UuidSchema;

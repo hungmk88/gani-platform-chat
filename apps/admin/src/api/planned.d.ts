@@ -567,103 +567,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/customers/{id}/tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set the whole set of a customer’s tags (Owner, Admin, Manager, Sales, Support; existing tags only). A hidden tag the customer has stays; a hidden tag added is refused. */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUIDv7. */
-                    id: components["schemas"]["Uuid"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CustomerTagsChange"];
-                };
-            };
-            responses: {
-                /** @description The customer’s tags, by name. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CustomerTags"];
-                    };
-                };
-                /** @description validation_failed: a field, or a tag twice. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: marketing and viewer; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: the customer, or a tag, is not of the company. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description tag_hidden: a hidden tag the customer does not have yet. */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/customer-fields": {
         parameters: {
             query?: never;
@@ -2580,17 +2483,6 @@ export interface components {
             /** @enum {string} */
             outcome: "won" | "lost";
             lostReason?: string;
-        };
-        CustomerTags: {
-            data: components["schemas"]["CustomerTag"][];
-        };
-        CustomerTag: {
-            id: components["schemas"]["Uuid"];
-            name: string;
-            hidden: boolean;
-        };
-        CustomerTagsChange: {
-            tagIds: components["schemas"]["Uuid"][];
         };
         CustomerFieldList: {
             data: components["schemas"]["CustomerField"][];
