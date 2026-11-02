@@ -147,12 +147,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
   - **Kênh 1, webhook GitHub đánh thức FE: chưa khả dụng, cần CEO cấp endpoint.** Kiểm 02/11: repo chỉ có
     `.github/workflows/ci.yml` (push, pull_request, workflow_dispatch; không gọi ra ngoài); `GET /repos/…/hooks` bị proxy chặn
     (403), không đọc được webhook. Phiên FE không có endpoint nào GitHub gọi được (`watch_url` chỉ nhận từ dịch vụ artifact).
-    FE không tự dựng endpoint hay workflow. Phần có sẵn: `subscribe_pr_activity` báo ngay comment, CI, merge của PR đã đăng ký,
-    nhưng không có sự kiện push lên `main` hay đổi branch protection, và mỗi PR chỉ một phiên nhận; đăng ký cả PR của BE phải
-    CEO duyệt.
+    FE không tự dựng endpoint hay workflow. Phần có sẵn: `subscribe_pr_activity` (kênh 2b dưới). CEO tạm đóng kênh 1, xem xét
+    cấp endpoint ở phiên sau (02/11).
+  - **Kênh 2b (CEO duyệt 02/11, brief `2810-01112026-FE-BRIEF-17`):** subscribe_pr_activity cho PR BE, che comment/CI/merge;
+    không che push main, không che branch protection; không nhận nếu phiên khác đã đăng ký. Áp cho PR BE đang mở và PR BE mới
+    mở. Chỉ theo dõi: không comment, không push lên PR của BE; điều cần nói thì báo CEO.
   - **Kênh 2, chu kỳ kiểm:** `trig_01Br6sSpPXw9Xej9KzBakxUt` phút 06 mỗi 2 giờ UTC (phiên `session_015SNdqeCQvNjK6rFoqzt5Su`)
     khi không có việc mở, một dòng "không đổi". Có việc mở (PR đang mở; câu hỏi U FE đang làm dở; việc chờ CEO duyệt): thêm lần
-    kiểm 30 phút một lần bằng `send_later` nối tiếp, ghi lý do tăng tần suất trong báo cáo; hết việc mở thì thôi.
+    kiểm 30 phút một lần bằng `send_later` nối tiếp, ghi lý do tăng tần suất trong báo cáo; hết việc mở thì quay lại 2 giờ
+    (không giữ 30 phút khi không có việc, CEO 02/11).
   - **Kênh 3, CEO ping trực tiếp:** brief có `[GỬI FE]` + Session ID + chữ ký A được xử lý ngay, không chờ lần kiểm; thiếu một
     trong ba thì từ chối.
   - **Giới hạn còn lại (không giấu):** khi chưa có webhook và CEO không ping, chậm nhất 30 phút (có việc mở) hoặc 2 giờ (không)
