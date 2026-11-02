@@ -70,6 +70,21 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   reset** khi `main` đổi: cùng đường dẫn với PR (khác nội dung cũng vậy); `packages/db` (schema, migration); `CLAUDE.md` hay
   `QUESTIONS.md`. Giữ đồng hồ thì ghi vào comment PR: "main đổi commit X, file Y, không overlap → giữ heads-up cũ". Không chắc
   thì reset, không đoán. Commit của chính PR vẫn reset như luật 30 phút.
+- **Mức A: DEV tự merge PR tầng 3 theo phương án đã duyệt** (02/11/2026, ký A (CEO)). Chỉ khi đủ cả 7 điều kiện; thiếu một
+  điều thì không merge, báo CEO:
+  1. Phương án đã được CEO duyệt: brief giao việc ghi rõ, hoặc CEO comment "Duyệt phương án" / "APPROVED theo Mức A" trên PR.
+  2. 9 job xanh thật trên đúng HEAD sau lần Update branch cuối (PR code: `docker images` success; PR docs: 8 success +
+     `docker images` skipped, log `changes` ghi "chỉ docs").
+  3. `mergeable_state = clean`, HEAD khớp `git ls-remote`.
+  4. Diff mã khớp phương án: không thêm/bớt file, schema hay dependency ngoài phương án; ≤ 400 dòng (500 nếu test bắt buộc),
+     không tính file sinh.
+  5. Không đụng dữ liệu khách thật (INSERT/UPDATE/DELETE trên `customers`, `conversations`, `messages`, `tickets` ở production).
+  6. Trivy không có HIGH/CRITICAL có bản sửa; GitGuardian xanh.
+  7. Sau merge: diff HEAD ↔ commit squash = 0; báo CEO HEAD, commit squash, 9 job trước và sau merge theo tên, xác nhận diff
+     khớp phương án.
+  - CEO xem lại trong 24 giờ sau merge; lệch phương án thì revert hoặc migration bù (rollback vẫn do CEO quyết).
+  - Mọi phê duyệt phải là comment GitHub của CEO (#498); tin nhắn không tính. Bỏ FE review hay heads-up của một PR chỉ khi CEO
+    ghi rõ trên PR đó (ví dụ #542–#544: "bỏ FE comment + heads-up").
 
 ### Quy trình mỗi PR
 
