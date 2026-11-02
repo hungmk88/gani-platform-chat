@@ -155,6 +155,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     02/11):** #521 của BE, FE nhận ngay sự kiện CI, ready, merge (05:05:28 UTC, squash `878ec01`) mà không chờ lần kiểm; tiếp tục
     theo dõi PR BE đang mở. **Kênh 2b che PR đã biết mở; bù bằng đọc 10 commit gần nhất trên main mỗi lần kiểm 2 giờ** (CEO
     02/11, sau #524: mở 05:14:20, merge 05:20:21, giữa hai lần kiểm).
+  - **Review chéo không qua comment GitHub (CEO 02/11, brief `2810-02112026-FE-BRIEF-31`, không đổi luật giữa phiên):** FE vẫn
+    không comment vào PR BE (brief 17). Khi BE sửa U-series hoặc file FE phụ trách, FE ghi vào đây: PR, mục bị sửa, nội dung
+    đúng/sai, cần CEO xem xét; CEO quyết có ping BE không.
+    - BE sửa U63 trong #528 (merge 08:04:39 UTC, squash `43c7822`): nội dung **đúng** (dry-run đã có trong `openapi.json`, #527).
+      CEO: không cần ping BE.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
