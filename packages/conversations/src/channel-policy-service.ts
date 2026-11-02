@@ -4,7 +4,7 @@ import { windowState, type WindowDecision } from '@gani/domain';
 import { ChannelWindowClosedError, ConversationNotFoundError } from './errors.js';
 
 // The one gate of a send to a channel (channel-policy-spec §3): the agent's POST /v1/conversations/{id}/messages, the outbound worker
-// and the automation all ask `check`, in the transaction of the send and after the lock of the conversation, so the facts it reads
+// (again at send time, counting only the messages before the one it sends) and the automation all ask `check`, in the transaction of the send and after the lock of the conversation, so the facts it reads
 // are the ones the send commits with. The policy comes from `channel_policies` (§1, never a number here); the decision from the pure
 // `windowState` of the domain package (§2).
 
@@ -27,8 +27,10 @@ export class ChannelPolicyService {
     conversationId: string,
     now: Date,
     messageClass: string = ADVISORY,
+    /** The outbound worker re-checks a stored message at send time: only the account's messages before it count (O2). */
+    options: { readonly beforeSequence?: number } = {},
   ): Promise<WindowDecision> {
-    const facts = await this.reads.loadWindowFacts(tx, conversationId);
+    const facts = await this.reads.loadWindowFacts(tx, conversationId, options);
     if (!facts) throw new ConversationNotFoundError();
     const policy = facts.channelType
       ? await this.reads.readChannelPolicy(tx, facts.channelType, messageClass, now)

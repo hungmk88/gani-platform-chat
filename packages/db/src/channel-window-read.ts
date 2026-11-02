@@ -55,12 +55,20 @@ export interface WindowFactsRow {
   readonly officialMessagesSinceCustomer: number;
 }
 
-/** The facts of `windowState` for a conversation visible to the transaction, or null when it is not found. */
+/**
+ * The facts of `windowState` for a conversation visible to the transaction, or null when it is not found. With `beforeSequence` (the
+ * outbound worker, O2), only the account's messages written before that message count: the message being sent and those after it
+ * are already stored, and counting them would close the window on a message the gate let through when it was written.
+ */
 export async function loadWindowFacts(
   tx: TenantTx,
   conversationId: string,
+  options: { readonly beforeSequence?: number } = {},
 ): Promise<WindowFactsRow | null> {
   assertUuid(conversationId, 'conversationId');
+  const before = options.beforeSequence;
+  if (before !== undefined && (!Number.isSafeInteger(before) || before < 1))
+    throw new RangeError('beforeSequence must be a whole number of at least 1');
   const c = conversations;
   const m = messages;
   // The last message of the person by sequence number; with none, every message of the conversation counts (outside the window anyway).
@@ -71,7 +79,8 @@ export async function loadWindowFacts(
       channelType: channelAccounts.type,
       lastCustomerMessageAt: c.lastCustomerMessageAt,
       officialMessagesSinceCustomer: sql<number>`(SELECT count(*)::int FROM ${m} WHERE ${m.orgId} = ${c.orgId}
-        AND ${m.conversationId} = ${c.id} AND ${m.senderKind} <> 'customer' AND ${m.sequenceNumber} > ${lastCustomer})`,
+        AND ${m.conversationId} = ${c.id} AND ${m.senderKind} <> 'customer' AND ${m.sequenceNumber} > ${lastCustomer}
+        ${before === undefined ? sql`` : sql`AND ${m.sequenceNumber} < ${before}`})`,
     })
     .from(c)
     .leftJoin(

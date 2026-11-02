@@ -48,8 +48,14 @@ describe('ChannelPolicyService.check', () => {
   it('C-N1: lets an advisory reply through inside the window, reading the policy in force at that moment', async () => {
     const { reads, gate } = service({ officialMessagesSinceCustomer: 3 });
     expect(await gate.check(TX, 'c-1', at(1))).toEqual({ state: 'open', reason: 'within_window' });
-    expect(reads.loadWindowFacts).toHaveBeenCalledWith(TX, 'c-1');
+    expect(reads.loadWindowFacts).toHaveBeenCalledWith(TX, 'c-1', {});
     expect(reads.readChannelPolicy).toHaveBeenCalledWith(TX, 'zalo_oa', 'advisory', at(1));
+  });
+
+  it('passes the message being sent down to the facts, for the outbound worker (O2)', async () => {
+    const { reads, gate } = service({ officialMessagesSinceCustomer: 3 });
+    await gate.check(TX, 'c-1', at(1), 'advisory', { beforeSequence: 7 });
+    expect(reads.loadWindowFacts).toHaveBeenCalledWith(TX, 'c-1', { beforeSequence: 7 });
   });
 
   it('C-N4: refuses outside the window and past the quota, paid_only included (C3), with a 422', async () => {

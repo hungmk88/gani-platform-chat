@@ -9,6 +9,7 @@ export * from './conversation-read.js';
 export * from './conversation-store.js';
 export * from './cursor.js';
 export * from './delivery-store.js';
+export * from './outbound-store.js';
 export * from './idempotency-store.js';
 export * from './inbound-store.js';
 export * from './invite-store.js';
