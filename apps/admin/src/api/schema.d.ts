@@ -3972,6 +3972,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/bot-flows/{id}/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run a sample script through the draft or the published version as the bot would (D1d): the first message starts the flow, each next one answers the node that waits. Nothing is sent, stored nor audited; the channel window is not checked; a jump goes to the published version of the other flow. A broken flow is a 200 with status abandoned and its code. To compare two versions, run the same script on each. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BotDryRun"];
+                };
+            };
+            responses: {
+                /** @description What the bot would answer, turn by turn. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDryRunResult"];
+                    };
+                };
+                /** @description validation_failed: the id, or the script (1–20 messages of 1–1000 characters, customerName 1–100, version draft or published, no other field). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager builds and reads bot flows (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no live flow with this id in the session’s workspaces. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description bot_flow_not_published: version published asked of a flow never published. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers": {
         parameters: {
             query?: never;
@@ -4810,6 +4907,52 @@ export interface components {
         BotFlowCreate: {
             workspaceId: components["schemas"]["Uuid"];
             name: string;
+        };
+        BotDryRunResult: {
+            flowId: components["schemas"]["Uuid"];
+            version: {
+                id: components["schemas"]["Uuid"];
+                /** @enum {string} */
+                kind: "draft" | "published";
+                number: number | null;
+            };
+            triggerMatched: boolean;
+            /** @enum {boolean} */
+            businessHoursAssumed: true;
+            /** @enum {string} */
+            status: "active" | "completed" | "handed_off" | "abandoned";
+            /** @enum {string|null} */
+            error: "no_trigger" | "unknown_node" | "no_handler" | "bad_config" | "step_limit" | "jump_target" | "jump_limit" | null;
+            turns: {
+                replies: {
+                    nodeKey: string;
+                    text: string;
+                }[];
+                steps: {
+                    nodeKey: string;
+                    nodeType: string;
+                    edgeLabel?: string;
+                    variable?: string;
+                }[];
+                handoff: {
+                    reason: string;
+                    /** @enum {string} */
+                    priority: "normal" | "high" | "urgent";
+                } | null;
+            }[];
+            vars: {
+                [key: string]: string | number | boolean;
+            };
+            unusedMessages: number;
+        };
+        BotDryRun: {
+            /**
+             * @default draft
+             * @enum {string}
+             */
+            version: "draft" | "published";
+            messages: string[];
+            customerName?: string;
         };
         CustomerPage: {
             data: components["schemas"]["Customer"][];
