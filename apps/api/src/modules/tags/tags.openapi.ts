@@ -16,15 +16,13 @@ import {
 } from './tags.schemas.js';
 
 /**
- * The tags (J4, T-1(a), T-4, U36, CEO 02/11 decision 4 and answers 1–3), planned for S4. Every role reads them; only an Owner or an
- * Admin makes, renames, hides or merges one (Brief Backend and the CEO over Phụ lục B's Manager). Putting tags on a customer follows
- * "Sửa hồ sơ khách": Owner, Admin, Manager, Sales, Support, existing tags only; Marketing and Viewer 403.
+ * The tags (J4, T-1(a), T-4, U36, CEO 02/11 decision 4 and answers 1–3; served since Tag 3a). Every role reads them; only an Owner
+ * or an Admin makes, renames, hides or merges one (Brief Backend and the CEO over Phụ lục B's Manager).
  */
 export function registerTags(registry: OpenAPIRegistry): void {
   const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
   const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
   const tags = ['tags'];
-  const when = planned('S4');
   const byId = { params: z.object({ id: TagIdSchema }) };
   const admins = problemResponse('forbidden: only an Owner or an Admin; or a refusal of the edge.');
   const notFound = problemResponse('not_found: no tag with this id in the company.');
@@ -33,7 +31,6 @@ export function registerTags(registry: OpenAPIRegistry): void {
   );
 
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/tags',
     summary:
@@ -42,7 +39,6 @@ export function registerTags(registry: OpenAPIRegistry): void {
     responses: { 200: { description: 'The tags.', ...json(TagListSchema) }, ...edge },
   });
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/tags',
     summary: 'Make a tag (Owner, Admin): at most 500 a company.',
@@ -58,7 +54,6 @@ export function registerTags(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'patch',
     path: '/v1/tags/{id}',
     summary:
@@ -75,7 +70,6 @@ export function registerTags(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/tags/{id}/merge',
     summary:
@@ -90,6 +84,17 @@ export function registerTags(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+}
+
+/**
+ * Setting a customer's tags follows "Sửa hồ sơ khách": Owner, Admin, Manager, Sales, Support, existing tags only; Marketing and Viewer
+ * 403. Still planned for S4 (Tag 3a-ii): /v1/tags is served first.
+ */
+export function registerCustomerTags(registry: OpenAPIRegistry): void {
+  const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
+  const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
+  const tags = ['tags'];
+  const when = planned('S4');
   registry.registerPath({
     ...when,
     method: 'put',
