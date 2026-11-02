@@ -171,6 +171,21 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `TicketEvent` giống hệt); `planned.json` hết đường ticket; khoảng hở 404 của #538 đã đóng. Hệ quả cho FE: màn chi tiết hiện
       "Chưa giao" khi người nhận có `name` null, sửa ở PR FE sau #540 (`Assignee` dùng chung với danh sách, brief 43–45). FE review
       gửi CEO qua phiên, không comment GitHub.
+    - BE sửa file FE sinh `apps/admin/src/api/planned.d.ts` trong #544 (hợp đồng Lead, tầng 3, `CEO APPROVED` 15:27:32, merge
+      15:57:07 UTC, squash `9e29bea`), #547 (Tag, merge 16:08:27, squash `0f4c256`) và #548 (trường tùy chỉnh, merge 16:20:40,
+      squash `a4c883f`) (luật #546: FE review trong 24 giờ sau merge; brief 46). **Đúng:** `planned.json` chỉ **thêm** đường,
+      không sửa hay bỏ đường, schema nào có sẵn: #544 thêm 5 đường Lead (`/v1/workspaces/{id}/pipeline`, `/v1/leads`,
+      `/v1/leads/{id}`, `/stage`, `/close`), #547 thêm 4 đường Tag (`/v1/tags`, `/v1/tags/{id}`, `/v1/tags/{id}/merge`,
+      `/v1/customers/{id}/tags`), #548 thêm 3 đường trường tùy chỉnh (`/v1/customer-fields`, `/v1/customer-fields/{id}`,
+      `/v1/customers/{id}/fields`); `planned.d.ts` là file sinh (`gen:api`, CI so lệch), không sửa tay. Hệ quả cho FE: 12a sang kiểu
+      sinh (#551), #13a trên hợp đồng thật (#555), 23a đổi đường trường tùy chỉnh sang `/v1/customer-fields` (FE đoán
+      `/v1/customer-field-defs`). **T-2 chưa chốt:** hợp đồng (N188) cho Support 403 ở Lead, N188 trong `QUESTIONS.md` vẫn "Chờ
+      APPROVED"; FE giữ Support trong menu `/leads`, chờ CEO xác nhận rồi làm PR riêng (brief 45–46).
+    - **Ghi nhận cho CEO (brief 46):** #547 và #548 (cả hai sửa `planned.json`) merge lúc 16:08:27 và 16:20:40 UTC, **không có
+      comment nào trên PR**, trước comment "duyệt lô sprint trên PR (khi đó bỏ heads-up)" của CEO trên #546 (16:25:14; FE báo
+      16:25:18 là giờ thông báo, giờ comment trên GitHub là 16:25:14) và trước khi #546 merge (16:40:11). Comment "APPROVED theo
+      Mức A, bỏ FE comment" trên #546 lúc 16:06:16 là duyệt chính #546. CI 9/9 success trên HEAD (`fddaa73`, `7e18ccc`). FE không
+      thấy brief BE nên không biết phương án đã được duyệt hay chưa. FE không comment PR BE; CEO xử lý.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
