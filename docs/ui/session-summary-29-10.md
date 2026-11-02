@@ -191,6 +191,13 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `/v1/tags/{id}/merge` chuyển từ `planned.json` sang `openapi.json`, chỉ bỏ nhãn `x-sprint`/`x-status`; schema `Tag`, `TagList`,
       `TagCreate`, `TagChange`, `TagMerge`, `TagMergeResult` giống hệt; `/v1/customers/{id}/tags` vẫn planned. Hệ quả cho FE: tab Tag
       của 23a (PR B, brief 47) lấy kiểu từ `schema.d.ts`. FE không comment PR BE.
+    - BE sửa file FE `apps/admin/e2e/stub-customers.ts`, `apps/admin/src/customers/customer-edit.test.ts` và hai file sinh trong #563
+      (Tag 3a-iii, gắn tag cho khách, merge 19:02:47 UTC 02/11, squash `436b5f3`; luật #546, review trong 24 giờ). **Đúng:** `Customer`
+      thêm trường bắt buộc `tags: CustomerTag[]`; hai chỗ FE thêm `tags: []` là cần cho typecheck, không đổi hành vi. `GET /v1/customers`
+      thêm lọc `tagId`; `PUT /v1/customers/{id}/tags` thành API thật; `planned.json` hết đường Tag; schema `Tag`, `TagList` và
+      `GET /v1/tags` không đổi (tab Tag của 23a, #565, không ảnh hưởng). Hệ quả cho FE, **chưa làm, chờ CEO**: danh sách khách (#7) và hồ
+      sơ khách (#8) đang ghi "Tag … chờ API" nay có dữ liệu để hiện tag và lọc theo tag; gắn tag (Owner/Admin/Manager/Sales/Support, N190)
+      là việc ghi, cần phương án riêng. FE không comment PR BE.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
