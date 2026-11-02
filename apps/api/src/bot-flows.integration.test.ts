@@ -325,7 +325,11 @@ const written = async () => {
   const counts: Record<string, number> = {};
   for (const t of WRITTEN)
     counts[t] = Number(
-      (await q(`SELECT count(*) AS n FROM ${t} WHERE org_id = $1`, [orgA])).rows[0].n,
+      (
+        (await q(`SELECT count(*) AS n FROM ${t} WHERE org_id = $1`, [orgA])).rows[0] as {
+          n: string;
+        }
+      ).n,
     );
   return counts;
 };
@@ -347,7 +351,7 @@ describe('POST /v1/bot-flows/{id}/dry-run', () => {
     expect(published.status).toBe(200);
     expect(published.body).toEqual({
       flowId: id,
-      version: { id: expect.any(String), kind: 'published', number: 1 },
+      version: { id: expect.any(String) as unknown, kind: 'published', number: 1 },
       triggerMatched: true,
       businessHoursAssumed: true,
       status: 'completed',
