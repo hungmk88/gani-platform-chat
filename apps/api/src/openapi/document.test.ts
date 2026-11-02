@@ -58,6 +58,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/quick-replies/{id}/preview',
       '/v1/quick-replies/preview',
       '/v1/tickets',
+      '/v1/tickets/{id}',
       '/v1/bot-flows',
       '/v1/bot-flows/{id}',
       '/v1/bot-flows/{id}/draft',

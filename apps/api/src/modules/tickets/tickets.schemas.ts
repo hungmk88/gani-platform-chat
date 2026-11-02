@@ -7,8 +7,8 @@ import {
   UuidSchema,
 } from '../../openapi/schemas.js';
 
-// The shapes of /v1/tickets (U27, #14/#15): served for the collection (K1c-1), still planned for /v1/tickets/{id} (K1c-2). The
-// controller validates with these same schemas, as every module does.
+// The shapes of /v1/tickets (U27, #14/#15): served since K1c-1 (the collection) and K1c-2 (/v1/tickets/{id}). The controller
+// validates with these same schemas, as every module does.
 
 const at = z.iso.datetime();
 
@@ -130,5 +130,6 @@ export const TicketChangeSchema = z
   .strict()
   .refine((change) => Object.keys(change).length > 1, 'nothing to change')
   .meta({ id: 'TicketChange' });
+export type TicketChangeBody = z.output<typeof TicketChangeSchema>;
 
 export const TicketIdSchema = UuidSchema;
