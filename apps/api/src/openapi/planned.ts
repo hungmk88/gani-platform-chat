@@ -3,6 +3,7 @@ import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-ope
 import { registerAi } from '../modules/ai/ai.openapi.js';
 import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
 import { registerFeatureFlags } from '../modules/feature-flags/feature-flags.openapi.js';
+import { registerLeads } from '../modules/leads/leads.openapi.js';
 import { registerOverview } from '../modules/overview/overview.openapi.js';
 import { registerPrivacy } from '../modules/privacy/privacy.openapi.js';
 import { registerSecurity } from '../modules/security/security.openapi.js';
@@ -12,6 +13,7 @@ import { registerSecurity } from '../modules/security/security.openapi.js';
 // When an endpoint is built, its register call moves to REGISTER of document.ts: document.test.ts fails while a path is in both.
 
 const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
+  registerLeads,
   registerOverview,
   registerFeatureFlags,
   registerAutonomy,
