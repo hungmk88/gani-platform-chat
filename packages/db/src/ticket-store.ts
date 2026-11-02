@@ -1,11 +1,11 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { ticketEvents, tickets } from './schema/tickets.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
 import { assertUuid } from './validate.js';
 
-// The tickets of a workspace (K1b, U27, N167, N170): making one, with its line in ticket_events (changing one is K1b-2), in the caller's
+// The tickets of a workspace (K1b, U27, N167, N170): making one and changing it, each with its line in ticket_events, in the caller's
 // tenant transaction. Row-level security keeps them to the organisation and the workspaces of the transaction; who may make or change
 // a ticket at all (Phụ lục B) is the caller's check, the rules of the ticket itself are here: the moves between states, who may cancel,
 // who may receive a ticket, and the version a change was read at. There is no claim: two changes at once are kept apart by the version.
@@ -20,11 +20,56 @@ export const TICKET_STATUSES = [
 ] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
+/** Where a ticket may go from each state (N167). `done` may be reopened; `cancelled` is final. */
+export const TICKET_TRANSITIONS: Readonly<Record<TicketStatus, readonly TicketStatus[]>> = {
+  new: ['in_progress', 'cancelled'],
+  in_progress: ['waiting_customer', 'done', 'cancelled'],
+  waiting_customer: ['in_progress', 'done', 'cancelled'],
+  done: ['in_progress'],
+  cancelled: [],
+};
+
 export const TICKET_PRIORITIES = ['normal', 'high', 'urgent'] as const;
 export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
 
 /** Who may receive a ticket (U52, N170): an Owner, Admin, Manager or Support of the ticket's workspace. */
 export const TICKET_HANDLER_ROLES = ['owner', 'admin', 'manager', 'support'] as const;
+/** Who may cancel one (U27). */
+export const TICKET_CANCEL_ROLES = ['owner', 'admin', 'manager'] as const;
+
+export class TicketNotFoundError extends Error {
+  constructor() {
+    super('no ticket with this id in the transaction’s workspaces');
+    this.name = 'TicketNotFoundError';
+  }
+}
+
+/** The ticket changed since the version the caller read (409 version_conflict). */
+export class TicketVersionConflictError extends Error {
+  constructor() {
+    super('the ticket changed since it was read');
+    this.name = 'TicketVersionConflictError';
+  }
+}
+
+/** This state cannot follow the current one (409 invalid_transition). */
+export class InvalidTicketTransitionError extends Error {
+  constructor(
+    readonly from: TicketStatus,
+    readonly to: TicketStatus,
+  ) {
+    super(`a ticket cannot go from ${from} to ${to}`);
+    this.name = 'InvalidTicketTransitionError';
+  }
+}
+
+/** Only an Owner, an Admin or a Manager cancels a ticket (403). */
+export class TicketCancelForbiddenError extends Error {
+  constructor() {
+    super('only an Owner, an Admin or a Manager cancels a ticket');
+    this.name = 'TicketCancelForbiddenError';
+  }
+}
 
 /** Not an active Owner, Admin, Manager or Support of the ticket's workspace (422 invalid_assignee). */
 export class InvalidTicketAssigneeError extends Error {
@@ -160,4 +205,90 @@ export async function createTicket(tx: TenantTx, input: TicketCreate): Promise<T
     actorUserId: createdBy,
   });
   return ticket;
+}
+
+/** What a change may set; `null` clears the description or the assignee. */
+export interface TicketChange {
+  readonly status?: TicketStatus;
+  readonly title?: string;
+  readonly description?: string | null;
+  readonly priority?: TicketPriority;
+  readonly assigneeUserId?: string | null;
+}
+
+/**
+ * Changes the ticket `id` read at `version`, under a lock of the row: the moves of TICKET_TRANSITIONS only, `cancelled` only by an
+ * Owner, Admin or Manager (`actorRole`), the assignee a handler of the workspace. One event per kind of change: `status_changed`,
+ * `assigned`, `edited` (title, description, priority). Gives the ticket back with its new version.
+ */
+export async function changeTicket(
+  tx: TenantTx,
+  input: {
+    readonly id: string;
+    readonly version: number;
+    readonly change: TicketChange;
+    readonly actorUserId: string;
+    readonly actorRole: string;
+    readonly newId: () => string;
+  },
+): Promise<TicketRow> {
+  const id = assertUuid(input.id, 'id');
+  const actor = assertUuid(input.actorUserId, 'actorUserId');
+  const [current] = await tx
+    .select(ticketColumns)
+    .from(tickets)
+    .where(eq(tickets.id, id))
+    .for('update');
+  if (!current) throw new TicketNotFoundError();
+  const ticket = current as TicketRow;
+  if (ticket.version !== input.version) throw new TicketVersionConflictError();
+  const { change } = input;
+  const moves = change.status !== undefined && change.status !== ticket.status;
+  if (moves) {
+    const to = change.status;
+    if (!TICKET_TRANSITIONS[ticket.status].includes(to))
+      throw new InvalidTicketTransitionError(ticket.status, to);
+    if (to === 'cancelled' && !(TICKET_CANCEL_ROLES as readonly string[]).includes(input.actorRole))
+      throw new TicketCancelForbiddenError();
+  }
+  const reassigned =
+    change.assigneeUserId !== undefined && change.assigneeUserId !== ticket.assigneeUserId;
+  if (reassigned && change.assigneeUserId !== null)
+    await assertHandler(tx, ticket.workspaceId, change.assigneeUserId);
+  const edited =
+    (change.title !== undefined && change.title !== ticket.title) ||
+    (change.description !== undefined && change.description !== ticket.description) ||
+    (change.priority !== undefined && change.priority !== ticket.priority);
+  const [row] = await tx
+    .update(tickets)
+    .set({
+      ...(change.status !== undefined && { status: change.status }),
+      ...(change.title !== undefined && { title: change.title }),
+      ...(change.description !== undefined && { description: change.description }),
+      ...(change.priority !== undefined && { priority: change.priority }),
+      ...(change.assigneeUserId !== undefined && { assigneeUserId: change.assigneeUserId }),
+      version: sql`${tickets.version} + 1`,
+      updatedAt: sql`now()`,
+    })
+    .where(and(eq(tickets.id, id), eq(tickets.version, input.version)))
+    .returning(ticketColumns);
+  // The row is locked above, so this is a second guard: an update that finds no row at the version read is a conflict, never a quiet
+  // success.
+  if (!row) throw new TicketVersionConflictError();
+  const base = {
+    orgId: currentTenantContext().orgId,
+    workspaceId: ticket.workspaceId,
+    ticketId: id,
+    actorUserId: actor,
+  };
+  const events = [
+    ...(moves
+      ? [{ type: 'status_changed', fromStatus: ticket.status, toStatus: change.status }]
+      : []),
+    ...(reassigned ? [{ type: 'assigned' }] : []),
+    ...(edited ? [{ type: 'edited' }] : []),
+  ];
+  if (events.length > 0)
+    await tx.insert(ticketEvents).values(events.map((e) => ({ ...base, ...e, id: input.newId() })));
+  return row as TicketRow;
 }
