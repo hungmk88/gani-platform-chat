@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useId } from 'react';
 
 import type { NavItem } from '../nav';
@@ -66,7 +67,11 @@ function LeadCard({ lead }: { lead: Lead }) {
   const owner = lead.owner ? (lead.owner.name ?? 'Chưa có tên') : 'Chưa giao';
   return (
     <article className="flex flex-col gap-1 rounded-card border border-border bg-surface p-2">
-      <h3 className="font-semibold">{lead.title}</h3>
+      <h3 className="font-semibold">
+        <Link href={`/leads/${encodeURIComponent(lead.id)}`} className="underline">
+          {lead.title}
+        </Link>
+      </h3>
       <p className="text-12">Khách: {lead.customer.displayName ?? 'Khách chưa có tên'}</p>
       <p className="text-12">Phụ trách: {owner}</p>
       <div className="flex flex-wrap items-start gap-1 text-12">
