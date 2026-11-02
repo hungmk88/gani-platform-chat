@@ -7,6 +7,7 @@ import { registerLeads } from '../modules/leads/leads.openapi.js';
 import { registerOverview } from '../modules/overview/overview.openapi.js';
 import { registerPrivacy } from '../modules/privacy/privacy.openapi.js';
 import { registerSecurity } from '../modules/security/security.openapi.js';
+import { registerTags } from '../modules/tags/tags.openapi.js';
 
 // The contract of what is not built yet (N167): the paths the CEO's decisions of 26/10/2026 settled (U27, U28, U29, U35), so the front
 // end can build #14/#15, #16, #27, #11, #29 now. Same tools and shared schemas as document.ts, written to docs/openapi/planned.json.
@@ -14,6 +15,7 @@ import { registerSecurity } from '../modules/security/security.openapi.js';
 
 const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerLeads,
+  registerTags,
   registerOverview,
   registerFeatureFlags,
   registerAutonomy,
