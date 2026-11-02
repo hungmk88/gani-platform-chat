@@ -4,6 +4,10 @@
 `2810-02112026-FE-BRIEF-30` (02/11/2026) mục 2(a). Chỉ ghi những gì FE đọc được trong brief BE, không thêm trường. Mục 3 là
 những chỗ brief BE không nói, FE phải giả định để dựng #12 (12a, chỉ đọc), xin BE xác nhận hoặc sửa.
 
+**Trạng thái (brief CEO `2810-02112026-FE-BRIEF-35`, 02/11/2026):** BE xác nhận mục 1–6 và 8–9 "ổn"; mục 7 (quyền đọc) giữ
+giả định cũ, chờ CEO chốt T-2. Mục 8–9 là hai câu hỏi của #13a (mục 4); cùng brief ghi BE còn rà soát hai câu này, nên FE
+chưa có đường và trường cụ thể cho #13a và chưa code #13a. Nguyên văn trả lời của BE chưa có trong repo.
+
 ## 1. Lead (`GET /v1/leads`, Brief P9 dòng 443)
 
 Brief BE ghi (mục 2, "hợp đồng Lead đã trình (mục 1 brief Lead)"), nguyên văn danh sách trường:
