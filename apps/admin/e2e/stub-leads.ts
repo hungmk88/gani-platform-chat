@@ -1,0 +1,83 @@
+// #12 Pipeline lead for the e2e stub API only, on the DRAFT contract (brief 28–30; src/leads/leads.ts, docs/ui/lead-shape-from-be.md):
+// `GET /v1/workspaces/{id}/pipeline` (from a BE brief of 02/11) and `GET /v1/leads` (Brief P9) of a workspace, by cursor, in the
+// shape the BE brief gives. Every role of the company reads them. The steps and the reason a lead is lost are placeholders,
+// "chờ Q9, dữ liệu tạm", as the API would give them. The empty board, errors and the 404 of an API that does not serve the routes
+// yet are given by the tests with page.route. Never deployed.
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+import type { Lead, PipelineStage } from '../src/leads/leads';
+import type { Edge } from './stub-members';
+
+export const STAGES: readonly PipelineStage[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+  id: `stage-${n}`,
+  name: `Bước ${n} (chờ Q9, dữ liệu tạm)`,
+}));
+export const LOST_REASON = 'Lý do tạm (chờ Q9, dữ liệu tạm)';
+
+const at = (n: number) => `2026-10-2${9 - n}T03:00:00.000Z`;
+const lead = (
+  n: number,
+  title: string,
+  customer: string | null,
+  stage: number,
+  status: Lead['status'] = 'open',
+  owner: string | null = 'sales',
+): Lead => ({
+  id: `0190d400-0000-7000-8000-00000000000${n}`,
+  workspaceId: 'ws-e2e',
+  customer: { id: `0190d401-0000-7000-8000-00000000000${n}`, displayName: customer },
+  conversationId: null,
+  title,
+  stage: STAGES[stage - 1]!,
+  status,
+  owner: owner ? { id: `user-${owner}`, name: `Người thử ${owner}` } : null,
+  lostReason: status === 'lost' ? LOST_REASON : null,
+  closedAt: status === 'open' ? null : at(n),
+  score: null,
+  version: 1,
+  createdAt: '2026-10-20T03:00:00.000Z',
+  updatedAt: at(n),
+});
+
+/** The leads of the stub's workspace, last changed first. */
+export const LEADS: readonly Lead[] = [
+  lead(1, 'Báo giá phở khô', 'Quán Phở Hà Nội', 1),
+  lead(2, 'Hỏi giá sỉ', 'Nhà hàng Sen', 1, 'open', null),
+  lead(3, 'Đại lý cấp 2', 'Đại lý Bình Minh', 2, 'open', 'manager'),
+  lead(4, 'Hỏi sản phẩm mới', null, 3),
+  lead(5, 'Suất ăn công ty', 'Bếp ăn Tân Phú', 6),
+  lead(6, 'Đơn hàng tháng 11', 'Nhà hàng Đông Á', 6, 'won'),
+  lead(7, 'Thực đơn chay', 'Quán Chay An Lạc', 4, 'lost', 'manager'),
+];
+/** The page size of the stub's list, small so that "Tải thêm" is tested. */
+export const LEADS_PAGE = 5;
+
+/** Answers the reads of #12 and says true, or says false for any other route. `session` is null when signed out. */
+export function routeLeads(
+  req: IncomingMessage,
+  res: ServerResponse,
+  path: string,
+  session: { readonly role: string | undefined } | null,
+  edge: Edge,
+): boolean {
+  const pipeline = /^\/v1\/workspaces\/([^/]+)\/pipeline$/.exec(path);
+  if (req.method !== 'GET' || (path !== '/v1/leads' && !pipeline)) return false;
+  if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
+  if (!session.role || session.role === 'platform_operator')
+    return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+  if (pipeline)
+    return (edge.send(res, 200, { data: pipeline[1] === 'ws-e2e' ? STAGES : [] }), true);
+  const q = new URL(req.url ?? '/', 'http://stub').searchParams;
+  const ws = q.get('workspaceId');
+  if (!ws) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+  const all = LEADS.filter((l) => l.workspaceId === ws);
+  const from = Number(q.get('cursor') ?? 0);
+  const to = from + LEADS_PAGE;
+  return (
+    edge.send(res, 200, {
+      data: all.slice(from, to),
+      nextCursor: to < all.length ? String(to) : null,
+    }),
+    true
+  );
+}
