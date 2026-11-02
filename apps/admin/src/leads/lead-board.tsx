@@ -67,7 +67,7 @@ function LeadCard({ lead }: { lead: Lead }) {
   return (
     <article className="flex flex-col gap-1 rounded-card border border-border bg-surface p-2">
       <h3 className="font-semibold">{lead.title}</h3>
-      <p className="text-12">Khách: {lead.customer?.displayName ?? 'Khách chưa có tên'}</p>
+      <p className="text-12">Khách: {lead.customer.displayName ?? 'Khách chưa có tên'}</p>
       <p className="text-12">Phụ trách: {owner}</p>
       <div className="flex flex-wrap items-start gap-1 text-12">
         <span className={`${badge} bg-bg-subtle`}>{lead.stage.name}</span>
