@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import type { NavItem } from '../nav';
 import { button, Paged } from '../paged-list';
@@ -27,17 +27,24 @@ const TONE = { ok: 'bg-ok-bg text-ok-text', error: 'bg-error-bg text-error-text'
  * `EraseDialog`. Carrying out an `export` is not in this version. A 404 means the API does not serve the route yet (planned S5):
  * the screen then says it is not there, never a list made up here. The reason is plain text, wrapped, never cut.
  */
-export function PrivacyScreen({ item, go }: { item: NavItem; go: NavItem }) {
+export function PrivacyScreen({ item, go, nav }: { item: NavItem; go: NavItem; nav?: ReactNode }) {
   const requests = useApiPages<PrivacyRequestPage>(['privacy-requests'], requestsPath);
   const [recording, setRecording] = useState(false);
   const [erasing, setErasing] = useState<PrivacyRequest | null>(null);
+  // The links to the other tabs stay above the screen not there yet: they may be served before this one (brief 33).
   if (requests.isError && requests.error.error.code === 'not_found')
-    return <PendingPage item={item} go={go} />;
+    return (
+      <>
+        {nav}
+        <PendingPage item={item} go={go} />
+      </>
+    );
   return (
     <section aria-labelledby="privacy-title" className="flex max-w-[1080px] flex-col gap-6">
       <h1 id="privacy-title" className="text-20 font-semibold">
         Dữ liệu khách
       </h1>
+      {nav}
       <button type="button" className={primary} onClick={() => setRecording(true)}>
         Ghi nhận yêu cầu
       </button>
