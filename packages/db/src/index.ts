@@ -39,6 +39,7 @@ export * from './partition-store.js';
 export * from './password-reset-store.js';
 export * from './quick-reply-store.js';
 export * from './bot-flow-store.js';
+export * from './business-hours-store.js';
 export * from './bot-session-store.js';
 export * from './bot-trigger-read.js';
 export * from './customer-store.js';
