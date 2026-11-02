@@ -131,6 +131,8 @@ const APP_UPDATE: Record<string, string[]> = {
   tags: ['deleted_at', 'hidden', 'name', 'updated_at'],
   team_members: ['deleted_at', 'updated_at'],
   teams: ['deleted_at', 'description', 'is_default', 'name', 'slug', 'updated_at'],
+  workspace_holidays: ['deleted_at', 'ends_on', 'name', 'starts_on', 'updated_at'],
+  workspace_hours: ['break_ends_at', 'break_starts_at', 'closes_at', 'opens_at', 'updated_at'],
   workspace_members: ['deleted_at', 'updated_at'],
   workspaces: [
     'contact_phone',

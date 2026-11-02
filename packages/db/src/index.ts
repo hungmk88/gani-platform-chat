@@ -67,6 +67,7 @@ export { platformAccessLogs } from './schema/platform-access-logs.js';
 export { quickReplies } from './schema/quick-replies.js';
 export { customerFieldDefs, customerFieldValues } from './schema/customer-fields.js';
 export { customerTags, tags } from './schema/tags.js';
+export { workspaceHolidays, workspaceHours } from './schema/workspace-hours.js';
 export { ticketEvents, tickets } from './schema/tickets.js';
 export { botEdges, botFlowVersions, botFlows, botNodes } from './schema/bot-flows.js';
 export { botSessionSteps, botSessions } from './schema/bot-sessions.js';
