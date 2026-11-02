@@ -122,6 +122,7 @@ describe('GET /v1/customers', () => {
       email: 'lan.nguyen@example.test',
       humanOnly: false,
       identities: [],
+      tags: [],
       createdAt: expect.any(String) as string,
       updatedAt: expect.any(String) as string,
     });

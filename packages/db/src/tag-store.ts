@@ -1,6 +1,7 @@
 import { uuidv7 } from '@gani/domain';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
+import { customers } from './schema/customers.js';
 import { customerTags, tags } from './schema/tags.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
@@ -168,4 +169,99 @@ export async function mergeTag(tx: TenantTx, fromId: string, intoId: string): Pr
     .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
     .where(eq(tags.id, from));
   return rows.length;
+}
+
+export interface CustomerTagRow {
+  readonly id: string;
+  readonly name: string;
+  readonly hidden: boolean;
+}
+
+/** A tag named is not a live tag of the company (404). */
+export class TagNotFoundError extends Error {
+  constructor() {
+    super('a tag is not of the company');
+    this.name = 'TagNotFoundError';
+  }
+}
+
+/** A hidden tag the customer does not have yet (422 tag_hidden, T-4): no customer gets a hidden tag any more. */
+export class TagHiddenError extends Error {
+  constructor() {
+    super('a hidden tag cannot be given');
+    this.name = 'TagHiddenError';
+  }
+}
+
+/**
+ * Sets the whole set of tags of the live customer `customerId`: the tags named are on, every other is switched off (deleted_at), a
+ * switched-off one named again is turned back on. The customer is locked first (two sets of one customer queue), then the tags
+ * involved FOR SHARE in id order, so a merge of one of them waits or is waited for, never half seen. Returns the customer's tags by
+ * name, or null when there is no such live customer.
+ */
+export async function setCustomerTags(
+  tx: TenantTx,
+  customerId: string,
+  tagIds: readonly string[],
+): Promise<CustomerTagRow[] | null> {
+  const customer = assertUuid(customerId, 'customerId');
+  const [found] = await tx
+    .select({ id: customers.id })
+    .from(customers)
+    .where(and(eq(customers.id, customer), isNull(customers.deletedAt)))
+    .for('update');
+  if (!found) return null;
+  const wanted = new Set(tagIds.map((id) => assertUuid(id, 'tagId')));
+  const links = await tx
+    .select({ id: customerTags.id, tagId: customerTags.tagId, off: customerTags.deletedAt })
+    .from(customerTags)
+    .where(eq(customerTags.customerId, customer));
+  const has = new Set(links.filter((l) => l.off === null).map((l) => l.tagId));
+  const involved = [...new Set([...wanted, ...has])].sort();
+  const live =
+    involved.length === 0
+      ? []
+      : await tx
+          .select({ id: tags.id, hidden: tags.hidden })
+          .from(tags)
+          .where(and(inArray(tags.id, involved), isNull(tags.deletedAt)))
+          .orderBy(asc(tags.id))
+          .for('share');
+  for (const id of wanted) {
+    const tag = live.find((t) => t.id === id);
+    if (!tag) throw new TagNotFoundError();
+    if (tag.hidden && !has.has(id)) throw new TagHiddenError();
+  }
+  const off = links.filter((l) => l.off === null && !wanted.has(l.tagId)).map((l) => l.id);
+  const back = links.filter((l) => l.off !== null && wanted.has(l.tagId)).map((l) => l.id);
+  const known = new Set(links.map((l) => l.tagId));
+  const fresh = [...wanted].filter((id) => !known.has(id));
+  if (off.length > 0)
+    await tx
+      .update(customerTags)
+      .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(inArray(customerTags.id, off));
+  if (back.length > 0)
+    await tx
+      .update(customerTags)
+      .set({ deletedAt: null, updatedAt: sql`now()` })
+      .where(inArray(customerTags.id, back));
+  if (fresh.length > 0) {
+    const { orgId } = currentTenantContext();
+    await tx
+      .insert(customerTags)
+      .values(fresh.map((tagId) => ({ id: uuidv7(), orgId, customerId: customer, tagId })));
+  }
+  return tx
+    .select({ id: tags.id, name: tags.name, hidden: tags.hidden })
+    .from(customerTags)
+    .innerJoin(tags, and(eq(tags.orgId, customerTags.orgId), eq(tags.id, customerTags.tagId)))
+    .where(
+      and(
+        eq(customerTags.customerId, customer),
+        isNull(customerTags.deletedAt),
+        isNull(tags.deletedAt),
+      ),
+    )
+    .orderBy(asc(sql`lower(${tags.name})`), asc(tags.id));
 }

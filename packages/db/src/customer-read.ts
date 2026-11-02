@@ -22,6 +22,12 @@ export interface CustomerView {
   readonly humanOnly: boolean;
   /** How the channels know the customer; never the external id (a Zalo user id is an identifier, N69). */
   readonly identities: readonly CustomerIdentityView[];
+  /** The customer's live tags by name, hidden ones too (T-4, N190). */
+  readonly tags: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly hidden: boolean;
+  }[];
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -33,6 +39,8 @@ export interface CustomerListQuery {
   readonly phonePrefix?: string;
   /** A whole email, lower case: equal, never a part (U48), so a search cannot spell out an address (index customers_org_email_idx). */
   readonly email?: string;
+  /** Only the customers who have this live tag (N190); a hidden tag still filters (T-4). */
+  readonly tagId?: string;
   readonly cursor?: string;
   /** 1..100 (P9). */
   readonly limit: number;
@@ -51,6 +59,11 @@ const view = {
     SELECT json_agg(json_build_object('type', i.identity_type, 'channelAccountId', i.channel_account_id,
       'verification', i.verification) ORDER BY i.created_at, i.id)
     FROM customer_identities i WHERE i.org_id = customers.org_id AND i.customer_id = customers.id), '[]'::json)`,
+  tags: sql<CustomerView['tags']>`coalesce((
+    SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'hidden', t.hidden) ORDER BY lower(t.name), t.id)
+    FROM customer_tags ct JOIN tags t ON t.org_id = ct.org_id AND t.id = ct.tag_id
+    WHERE ct.org_id = customers.org_id AND ct.customer_id = customers.id AND ct.deleted_at IS NULL AND t.deleted_at IS NULL),
+    '[]'::json)`,
   createdAt: customers.createdAt,
   updatedAt: customers.updatedAt,
 };
@@ -93,6 +106,9 @@ export async function listCustomers(
   if (q.name !== undefined) where.push(customerSearchWhere({ name: q.name }));
   if (q.phonePrefix !== undefined) where.push(customerSearchWhere({ phonePrefix: q.phonePrefix }));
   if (q.email !== undefined) where.push(customerSearchWhere({ email: q.email }));
+  if (q.tagId !== undefined)
+    where.push(sql`EXISTS (SELECT 1 FROM customer_tags ct WHERE ct.org_id = ${c.orgId} AND ct.customer_id = ${c.id}
+      AND ct.tag_id = ${assertUuid(q.tagId, 'tagId')}::uuid AND ct.deleted_at IS NULL)`);
   if (q.cursor !== undefined)
     where.push(lt(c.id, cursorString(decodeCursor(q.cursor), 'id', UUID_FORMAT)));
   const rows = await tx

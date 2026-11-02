@@ -11,6 +11,7 @@ const customer: Customer = {
   email: 'an@example.test',
   humanOnly: false,
   identities: [],
+  tags: [],
   createdAt: '2026-10-24T03:00:00.000Z',
   updatedAt: '2026-10-24T03:00:00.000Z',
 };
