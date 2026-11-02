@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 
 import type { Page } from './conversation-read.js';
 import { cursorString, decodeCursor, encodeCursor } from './cursor.js';
+import { customers } from './schema/customers.js';
 import { ticketEvents, tickets } from './schema/tickets.js';
 import type { TenantTx } from './tenant-tx.js';
 import {
@@ -109,4 +110,43 @@ export async function loadTicket(
     .where(eq(ticketEvents.ticketId, ticketId))
     .orderBy(asc(ticketEvents.occurredAt), asc(ticketEvents.id));
   return { ...(row as TicketRow), events: events as TicketEventRow[] };
+}
+
+/** The names a ticket is shown with: by customer id and by person id. A name nobody gave, or that is no longer visible, is null. */
+export interface TicketNames {
+  readonly customers: ReadonlyMap<string, string | null>;
+  readonly people: ReadonlyMap<string, string | null>;
+}
+
+/**
+ * The names of the customers and assignees of `rows` (K1c-1): a customer's from customers (a deleted one has none), a person's only
+ * through app.org_users (active members, no email), so an assignee who left keeps their id with no name, as a conversation's holder.
+ */
+export async function ticketNames(
+  tx: TenantTx,
+  rows: readonly Pick<TicketRow, 'customerId' | 'assigneeUserId'>[],
+): Promise<TicketNames> {
+  const ids = (pick: (r: (typeof rows)[number]) => string | null) => [
+    ...new Set(rows.map(pick).filter((id): id is string => id !== null)),
+  ];
+  const [customerIds, personIds] = [ids((r) => r.customerId), ids((r) => r.assigneeUserId)];
+  const named =
+    customerIds.length === 0
+      ? []
+      : await tx
+          .select({ id: customers.id, name: customers.displayName })
+          .from(customers)
+          .where(and(inArray(customers.id, customerIds), isNull(customers.deletedAt)));
+  const people =
+    personIds.length === 0
+      ? []
+      : (
+          await tx.execute<{ id: string; name: string | null }>(sql`
+            SELECT user_id AS id, nullif(btrim(display_name), '') AS name FROM app.org_users
+            WHERE user_id = ANY(${`{${personIds.join(',')}}`}::uuid[])`)
+        ).rows;
+  return {
+    customers: new Map(named.map((c) => [c.id, c.name])),
+    people: new Map(people.map((p) => [p.id, p.name])),
+  };
 }

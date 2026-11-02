@@ -1,6 +1,6 @@
 // #15(b) Tạo ticket (U27, N167, issue #357): `POST /v1/tickets` of the workspace being worked in, a contract planned for S4
 // (docs/openapi/planned.json). The roles of the menu make tickets (Phụ lục B "Ticket: tạo"); the form checks what the API checks.
-import type { components } from '../api/planned';
+import type { components } from '../api/schema';
 import { MAX_QUERY, nameOf, phoneText, type Customer } from '../customers/customers';
 import type { Member } from '../members/list';
 import type { Role } from '../nav';

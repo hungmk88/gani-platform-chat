@@ -13,22 +13,16 @@ import {
   TicketSchema,
 } from './tickets.schemas.js';
 
-/** The paths of /v1/tickets (U27, Brief P9 "GET/POST/PATCH /v1/tickets"), planned for S4. */
-export function registerTickets(registry: OpenAPIRegistry): void {
-  const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
-  const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
-  const notFound = problemResponse(
-    'not_found: no ticket with this id in the session’s workspaces (not visible is the same).',
-  );
-  const forbidden = problemResponse(
-    'forbidden: marketing and viewer; sales reads only the tickets they made; or a refusal of the edge.',
-  );
-  const byId = { params: z.object({ id: TicketIdSchema }) };
-  const tags = ['tickets'];
-  const when = planned('S4');
+const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
+const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
+const forbidden = problemResponse(
+  'forbidden: marketing and viewer; sales reads only the tickets they made; or a refusal of the edge.',
+);
+const tags = ['tickets'];
 
+/** `/v1/tickets` (U27, Brief P9 "GET/POST/PATCH /v1/tickets"): served since K1c-1 (document.ts). */
+export function registerTickets(registry: OpenAPIRegistry): void {
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/tickets',
     summary:
@@ -44,7 +38,6 @@ export function registerTickets(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/tickets',
     summary:
@@ -66,6 +59,16 @@ export function registerTickets(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+}
+
+/** `/v1/tickets/{id}`: planned for S4 (planned.ts) until K1c-2 serves it. */
+export function registerTicketById(registry: OpenAPIRegistry): void {
+  const notFound = problemResponse(
+    'not_found: no ticket with this id in the session’s workspaces (not visible is the same).',
+  );
+  const byId = { params: z.object({ id: TicketIdSchema }) };
+  const when = planned('S4');
+
   registry.registerPath({
     ...when,
     method: 'get',
