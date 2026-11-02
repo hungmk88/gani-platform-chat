@@ -159,9 +159,10 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
     từ comment, 9 giây từ lúc đủ điều kiện): đúng tinh thần, không phải vi phạm, nhưng lần sau phải theo cách tính trên.
-  - **B1 sau #521, #522:** giữ "một phần". #521 chỉ DB (lease, lần thử kế tiếp, `app.outbound_pending_orgs`); #522 (O2a, tầng 1
-    code, auto-merge 05:13:02 sau CI 9/9) chỉ kho của outbound worker; #524 (O2b, 05:20:21) chỉ job gửi + interface
-    `ChannelSender`; client Zalo (O3) và nối worker (O2c) chưa có. Bằng chứng
+  - **B1 sau #521, #522, #524, #525:** giữ "một phần". #521 chỉ DB (lease, lần thử kế tiếp, `app.outbound_pending_orgs`); #522 (O2a,
+    tầng 1 code, auto-merge 05:13:02 sau CI 9/9) chỉ kho của outbound worker; #524 (O2b, 05:20:21) chỉ job gửi + interface
+    `ChannelSender`; #525 (O2c, merge 05:37:05, squash `c0a843c`) nối worker nhưng tắt: chưa có sender kênh, `OUTBOUND_ENABLED=1` bị
+    từ chối. Client Zalo (O3) chưa có. Bằng chứng
     B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do.
   - **Kênh 2, chu kỳ kiểm:** `trig_01Br6sSpPXw9Xej9KzBakxUt` phút 06 mỗi 2 giờ UTC (phiên `session_015SNdqeCQvNjK6rFoqzt5Su`)
     khi không có việc mở, một dòng "không đổi". Có việc mở (PR đang mở; câu hỏi U FE đang làm dở; việc chờ CEO duyệt): thêm lần
