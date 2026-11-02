@@ -13,6 +13,7 @@ import { QuickRepliesModule } from './modules/quick-replies/quick-replies.module
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RequestContextModule } from './modules/request-context/request-context.module.js';
 import { TeamsModule } from './modules/teams/teams.module.js';
+import { TagsModule } from './modules/tags/tags.module.js';
 import { TicketsModule } from './modules/tickets/tickets.module.js';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
 
@@ -31,6 +32,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
     RealtimeModule,
     RequestContextModule,
     TeamsModule,
+    TagsModule,
     TicketsModule,
     WorkspacesModule,
   ],
