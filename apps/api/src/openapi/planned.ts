@@ -2,6 +2,7 @@ import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-ope
 
 import { registerAi } from '../modules/ai/ai.openapi.js';
 import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
+import { registerCustomerFields } from '../modules/customer-fields/customer-fields.openapi.js';
 import { registerFeatureFlags } from '../modules/feature-flags/feature-flags.openapi.js';
 import { registerLeads } from '../modules/leads/leads.openapi.js';
 import { registerOverview } from '../modules/overview/overview.openapi.js';
@@ -16,6 +17,7 @@ import { registerTags } from '../modules/tags/tags.openapi.js';
 const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerLeads,
   registerTags,
+  registerCustomerFields,
   registerOverview,
   registerFeatureFlags,
   registerAutonomy,
