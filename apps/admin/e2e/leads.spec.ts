@@ -135,3 +135,64 @@ test('a Viewer reads the board too; a platform operator has no such screen: the 
   expect(res?.status()).toBe(404);
   await expect(page.getByRole('heading', { name: 'Không tìm thấy trang.' })).toBeVisible();
 });
+
+// Edge cases (CEO 02/11, brief 36 (2)): a later page that fails, the pipeline that fails, a step the pipeline no longer lists.
+const down = (traceId: string) => ({
+  status: 503,
+  contentType: 'application/problem+json',
+  body: JSON.stringify({ status: 503, code: 'service_unavailable', traceId }),
+});
+
+test('"Tải thêm" that fails keeps the board read, says so under it and asks the same page again', async ({
+  page,
+}) => {
+  let fail = true;
+  await leadsRoute(page, (r) =>
+    fail && new URL(r.request().url()).searchParams.get('cursor')
+      ? r.fulfill(down('trace-page-2'))
+      : r.fallback(),
+  );
+  await open(page);
+  await page.getByRole('button', { name: 'Tải thêm' }).click();
+  const alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toContainText('Mã: trace-page-2');
+  await expect(board(page).getByRole('heading', { level: 2 })).toHaveCount(8);
+  await expect(column(page, 'Thắng')).toContainText('Chưa có lead');
+  await expect(page.getByRole('button', { name: 'Tải thêm' })).toHaveCount(0);
+  await expectAccessible(page);
+  fail = false;
+  await alert.getByRole('button', { name: 'Thử lại' }).click();
+  await expect(column(page, 'Thắng')).toContainText('Khách: Nhà hàng Đông Á');
+  await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0);
+});
+
+test('a failure of the pipeline, not a 404, says so with its trace and Thử lại', async ({
+  page,
+}) => {
+  let fail = true;
+  await page.route(isPipeline, (r) => (fail ? r.fulfill(down('trace-pipeline')) : r.fallback()));
+  await signIn(page, accountOf('owner'));
+  await page.goto('/leads');
+  const alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toContainText('Mã: trace-pipeline');
+  await expect(board(page)).toHaveCount(0);
+  await expectAccessible(page);
+  fail = false;
+  await alert.getByRole('button', { name: 'Thử lại' }).click();
+  await expect(board(page).getByRole('heading', { level: 2 })).toHaveCount(8);
+});
+
+test('open leads at a step the pipeline no longer lists keep a column; the board takes the keyboard', async ({
+  page,
+}) => {
+  await page.route(isPipeline, (r) => r.fulfill({ json: { data: STAGES.slice(1) } }));
+  await open(page);
+  const gone = column(page, 'Bước không còn trong pipeline');
+  await expect(gone.getByRole('heading', { level: 3 })).toHaveText([
+    'Báo giá phở khô',
+    'Hỏi giá sỉ',
+  ]);
+  await board(page).focus();
+  await expect(board(page)).toBeFocused();
+  await expectAccessible(page);
+});
