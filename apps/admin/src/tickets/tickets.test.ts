@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { changedAt, mayReadTickets, slaText, STATUS, ticketsPath } from './tickets';
+import { assigneeOf, changedAt, mayReadTickets, slaText, STATUS, ticketsPath } from './tickets';
 
 describe('ticketsPath', () => {
   it('asks a page of the workspace, with the filters that are set and the cursor', () => {
@@ -50,5 +50,18 @@ describe('slaText and changedAt', () => {
   });
   it('gives the time of the last change in Viet Nam', () => {
     expect(changedAt({ updatedAt: '2026-10-26T03:00:00Z' })).toBe('10:00 26/10/2026');
+  });
+});
+
+describe('assigneeOf (K1c-1: the name of the assignee may be null)', () => {
+  it('says the name, nobody, or the end of the id of a person without a name, never "Chưa giao" for someone', () => {
+    const id = '0190c300-0000-7000-8000-00000000abcd';
+    expect(assigneeOf({ assignee: null })).toEqual({ text: 'Chưa giao', none: true });
+    expect(assigneeOf({ assignee: { id, name: 'Người thử' } })).toEqual({ text: 'Người thử' });
+    expect(assigneeOf({ assignee: { id, name: null } })).toEqual({
+      text: '…abcd',
+      title: 'Nhân viên chưa có tên',
+    });
+    expect(assigneeOf({ assignee: { id, name: '  ' } }).text).toBe('…abcd');
   });
 });
