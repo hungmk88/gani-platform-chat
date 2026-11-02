@@ -57,7 +57,8 @@ success trên đúng HEAD.
 
 - **Tầng 1/2: BE tự merge** khi đủ các điều kiện trên, chuyển ready ngay trước khi merge. Gồm mọi PR không gây hậu quả không hoàn
   tác được: migration **tạo mới** (hàm, bảng, cột), test RLS, code worker, code API thêm mới, docs, comment.
-- **Tầng 3: CEO bấm merge**, sau khi BE báo "Sẵn sàng merge" và CEO comment phê duyệt vào PR:
+- **Tầng 3: CEO bấm merge**, sau khi BE báo "Sẵn sàng merge" và CEO comment phê duyệt vào PR; hoặc **BE tự merge theo Mức A**
+  (`CLAUDE.md` gốc, 7 điều kiện) khi phương án đã được CEO duyệt:
   - migration `DROP` (bảng, cột, hàm; ví dụ #386);
   - migration phá hủy dữ liệu (`ALTER TYPE`, `DROP CONSTRAINT` có dữ liệu phụ thuộc);
   - đổi `key_version`, xoay khóa mã hóa (#461);

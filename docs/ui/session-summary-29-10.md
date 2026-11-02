@@ -165,6 +165,12 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `TicketAssignee.name` thành `string | null`: FE đồng ý (như U30), sửa hiển thị ở #539 (`ece5747`, "…abcd" thay vì "Chưa
       giao"). Khoảng hở tới K1c-2: danh sách ticket thật nhưng chi tiết vẫn 404 ("Không tìm thấy ticket"); CEO chấp nhận vì chưa
       deploy (brief 40), K1c-2 phải merge trước lần deploy đầu. FE review gửi CEO qua phiên, không comment GitHub.
+    - BE sửa `apps/admin/src/tickets/ticket-detail.ts` trong #540 (K1c-2, tầng 3, "Sẵn sàng merge" 15:12:58, `APPROVED` 15:17:34
+      và 15:26:49, merge 15:29:36 UTC, squash `265e7ff`): đổi nguồn kiểu từ `../api/planned` sang `../api/schema`, **đúng**. Hợp
+      đồng `GET/PATCH /v1/tickets/{id}` giữ nguyên so với bản planned (tham số, body, mã lỗi, schema 200; `TicketDetail`,
+      `TicketEvent` giống hệt); `planned.json` hết đường ticket; khoảng hở 404 của #538 đã đóng. Hệ quả cho FE: màn chi tiết hiện
+      "Chưa giao" khi người nhận có `name` null, sửa ở PR FE sau #540 (`Assignee` dùng chung với danh sách, brief 43–45). FE review
+      gửi CEO qua phiên, không comment GitHub.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút

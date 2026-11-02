@@ -5,10 +5,11 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 import { TICKETS } from './stub-tickets';
 
-// #15 Chi tiết ticket (U27, N167): one ticket from GET /v1/tickets/{id} (planned S4) with its history, and its status moved by
+// #15 Chi tiết ticket (U27, N167): one ticket from GET /v1/tickets/{id} (real API since K1c-2, #540) with its history, and its status moved by
 // PATCH {status, version} along the moves of N167; cancelling is Owner/Admin/Manager only and asks again; Sales only read.
 const screen = (page: Page) => page.getByRole('region', { name: 'Chi tiết ticket' });
 const history = (page: Page) => screen(page).getByRole('list').last();
+const holder = (page: Page) => screen(page).locator('dt:text-is("Phụ trách") + dd');
 
 test('a Manager opens a ticket from the list, starts it, waits for the customer, then cancels it', async ({
   page,
@@ -67,5 +68,24 @@ test('a ticket changed by someone else is read again; one not found says so', as
   await expect(screen(page).getByRole('alert')).toContainText('trace-e2e-409');
   await page.goto('/tickets/khong-co');
   await expect(page.getByRole('heading', { name: 'Không tìm thấy ticket' })).toBeVisible();
+  await expectAccessible(page);
+});
+
+test('who handles it is said as in the list: nobody "Chưa giao", a person without a name by the end of the id (#540)', async ({
+  page,
+}) => {
+  const id = '0190c300-0000-7000-8000-00000000abcd';
+  await page.route(`**/v1/tickets/${TICKETS[1]!.id}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const response = await route.fetch();
+    const ticket = (await response.json()) as Record<string, unknown>;
+    return route.fulfill({ response, json: { ...ticket, assignee: { id, name: null } } });
+  });
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/tickets/${TICKETS[0]!.id}`);
+  await expect(holder(page)).toHaveText('Chưa giao');
+  await page.goto(`/tickets/${TICKETS[1]!.id}`);
+  await expect(holder(page).getByTitle('Nhân viên chưa có tên')).toHaveText('…abcd');
+  await expect(holder(page)).not.toHaveText('Chưa giao');
   await expectAccessible(page);
 });
