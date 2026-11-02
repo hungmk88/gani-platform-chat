@@ -35,6 +35,8 @@ const TENANT_TABLES = [
   'team_members',
   'teams',
   'workspace_members',
+  'workspace_holidays',
+  'workspace_hours',
   'workspaces',
   'org_members',
 ];
@@ -84,6 +86,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ('${workspace}', '${org}', 'ws', 'W', 'service');
     INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${user}');
     INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ('${team}', '${org}', '${workspace}', 'T', 'tm');
+    INSERT INTO workspace_hours (id, org_id, workspace_id, weekday, opens_at, closes_at) VALUES ('${uuidv7()}', '${org}', '${workspace}', 1, '08:00', '18:00');
+    INSERT INTO workspace_holidays (id, org_id, workspace_id, name, starts_on, ends_on) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'Seed', '2027-01-01', '2027-01-01');
     INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${user}');
     INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}');
     INSERT INTO audit_logs (id, org_id, action) VALUES ('${uuidv7()}', '${org}', 'seed');
