@@ -1,4 +1,4 @@
-// #14/#15 Ticket for the e2e stub API only, as planned (docs/openapi/planned.json, N167): `GET /v1/tickets`, the workspace's
+// #14/#15 Ticket for the e2e stub API only, as the API (docs/openapi/openapi.json, K1c-1 #538, K1c-2 #540; N167): `GET /v1/tickets`, the workspace's
 // tickets, newest first, by cursor, filtered by status and assignee; Sales see the ones they made; `GET /v1/tickets/{id}` with its
 // events and `PATCH` of the status (the moves of N167, cancelling for Owner/Admin/Manager; each session changes its own copy,
 // `+stale@` gets version_conflict); `POST` makes one (#15(b): Phụ lục B "Ticket: tạo", an assignee among Owner/Admin/Manager/Support

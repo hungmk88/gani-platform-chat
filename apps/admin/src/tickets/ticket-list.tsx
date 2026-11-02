@@ -7,16 +7,15 @@ import type { NavItem, Role } from '../nav';
 import { PendingPage } from '../pending-page';
 import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { Assignee } from './assignee';
 import { TicketCreateDialog } from './ticket-create-dialog';
 import {
-  assigneeOf,
   changedAt,
   PRIORITY,
   slaText,
   STATUS,
   ticketsPath,
   type AssigneeFilter,
-  type Ticket,
   type TicketFilter,
   type TicketPage,
 } from './tickets';
@@ -30,13 +29,6 @@ const ASSIGNEE: Readonly<Record<AssigneeFilter, string>> = {
   me: 'Của tôi',
   none: 'Chưa giao',
 };
-
-/** Who handles the ticket (`assigneeOf`): nobody muted, a person without a name by the end of the id with its reason on hover. */
-function Assignee({ t }: { t: Ticket }) {
-  const a = assigneeOf(t);
-  if (a.none) return <span className="text-text-muted">{a.text}</span>;
-  return a.title ? <abbr title={a.title}>{a.text}</abbr> : <>{a.text}</>;
-}
 
 /**
  * #14 Ticket of the workspace being worked in (T1), newest first, by cursor ("Tải thêm"): title, customer, status in words, priority,
