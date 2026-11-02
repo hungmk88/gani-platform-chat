@@ -85,6 +85,11 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   - CEO xem lại trong 24 giờ sau merge; lệch phương án thì revert hoặc migration bù (rollback vẫn do CEO quyết).
   - Mọi phê duyệt phải là comment GitHub của CEO (#498); tin nhắn không tính. Bỏ FE review hay heads-up của một PR chỉ khi CEO
     ghi rõ trên PR đó (ví dụ #542–#544: "bỏ FE comment + heads-up").
+- **Duyệt lô theo sprint** (02/11/2026, ký A (CEO), sprint 02/11–09/11):
+  - Trong sprint CEO duyệt lô, mọi PR tầng 2/3 có phương án đã duyệt (brief hoặc comment GitHub): DEV tự merge khi đủ 7 điều
+    kiện Mức A, không cần CEO comment lại từng PR; diff lệch phương án thì dừng, báo CEO.
+  - Trong sprint đó bỏ FE comment (FE review sau merge 24 giờ, sai thì CEO quyết revert) và bỏ heads-up 30' của tầng 2. Ngoài
+    sprint quay về luật cũ, trừ khi CEO gia hạn bằng comment GitHub. Báo cáo cuối ngày và cuối sprint.
 - **Nhận việc và báo cáo** (02/11/2026, ký A (CEO), quy trình 7 bước):
   - Nhận việc qua chat: DEV soạn ngay brief giao việc gửi lại CEO (bối cảnh, phạm vi, tầng, hạn, acceptance, ràng buộc, câu hỏi
     cần chốt), không code ở bước này; sau đó mới Plan Mode.
