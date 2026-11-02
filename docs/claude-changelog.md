@@ -2,6 +2,19 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 02/11/2026: Mức A, DEV tự merge tầng 3 theo phương án đã duyệt; mốc go-live 31/01/2027 (ký A (CEO))
+
+- GIT WORKFLOW thêm **Mức A**: 7 điều kiện (phương án duyệt, 9 job thật sau Update branch cuối, `clean`, diff khớp phương án và
+  trần dòng, không đụng dữ liệu khách thật, Trivy/GitGuardian, diff HEAD ↔ squash = 0 và báo sau merge); CEO xem lại trong 24 giờ;
+  phê duyệt chỉ là comment GitHub; bỏ FE review/heads-up phải ghi trên PR. Áp lần đầu cho #540, #543, #544 (#542 CEO tự bật
+  auto-merge). `packages/db/CLAUDE.md` (phân tầng BE) trỏ tới Mức A.
+- GIT WORKFLOW thêm **Nhận việc và báo cáo**: bước 1 (soạn brief giao việc, chưa code) và bước 6 (báo 5 mục sau mỗi merge) của
+  quy trình 7 bước CEO gửi 02/11.
+- GIT WORKFLOW thêm **Duyệt lô theo sprint** (đề xuất 1 + 2, CEO 16:14 UTC): sprint 02/11–09/11, PR tầng 2/3 có phương án duyệt
+  tự merge theo Mức A, bỏ FE comment và heads-up 30' của tầng 2; ngoài sprint giữ luật cũ.
+- Brief P21: S6 17/01 – 30/01, go-live Đợt 1 31/01/2027 (trước Tết), pentest vòng 1 05–09/01, UAT/SUS song song S5, rủi ro CEO
+  đã ký (phương án b).
+
 ## 02/11/2026: heads-up 5 phút (5a), ngoại lệ Update branch (5b), Tầng 2 cho hợp đồng giữ nguyên, 3 bài học K1c-1 (ký A (CEO))
 
 - GIT WORKFLOW thêm **5a** (PR docs tầng 2 ≤ 10 dòng, chỉ `QUESTIONS.md`/`docs/`: heads-up 5 phút) và **5b** (Update branch
