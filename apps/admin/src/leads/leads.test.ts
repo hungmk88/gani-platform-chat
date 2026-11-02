@@ -2,16 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { columnsOf, leadsPath, pipelinePath, type Lead } from './leads';
 
-const stage = (id: string) => ({ id, name: `Tên ${id}` });
+const stage = (id: string, position = 0) => ({ id, name: `Tên ${id}`, position });
 const lead = (id: string, stageId: string, status: Lead['status'] = 'open'): Lead => ({
   id,
   workspaceId: 'w',
-  customer: null,
+  customer: { id: `c-${id}`, displayName: null },
   conversationId: null,
   title: `Lead ${id}`,
   stage: stage(stageId),
   status,
   owner: null,
+  createdBy: 'u',
   lostReason: status === 'lost' ? 'lý do' : null,
   closedAt: null,
   score: null,
@@ -20,7 +21,7 @@ const lead = (id: string, stageId: string, status: Lead['status'] = 'open'): Lea
   updatedAt: '2026-11-02T00:00:00.000Z',
 });
 
-describe('the board of #12 Pipeline lead, on the draft contract (brief 29–30)', () => {
+describe('the board of #12 Pipeline lead, on the contract planned for S4 (#544)', () => {
   it('has the steps in the order of the pipeline, then Thắng and Thua, a closed lead in its own column only', () => {
     const cols = columnsOf(
       [stage('b'), stage('a')],

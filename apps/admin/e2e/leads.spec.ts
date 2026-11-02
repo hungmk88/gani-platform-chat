@@ -5,7 +5,7 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 import { LOST_REASON, STAGES } from './stub-leads';
 
-// #12 Pipeline lead (CEO 02/11, brief 29–30: 12a, read only) on the draft contract (docs/ui/lead-shape-from-be.md): the steps from
+// #12 Pipeline lead (CEO 02/11, brief 29–30: 12a, read only) on the contract planned for S4 (docs/openapi/planned.json, #544): the steps from
 // `GET /v1/workspaces/{id}/pipeline`, the leads from `GET /v1/leads` by cursor; the steps as columns, then Thắng and Thua. Every
 // role of the company reads it.
 const board = (page: Page) => page.getByRole('region', { name: 'Các bước của pipeline' });
@@ -185,7 +185,9 @@ test('a failure of the pipeline, not a 404, says so with its trace and Thử l�
 test('open leads at a step the pipeline no longer lists keep a column; the board takes the keyboard', async ({
   page,
 }) => {
-  await page.route(isPipeline, (r) => r.fulfill({ json: { data: STAGES.slice(1) } }));
+  await page.route(isPipeline, (r) =>
+    r.fulfill({ json: { data: STAGES.slice(1), lostReasons: [LOST_REASON] } }),
+  );
   await open(page);
   const gone = column(page, 'Bước không còn trong pipeline');
   await expect(gone.getByRole('heading', { level: 3 })).toHaveText([
