@@ -63,6 +63,13 @@ success trên đúng HEAD.
   - đổi `key_version`, xoay khóa mã hóa (#461);
   - sửa hoặc xóa audit log; đổi RLS policy làm lộ dữ liệu;
   - rollback production.
+- **Hợp đồng API** (CEO 02/11/2026, quyết định 1):
+  - Thêm hoặc đổi hợp đồng trong `planned.json`: **Tầng 3**.
+  - Chuyển path từ `planned.json` sang `openapi.json` mà **giữ nguyên** hợp đồng (path, method, schema request và response, mã
+    trả lời và `code`): **Tầng 2**. Đổi bất kỳ điểm nào trong đó (kể cả một trường thành nullable, như #538): Tầng 3. Mô tả PR
+    ghi bảng so sánh planned ↔ openapi.
+  - Chuyển path làm mất kiểu FE đang import từ `apps/admin/src/api/planned.d.ts`: chạy `pnpm typecheck` toàn repo, sửa import
+    trong cùng PR và xin FE review (#538, #540).
 
 ## Cấm
 
