@@ -8,6 +8,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { HooksModule } from './modules/hooks/hooks.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
+import { BusinessHoursModule } from './modules/business-hours/business-hours.module.js';
 import { BotFlowsModule } from './modules/bot-flows/bot-flows.module.js';
 import { QuickRepliesModule } from './modules/quick-replies/quick-replies.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -28,6 +29,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
     MembersModule,
     QuickRepliesModule,
     BotFlowsModule,
+    BusinessHoursModule,
     CustomersModule,
     RealtimeModule,
     RequestContextModule,
