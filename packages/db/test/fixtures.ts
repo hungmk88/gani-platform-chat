@@ -22,6 +22,8 @@ const TENANT_TABLES = [
   'idempotency_keys',
   'inbound_event_keys',
   'inbound_events',
+  'customer_field_values',
+  'customer_field_defs',
   'customer_tags',
   'tags',
   'customer_identities',
@@ -35,6 +37,8 @@ const TENANT_TABLES = [
   'team_members',
   'teams',
   'workspace_members',
+  'workspace_holidays',
+  'workspace_hours',
   'workspaces',
   'org_members',
 ];
@@ -84,6 +88,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO workspaces (id, org_id, slug, name, template) VALUES ('${workspace}', '${org}', 'ws', 'W', 'service');
     INSERT INTO workspace_members (id, org_id, workspace_id, user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${user}');
     INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ('${team}', '${org}', '${workspace}', 'T', 'tm');
+    INSERT INTO workspace_hours (id, org_id, workspace_id, weekday, opens_at, closes_at) VALUES ('${uuidv7()}', '${org}', '${workspace}', 1, '08:00', '18:00');
+    INSERT INTO workspace_holidays (id, org_id, workspace_id, name, starts_on, ends_on) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'Seed', '2027-01-01', '2027-01-01');
     INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ('${uuidv7()}', '${org}', '${team}', '${user}');
     INSERT INTO api_keys (id, org_id, name, key_prefix, key_hash, scopes) VALUES ('${uuidv7()}', '${org}', 'k', 'gk_${randomBytes(4).toString('hex')}', decode('${randomBytes(32).toString('hex')}', 'hex'), '{conversations}');
     INSERT INTO audit_logs (id, org_id, action) VALUES ('${uuidv7()}', '${org}', 'seed');
@@ -102,6 +108,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO customer_identities (id, org_id, customer_id, identity_type, channel_account_id, external_id) VALUES ('${uuidv7()}', '${org}', '${customer}', 'zalo_uid', '${channelAccount}', 'zu-seed');
     WITH t AS (INSERT INTO tags (id, org_id, name) VALUES ('${uuidv7()}', '${org}', 'Seed') RETURNING id, org_id)
       INSERT INTO customer_tags (id, org_id, customer_id, tag_id) SELECT '${uuidv7()}', org_id, '${customer}', id FROM t;
+    WITH f AS (INSERT INTO customer_field_defs (id, org_id, name, type) VALUES ('${uuidv7()}', '${org}', 'Seed', 'text') RETURNING id, org_id)
+      INSERT INTO customer_field_values (id, org_id, customer_id, field_id, value) SELECT '${uuidv7()}', org_id, '${customer}', id, '"seed"' FROM f;
     INSERT INTO idempotency_keys (org_id, user_id, key, method, path, request_hash) VALUES ('${org}', '${user}', 'seed', 'POST', '/v1/seed', repeat('0', 64));
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
