@@ -1,45 +1,19 @@
-// #12 Pipeline lead (CEO 02/11, brief 28–30): read only, on a DRAFT contract. It is NOT in docs/openapi/planned.json nor
-// openapi.json: the types below are written by hand after the shape a BE brief of 02/11 gives (docs/ui/lead-shape-from-be.md:
-// not in the repo, BE to confirm), to be replaced by the generated ones when BE publishes the Lead contract. Until the API serves
-// the routes, they answer 404 and the screen says it is not there yet.
-// - `GET /v1/leads`: Brief P9 (line 443); its query (workspaceId, cursor, limit) and the page around the leads are FE's guess.
-// - `GET /v1/workspaces/{id}/pipeline`: from the BE brief of 02/11 (brief 30 (3)), not in P9 nor docs/ui/endpoint-M8.md; its
-//   answer `{ data: [{ id, name }] }` is FE's guess.
+// #12 Pipeline lead (CEO 02/11, brief 28–30): read only, on the contract planned for S4 (docs/openapi/planned.json, #544, N188),
+// generated in src/api/planned.d.ts; until the API serves the routes, they answer 404 and the screen says it is not there yet.
+// - `GET /v1/leads`: the leads of a workspace by cursor (`limit` at most 100); other filters of the contract are not used here.
+// - `GET /v1/workspaces/{id}/pipeline`: the steps in the order of the pipeline; `position` and `lostReasons` are not used here.
 // The names of the steps and the reasons a lead is lost come from the API only: Q9 has not settled them, none is written here.
+import type { components } from '../api/planned';
 
+type Schemas = components['schemas'];
 /** A step of the workspace's pipeline, as the API names it; the steps come in the order of the pipeline. */
-export interface PipelineStage {
-  readonly id: string;
-  readonly name: string;
-}
-export interface Pipeline {
-  readonly data: readonly PipelineStage[];
-}
-
+export type PipelineStage = Schemas['PipelineStage'];
+export type Pipeline = Schemas['Pipeline'];
 /** Open, or closed as won or lost (U6: Thắng/Thua are not steps; `POST /v1/leads/{id}/close`, P9). */
-export type LeadStatus = 'open' | 'won' | 'lost';
-/** The fields of the BE brief of 02/11, no more; which may be null is FE's guess (lead-shape-from-be.md §3). */
-export interface Lead {
-  readonly id: string;
-  readonly workspaceId: string;
-  readonly customer: { readonly id: string; readonly displayName: string | null } | null;
-  readonly conversationId: string | null;
-  readonly title: string;
-  /** The step the lead is at, or was at when it was closed. */
-  readonly stage: PipelineStage;
-  readonly status: LeadStatus;
-  readonly owner: { readonly id: string; readonly name: string | null } | null;
-  readonly lostReason: string | null;
-  readonly closedAt: string | null;
-  readonly score: null;
-  readonly version: number;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-export interface LeadPage {
-  readonly data: readonly Lead[];
-  readonly nextCursor: string | null;
-}
+export type LeadStatus = Schemas['Lead']['status'];
+/** `stage` is the step the lead is at, or was at when it was closed. */
+export type Lead = Schemas['Lead'];
+export type LeadPage = Schemas['LeadPage'];
 
 /** `GET /v1/leads` of the workspace, by cursor (P9). */
 export function leadsPath(workspaceId: string, cursor: string | null): string {

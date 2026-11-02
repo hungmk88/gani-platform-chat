@@ -22,6 +22,8 @@ const TENANT_TABLES = [
   'idempotency_keys',
   'inbound_event_keys',
   'inbound_events',
+  'customer_field_values',
+  'customer_field_defs',
   'customer_tags',
   'tags',
   'customer_identities',
@@ -106,6 +108,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO customer_identities (id, org_id, customer_id, identity_type, channel_account_id, external_id) VALUES ('${uuidv7()}', '${org}', '${customer}', 'zalo_uid', '${channelAccount}', 'zu-seed');
     WITH t AS (INSERT INTO tags (id, org_id, name) VALUES ('${uuidv7()}', '${org}', 'Seed') RETURNING id, org_id)
       INSERT INTO customer_tags (id, org_id, customer_id, tag_id) SELECT '${uuidv7()}', org_id, '${customer}', id FROM t;
+    WITH f AS (INSERT INTO customer_field_defs (id, org_id, name, type) VALUES ('${uuidv7()}', '${org}', 'Seed', 'text') RETURNING id, org_id)
+      INSERT INTO customer_field_values (id, org_id, customer_id, field_id, value) SELECT '${uuidv7()}', org_id, '${customer}', id, '"seed"' FROM f;
     INSERT INTO idempotency_keys (org_id, user_id, key, method, path, request_hash) VALUES ('${org}', '${user}', 'seed', 'POST', '/v1/seed', repeat('0', 64));
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');

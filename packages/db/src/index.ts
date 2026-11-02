@@ -65,6 +65,7 @@ export { organizations } from './schema/organizations.js';
 export { outboxEvents } from './schema/outbox-events.js';
 export { platformAccessLogs } from './schema/platform-access-logs.js';
 export { quickReplies } from './schema/quick-replies.js';
+export { customerFieldDefs, customerFieldValues } from './schema/customer-fields.js';
 export { customerTags, tags } from './schema/tags.js';
 export { workspaceHolidays, workspaceHours } from './schema/workspace-hours.js';
 export { ticketEvents, tickets } from './schema/tickets.js';
