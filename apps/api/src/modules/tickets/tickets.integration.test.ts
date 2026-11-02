@@ -11,7 +11,7 @@ import { setupApp } from '../../app-setup.js';
 import { AppModule } from '../../app.module.js';
 import { hashPassword } from '../auth/password.js';
 
-// /v1/tickets (K1c-1, U27, U52, N170) over HTTP with the whole application and PostgreSQL. Org A: an owner (with a second factor), a
+// /v1/tickets and /v1/tickets/{id} (K1c, U27, U52, N167, N170) over HTTP with the whole application and PostgreSQL. Org A: an owner (with a second factor), a
 // manager, a sales, a support and a marketing, all in workspace W, and a customer; W2 has none of them. Org B: a workspace, a customer.
 const need = (name: string): string => {
   const value = process.env[name];
@@ -47,7 +47,7 @@ async function person(role: string, hash: string) {
 }
 type Ticket = { id: string; title: string; assignee: { id: string; name: string | null } | null };
 type Answer = { status: number; body: Record<string, unknown> };
-async function call(who: string, method: 'GET' | 'POST', path: string, body?: unknown) {
+async function call(who: string, method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown) {
   const res = await fetch(`${url}/v1/tickets${path}`, {
     method,
     headers: {
@@ -191,5 +191,126 @@ describe('/v1/tickets', () => {
       'X',
     ]);
     expect(written.rows).toEqual([]);
+  });
+});
+
+describe('/v1/tickets/{id}', () => {
+  const id = async (who: string, title: string) =>
+    (await make(who, { title })).body['id'] as string;
+  // A ticket of W2 (not in the session) and one of org B, written as migration_role.
+  const [inW2, inB] = [randomUUID(), randomUUID()];
+  // prettier-ignore
+  beforeAll(async () => {
+    const ownerB = (people['ownerB'] = randomUUID());
+    await q(`INSERT INTO users (id, email, status) VALUES ($1, $2, 'active')`, [ownerB, `${ownerB}@example.test`]);
+    await q(`INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, 'owner', 'active')`, [randomUUID(), orgB, ownerB]);
+    await q(`INSERT INTO tickets (id, org_id, workspace_id, title, created_by) VALUES ($1, $3, $4, 'W2', $6), ($2, $5, $7, 'B', $8)`, [inW2, inB, orgA, W2, orgB, people['owner'], WB, ownerB]);
+  });
+  const patch = (who: string, ticket: string, body: unknown) =>
+    call(who, 'PATCH', `/${ticket}`, body);
+
+  it('reads one ticket with its events, a Sales only the ones they made, nothing out of sight', async () => {
+    const [mine, theirs] = [await id('sales', 'Sales làm'), await id('support', 'Support làm')];
+    const read = await call('owner', 'GET', `/${theirs}`);
+    expect(read.status).toBe(200);
+    expect(read.body).toMatchObject({
+      id: theirs,
+      title: 'Support làm',
+      status: 'new',
+      version: 0,
+    });
+    expect(read.body['events']).toEqual([
+      {
+        type: 'created',
+        fromStatus: null,
+        toStatus: 'new',
+        actorUserId: people['support'],
+        occurredAt: expect.any(String) as string,
+      },
+    ]);
+    const answers = [
+      await call('sales', 'GET', `/${mine}`),
+      await call('sales', 'GET', `/${theirs}`),
+      await call('marketing', 'GET', `/${theirs}`),
+      await call('owner', 'GET', `/${inW2}`),
+      await call('owner', 'GET', `/${inB}`),
+      await call('owner', 'GET', '/not-a-uuid'),
+    ];
+    expect(answers.map((a) => a.status)).toEqual([200, 404, 403, 404, 404, 400]);
+  });
+
+  it('moves a ticket along N167 at the version read, with one event per change', async () => {
+    const t = await id('support', 'Đổi trạng thái');
+    const started = await patch('manager', t, {
+      version: 0,
+      status: 'in_progress',
+      assigneeUserId: people['support'],
+    });
+    expect(started.body).toMatchObject({
+      status: 'in_progress',
+      version: 1,
+      assignee: { id: people['support'], name: 'Chị support' },
+    });
+    for (const [version, status] of [
+      [1, 'waiting_customer'],
+      [2, 'done'],
+      [3, 'in_progress'],
+    ] as const)
+      expect((await patch('support', t, { version, status })).status).toBe(200);
+    expect(
+      (await patch('support', t, { version: 4, description: 'Thiếu 2 thùng' })).body,
+    ).toMatchObject({ description: 'Thiếu 2 thùng' });
+    expect((await patch('support', t, { version: 5, description: '' })).body).toMatchObject({
+      description: null,
+      version: 6,
+    });
+    const events = (await call('owner', 'GET', `/${t}`)).body['events'] as {
+      type: string;
+      toStatus: string | null;
+    }[];
+    expect(events.map((e) => `${e.type}:${e.toStatus ?? ''}`)).toEqual([
+      'created:new',
+      'status_changed:in_progress',
+      'assigned:',
+      'status_changed:waiting_customer',
+      'status_changed:done',
+      'status_changed:in_progress',
+      'edited:',
+      'edited:',
+    ]);
+  });
+
+  it('refuses a wrong move, a stale version, a Support cancelling, a bad assignee, the wrong roles, and changes nothing', async () => {
+    const t = await id('owner', 'Bị từ chối');
+    const answers = [
+      await patch('manager', t, { version: 0, status: 'done' }),
+      await patch('manager', t, { version: 5, priority: 'high' }),
+      await patch('support', t, { version: 0, status: 'cancelled' }),
+      await patch('manager', t, { version: 0, assigneeUserId: people['sales'] }),
+      await patch('sales', t, { version: 0, priority: 'high' }),
+      await patch('marketing', t, { version: 0, priority: 'high' }),
+      await patch('owner', t, { version: 0 }),
+      await patch('owner', inW2, { version: 0, priority: 'high' }),
+      await patch('owner', inB, { version: 0, priority: 'high' }),
+    ];
+    expect(answers.map((a) => [a.status, a.body['code']])).toEqual([
+      [409, 'invalid_transition'],
+      [409, 'version_conflict'],
+      [403, 'forbidden'],
+      [422, 'invalid_assignee'],
+      [403, 'forbidden'],
+      [403, 'forbidden'],
+      [400, 'validation_failed'],
+      [404, 'not_found'],
+      [404, 'not_found'],
+    ]);
+    // Nothing above was written: the ticket is still at version 0, and once cancelled it is final.
+    expect((await patch('manager', t, { version: 0, status: 'cancelled' })).body).toMatchObject({
+      status: 'cancelled',
+      version: 1,
+    });
+    expect((await patch('owner', t, { version: 1, status: 'in_progress' })).body['code']).toBe(
+      'invalid_transition',
+    );
   });
 });

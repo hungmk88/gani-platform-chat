@@ -1,14 +1,4 @@
-import type { TicketNames, TicketRow } from '@gani/db';
-
-/** 422 of an assignee who is not an active Owner, Admin, Manager or Support of the workspace (U52): one answer for every reason. */
-export class TicketAssigneeHttpError extends Error {
-  readonly status = 422;
-  readonly code = 'invalid_assignee';
-  constructor() {
-    super('This person cannot receive a ticket of this workspace.');
-    this.name = 'TicketAssigneeHttpError';
-  }
-}
+import type { TicketEventRow, TicketNames, TicketRow } from '@gani/db';
 
 /** A ticket as the API answers it (TicketSchema), with the names of `names` (ticketNames). */
 export const ticketView = (row: TicketRow, names: TicketNames) => ({
@@ -37,4 +27,13 @@ export const ticketView = (row: TicketRow, names: TicketNames) => ({
   createdBy: row.createdBy,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
+});
+
+/** What happened to a ticket (TicketEventSchema): codes and ids only, never free words. */
+export const ticketEventView = (e: TicketEventRow) => ({
+  type: e.type,
+  fromStatus: e.fromStatus,
+  toStatus: e.toStatus,
+  actorUserId: e.actorUserId,
+  occurredAt: e.occurredAt.toISOString(),
 });
