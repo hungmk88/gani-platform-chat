@@ -2,6 +2,17 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 02/11/2026: heads-up 5 phút (5a), ngoại lệ Update branch (5b), Tầng 2 cho hợp đồng giữ nguyên, 3 bài học K1c-1 (ký A (CEO))
+
+- GIT WORKFLOW thêm **5a** (PR docs tầng 2 ≤ 10 dòng, chỉ `QUESTIONS.md`/`docs/`: heads-up 5 phút) và **5b** (Update branch
+  không reset heads-up khi `main` chỉ đổi file không liên quan; vẫn reset khi cùng đường dẫn, `packages/db`, `CLAUDE.md`,
+  `QUESTIONS.md`; ghi log quyết định vào comment PR). Nguồn: CEO trả lời 10 điểm ngày 02/11, mục 6 ("APPROVED"). Lý do: #528
+  (+2/−1) mất khoảng 30 phút vì #523 sửa `CLAUDE.md`.
+- `packages/db/CLAUDE.md` (phân tầng BE) thêm tầng của hợp đồng API: planned mới hay đổi là Tầng 3; chuyển planned → openapi
+  giữ nguyên hợp đồng là Tầng 2 (CEO 02/11, quyết định 1).
+- Bài học K1c-1: chuyển path làm mất kiểu FE từ `planned.d.ts` (#538); không `prettier --write` lên `QUESTIONS.md`; kiểm PR bằng
+  tay sau khi kết nối GitHub gián đoạn (#538 merge mà phiên không nhận được tin).
+
 ## 02/11/2026: phạm vi đồng hồ heads-up (ký A (CEO), brief `2810-02112026-FE-BRIEF-37`)
 
 - GIT WORKFLOW, mục **Đồng hồ heads-up 30 phút**, thêm **Phạm vi**: đồng hồ chỉ áp PR tầng 2 hoặc trường hợp đặc biệt; PR tầng 1
