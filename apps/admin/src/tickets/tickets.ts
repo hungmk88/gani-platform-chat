@@ -1,5 +1,5 @@
-// #14 Ticket (U27, N167): the tickets of the workspace being worked in from `GET /v1/tickets`, a contract planned for S4
-// (docs/openapi/planned.json). Until the API serves it, the route answers 404 and the screen says it is not there yet.
+// #14 Ticket (U27, N167): the tickets of the workspace being worked in from `GET /v1/tickets`, the real API since K1c-1 (#538,
+// openapi.json). A 404 (an API without the route) still shows the screen not there yet.
 import type { components } from '../api/schema';
 
 export type Ticket = components['schemas']['Ticket'];
@@ -60,6 +60,22 @@ export function slaText(t: Pick<Ticket, 'sla' | 'status'>): string {
   if (t.sla.pausedReason === 'waiting_customer') return 'Tạm dừng: chờ khách';
   if (t.sla.pausedReason === 'outside_hours') return 'Tạm dừng: ngoài giờ';
   return `Hạn ${TIME.format(new Date(t.sla.dueAt))}`;
+}
+
+/**
+ * Who handles the ticket, as the inbox says who holds a conversation (U30, `holderOf`): its name, "Chưa giao" when nobody, and the
+ * last 4 characters of the id when the API gives no name (K1c-1: `name` is null for a person without a name or no longer active).
+ */
+export function assigneeOf(t: Pick<Ticket, 'assignee'>): {
+  readonly text: string;
+  readonly title?: string;
+  readonly none?: true;
+} {
+  if (!t.assignee) return { text: 'Chưa giao', none: true };
+  const name = t.assignee.name?.trim();
+  return name
+    ? { text: name }
+    : { text: `…${t.assignee.id.slice(-4)}`, title: 'Nhân viên chưa có tên' };
 }
 
 /** A time of the API in Viet Nam's time. */
