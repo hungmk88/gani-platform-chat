@@ -155,7 +155,7 @@ describe('tag-store', () => {
   });
 
   it("sets a customer's whole set of tags, keeps a hidden one it has, and reads and filters customers by tag", async () => {
-    const [a, b, hidden] = [await make('Tag A'), await make('Tag B'), await make('Tag ẩn')];
+    const [a, b, hidden] = [await make('Tag A'), await make('Tag B'), await make('Tag C ẩn')];
     const [c] = await customers(1, [hidden.id], [b.id]);
     const [other] = await customers(1);
     await admin.query('UPDATE tags SET hidden = true WHERE id = $1', [hidden.id]);
@@ -163,7 +163,7 @@ describe('tag-store', () => {
     expect((await set([a.id, b.id, hidden.id]))!.map((t) => [t.name, t.hidden])).toEqual([
       ['Tag A', false],
       ['Tag B', false],
-      ['Tag ẩn', true],
+      ['Tag C ẩn', true],
     ]);
     expect(await failure(set([hidden.id], other))).toBeInstanceOf(TagHiddenError);
     expect(await failure(set([uuidv7()]))).toBeInstanceOf(TagNotFoundError);
