@@ -160,6 +160,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     đúng/sai, cần CEO xem xét; CEO quyết có ping BE không.
     - BE sửa U63 trong #528 (merge 08:04:39 UTC, squash `43c7822`): nội dung **đúng** (dry-run đã có trong `openapi.json`, #527).
       CEO: không cần ping BE.
+    - BE sửa `apps/admin/src/tickets/tickets.ts` và `ticket-create.ts` trong #538 (K1c-1, tầng 3, CEO merge 14:23:40 UTC, squash
+      `e74693c`): đổi nguồn kiểu từ `../api/planned` sang `../api/schema`, **đúng** và cần cho typecheck. Hợp đồng đổi
+      `TicketAssignee.name` thành `string | null`: FE đồng ý (như U30), sửa hiển thị ở #539 (`ece5747`, "…abcd" thay vì "Chưa
+      giao"). Khoảng hở tới K1c-2: danh sách ticket thật nhưng chi tiết vẫn 404 ("Không tìm thấy ticket"); CEO chấp nhận vì chưa
+      deploy (brief 40), K1c-2 phải merge trước lần deploy đầu. FE review gửi CEO qua phiên, không comment GitHub.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
