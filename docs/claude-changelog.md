@@ -2,6 +2,17 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 02/11/2026: job chạy theo loại PR, song song và gộp PR (ký A (CEO), brief tăng tốc 17:55, duyệt 18:00 và 18:10 UTC)
+
+- GIT WORKFLOW thêm **Job chạy theo loại PR** (Cách 1, #562): bảng job phải chạy theo loại PR (code BE 7, chỉ FE 5, chỉ docs 3,
+  chỉ Terraform 4, lẫn/workflow/`main` 9); thay các câu "9/9 success thật", "9 job xanh thật", "8 success + `docker images`
+  skipped" ở Tầng 1 code, Đồng hồ heads-up, Mức A điều kiện 2 và `packages/db/CLAUDE.md`. PR code vẫn phải có `docker images`
+  success thật.
+- GIT WORKFLOW thêm **Song song và gộp PR** (Cách 2, 3): tối đa 4 nhánh, kiểm file trùng trước khi mở nhánh, gộp khi ≤ 500 dòng
+  có test bắt buộc và không sửa file dùng chung, PR đụng `customers` đứng riêng, merge và Update branch từng PR một.
+- `packages/db/CLAUDE.md`: test sắp theo tên dùng tên khác nhau ở chữ không dấu đứng đầu (collation local và CI khác nhau;
+  lỗi lặp lần 2, CEO 18:40 UTC).
+
 ## 02/11/2026: Mức A, DEV tự merge tầng 3 theo phương án đã duyệt; mốc go-live 31/01/2027 (ký A (CEO))
 
 - GIT WORKFLOW thêm **Mức A**: 7 điều kiện (phương án duyệt, 9 job thật sau Update branch cuối, `clean`, diff khớp phương án và

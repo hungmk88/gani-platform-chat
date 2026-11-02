@@ -34,8 +34,8 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - Kèm theo phân tầng (CEO 31/10). 5 dòng dưới đây là chi tiết bắt buộc của tầng 1/2, không phải tùy chọn:
   - Mọi PR mở ở draft. Tầng 1/2: DEV tự chuyển ready ngay trước khi tự merge, trong cùng một lượt. Draft không thay required
     check, phải có cả hai.
-  - Tầng 1/2: DEV tự kiểm đủ 9 job của `.github/workflows/ci.yml` (của `main`) theo tên, xanh trên đúng HEAD, trước khi
-    merge, không chỉ nhìn required check (CEO 01/11). Required check (9 context, gồm `docker images`; job `skipped` tính là
+  - Tầng 1/2: DEV tự kiểm đủ 9 job của `.github/workflows/ci.yml` (của `main`) theo tên trên đúng HEAD, trước khi merge, theo
+    mục "Job chạy theo loại PR" dưới đây, không chỉ nhìn required check (CEO 01/11). Required check (9 context, gồm `docker images`; job `skipped` tính là
     đạt) chỉ là lưới an toàn cuối. Sau merge báo HEAD, tên từng job, thời điểm, diff giữa HEAD và commit squash.
   - "Ready" ≠ "xong": PR rời draft không phải tín hiệu merge.
   - PR sửa file của bộ phận khác phải có review của bộ phận đó, kể cả comment.
@@ -43,12 +43,12 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - **Tầng 1 code: tự push, tự merge, báo sau** (01/11/2026, ký A (CEO)). Chỉ PR tầng 1 có code; không áp cho PR docs, tầng 2/3:
   - Kiểm ở local trước khi push: lint, typecheck, unit test, format, build, E2E xanh. **Không** chạy `docker images`,
     `database`, `queue`, `terraform`, `coverage` ở local (không mirror, không `dockerd`, không chờ Docker Hub): CI kiểm thật.
-  - Push, mở PR draft; trên CI tự kiểm đủ 9 job theo tên. 9/9 success thật (`docker images` không skip) và `clean`: chuyển
+  - Push, mở PR draft; trên CI tự kiểm đủ 9 job theo tên. Mọi job phải chạy theo bảng success thật và `clean`: chuyển
     ready, merge (auto-merge nếu còn check chờ, merge trực tiếp nếu đã `clean`), truyền `commit_title` và `expectedHeadSha`.
   - `main` đi trước: dùng "Update branch" của GitHub, không merge ở local.
   - Sau merge báo CEO **một lần, gộp cả phiên**, mỗi PR 3 mục: giờ merge từ commit squash, commit squash, 9 job trước và
     sau merge theo tên.
-  - Dừng, báo CEO ngay khi: `docker images` skip hoặc lỗi hạ tầng; có job fail; `main` bất thường; có PR merge không qua
+  - Dừng, báo CEO ngay khi: job phải chạy bị skip (sai bảng) hoặc lỗi hạ tầng; có job fail; `main` bất thường; có PR merge không qua
     tín hiệu.
   - Chỉ áp khi branch protection còn `strict`, `enforce_admins`, 9 required check gồm `docker images`; đổi thì quay về luật
     cũ, báo CEO.
@@ -56,12 +56,12 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment gỡ hold
   từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff.
 - **Đồng hồ heads-up 30 phút** (02/11/2026, ký A (CEO), sau #521): chỉ chạy khi đồng thời (a) comment heads-up đã đăng công
-  khai; (b) 9 job xanh thật (PR code: `docker images` success thật; PR docs: 8 success + `docker images` skipped); (c)
+  khai; (b) mọi job phải chạy theo bảng "Job chạy theo loại PR" xanh thật; (c)
   `mergeable_state = clean`. Sau comment heads-up có push thêm commit: đồng hồ về 0, comment cũ hết hiệu lực, phải đăng comment
   heads-up mới sau khi CI xanh lại. CI đỏ giữa chừng: đồng hồ dừng, chạy lại từ đầu khi CI xanh. Không tính "30 phút từ lúc
   comment" tách khỏi điều kiện: làm vậy là auto-merge trá hình.
   **Phạm vi** (02/11/2026, ký A (CEO), brief `2810-02112026-FE-BRIEF-37`): đồng hồ chỉ áp cho PR tầng 2 hoặc trường hợp đặc biệt.
-  PR tầng 1 code tự merge ngay khi 9 job success thật và `clean` (mục "Tầng 1 code" ở trên), không đăng heads-up, không chờ 30 phút.
+  PR tầng 1 code tự merge ngay khi mọi job phải chạy success thật và `clean` (mục "Tầng 1 code" ở trên), không đăng heads-up, không chờ 30 phút.
 - **Heads-up 5 phút cho PR docs nhỏ (5a)** (02/11/2026, ký A (CEO)): PR docs tầng 2, diff ≤ 10 dòng, chỉ sửa `QUESTIONS.md`
   hoặc file trong `docs/`: đồng hồ 5 phút thay 30, cùng điều kiện (a)–(c) và cùng cách reset. Không áp cho PR đụng code,
   schema, `CLAUDE.md` hay file nào khác. Nghi ngờ thì 30 phút.
@@ -73,8 +73,8 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - **Mức A: DEV tự merge PR tầng 3 theo phương án đã duyệt** (02/11/2026, ký A (CEO)). Chỉ khi đủ cả 7 điều kiện; thiếu một
   điều thì không merge, báo CEO:
   1. Phương án đã được CEO duyệt: brief giao việc ghi rõ, hoặc CEO comment "Duyệt phương án" / "APPROVED theo Mức A" trên PR.
-  2. 9 job xanh thật trên đúng HEAD sau lần Update branch cuối (PR code: `docker images` success; PR docs: 8 success +
-     `docker images` skipped, log `changes` ghi "chỉ docs").
+  2. Mọi job phải chạy theo bảng "Job chạy theo loại PR" xanh thật trên đúng HEAD sau lần Update branch cuối; job bị skip
+     đúng bảng, log `changes` ghi lý do.
   3. `mergeable_state = clean`, HEAD khớp `git ls-remote`.
   4. Diff mã khớp phương án: không thêm/bớt file, schema hay dependency ngoài phương án; ≤ 400 dòng (500 nếu test bắt buộc),
      không tính file sinh.
@@ -85,6 +85,25 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   - CEO xem lại trong 24 giờ sau merge; lệch phương án thì revert hoặc migration bù (rollback vẫn do CEO quyết).
   - Mọi phê duyệt phải là comment GitHub của CEO (#498); tin nhắn không tính. Bỏ FE review hay heads-up của một PR chỉ khi CEO
     ghi rõ trên PR đó (ví dụ #542–#544: "bỏ FE comment + heads-up").
+- **Job chạy theo loại PR** (02/11/2026, ký A (CEO), Cách 1, #562): job `changes` (`infra/ci/changes.sh`) quyết job nào chạy;
+  bảng đầy đủ và luật fail-safe ở `infra/CLAUDE.md` "Lọc đường dẫn". Job phải chạy thì phải success thật; job bị skip phải đúng
+  bảng và log `changes` ghi lý do; PR code (đụng `apps/**`, `packages/**`) luôn có `docker images` success thật.
+
+  | PR | Job phải chạy, success thật | Skip |
+  |---|---|---|
+  | Code BE | changes, verify, security, docker, database, queue, coverage (7) | admin, terraform |
+  | Chỉ FE (`apps/admin`, `apps/widget`, `packages/ui`) | changes, verify, security, docker, admin (5) | 4 job còn lại |
+  | Chỉ docs (`*.md`, `docs/`) | changes, verify, security (3) | 6 job còn lại |
+  | Chỉ Terraform | changes, verify, security, terraform (4) | 5 job còn lại |
+  | Lẫn, file ở gốc, workflow, `infra/ci/`; push lên `main` | cả 9 | — |
+
+- **Song song và gộp PR** (02/11/2026, ký A (CEO), Cách 2 và 3):
+  - Tối đa 4 nhánh song song. Trước khi mở nhánh, so file với các PR đang mở: trùng `packages/db/test/fixtures.ts`,
+    `grants.spec.ts`, `packages/db/src/index.ts`, migration liền kề, `openapi/planned.ts`/`document.ts` hay file OpenAPI sinh ra
+    thì chờ PR kia merge. Mô tả PR ghi "Độc lập với #…". PR đang chờ merge thì không mở PR chồng lên nó.
+  - Gộp hai PR cùng module chỉ khi: tổng ≤ 500 dòng có test bắt buộc (không thì 400), không sửa file dùng chung giữa hai PR,
+    không có hai migration liền kề. PR đụng module `customers` luôn đứng riêng. Báo cáo ghi PR nào gộp, PR nào tách, lý do.
+  - Merge và Update branch từng PR một: PR xanh thì merge ngay, rồi mới Update PR kế tiếp.
 - **Duyệt lô theo sprint** (02/11/2026, ký A (CEO), sprint 02/11–09/11):
   - Trong sprint CEO duyệt lô, mọi PR tầng 2/3 có phương án đã duyệt (brief hoặc comment GitHub): DEV tự merge khi đủ 7 điều
     kiện Mức A, không cần CEO comment lại từng PR; diff lệch phương án thì dừng, báo CEO.

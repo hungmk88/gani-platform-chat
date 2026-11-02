@@ -46,13 +46,16 @@ Chạy một lần trên mỗi môi trường có hội thoại từ trước mi
 - Lint migration: mọi `CREATE TABLE` mới phải có `ENABLE ROW LEVEL SECURITY` + `FORCE`.
   CI báo đỏ nếu thiếu; GitHub Free không enforce branch protection nên không chặn được merge (N38), anh kiểm tay.
 
+- Test sắp theo tên: các tên phải khác nhau ở chữ không dấu đứng đầu; local `C.UTF-8` và CI xếp chữ có dấu khác nhau (lần 2 trong
+  ngày 02/11: #556 bắt ở local, #563 đỏ trên CI).
 - Chữ tiếng Việt để tìm kiếm lưu ở **NFC** lúc ghi, không chuẩn hóa từng dòng lúc đọc (`customers.display_name`: `updateCustomer` + `customers_display_name_nfc_check`, 202611010900; tìm kiếm chỉ chuẩn hóa `q`). Thêm cột chữ để tìm thì làm giống vậy.
 - Cột lưu sẵn chứa PII trên bảng có quyền theo cột (`conversations.last_message_preview`, N169): **không** cấp cho `support_role`, cấp UPDATE cho `app_role` trong cùng migration (`grants.spec` liệt kê đúng từng cột). File migration đã áp thì không sửa: runner từ chối, thêm migration mới.
 
 ## Phân tầng merge của BE (CLAUDE.md gốc, #466; anh chốt 31/10/2026)
 
-Mọi PR mở ở draft. "Sẵn sàng merge" = 9 job `ci.yml` xanh trên đúng HEAD, HEAD khớp `git ls-remote`, `mergeable_state = clean`
-(đọc sau khi mọi job xong), job `docker` chạy thật có log Trivy (PR chỉ docs: Skipped, kèm log của job `changes`), GitGuardian
+Mọi PR mở ở draft. "Sẵn sàng merge" = mọi job phải chạy theo bảng "Job chạy theo loại PR" (`CLAUDE.md` gốc) xanh trên đúng
+HEAD, job bị skip đúng bảng (log `changes`), HEAD khớp `git ls-remote`, `mergeable_state = clean` (đọc sau khi mọi job xong), PR
+code có job `docker` chạy thật kèm log Trivy, GitGuardian
 success trên đúng HEAD.
 
 - **Tầng 1/2: BE tự merge** khi đủ các điều kiện trên, chuyển ready ngay trước khi merge. Gồm mọi PR không gây hậu quả không hoàn
