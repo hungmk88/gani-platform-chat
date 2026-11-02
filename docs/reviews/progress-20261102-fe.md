@@ -1,0 +1,143 @@
+# Tiến độ dự án Đợt 1, 02/11/2026 (đo đầy đủ)
+
+Người soạn: FE (rà bằng đọc mã, không phải BE tự chấm) · `main` lúc đo: `e74693c` (02/11/2026, sau #538; #539 sau đó chỉ sửa hiển thị, không đổi điểm) · Cách đo như 01/11
+(CEO duyệt 01/11); kết quả CEO duyệt ở brief `2810-02112026-FE-BRIEF-41`. Mốc so sánh: `docs/reviews/progress-20261101.md`
+(FE, `803d0bd`) và `docs/reviews/progress-20261102.md` (BE tự chấm phần thay đổi sau D1d, #529). File này thắng file của BE nếu khác.
+
+## 1. Tóm tắt
+
+Không có một con số % cho cả dự án: mỗi mẫu số đúng theo định nghĩa của nó (quy ước của báo cáo 30/10). Cách chấm: có code + test
+trên `main` = 1; một phần = 0,5; chưa có = 0. Hợp đồng chỉ có trong `docs/openapi/planned.json` tính là chưa.
+
+| Mẫu số | Nguồn | Đạt | Lần đo trước |
+|---|---|---|---|
+| **A. Tính năng Đợt 1, BE** | Brief v1.0 QĐ4, P7: 58 mã | **23/58 ≈ 40 %** | 21,5/58 ≈ 37 % (01/11) |
+| **B. Deliverable sprint S1–S5, BE** | Brief v1.0 P21: 29 mục | **17,5/29 ≈ 60 %** | 16/29 ≈ 55 % (01/11) |
+| **C. Màn Đợt 1, FE** | `docs/ui/danh-sach-man-M11.md`: 30 màn | **18/30 = 60 %** | 17/30 ≈ 57 % (01/11) |
+| **D. Cả dự án theo mã, BE** | P7: 135 mã (Đợt 1 + Đợt 2) | **23/135 ≈ 17 %** | 21,5/135 ≈ 16 % (01/11) |
+
+- **Dùng con số nào:** A khi nói về tính năng; B khi nói về sprint; C cho phần FE; D khi nói về toàn bộ hợp đồng.
+- **So với lịch P21:** S1 bắt đầu 16/11/2026; deliverable S1–S2 gần xong trước lịch. Phần chậm ở S3–S5: gửi tin Zalo ra
+  (outbound worker đã nối nhưng tắt, chờ O3 và Q6), AI nội bộ (Q1 chờ văn bản pháp lý), SLA/routing (Q7). Go-live 15/02/2027.
+- **Cách rà 02/11:** đọc lại mọi PR merge vào `main` sau `803d0bd` (#515, #517–#538) và chấm lại các mã chúng chạm tới; mã khác
+  không có PR mới, giữ trạng thái và bằng chứng của 01/11.
+
+## 2. A. Tính năng Đợt 1 (58 mã)
+
+**Có 13 · một phần 20 · chưa 23 · chưa xác định 2** = 13 + 10 = 23/58 (CEO duyệt 02/11, brief 41).
+
+- **Chưa xác định:** C20, D15. P7 có dòng, không định nghĩa: dòng 323 (module 07 "Đợt 1: C1, … C11, C20, D4, L1"), 324 (module 01
+  "Đợt 1: D1, D2, D3, D6, D15, E1, E4"), 336 ("Mã bổ sung bắt buộc: Đợt 1 — A13, A17, C20, D15, E20, P7, P11"). File "Phạm vi triển
+  khai — 135 mã" không có trong repo. M11 chỉ gắn C20 vào màn #6, D15 vào màn #18.
+- **A17 = một phần (CEO chốt 01/11):** P7 dòng 321 chỉ liệt kê; định nghĩa chính thức ở `QUESTIONS.md` U28 (dòng 250, "Đã chốt (CEO,
+  26/10/2026), nội dung A17"): #28 Audit log chỉ đọc, lọc theo người, hành động, ngày, có Xuất CSV; #30 Platform 3 tab. Đã có phần
+  đọc và lọc (`GET /v1/audit-logs`); chưa có Xuất CSV và API `/platform`.
+- **So với 01/11:** D2 lên "có"; C8, I1 lên "một phần". B1 vẫn "một phần" sau O1–O2c (#521, #522, #524, #525): chưa tin nào ra
+  Zalo; điều kiện "có" theo CEO 02/11. G1–G3 vẫn "chưa": #12 Pipeline lead của FE chạy trên hợp đồng nháp, BE chưa có API Lead.
+- C20, D15 giữ "chưa xác định" (CEO 02/11, không chặn).
+
+| Mã | Tính năng | Trạng thái | Bằng chứng |
+|---|---|---|---|
+| A1 | Tạo công ty | có | `apps/worker/src/ops/create-org.ts` |
+| A2 | Tạo workspace, chọn mẫu | có | `apps/worker/src/ops/create-workspace.ts`; nội dung mẫu chưa áp (N158) |
+| A3 | Mời người dùng, 7 vai trò | có | `apps/api/src/modules/members`; `org-members.ts` |
+| A4 | Team, quyền theo workspace | có | `modules/teams`, `modules/workspaces` |
+| A5 | Đăng nhập, 2FA, phiên | có | `auth/two-factor.ts:35,47`; `auth/login-lockout.ts:39`; `GET /v1/me/security-status` (`me.controller.ts:114`) |
+| A6 | Cách ly dữ liệu 5 công ty | có | `tenant-isolation.spec.ts`, `workspace-isolation.spec.ts`; #442–#448, #459, #460 |
+| A7 | Bảng điều khiển vận hành | chưa | `/v1/overview` chỉ ở `planned.json` |
+| A8 | Nhật ký truy cập dữ liệu tenant | một phần | bảng `platform_access_logs`; chưa có API đọc, phiên truy cập |
+| A9 | Audit log thao tác quản trị | có | `audit.controller.ts:19` `@Controller('v1/audit-logs')`; `0dd5430` #475, `f91164a` #478, `ffe978d` #480 |
+| A13 | Tự chủ, feature flag | một phần | bảng `feature_flags_*`; API chỉ ở `planned.json` |
+| A17 | Audit log #28 + Platform #30 (U28) | một phần | đọc, lọc `GET /v1/audit-logs` (#478, #480); chưa Xuất CSV, chưa API `/platform` |
+| B1 | Zalo nhận/gửi tin | một phần | `hooks/zalo-webhook.ts`, worker inbound; chưa có outbound worker (8b). Cập nhật 02/11: #521 (`878ec01`) chỉ thêm lease và lần thử kế tiếp ở DB (`message_deliveries`, `app.outbound_pending_orgs`), chưa có worker gửi, chưa có client Zalo: vẫn một phần. #522 (O2a) chỉ thêm kho của outbound worker (claim, thuê, thứ tự trong hội thoại). #524 (O2b) chỉ thêm job gửi + interface `ChannelSender` ("O3: Zalo"): chưa có client Zalo, chưa nối vào worker (O2c): vẫn một phần. #525 (O2c, `c0a843c`) nối job vào worker nhưng `createChannelSenders` trả `{}` tới O3 và `OUTBOUND_ENABLED=1` bị từ chối khi chưa có adapter kênh: chưa tin nào ra Zalo, vẫn một phần. **Điều kiện chuyển "có" (CEO 02/11), phải đủ đồng thời:** (a) O3 xong: có adapter Zalo thật, `createChannelSenders` trả về ít nhất một sender; (b) `OUTBOUND_ENABLED=1` không bị từ chối; (c) có bằng chứng tin thật ra được Zalo (test E2E hoặc log production mẫu). Các PR O2 tiếp theo (O2d, O2e…) không đổi B1 |
+| B2 | Tự làm mới token Zalo | một phần | #462, #464, #467, #471, #473, #474; chưa có client (Q6) |
+| B3 | Khung gửi tin Zalo | một phần | `ChannelPolicyService.check`; chưa có ZNS |
+| C1 | Gom hội thoại | có | `GET /v1/conversations` |
+| C2 | Realtime | một phần | Socket.IO `/agent`, đang gõ (#479); chưa có đã đọc |
+| C3 | Lọc Hộp thư | một phần | #390, #398; chưa lọc theo tag |
+| C4 | Máy trạng thái hội thoại | có | `conversation-state-machine.ts`; test claim race |
+| C5 | Nhận, chuyển người, chuyển team | một phần | chưa chuyển cho team (N133) |
+| C6 | Ghi chú nội bộ, @mention | chưa | — |
+| C7 | Trả lời nhanh | có | `modules/quick-replies` |
+| C8 | SLA, ưu tiên | một phần | ưu tiên: `conversations.priority` (migration `202611061000`), ghi qua `setConversationPriority` khi bot chuyển người, test `conversation-priority.spec.ts`; `2e9b0c3` #515 (U78). Chưa có SLA |
+| C9 | Phân bổ tự động | một phần | `PATCH /v1/members/{id}/capacity` chỉ lưu |
+| C10 | Online/offline, giờ làm việc | chưa | — |
+| C11 | Thông báo đẩy | chưa | — |
+| C20 | (P7 không định nghĩa) | chưa xác định | — |
+| D1 | Flow bot | một phần | #483–#513; 8 loại bước chạy; chưa có collect, tag, delay |
+| D2 | Phiên bản flow, chạy thử | có | xuất bản #493, #499; chạy thử `packages/bot-runtime/src/simulate.ts` (`8d87e70` #526), `POST /v1/bot-flows/{id}/dry-run` trong `openapi.json` (`96d397b` #527); test `simulate.test.ts`, `bot-flows.integration.test.ts` |
+| D3 | Flow mặc định theo mẫu | chưa | N158 |
+| D4 | Xử lý ngoài giờ | chưa | chỉ cột `after_hours_hold` |
+| D6 | Chuyển sang flow khác | có | `bot-runtime/src/nodes.ts:164`; `worker/src/inbound/bot-turn.ts:126`; test `bot-turn.spec.ts:189`; `5631385` #513 |
+| D15 | (P7 không định nghĩa) | chưa xác định | — |
+| E1 | Phân loại ý định | chưa | — |
+| E4 | Model router | chưa | — |
+| E5 | Hạn mức chi phí AI | chưa | `ai-settings` chỉ ở `planned.json` |
+| E6 | Bộ test AI | chưa | `evals/` chỉ có `CLAUDE.md` |
+| E7 | Che PII trước khi gửi model | một phần | #492, #495; chưa nối |
+| E20 | Phiên bản prompt | chưa | chỉ ở `planned.json` |
+| G1 | Tự tạo lead | chưa | — |
+| G2 | Pipeline, Kanban | chưa | — |
+| G3 | Lý do Lost | chưa | — |
+| I1 | Ticket theo loại | một phần | bảng `tickets`, `ticket_events` (`33fb511` #530); kho tạo, đổi, đọc (`fa6fd20` #532, `8f32b12` #533, `ab81ff4` #534); `GET/POST /v1/tickets` trong `openapi.json` (`e74693c` #538), test `tickets.integration.test.ts`. Chưa có loại ticket (Q8), chi tiết và đổi trạng thái (K1c-2) |
+| I2 | Nhận diện khách qua SĐT | một phần | `GET /v1/customers?q=` |
+| I3 | Giao chuyên viên, SLA xử lý | chưa | chỉ ở `planned.json` |
+| J1 | Hồ sơ khách, trường tùy chỉnh | một phần | `GET/PATCH /v1/customers/{id}`; chưa có trường tùy chỉnh |
+| J2 | Hợp nhất định danh | một phần | `customer_identities` (Zalo, SĐT) |
+| J3 | Gộp khách trùng | chưa | — |
+| J4 | Tag, segment, tìm, lọc | một phần | tìm theo SĐT/email/tên (#337, #393); chưa có tag |
+| J5 | Import/Export CSV | chưa | — |
+| J6 | Hồ sơ gom tất cả | chưa | — |
+| L1 | Tóm tắt hội thoại | chưa | — |
+| P1 | Giới hạn tần suất | một phần | `token-bucket.ts`, `login-lockout.ts`; C-01 còn mở |
+| P2 | Mã hóa token, secret | có | `packages/channels/src/secret-box.ts` |
+| P3 | Sao lưu, khôi phục | chưa | chờ Q2 |
+| P4 | Giám sát, cảnh báo | một phần | worker `/metrics`, `/healthz`; chưa có uptime, cảnh báo |
+| P6 | Quét virus file | chưa | — |
+| P7 | Yêu cầu dữ liệu cá nhân | chưa | chỉ ở `planned.json` |
+| P11 | Sự cố bảo mật | chưa | chỉ ở `planned.json` |
+
+### Kiểm chứng 3 dòng đại diện (CEO 01/11)
+
+- **A9:** `apps/api/src/modules/audit/audit.controller.ts:19` `@Controller('v1/audit-logs')`, `:23` `@Get()`; `docs/openapi/openapi.json`
+  có path `/v1/audit-logs`; commit `0dd5430` (#475, đọc audit ở DB), `f91164a` (#478, `GET /v1/audit-logs`), `ffe978d` (#480, cursor,
+  lọc theo loại đối tượng).
+- **A5:** `apps/api/src/modules/auth/two-factor.ts:35` `requiresTwoFactor`, `:47` `mustSetUpTwoFactor`; `login-lockout.ts:9–10`
+  `MAX_FAILED_LOGINS = 5`, `LOCK_MINUTES = 30`, `:39` `loginLockout`; `GET /v1/me/security-status` ở
+  `apps/api/src/modules/request-context/me.controller.ts:114`; test `two-factor.test.ts`, `auth-two-factor.integration.test.ts`,
+  `login-lockout.test.ts`. Không có hash commit gốc: clone của phiên đo là clone nông (152 commit), file có từ trước `8af4e3b` (#343).
+- **D6:** `packages/bot-runtime/src/nodes.ts:164` handler `jump_to_flow`; `apps/worker/src/inbound/bot-turn.ts:126` ("the turn goes on
+  at the trigger of the other flow's published version, in the same workspace"); test `apps/worker/test/bot-turn.spec.ts:189`
+  ("jumps to the published version of another flow of the workspace, the session moved to it (D1b3b)"); commit `5631385` (#513).
+  Tin của bot chưa tới Zalo tới khi có outbound worker (B1).
+
+## 3. B. Deliverable sprint S1–S5 (29 mục)
+
+| Sprint | Đạt | Từng mục |
+|---|---|---|
+| S1 | 5,5/6 | Terraform staging 0,5 (khung, chưa `plan`, chờ Q2); còn lại 1 |
+| S2 | 5/5 | — |
+| S3 | 2/3 | connector 0,5 (chỉ nhận); `channel_policies` 1; làm mới token 0,5 (chưa client). Inbox UI là FE, không tính |
+| S4 | 4/8 | bot engine 0,5; claim 1; giới hạn tải 0,5; CRM 0,5; dry-run 1 (#527); tickets 0,5 (đọc, tạo #538; chưa chi tiết, đổi trạng thái); routing, leads 0 |
+| S5 | 1/7 | PII masking 0,5 (chưa nối); platform admin 0,5 (chỉ lệnh tạo công ty/workspace); classifier, tóm tắt, ngân sách, onboarding template, eval 0 |
+
+So với 01/11: S4 từ 2,5 lên 4 (dry-run, tickets).
+
+## 4. C. Màn Đợt 1, FE (30 màn)
+
+Cách chấm: đủ trên API thật = 1; trên API thật nhưng thiếu phần chờ BE = 0,5; dựng trên hợp đồng planned hoặc hợp đồng nháp = 0,5;
+chưa có = 0. 12 + 5 × 0,5 + 6 × 0,5 + 1 × 0,5 = 18/30. So với 01/11: #14 lên API thật (#538), #12 dựng trên hợp đồng nháp (#536, #537).
+
+| Nhóm | Màn (số theo M11) |
+|---|---|
+| Đủ trên API thật (12) | #1 Đăng nhập, #2 2FA, #3 Quên mật khẩu, #4 Nhận lời mời, #7 Danh sách khách, #8 Hồ sơ khách, #14 Danh sách ticket, #17 Danh sách bot, #19 Thành viên, #20 Team, #22 Mẫu trả lời, #28 Audit log |
+| API thật, thiếu phần chờ BE (5) | #5 Hồ sơ cá nhân (tab Thông báo), #6 Hộp thư (ghi chú, tag, SLA, AI), #18 Trình dựng bot (chỉ đọc, CEO chọn), #21 Workspace (tab SLA, Phân bổ), #24 Kênh (kết nối Zalo) |
+| Trên hợp đồng planned (6) | #11 Yêu cầu dữ liệu cá nhân, #15 Chi tiết ticket, #16 Tổng quan, #26 AI nội bộ, #27 Tự chủ, #29 Sự cố bảo mật |
+| Trên hợp đồng nháp (1) | #12 Pipeline lead (`docs/ui/lead-shape-from-be.md`; BE xác nhận giả định 1–6, mục 7 chờ T-2) |
+| Chưa có (6) | #9 Gộp khách, #10 Nhập CSV, #13 Chi tiết lead (khung trên nhánh `feat/lead-detail-13a-skeleton`), #23 Trường tùy chỉnh và tag (bản đọc trên nhánh `feat/customer-data-23a-read`), #25 Cấu hình Zalo OA, #30 Platform |
+
+Số màn theo M11. Yêu cầu dữ liệu cá nhân (M11 #11, `/customers/privacy`) FE dựng ở `/settings/customer-data` (CEO gọi là #23 Dữ liệu khách); M11 #23 (trường tùy chỉnh, tag) chưa có màn.
+
+## 5. Chất lượng (theo `docs/reviews/00-summary.md` và báo cáo 31/10; chưa kiểm lại từng mục ngày 01/11)
+
+39 phát hiện, 4 HIGH; còn mở C-01 (HIGH, chờ sơ đồ proxy N112), E-01, F-01, G-01 (MEDIUM).

@@ -13,6 +13,12 @@
 - Bài học K1c-1: chuyển path làm mất kiểu FE từ `planned.d.ts` (#538); không `prettier --write` lên `QUESTIONS.md`; kiểm PR bằng
   tay sau khi kết nối GitHub gián đoạn (#538 merge mà phiên không nhận được tin).
 
+## 02/11/2026: phạm vi đồng hồ heads-up (ký A (CEO), brief `2810-02112026-FE-BRIEF-37`)
+
+- GIT WORKFLOW, mục **Đồng hồ heads-up 30 phút**, thêm **Phạm vi**: đồng hồ chỉ áp PR tầng 2 hoặc trường hợp đặc biệt; PR tầng 1
+  code tự merge khi 9 job success thật và `clean`, không heads-up. Lý do: brief 36 viết "heads-up cho mọi PR code" trái mục
+  "Tầng 1 code"; CEO chốt ở brief 37, ghi vào `CLAUDE.md` ở PR docs đo tiến độ 02/11 (brief 38, 40).
+
 ## 02/11/2026: đồng hồ heads-up 30 phút (ký A (CEO), sau #521)
 
 - GIT WORKFLOW thêm **Đồng hồ heads-up 30 phút**: chỉ chạy khi comment heads-up đã đăng, 9 job xanh thật (hoặc 8 + `docker images`

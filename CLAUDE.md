@@ -60,6 +60,8 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   `mergeable_state = clean`. Sau comment heads-up có push thêm commit: đồng hồ về 0, comment cũ hết hiệu lực, phải đăng comment
   heads-up mới sau khi CI xanh lại. CI đỏ giữa chừng: đồng hồ dừng, chạy lại từ đầu khi CI xanh. Không tính "30 phút từ lúc
   comment" tách khỏi điều kiện: làm vậy là auto-merge trá hình.
+  **Phạm vi** (02/11/2026, ký A (CEO), brief `2810-02112026-FE-BRIEF-37`): đồng hồ chỉ áp cho PR tầng 2 hoặc trường hợp đặc biệt.
+  PR tầng 1 code tự merge ngay khi 9 job success thật và `clean` (mục "Tầng 1 code" ở trên), không đăng heads-up, không chờ 30 phút.
 - **Heads-up 5 phút cho PR docs nhỏ (5a)** (02/11/2026, ký A (CEO)): PR docs tầng 2, diff ≤ 10 dòng, chỉ sửa `QUESTIONS.md`
   hoặc file trong `docs/`: đồng hồ 5 phút thay 30, cùng điều kiện (a)–(c) và cùng cách reset. Không áp cho PR đụng code,
   schema, `CLAUDE.md` hay file nào khác. Nghi ngờ thì 30 phút.
