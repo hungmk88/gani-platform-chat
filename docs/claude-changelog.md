@@ -2,6 +2,13 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 02/11/2026: đồng hồ heads-up 30 phút (ký A (CEO), sau #521)
+
+- GIT WORKFLOW thêm **Đồng hồ heads-up 30 phút**: chỉ chạy khi comment heads-up đã đăng, 9 job xanh thật (hoặc 8 + `docker images`
+  skipped với PR docs) và `mergeable_state = clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới; CI đỏ thì
+  dừng, chạy lại từ đầu khi xanh. Lý do: #521 (heads-up 04:30:06, push 04:58:59, CI xong 05:05:19, merge 05:05:28) đúng tinh
+  thần nhưng comment không nêu cách tính.
+
 ## 01/11/2026: tầng 1 code tự push tự merge, bỏ docker ở local, trần 500 cho test bắt buộc (ký A (CEO))
 
 - GIT WORKFLOW thêm **Tầng 1 code: tự push, tự merge, báo sau**: kiểm local lint/typecheck/unit test/format/build/E2E, không chạy

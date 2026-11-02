@@ -151,7 +151,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     cấp endpoint ở phiên sau (02/11).
   - **Kênh 2b (CEO duyệt 02/11, brief `2810-01112026-FE-BRIEF-17`):** subscribe_pr_activity cho PR BE, che comment/CI/merge;
     không che push main, không che branch protection; không nhận nếu phiên khác đã đăng ký. Áp cho PR BE đang mở và PR BE mới
-    mở. Chỉ theo dõi: không comment, không push lên PR của BE; điều cần nói thì báo CEO.
+    mở. Chỉ theo dõi: không comment, không push lên PR của BE; điều cần nói thì báo CEO. **Chứng minh hiệu quả lần đầu (CEO
+    02/11):** #521 của BE, FE nhận ngay sự kiện CI, ready, merge (05:05:28 UTC, squash `878ec01`) mà không chờ lần kiểm; tiếp tục
+    theo dõi PR BE đang mở.
+  - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
+    thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
+    CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
+    từ comment, 9 giây từ lúc đủ điều kiện): đúng tinh thần, không phải vi phạm, nhưng lần sau phải theo cách tính trên.
+  - **B1 sau #521:** giữ "một phần" (chỉ DB: lease, lần thử kế tiếp, `app.outbound_pending_orgs`; chưa có worker gửi, chưa có
+    client Zalo); bằng chứng B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do.
   - **Kênh 2, chu kỳ kiểm:** `trig_01Br6sSpPXw9Xej9KzBakxUt` phút 06 mỗi 2 giờ UTC (phiên `session_015SNdqeCQvNjK6rFoqzt5Su`)
     khi không có việc mở, một dòng "không đổi". Có việc mở (PR đang mở; câu hỏi U FE đang làm dở; việc chờ CEO duyệt): thêm lần
     kiểm 30 phút một lần bằng `send_later` nối tiếp, ghi lý do tăng tần suất trong báo cáo; hết việc mở thì quay lại 2 giờ

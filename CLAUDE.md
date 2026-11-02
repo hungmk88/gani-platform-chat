@@ -55,6 +55,11 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 - **Luật hủy heads-up** (CEO 01/11, nguyên văn): Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó, gồm push,
   heads-up, đổi draft/ready, merge. Hold hủy vĩnh viễn auto-merge cho PR đang bị hold; muốn mở lại phải có comment gỡ hold
   từ CEO. Vi phạm hold là sự cố quy trình, ghi vào handoff.
+- **Đồng hồ heads-up 30 phút** (02/11/2026, ký A (CEO), sau #521): chỉ chạy khi đồng thời (a) comment heads-up đã đăng công
+  khai; (b) 9 job xanh thật (PR code: `docker images` success thật; PR docs: 8 success + `docker images` skipped); (c)
+  `mergeable_state = clean`. Sau comment heads-up có push thêm commit: đồng hồ về 0, comment cũ hết hiệu lực, phải đăng comment
+  heads-up mới sau khi CI xanh lại. CI đỏ giữa chừng: đồng hồ dừng, chạy lại từ đầu khi CI xanh. Không tính "30 phút từ lúc
+  comment" tách khỏi điều kiện: làm vậy là auto-merge trá hình.
 
 ### Quy trình mỗi PR
 
