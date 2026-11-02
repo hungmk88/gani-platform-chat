@@ -1,9 +1,11 @@
+import { chooseTrigger, coreHandlers, simulate } from '@gani/bot-runtime';
 import {
   BotGraphInvalidError,
   createBotFlow,
   deleteBotFlow,
   insertAuditLog,
   listBotFlows,
+  listBotTriggers,
   loadBotFlow,
   loadBotFlowVersion,
   publishBotFlow,
@@ -34,12 +36,13 @@ import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext } from '../request-context/request-context.js';
 import { mayBuildBotFlows } from './bot-flows.permissions.js';
 import {
+  BotDryRunSchema,
   BotFlowCreateSchema,
   BotFlowIdSchema,
   BotFlowListQuerySchema,
   BotGraphSchema,
 } from './bot-flows.schemas.js';
-import { botFlowVersionView, botFlowView } from './bot-flows.view.js';
+import { botDryRunView, botFlowVersionView, botFlowView } from './bot-flows.view.js';
 
 /** 422: the graph cannot run (bot-flow-store's rules); the detail names the rule, never a node's content. */
 export class BotFlowGraphHttpError extends Error {
@@ -48,6 +51,16 @@ export class BotFlowGraphHttpError extends Error {
   constructor(problem: string) {
     super(`The graph breaks a rule: ${problem}.`);
     this.name = 'BotFlowGraphHttpError';
+  }
+}
+
+/** 422: a dry-run of the published version of a flow never published. */
+export class BotFlowNotPublishedHttpError extends Error {
+  readonly status = 422;
+  readonly code = 'bot_flow_not_published';
+  constructor() {
+    super('The flow has no published version to run.');
+    this.name = 'BotFlowNotPublishedHttpError';
   }
 }
 
@@ -137,6 +150,51 @@ export class BotFlowsController {
       await this.mine(tx, id, ctx.workspaceIds);
       if (!(await deleteBotFlow(tx, id))) throw new NotFoundException();
       await this.audit(tx, 'bot_flow.deleted', id, {});
+    });
+  }
+
+  /**
+   * The dry-run (D1d, Brief P13): the sample script through the same steps as the bot (bot-runtime's simulate), on the draft or the
+   * published version, in one tenant transaction that only reads. Nothing is sent, stored, audited nor logged; a jump goes to the
+   * published version of the other flow, as the bot's does. A broken graph is a 200 with its code, for the builder to see.
+   */
+  @Post(':id/dry-run')
+  @HttpCode(200)
+  async dryRun(
+    @Param('id', new ZodPipe(BotFlowIdSchema)) id: string,
+    @Body(new ZodPipe(BotDryRunSchema))
+    body: { version: 'draft' | 'published'; messages: string[]; customerName?: string },
+  ) {
+    const ctx = this.allowed();
+    return this.database.withTenant(ctx, async (tx) => {
+      const flow = await loadBotFlow(tx, id);
+      if (!flow || !ctx.workspaceIds.includes(flow.workspaceId)) throw new NotFoundException();
+      const versionId = body.version === 'draft' ? flow.draftVersionId : flow.publishedVersionId;
+      if (!versionId) throw new BotFlowNotPublishedHttpError();
+      const version = (await loadBotFlowVersion(tx, versionId)) as BotFlowVersionRow;
+      const trigger = version.graph.nodes.find((n) => n.type === 'trigger');
+      const first = { text: body.messages[0] ?? null, firstOfConversation: true };
+      const sim = await simulate({
+        graph: version.graph,
+        messages: body.messages,
+        handlers: coreHandlers({
+          customer: { name: body.customerName ?? null },
+          workspace: { isBusinessHours: true },
+        }),
+        resolveFlow: async (flowId) => {
+          const target = (await listBotTriggers(tx, flow.workspaceId)).find(
+            (t) => t.flowId === flowId,
+          );
+          const next = target ? await loadBotFlowVersion(tx, target.versionId) : null;
+          return target && next ? { versionId: target.versionId, graph: next.graph } : null;
+        },
+      });
+      return botDryRunView(
+        id,
+        { id: version.id, kind: body.version, number: version.version },
+        trigger ? chooseTrigger([{ trigger: trigger.config }], first) !== null : false,
+        sim,
+      );
     });
   }
 

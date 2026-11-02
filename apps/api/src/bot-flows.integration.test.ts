@@ -297,3 +297,181 @@ describe('/v1/bot-flows', () => {
       expect((await call('manager', method, path, body)).status).toBe(404);
   });
 });
+
+// D1d: the dry-run. The published version and the draft of one flow answer the same script differently; nothing is written.
+// prettier-ignore
+const node = (key: string, type: string, config: Record<string, unknown> = {}) => ({ key, type, config });
+// prettier-ignore
+const ASK = node('pack', 'question', { text: 'Loại?', kind: 'choice', choices: ['Hộp', 'Thùng'], variable: 'pack' });
+// prettier-ignore
+const V1 = {
+  nodes: [node('start', 'trigger', { on: 'keyword', keywords: ['giá'] }), node('hi', 'message', { text: 'Chào {{customer.name}}' }), ASK, node('done', 'end')],
+  edges: [{ from: 'start', to: 'hi', label: null }, { from: 'hi', to: 'pack', label: null }, { from: 'pack', to: 'done', label: null }],
+};
+// prettier-ignore
+const V2 = {
+  nodes: [node('start', 'trigger', { on: 'keyword', keywords: ['giá'] }), ASK, node('done', 'end'), node('human', 'handoff', { reason: 'big_order', priority: 'high' })],
+  edges: [{ from: 'start', to: 'pack', label: null }, { from: 'pack', to: 'human', label: 'Thùng' }, { from: 'pack', to: 'done', label: null }],
+};
+const WRITTEN = [
+  'messages',
+  'message_deliveries',
+  'bot_sessions',
+  'bot_session_steps',
+  'conversation_events',
+  'audit_logs',
+];
+const written = async () => {
+  const counts: Record<string, number> = {};
+  for (const t of WRITTEN)
+    counts[t] = Number(
+      (await q(`SELECT count(*) AS n FROM ${t} WHERE org_id = $1`, [orgA])).rows[0].n,
+    );
+  return counts;
+};
+
+describe('POST /v1/bot-flows/{id}/dry-run', () => {
+  it('runs the same script on the published version and on the draft, and writes nothing', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Chạy thử' })).body['id'],
+    );
+    expect((await call('manager', 'PUT', `/${id}/draft`, V1)).status).toBe(200);
+    expect((await call('manager', 'POST', `/${id}/versions`)).status).toBe(201);
+    expect((await call('manager', 'PUT', `/${id}/draft`, V2)).status).toBe(200);
+    const before = await written();
+    const script = { messages: ['Giá bao nhiêu?', 'Thùng', 'còn nữa'], customerName: 'Lan' };
+    const published = await call('manager', 'POST', `/${id}/dry-run`, {
+      ...script,
+      version: 'published',
+    });
+    expect(published.status).toBe(200);
+    expect(published.body).toEqual({
+      flowId: id,
+      version: { id: expect.any(String), kind: 'published', number: 1 },
+      triggerMatched: true,
+      businessHoursAssumed: true,
+      status: 'completed',
+      error: null,
+      turns: [
+        {
+          replies: [
+            { nodeKey: 'hi', text: 'Chào Lan' },
+            { nodeKey: 'pack', text: 'Loại?\n1. Hộp\n2. Thùng' },
+          ],
+          steps: [
+            { nodeKey: 'start', nodeType: 'trigger' },
+            { nodeKey: 'hi', nodeType: 'message' },
+            { nodeKey: 'pack', nodeType: 'question' },
+          ],
+          handoff: null,
+        },
+        {
+          replies: [],
+          steps: [
+            { nodeKey: 'pack', nodeType: 'question', variable: 'pack' },
+            { nodeKey: 'done', nodeType: 'end' },
+          ],
+          handoff: null,
+        },
+      ],
+      vars: { pack: 'Thùng' },
+      unusedMessages: 1,
+    });
+    const draft = await call('owner', 'POST', `/${id}/dry-run`, script);
+    expect(draft.body).toMatchObject({
+      version: { kind: 'draft', number: null },
+      status: 'handed_off',
+      error: null,
+      unusedMessages: 1,
+    });
+    const turns = draft.body['turns'] as { handoff: unknown; steps: { edgeLabel?: string }[] }[];
+    expect(turns[1]).toMatchObject({ handoff: { reason: 'big_order', priority: 'high' } });
+    expect(turns[1]!.steps[0]).toMatchObject({ edgeLabel: 'Thùng' });
+    // The first message decides only triggerMatched: the run starts the flow either way.
+    expect(
+      (await call('manager', 'POST', `/${id}/dry-run`, { messages: ['xin chào'] })).body,
+    ).toMatchObject({
+      triggerMatched: false,
+      status: 'active',
+    });
+    expect(await written()).toEqual(before);
+  });
+
+  it('answers a flow that cannot run with a 200, its code and no detail of the server', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Gãy' })).body['id'],
+    );
+    const jump = {
+      nodes: [
+        node('start', 'trigger', { on: 'first_message' }),
+        node('go', 'jump_to_flow', { flowId: randomUUID() }),
+      ],
+      edges: [{ from: 'start', to: 'go', label: null }],
+    };
+    expect((await call('manager', 'PUT', `/${id}/draft`, jump)).status).toBe(200);
+    const broken = await call('manager', 'POST', `/${id}/dry-run`, { messages: ['a', 'b'] });
+    expect(broken.status).toBe(200);
+    expect(broken.body).toMatchObject({
+      triggerMatched: true,
+      status: 'abandoned',
+      error: 'jump_target',
+      unusedMessages: 1,
+      turns: [{ replies: [], handoff: { reason: 'jump_target', priority: 'normal' } }],
+    });
+    const empty = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Rỗng' })).body['id'],
+    );
+    expect(
+      (await call('manager', 'POST', `/${empty}/dry-run`, { messages: ['a'] })).body,
+    ).toMatchObject({
+      triggerMatched: false,
+      status: 'abandoned',
+      error: 'no_trigger',
+    });
+    // Never published: no published version to run.
+    expect(
+      (
+        await call('manager', 'POST', `/${empty}/dry-run`, {
+          messages: ['a'],
+          version: 'published',
+        })
+      ).body,
+    ).toMatchObject({
+      status: 422,
+      code: 'bot_flow_not_published',
+    });
+  });
+
+  it('refuses other roles (403), a flow of another workspace or organisation (404) and a bad script (400)', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Quyền thử' })).body['id'],
+    );
+    const inB = randomUUID();
+    await q(`INSERT INTO bot_flows (id, org_id, workspace_id, name) VALUES ($1, $2, $3, 'Ở B')`, [
+      inB,
+      orgB,
+      WB,
+    ]);
+    await q(`INSERT INTO bot_flow_versions (id, org_id, flow_id) VALUES ($1, $2, $3)`, [
+      randomUUID(),
+      orgB,
+      inB,
+    ]);
+    const ok = { messages: ['a'] };
+    for (const who of ['sales', 'marketing'])
+      expect((await call(who, 'POST', `/${id}/dry-run`, ok)).status).toBe(403);
+    for (const flow of [inW2, inB, randomUUID()])
+      expect((await call('manager', 'POST', `/${flow}/dry-run`, ok)).status).toBe(404);
+    for (const bad of [
+      { messages: [] },
+      { messages: Array.from({ length: 21 }, () => 'a') },
+      { messages: ['a'.repeat(1001)] },
+      { messages: ['  '] },
+      { messages: ['a'], version: 'v1' },
+      { messages: ['a'], customerName: 'x'.repeat(101) },
+      { messages: ['a'], orgId: orgB },
+    ])
+      expect((await call('manager', 'POST', `/${id}/dry-run`, bad)).status).toBe(400);
+    expect((await call('manager', 'POST', '/not-a-uuid/dry-run', ok)).status).toBe(400);
+  });
+});
