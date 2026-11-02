@@ -1,7 +1,7 @@
 // #15 Chi tiết ticket (U27, N167): one ticket from `GET /v1/tickets/{id}` with what happened to it, and its status changed by
 // `PATCH {status, version}`, a contract planned for S4 (docs/openapi/planned.json). The moves are the API's (Backend's letter of
 // 26/10, docs/ui/openapi-planned-30-10.md), so a button is never shown only to be refused. The API still decides.
-import type { components } from '../api/planned';
+import type { components } from '../api/schema';
 import type { Role } from '../nav';
 import { STATUS, type TicketStatus } from './tickets';
 
