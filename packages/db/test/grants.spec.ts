@@ -49,6 +49,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'updated_at',
     'version',
   ],
+  customer_tags: ['deleted_at', 'updated_at'],
   customers: ['deleted_at', 'display_name', 'email', 'human_only', 'phone_e164', 'updated_at'],
   feature_flags_overrides: ['enabled', 'updated_at'],
   // created_at on purpose: a key used again after 24 hours starts its day anew (N134).
@@ -115,6 +116,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'updated_at',
     'version',
   ],
+  tags: ['deleted_at', 'hidden', 'name', 'updated_at'],
   team_members: ['deleted_at', 'updated_at'],
   teams: ['deleted_at', 'description', 'is_default', 'name', 'slug', 'updated_at'],
   workspace_members: ['deleted_at', 'updated_at'],
