@@ -1,21 +1,22 @@
-# Tổng kết phiên FE — 01/11 → 02/11/2026
+# Tổng kết phiên FE — 01/11 → 02/11/2026 (bản cập nhật 14:40 UTC)
 
-Người soạn: FE (Claude, phiên `session_015SNdqeCQvNjK6rFoqzt5Su`) · Chốt lúc: 02/11/2026 khoảng 08:55 UTC.
-Mọi mốc giờ là UTC, lấy từ commit squash (luật CEO). `main` lúc chốt: **`33fb511`** (#530). Đưa vào repo theo brief CEO 02/11
-(Session ID `session_015SNdqeCQvNjK6rFoqzt5Su`) mục 3, để không mất khi container khởi động lại.
+Người soạn: FE (Claude, phiên `session_015SNdqeCQvNjK6rFoqzt5Su`) · Chốt lúc: 02/11/2026 khoảng 14:40 UTC.
+Mọi mốc giờ là UTC, lấy từ commit squash (luật CEO). `main` lúc chốt: **`e74693c`** (#538). Bản trước (08:55) đã vào repo ở
+`docs/ui/session-summary-02-11.md` (#531); bản này thay thế và bổ sung từ 08:55 tới 14:40.
 
 ## 1. Trạng thái lúc chốt
 
 | Việc | Trạng thái |
 |---|---|
 | Branch protection `main` | `strict` bật, `enforce_admins` bật, 9 required check gồm `docker images`: không đổi cả phiên |
-| PR FE đang mở | Chỉ PR docs đưa file này vào repo |
-| 12a Pipeline lead (#12) | Code xong, kiểm local xanh; nhánh backup `feat/leads-12a-board` HEAD `4a9b367` (brief 32), **chưa mở PR**; chặn tới khi BE xác nhận hình dạng Lead |
-| Hạn BE xác nhận hình dạng Lead | 08:00 UTC 03/11 (brief 31); lần kiểm hẹn 07:50 UTC 03/11 (`trig_016M5XujGNbDRuP56TadGUkq`) |
-| Brief gửi BE `2810-02112026-BE-BRIEF-01` | CEO đã ký và gửi; BE chưa trả lời (`planned.json` chưa có `/v1/leads`) |
-| U77 (Bot flows, câu hỏi cho BE) | Vẫn mở |
-| PR BE đang theo dõi (kênh 2b) | Không có (#530 đã merge) |
-| Lần kiểm 2 giờ | `trig_01Br6sSpPXw9Xej9KzBakxUt`, phút 06 mỗi 2 giờ; nội dung cập nhật theo brief 31 |
+| PR FE đang mở | **#539** `fix(admin): #14 Ticket, người nhận API trả tên null hiện "…abcd"` (draft, HEAD `397cfdd`, CI đang chạy); tự merge khi 9/9 thật + `clean` |
+| Việc FE kế tiếp | PR docs: đo tiến độ 02/11 (file soạn sẵn), ghi review chéo #538 vào handoff, dòng luật heads-up tầng 1 vào `CLAUDE.md` gốc (brief 40–41) |
+| 12a Pipeline lead (#12) | **Xong**: #536 (hợp đồng nháp + API giả) và #537 (màn Kanban) đã merge |
+| #13a Chi tiết lead | Khung trên nhánh backup `feat/lead-detail-13a-skeleton` (`00ce5d0`), chưa PR; chờ BE trả lời câu 8–9 |
+| 23a Trường tùy chỉnh + Tag | Bản đọc trên nhánh backup `feat/customer-data-23a-read` (`25ff566`), chưa PR; chờ hợp đồng thật của BE (khoảng 13/11) |
+| Nút "Chạy thử" màn Bot, màn mới trên hợp đồng nháp | Giữ chờ (brief 40) |
+| Lịch theo dõi | Kiểm 2 giờ `trig_01Br6sSpPXw9Xej9KzBakxUt` (phút 06); mốc 07:50 UTC 03/11 `trig_016M5XujGNbDRuP56TadGUkq` (câu 8–9, 23a, T-2) |
+| U77 (Bot flows) | Vẫn mở |
 
 ## 2. PR merge trong phiên
 
@@ -29,132 +30,131 @@ Mọi mốc giờ là UTC, lấy từ commit squash (luật CEO). `main` lúc ch
 | #517 | Docs: tầng 1 code tự push/merge, bỏ docker local, trần 500 | 01/11 15:06:05 · `a7c66e9` | 8 + skip / 9/9 |
 | #519 | Docs: tiến độ 01/11, bảng 58 mã | 01/11 17:36:30 · `5ebfa49` | 8 + skip / 9/9 |
 | #520 | Docs: check-in 3 kênh, PR theo template | 02/11 04:51:58 · `6c32e3f` | 8 + skip / 9/9 |
-| #523 | Docs: đồng hồ heads-up vào `CLAUDE.md` gốc; B1 sau #521–#525 và điều kiện "có"; handoff | 02/11 07:20:28 · `c909d29` | 8 + skip (HEAD `b44a7ff`) / 9/9 (run 41405676004); diff HEAD vs squash rỗng |
+| #523 | Docs: đồng hồ heads-up vào `CLAUDE.md` gốc; B1 sau #521–#525 và điều kiện "có"; handoff | 02/11 07:20:28 · `c909d29` | 8 + skip / 9/9 |
+| #531 | Docs: tổng kết phiên (bản 08:55) vào `docs/ui/session-summary-02-11.md` | 02/11 09:00:20 · `77be40d` | 8 + skip / 9/9 |
+| #536 | #12 Pipeline lead PR 1: hợp đồng nháp (`leads.ts`), API giả, `lead-shape-from-be.md`, handoff review chéo; +297/−2 | 02/11 10:39:04 · `098e8ab` | 9/9 thật / 9/9 |
+| #537 | #12 Pipeline lead PR 2: màn Kanban chỉ đọc, 8 E2E (3 ca biên brief 36); +429 | 02/11 10:53:04 · `c660a0d` | 9/9 thật / 9/9 |
 
-#523: Update branch đúng một lần (brief 28), bỏ điều kiện chờ U77 (brief 28).
+Mọi PR: diff giữa HEAD PR và commit squash rỗng. #537: Update branch báo xung đột `lead-shape-from-be.md` (file mới ở cả hai phía,
+bản `main` có thêm đoạn trạng thái); FE cherry-pick đúng commit trạng thái `8c1c2c2` vào nhánh PR 2 để file giống hệt, không merge
+`main` ở local (CEO đồng ý, brief 37).
 
 ### 2.2 PR của BE (FE chỉ theo dõi, không comment)
 
 | PR | Nội dung | Merge (squash) | Ghi chú |
 |---|---|---|---|
-| #521 | O1: lease, lần thử kế tiếp `message_deliveries` | 05:05:28 · `878ec01` | Tầng 2, heads-up 04:30:06; dẫn tới luật đồng hồ heads-up |
-| #522 | O2a: kho outbound worker | 05:13:02 · `17962d6` | Tầng 1 code, auto-merge sau 9/9 |
-| #524 | O2b: job gửi + `ChannelSender` | 05:20:21 · `f810f0b` | Kênh 2b bỏ lỡ (mở-merge giữa hai lần kiểm) |
-| #525 | O2c: nối worker, tắt tới O3 | 05:37:05 · `c0a843c` | CI lần đầu đỏ coverage, BE thêm test rồi mới merge |
-| #526 | D1d-1: `simulate` trong `bot-runtime` | 06:11:49 · `8d87e70` | +375/−50, phần vượt là test bắt buộc |
-| #527 | D1d-2: `POST /v1/bot-flows/{id}/dry-run` | 06:33:48 · `96d397b` | CI lần đầu đỏ lint, sửa rồi 9/9; FE biết muộn (07:13) |
-| #528 | N187, cập nhật U63 trong `QUESTIONS.md` | 08:04:39 · `43c7822` | Heads-up 06:56:51 hủy, heads-up lần 2 07:33:59 sau CI xanh trên `51c0565`; merge sau 30 phút 40 giây: đúng luật |
-| #529 | Tiến độ của BE, file riêng `progress-20261102.md` | 08:10:59 · `fae3f2a` | Tầng 1 docs; CI trên `3310a77` 8 + skip |
-| #530 | K1a: bảng `tickets`, `ticket_events` | 08:48:28 · `33fb511` | Tầng 2; CI 9/9 thật trên `237a153` (xong 08:16:09), heads-up 08:17:44, merge sau 30 phút 44 giây: đúng luật; không đổi hợp đồng FE dùng |
+| #521 | O1: lease, lần thử kế tiếp `message_deliveries` | 05:05:28 · `878ec01` | Tầng 2; dẫn tới luật đồng hồ heads-up |
+| #522 | O2a: kho outbound worker | 05:13:02 · `17962d6` | Tầng 1 code |
+| #524 | O2b: job gửi + `ChannelSender` | 05:20:21 · `f810f0b` | Kênh 2b bỏ lỡ |
+| #525 | O2c: nối worker, tắt tới O3 | 05:37:05 · `c0a843c` | CI lần đầu đỏ coverage, sửa rồi merge |
+| #526 | D1d-1: `simulate` | 06:11:49 · `8d87e70` | +375/−50 (test bắt buộc) |
+| #527 | D1d-2: `POST /v1/bot-flows/{id}/dry-run` | 06:33:48 · `96d397b` | CI lần đầu đỏ lint, sửa rồi 9/9 |
+| #528 | N187, U63 trong `QUESTIONS.md` | 08:04:39 · `43c7822` | Heads-up lần 2 07:33:59, merge sau 30 phút 40 giây |
+| #529 | Tiến độ của BE, file riêng | 08:10:59 · `fae3f2a` | Tầng 1 docs |
+| #530 | K1a: bảng `tickets`, `ticket_events` | 08:48:28 · `33fb511` | Tầng 2; heads-up 08:17:44, merge sau 30 phút 44 giây |
+| #532 | K1b-1: tạo ticket | 09:08:50 · `fa6fd20` | Tầng 1 code, 9/9 thật trước merge |
+| #533 | K1b-2: đổi ticket theo luật và `version` | 09:18:21 · `8f32b12` | Tầng 1 code, 9/9 thật |
+| #534 | K1b-3: đọc ticket theo trang, một ticket kèm lịch sử | 09:50:51 · `ab81ff4` | Tầng 1 code, 9/9 thật |
+| #535 | N185 (O3, O4 tạm dừng) | 10:28:31 · `a585d9a` | Tầng 2 docs; heads-up 09:57:28, merge sau 31 phút 3 giây |
+| #538 | K1c-1: `GET/POST /v1/tickets` thật | 14:23:40 · `e74693c` | **Tầng 3**: CEO comment `APPROVED` 14:21, CEO merge; FE review qua kênh nội bộ |
 
-Tất cả trong luật; không có PR merge không qua tín hiệu, không có `hold`, branch protection không đổi.
+Tất cả trong luật: không PR nào merge không qua tín hiệu, không có `hold`, branch protection không đổi. Kênh 2b bỏ lỡ các PR mở
+rồi merge giữa hai lần kiểm (#524–#527, #532–#534); bù bằng đọc 10 commit trên `main` mỗi lần kiểm 2 giờ.
 
 ## 3. Brief CEO trong phiên (tóm tắt quyết định)
 
 | Brief | Quyết định chính |
 |---|---|
-| 15–17 | Chờ U77, không mở code mới. Check-in 3 kênh: kênh 1 webhook tạm đóng; kênh 2 kiểm 2 giờ; kênh 2b `subscribe_pr_activity` cho PR BE (chỉ theo dõi); kênh 3 CEO ping. 30 phút chỉ khi có việc mở thật. PR theo template từ #520 |
-| 19–20 | Đồng hồ heads-up 30 phút (a) comment đã đăng, (b) 9 job xanh thật, (c) `clean`; push thêm thì về 0; không tính "30 phút từ lúc comment" tách khỏi điều kiện. Mở #523 draft |
-| (ghi nhớ) | Kênh 2b bù bằng đọc 10 commit gần nhất trên `main` mỗi lần kiểm 2 giờ. B1 chỉ đổi khi tin thật ra Zalo |
-| 24 | C20, D15 giữ "chưa xác định", không chặn. Q1 CEO lo với pháp lý, B2 (#26 production) giữ hoãn. Soạn brief gửi BE đề nghị hợp đồng planned Lead và tag/trường tùy chỉnh |
-| 25 | Ký brief gửi BE `2810-02112026-BE-BRIEF-01`: Lead trước 10/11 (cùng mốc N172), tag + trường tùy chỉnh trước 16/11 |
-| 26 | Mục dry-run của S4 giữ 0 tới khi endpoint vào `openapi.json` trên `main`; màn Bot giữ chỉ đọc, không nút chạy thử |
-| 27 | FE không nhận được (CEO xác nhận bị cắt khi soạn) |
-| 28 | Merge #523 ngay (bỏ chờ U77). Dựng 3 màn trên hợp đồng nháp: #12, #13, #23; chỉ route có trong P9 và `endpoint-M8.md`; route chưa có thì ghi rõ |
-| 29 | #12: bước pipeline và lý do Thua đọc từ API, không ghi cứng; Thắng/Thua là cột phụ; 12a chỉ đọc trước, 12b ghi sau; hoãn 12c tạo lead |
-| 30 | Chọn B (tách 2 PR); theo hình dạng Lead của BE nhưng phải BE xác nhận bằng văn bản trước khi push; đường bước: `/v1/workspaces/{id}/pipeline`, bỏ `/v1/leads/stages` |
-| 31 | Tách 2 PR, PR 1 trước rồi PR 2. D2/S4 cập nhật ở lần đo đầy đủ tiếp theo. Review chéo qua handoff, không comment GitHub. Hạn BE 24 giờ |
-| 32 | Push nhánh 12a lên remote làm backup, không mở PR |
-| 02/11 (Session ID `session_015SNdqeCQvNjK6rFoqzt5Su`) | Giữ 12a chưa mở PR tới khi BE xác nhận. Duyệt: PR 1 mở từ nhánh mới trỏ `2d3c055`; PR 1 merge rồi Update branch `feat/leads-12a-board`, mở PR 2. Mở PR docs đưa file tổng kết này vào repo. Chuẩn bị phương án #13a, #23 trên hợp đồng nháp |
+| 15–21 | Chờ U77; check-in 3 kênh (kênh 1 webhook tạm đóng, kênh 2 kiểm 2 giờ, kênh 2b `subscribe_pr_activity`, kênh 3 CEO ping); đồng hồ heads-up 30 phút; PR theo template |
+| 24–25 | C20, D15 giữ "chưa xác định"; Q1 CEO lo với pháp lý, B2 #26 hoãn; ký brief gửi BE `2810-02112026-BE-BRIEF-01` (hợp đồng planned Lead trước 10/11, Tag + trường tùy chỉnh trước 16/11) |
+| 26 | Dry-run S4 chỉ chấm khi vào `openapi.json`; màn Bot giữ chỉ đọc |
+| 28 | Merge #523 (bỏ chờ U77); dựng #12, #13, #23 trên hợp đồng nháp, chỉ route có trong P9 và `endpoint-M8.md` |
+| 29 | #12: bước và lý do Thua đọc từ API; Thắng/Thua là cột phụ; 12a chỉ đọc trước; hoãn 12c |
+| 30 | Tách 2 PR; theo hình dạng Lead của BE, phải BE xác nhận trước khi push; đường bước `/v1/workspaces/{id}/pipeline` |
+| 31 | PR 1 rồi PR 2; D2/S4 ở lần đo đầy đủ; review chéo qua handoff; hạn BE 24 giờ |
+| 32 | Push nhánh 12a làm backup, không mở PR |
+| 02/11 (ID `session_…`) | Duyệt nhánh PR 1 trỏ `2d3c055`; mở PR docs đưa tổng kết vào repo (#531) |
+| 33 | #13a: gộp 2 câu (chi tiết lead, lịch sử) vào đợt BE xác nhận; #23: 3 tab `?tab=` trên `/settings/customer-data`; dựng 23a ở local |
+| 34 | Push backup 23a, kích thước 470 dòng được chấp nhận |
+| 35 | BE xác nhận giả định 1–6, 8–9; mục 7 chờ T-2; mở PR 1 12a ngay; 23a tạm dừng tới hợp đồng thật |
+| 36 | PR 2 sau PR 1; thêm ca biên E2E; stub #23 đủ 7 kiểu trường; khung #13a |
+| 37 | Tầng 1 code tự merge khi 9/9 + `clean`, không heads-up (chỉ tầng 2 hoặc đặc biệt); duyệt push backup khung #13a |
+| 38 | Phần BE của brief 37 là việc của BE; xóa nhánh `feat/leads-12a-board`; dòng luật heads-up gộp vào PR docs tiếp theo |
+| 39 | Ghi nhận các mốc theo dõi |
+| 40 | Đồng ý review #538; CEO merge #538 (chưa deploy nên chấp nhận khoảng hở K1c-1/K1c-2); FE sửa tên người nhận null; PR docs đo tiến độ |
+| 41 | Duyệt số đo 02/11 (A 23/58, B 17,5/29, C 18/30, D 23/135), C8 "một phần" |
 
-Brief bị từ chối (đúng luật): một "brief gửi BE dev" lọt vào phiên FE (không `[GỬI FE]`, không Session ID, không chữ ký A); một brief có `[GỬI FE]` nhưng thiếu Session ID và chữ ký (CEO gửi lại thành brief 31).
+**Brief bị từ chối (đúng luật):** brief "BE dev" lọt vào phiên FE; brief có `[GỬI FE]` nhưng thiếu Session ID và chữ ký (gửi lại
+thành brief 31); đoạn trích báo cáo BE "Gửi FE trước 08:00…" (không tiêu đề, không Session ID, không chữ ký). Brief 33 thiếu ngoặc
+vuông `[GỬI FE]` nhưng đủ Session ID và chữ ký, chỉ có việc local: FE làm và ghi nhận.
 
 ## 4. Luật và cách làm mới trong phiên
 
-- **Đồng hồ heads-up 30 phút** (ký A 02/11): đã vào `CLAUDE.md` gốc qua #523.
-- **B1 Zalo gửi/nhận chỉ "có" khi đủ đồng thời:** (a) O3 có adapter Zalo thật, `createChannelSenders` trả ít nhất một sender;
-  (b) `OUTBOUND_ENABLED=1` không bị từ chối; (c) bằng chứng tin thật ra Zalo. O2d, O2e… không đổi B1.
-- **PR docs:** 8 success + `docker images` skipped, hoặc `docker images` chạy thật cũng đạt. PR code: 9/9 thật, `docker images` không skip.
-- **Kênh 2b:** che PR đã biết mở; PR mở-merge giữa hai lần kiểm (#524, #525, #526, #527) bù bằng đọc 10 commit trên `main`.
-- **Review chéo:** BE sửa U-series hoặc file FE phụ trách → FE ghi handoff (PR, mục, đúng/sai), CEO quyết ping BE. Lần đầu: U63 trong #528, đúng, không ping.
-- **Đối chiếu tiến độ BE:** FE đọc, đối chiếu, báo CEO; không sửa bảng của BE; BE không sửa bảng của FE.
-- **Brief hợp lệ:** phải có `[GỬI FE]` + Session ID + "Người ký: A (CEO)"; thiếu một trong ba thì từ chối, kể cả nội dung có vẻ đúng.
+- **Đồng hồ heads-up 30 phút** (ký A 02/11, trong `CLAUDE.md` gốc qua #523); **chỉ áp PR tầng 2 hoặc trường hợp đặc biệt**. PR tầng 1
+  code tự merge khi 9/9 success thật và `clean` (brief 37; dòng làm rõ sẽ vào `CLAUDE.md` ở PR docs tiếp theo).
+- **B1 chỉ "có" khi đủ:** O3 có adapter Zalo thật, `createChannelSenders` trả ít nhất một sender; `OUTBOUND_ENABLED=1` không bị từ chối;
+  bằng chứng tin thật ra Zalo. O2d, O2e… không đổi B1.
+- **PR docs:** 8 success + `docker images` skipped, hoặc chạy thật. **PR code:** 9/9 thật.
+- **Review chéo:** FE không comment PR BE; BE sửa U-series hoặc file FE → FE review, báo CEO, ghi handoff. Đã áp: U63 (#528, đúng),
+  #538 (2 dòng import FE đúng; `TicketAssignee.name` null cần FE sửa → #539; khoảng hở chi tiết ticket 404 tới K1c-2).
+- **Hợp đồng nháp:** kiểu viết tay, đầu file ghi nguồn; giả định ghi ở `docs/ui/*-shape*.md` để BE xác nhận; không bịa route.
+- **Nhánh backup:** push nhánh giữ việc không mở PR (không chạy CI) khi việc phải chờ; xóa sau khi merge.
+- **Brief hợp lệ:** `[GỬI FE]` + Session ID dạng `2810-…-FE-BRIEF-NN` + "Người ký: A (CEO)"; việc của BE thì không làm, báo CEO.
 
-## 5. 12a Pipeline lead (#12) — chi tiết
+## 5. Chi tiết việc FE
 
-**Nhánh:** `feat/leads-12a-board` (nền `c909d29`), push 02/11 làm backup, không CI, không PR.
+**12a Pipeline lead (xong).** `/leads` mọi vai trò công ty; Kanban các bước theo thứ tự `/pipeline`, rồi cột phụ Thắng, Thua; thẻ
+`title`, khách, phụ trách, nhãn bước + trạng thái; lý do Thua khi hover/focus; "Tải thêm" theo cursor; 404 → `PendingPage`; không
+nút ghi. Hợp đồng nháp: `GET /v1/leads` (P9), `GET /v1/workspaces/{id}/pipeline` (brief BE 02/11). BE xác nhận giả định 1–6, mục 7
+(quyền đọc) chờ T-2.
 
-| Commit | Sẽ là | Nội dung | Dòng |
+**#13a Chi tiết lead (khung).** `LeadDetail`, `LeadEvent` ghi rõ là giả định FE cho câu 8–9; `LeadDetailView` theo prototype #13,
+không gọi API; `/leads/[id]` giữ chỗ (hiện "chưa có"). Chờ BE trả lời câu 8–9 rồi mới mở PR.
+
+**23a Trường tùy chỉnh + Tag (bản đọc).** 3 tab `?tab=requests|fields|tags`; `GET /v1/customer-field-defs`, `GET /v1/tags`
+(`endpoint-M8.md` §6–7); 7 giả định ở `docs/ui/customer-data-shape-assumptions.md`; API giả đủ 7 kiểu trường. Chờ hợp đồng thật.
+
+**#539 (đang mở).** `assigneeOf`: tên; "Chưa giao" khi không ai; "…abcd" + `abbr` "Nhân viên chưa có tên" khi tên null (như Hộp thư).
+Local: lint, typecheck, 324 test, format, build, E2E 238/238 đều exit 0.
+
+## 6. Tiến độ (CEO duyệt brief 41)
+
+| Mẫu số | 01/11 (`803d0bd`) | 02/11 (sau #538) | Đổi vì |
 |---|---|---|---|
-| `2d3c055` | PR 1 | `src/leads/leads.ts` (kiểu Lead viết tay theo brief BE 02/11), `leads.test.ts`, `e2e/stub-leads.ts`, `e2e/stub-routes.ts`, `docs/ui/lead-shape-from-be.md`, handoff review chéo | +284/−2 |
-| `4a9b367` | PR 2 | `app/(app)/leads/page.tsx`, `src/leads/lead-board.tsx`, `e2e/leads.spec.ts`, `e2e/system-pages.spec.ts`, `apps/admin/CLAUDE.md` | +368 |
+| A. Tính năng Đợt 1 (58) | 21,5/58 ≈ 37 % | **23/58 ≈ 40 %** | D2 có; I1 một phần (K1a–K1c-1); C8 một phần (#515 priority) |
+| B. Deliverable S1–S5 (29) | 16/29 ≈ 55 % | **17,5/29 ≈ 60 %** | S4: dry-run 1, tickets 0,5 |
+| C. Màn FE (30) | 17/30 ≈ 57 % | **18/30 = 60 %** | #14 lên API thật; #12 trên hợp đồng nháp 0,5 |
+| D. Cả hợp đồng (135) | 21,5/135 ≈ 16 % | **23/135 ≈ 17 %** | theo A |
 
-**Màn:** Kanban chỉ đọc, mọi vai trò của công ty; các bước theo thứ tự API (`GET /v1/workspaces/{id}/pipeline`), rồi cột phụ
-Thắng, Thua; thẻ có `title`, khách, phụ trách, nhãn bước, nhãn trạng thái; lý do Thua hiện khi hover/focus (tooltip,
-`aria-describedby`); "Tải thêm" theo cursor; 404 → `PendingPage`; đang tải, lỗi (mã + Thử lại), trống (Làm mới). Không có tên
-bước hay lý do Thua trong mã; API giả trả "chờ Q9, dữ liệu tạm".
-
-**Kiểm local (lần cuối, trước brief 31):**
-
-| Lệnh | Exit | Ghi chú |
-|---|---|---|
-| `pnpm lint` (root) | 0 | |
-| `pnpm --filter @gani/admin typecheck` | 0 | |
-| `pnpm --filter @gani/admin test` | 0 | 53 file, 323 test |
-| `pnpm format:check` | 0 | |
-| `pnpm build:e2e-check` | 0 | |
-| E2E admin toàn bộ | 0 | 234/234 |
-
-**Chờ BE xác nhận 7 giả định** trong `docs/ui/lead-shape-from-be.md`: kiểu trường; trường có thể `null`; giá trị `status`
-(`open`/`won`/`lost`); `stage` của lead đã đóng; câu trả lời `GET /v1/leads` (`{data, nextCursor}`); câu trả lời `/pipeline`
-(`{data: [{id, name}]}`); quyền đọc.
-
-**Cách mở PR khi BE xác nhận (CEO duyệt 02/11):** PR 1 mở từ một nhánh mới trỏ `2d3c055`; PR 1 merge rồi Update branch
-`feat/leads-12a-board` và mở PR 2 (`4a9b367`). Chỉ push và mở PR sau khi CEO gửi văn bản xác nhận của BE.
-
-**Sau 12a:** #13a chi tiết lead chỉ đọc (cần `GET /v1/leads/{id}` và lịch sử, chưa có trong P9), rồi #23 tag + trường tùy chỉnh
-(`endpoint-M8.md`). 12b (ghi), 12c (tạo lead) hoãn tới hợp đồng thật.
-
-## 6. Tiến độ
-
-| Mẫu số | FE 01/11 (`803d0bd`) | BE 02/11 (`fae3f2a`, file riêng #529) |
-|---|---|---|
-| A. Tính năng Đợt 1 (58 mã) | 21,5/58 ≈ 37 % | 22/58 ≈ 38 % (D2 lên "có") |
-| B. Deliverable S1–S5 (29) | 16/29 ≈ 55 % | 17/29 ≈ 59 % (S4 dry-run 0 → 1) |
-| C. Màn FE (30) | 17/30 ≈ 57 % | không đo |
-| D. Cả hợp đồng (135 mã) | 21,5/135 ≈ 16 % | 22/135 ≈ 16 % |
-
-FE đối chiếu: cách chấm khớp, chỉ khác ngày đo. D2/S4 trong bảng FE cập nhật ở lần đo đầy đủ tiếp theo, sau 12a (brief 31).
-Đường găng: B1 (gửi tin ra Zalo) chờ O3 + Q6. FE thiếu việc vì 7 màn chưa có hợp đồng; 3 màn (#12, #13, #23) đang làm trên hợp đồng nháp.
+File đo đầy đủ 02/11 (file mới, giữ đủ bảng 58 mã) sẽ vào repo ở PR docs tiếp theo. Đường găng: B1 gửi tin Zalo (O3, Q6).
 
 ## 7. Câu hỏi và việc đang chờ
 
 | Mục | Ai | Ghi chú |
 |---|---|---|
-| Xác nhận hình dạng Lead (7 giả định) | BE qua CEO | Hạn 08:00 UTC 03/11 |
-| Hợp đồng planned Lead / tag + trường tùy chỉnh | BE | Hạn 10/11 / 16/11 (brief BE 01) |
-| U77 Bot flows (mô tả, `inactive`, trần 200) | BE | Không chặn |
-| Q1 pháp lý AI production | CEO + pháp lý | Chưa có mốc; B2 #26 hoãn |
-| Q2, Q6, Q7/Q8, Q9 | CEO | Q9: tên 6 bước, lý do Thua |
-| U47 (tag cấp nào, ẩn tag), U62 (hợp đồng Lead) | BE | |
-| U60, U62, U64–U76 | BE | |
-| C-01 (HIGH, sơ đồ proxy N112), E-01, F-01, G-01 | — | Theo `00-summary.md`, chưa kiểm lại |
+| Câu 8–9 #13a (`GET /v1/leads/{id}`, lịch sử lead) | BE qua CEO | Mốc kiểm 07:50 UTC 03/11 |
+| 7 giả định 23a; hợp đồng Tag/Trường tùy chỉnh | BE | Khoảng 13/11 |
+| Hợp đồng Lead trong `planned.json` | BE | Sau khi CEO trả lời T-2 (khoảng 09/11) |
+| T-2 quyền đọc lead (mục 7) | CEO | |
+| K1c-2 (chi tiết, đổi trạng thái ticket) | BE | Phải merge trước lần deploy đầu; FE sửa `ticket-view.tsx` theo |
+| U77 Bot flows | BE | Không chặn |
+| Q1, Q2, Q6, Q7/Q8, Q9 | CEO | Q9: tên 6 bước, lý do Thua |
+| U47, U60, U62, U64–U76 | BE | |
+| C-01 (HIGH), E-01, F-01, G-01 | — | Theo `00-summary.md` |
 
-## 8. Sự cố và ghi chú quy trình
+## 8. Sự cố và đính chính
 
-- **Brief lẫn:** brief "BE dev" lọt vào phiên FE; FE từ chối (thiếu `[GỬI FE]`, Session ID, chữ ký). Brief 30 ghi nhầm nguồn A/B/C
-  (thực ra là phương án tách PR của báo cáo 12a FE); CEO xác nhận ở brief 31.
-- **Hook dừng phiên vs `CLAUDE.md`:** hook đòi commit/push trong lúc luật "vượt trần báo trước khi push"; FE giữ luật, cất `git stash`,
-  báo CEO; brief 32 chốt push nhánh backup không mở PR.
-- **CI bị hủy:** push `1245657` khi CI `5c40094` đang chạy (`cancel-in-progress: true`) → run trên `5c40094` bị hủy, CI trên HEAD mới thay thế.
-- **Đính chính số liệu:** HEAD `main` 02/11 là `f810f0b` (#524), không phải `17962d6`; mốc 10/11 là N172 (hạn CEO trả lời Q1, Q2, Q7),
-  không phải hạn S4 (S4 = 28/12, P21 dòng 908); #529 merge 08:10:59 theo commit squash (GitHub ghi `merged_at` 08:11:00).
-- **Môi trường:** container có thể khởi động lại; việc dở phải lên remote (brief 32). Docker Hub 429 ở local nên không chạy job
-  `docker images` local (luật 01/11). Sau #527 phải `pnpm install` lại vì API thêm phụ thuộc `@gani/bot-runtime`.
+- Brief lẫn vào phiên (brief BE dev, đoạn trích báo cáo BE) và brief thiếu thành phần: FE từ chối, CEO xác nhận đúng.
+- Brief 30 ghi nhầm nguồn A/B/C (thực ra là phương án tách PR của FE); brief 35 ghi "BE xác nhận 8–9" trong khi 8–9 là câu hỏi
+  #13a BE còn rà: FE ghi đúng vào `lead-shape-from-be.md`, coi #13a chưa có câu trả lời.
+- Brief 37 mục 4 là việc của BE (trình tự PR luật, 4 câu ngoài giờ/xoay vòng/ngày lễ/khóa FPT): FE không làm; CEO chuyển BE (brief 38).
+- Hook dừng phiên đòi push khi luật "vượt trần báo trước khi push": FE giữ luật, dùng `git stash`, rồi CEO cho push backup (brief 32).
+- Đính chính: HEAD `main` 02/11 sáng là `f810f0b` không phải `17962d6`; 10/11 là mốc N172 không phải hạn S4; #529 merge 08:10:59
+  theo commit squash; ca biên #537 là 3 test (tổng 8).
+- Máy local phải `pnpm install` và `pnpm build` lại sau các PR BE thêm phụ thuộc (#527) hoặc đổi `packages/db` (#538) thì lint mới xanh.
 
-## 9. File đã xuất cho CEO (02/11, từ `main` `fae3f2a`)
+## 9. File xuất kèm lần trước (02/11 08:35, từ `main` `fae3f2a`)
 
-`CLAUDE.md` gốc và 9 `CLAUDE.md` thư mục con (`apps/admin`, `apps/api`, `apps/widget`, `apps/worker`, `evals`, `infra`,
-`packages/ai-core`, `packages/db`, `prompts`); `docs/brief-backend-core-v1.0.md` (Brief hiện hành; hồ sơ gốc và phụ lục thắng khi
-mâu thuẫn); `docs/implementation-brief.md` (v0.4, đã thay thế, giữ làm lịch sử); `docs/reviews/00-summary.md`; `QUESTIONS.md`.
-`apps/admin/CLAUDE.md` trên `main` chưa có mục "Pipeline lead (#12)": mục đó ở commit `4a9b367` của nhánh 12a.
+`CLAUDE.md` gốc và 9 `CLAUDE.md` thư mục con; `docs/brief-backend-core-v1.0.md`; `docs/implementation-brief.md`;
+`docs/reviews/00-summary.md`; `QUESTIONS.md`. Từ đó: `QUESTIONS.md` thêm N185 (sửa), N187, N189 (BE); `apps/admin/CLAUDE.md` thêm mục
+Pipeline lead (#12) qua #537.
