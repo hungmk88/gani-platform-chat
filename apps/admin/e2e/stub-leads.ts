@@ -1,9 +1,11 @@
 // #12 Pipeline lead for the e2e stub API only, on the contract planned for S4 (docs/openapi/planned.json, #544; src/leads/leads.ts):
-// `GET /v1/workspaces/{id}/pipeline` and `GET /v1/leads` of a workspace, by cursor. Every role of the company reads them. The steps and the reason a lead is lost are placeholders,
-// "chờ Q9, dữ liệu tạm", as the API would give them. The empty board, errors and the 404 of an API that does not serve the routes
+// `GET /v1/workspaces/{id}/pipeline` and `GET /v1/leads` of a workspace, by cursor, and `GET /v1/leads/{id}` with its history
+// (#13a). Every role of the company reads them. The steps and the reason a lead is lost are placeholders, "chờ Q9, dữ liệu tạm",
+// as the API would give them. The empty board, errors and the 404 of an API that does not serve the routes
 // yet are given by the tests with page.route. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import type { LeadDetail, LeadEvent } from '../src/leads/lead-detail';
 import type { Lead, PipelineStage } from '../src/leads/leads';
 import type { Edge } from './stub-members';
 
@@ -53,6 +55,40 @@ export const LEADS: readonly Lead[] = [
 /** The page size of the stub's list, small so that "Tải thêm" is tested. */
 export const LEADS_PAGE = 5;
 
+/** #13a: a lead with its history, oldest first: made by Sales at the first step, moved there by its owner, closed by a Manager. */
+export function detailOf(l: Lead): LeadDetail {
+  const stage = (s: PipelineStage) => ({ id: s.id, name: s.name });
+  const event = (e: Partial<LeadEvent> & Pick<LeadEvent, 'type'>): LeadEvent => ({
+    fromStage: null,
+    toStage: null,
+    outcome: null,
+    actorUserId: 'user-sales',
+    occurredAt: l.createdAt,
+    ...e,
+  });
+  const events = [event({ type: 'created', toStage: stage(STAGES[0]!) })];
+  if (l.stage.id !== STAGES[0]!.id)
+    events.push(
+      event({
+        type: 'stage_changed',
+        fromStage: stage(STAGES[0]!),
+        toStage: l.stage,
+        actorUserId: l.owner?.id ?? null,
+        occurredAt: l.updatedAt,
+      }),
+    );
+  if (l.status !== 'open')
+    events.push(
+      event({
+        type: 'closed',
+        outcome: l.status,
+        actorUserId: 'user-manager',
+        occurredAt: l.closedAt ?? l.updatedAt,
+      }),
+    );
+  return { ...l, events };
+}
+
 /** Answers the reads of #12 and says true, or says false for any other route. `session` is null when signed out. */
 export function routeLeads(
   req: IncomingMessage,
@@ -62,10 +98,18 @@ export function routeLeads(
   edge: Edge,
 ): boolean {
   const pipeline = /^\/v1\/workspaces\/([^/]+)\/pipeline$/.exec(path);
-  if (req.method !== 'GET' || (path !== '/v1/leads' && !pipeline)) return false;
+  const one = /^\/v1\/leads\/([^/]+)$/.exec(path);
+  if (req.method !== 'GET' || (path !== '/v1/leads' && !pipeline && !one)) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
   if (!session.role || session.role === 'platform_operator')
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+  if (one) {
+    const l = LEADS.find((x) => x.id === decodeURIComponent(one[1]!));
+    return (
+      l ? edge.send(res, 200, detailOf(l)) : edge.problem(res, 404, 'not_found', 'trace-e2e-404'),
+      true
+    );
+  }
   if (pipeline)
     return (
       edge.send(res, 200, {
