@@ -11,9 +11,10 @@ on:
 permissions:
   contents: read
 
+# A pull request cancels its older run; main never does, so every commit on main has a whole run of its own (CEO 02/11/2026).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   TURBO_TELEMETRY_DISABLED: '1'
@@ -67,6 +68,9 @@ jobs:
   # (apps/admin/CLAUDE.md "CI bắt buộc"). No database: the stub answers /api/auth and /v1.
   admin-e2e:
     name: admin (e2e, axe)
+    needs: changes
+    # As `docker`: skipped ONLY when `changes` answered exactly false (fail-safe, infra/CLAUDE.md "Lọc đường dẫn").
+    if: ${{ !cancelled() && needs.changes.outputs.admin != 'false' }}
     # Pinned, not ubuntu-latest (#350, CEO 27/10): the image changes only on purpose, so a library Chromium misses shows at once.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -141,6 +145,9 @@ jobs:
 
   db:
     name: database (roles, migrations, RLS tests)
+    needs: changes
+    # As `docker`: skipped ONLY when `changes` answered exactly false (fail-safe, infra/CLAUDE.md "Lọc đường dẫn").
+    if: ${{ !cancelled() && needs.changes.outputs.backend != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -213,6 +220,9 @@ jobs:
   # shared: "Lặp với job db; xem PR rút gọn composite action sau".
   queue:
     name: queue (BullMQ on Valkey, kill-tests)
+    needs: changes
+    # As `docker`: skipped ONLY when `changes` answered exactly false (fail-safe, infra/CLAUDE.md "Lọc đường dẫn").
+    if: ${{ !cancelled() && needs.changes.outputs.backend != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -295,6 +305,7 @@ jobs:
   # Coverage per file, unit and integration merged (infra/CLAUDE.md "Coverage"): every file of the backend at lines >= 80 % and
   # branches >= 70 %, except the files EXEMPT or in DEBT in infra/ci/coverage-gate.mjs. The 80 % per package of `pnpm test` (unit) stays
   # as it is. Runs once the three jobs that measure have passed; their reports come as artifacts. Node only: nothing to install.
+  # Skipped with db and queue (both follow `backend`): a change without backend code has no backend file to measure.
   coverage:
     name: coverage (per file, unit + integration)
     needs: [verify, db, queue]
@@ -319,15 +330,19 @@ jobs:
   # PostgreSQL and Valkey: size, user, contents, fail-fast, migrations, probes, HEALTHCHECK, Socket.IO, `docker stop`, Trivy.
   # If an image is over 100 MB compressed (or 400 MB uncompressed), investigate; over 150 MB compressed, fix before merge. Common
   # causes: devDependencies in the runtime, unnecessary files copied, large native modules.
-  # Whether `docker` must run: a pull request that changes only Markdown, docs/, prototype/, evals/ or .github/ISSUE_TEMPLATE/ skips
-  # it (infra/CLAUDE.md "Docker"); push to main and runs by hand always run it. The script always exits 0 and answers docker=true
-  # whenever it cannot tell. Its tests run first: a red test makes this job red, and `docker` then runs (see its `if:`).
+  # Which jobs a pull request needs (infra/CLAUDE.md "Lọc đường dẫn"): docker, backend (db, queue, coverage), admin, terraform.
+  # Push to main and runs by hand always run everything. The script always exits 0 and answers true whenever it cannot tell. Its
+  # tests run first: a red test makes this job red, and every gated job then runs (see their `if:`). The name stays: it is one of
+  # the 9 required checks.
   changes:
     name: changes (docker needed?)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       docker: ${{ steps.decide.outputs.docker }}
+      backend: ${{ steps.decide.outputs.backend }}
+      admin: ${{ steps.decide.outputs.admin }}
+      terraform: ${{ steps.decide.outputs.terraform }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -335,13 +350,13 @@ jobs:
           # A pull request checks out its merge commit (refs/pull/N/merge): depth 2 brings both parents, HEAD^1 the base.
           fetch-depth: 2
       - name: Test the filter
-        run: infra/ci/docker-needed.test.sh
+        run: infra/ci/changes.test.sh
       - name: Decide
         id: decide
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: infra/ci/docker-needed.sh
+        run: infra/ci/changes.sh
 
   docker:
     name: docker images (build, size, run, scan)
@@ -414,6 +429,9 @@ jobs:
   # infra/terraform/.terraform-version, checked against infra/terraform/terraform.sha256 (from HashiCorp's signed SHA256SUMS).
   terraform:
     name: terraform (fmt, validate, test)
+    needs: changes
+    # As `docker`: skipped ONLY when `changes` answered exactly false (fail-safe, infra/CLAUDE.md "Lọc đường dẫn").
+    if: ${{ !cancelled() && needs.changes.outputs.terraform != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
