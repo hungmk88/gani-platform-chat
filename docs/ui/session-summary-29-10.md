@@ -186,6 +186,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       16:25:18 là giờ thông báo, giờ comment trên GitHub là 16:25:14) và trước khi #546 merge (16:40:11). Comment "APPROVED theo
       Mức A, bỏ FE comment" trên #546 lúc 16:06:16 là duyệt chính #546. CI 9/9 success trên HEAD (`fddaa73`, `7e18ccc`). FE không
       thấy brief BE nên không biết phương án đã được duyệt hay chưa. FE không comment PR BE; CEO xử lý.
+    - BE sửa file FE sinh `apps/admin/src/api/planned.d.ts` và `schema.d.ts` trong #559 (Tag 3a-ii, `/v1/tags` thành API thật, merge
+      18:20:49 UTC 02/11, squash `eaf29a9`; luật #546, review trong 24 giờ). **Đúng:** 3 đường `/v1/tags`, `/v1/tags/{id}`,
+      `/v1/tags/{id}/merge` chuyển từ `planned.json` sang `openapi.json`, chỉ bỏ nhãn `x-sprint`/`x-status`; schema `Tag`, `TagList`,
+      `TagCreate`, `TagChange`, `TagMerge`, `TagMergeResult` giống hệt; `/v1/customers/{id}/tags` vẫn planned. Hệ quả cho FE: tab Tag
+      của 23a (PR B, brief 47) lấy kiểu từ `schema.d.ts`. FE không comment PR BE.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
