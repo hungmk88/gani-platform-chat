@@ -3,17 +3,23 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  changeTicket,
   createDbPool,
   createTicket,
   InvalidTicketAssigneeError,
+  InvalidTicketTransitionError,
+  TicketCancelForbiddenError,
+  TicketNotFoundError,
   TicketReferenceNotFoundError,
+  TicketVersionConflictError,
   withTenant,
+  type TicketChange,
 } from '../src/index.js';
 import { url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
-// Making a ticket (K1b-1, U27, N167, N170) through RLS, on PostgreSQL: its created event, who may receive it, and what it may point
-// to. Changing one is K1b-2.
+// Making and changing a ticket (K1b-1, U27, N167, N170) through RLS, on PostgreSQL: the moves between states, who cancels, who may
+// receive a ticket, the version a change was read at, and one event per kind of change.
 const [A, B] = [uuidv7(), uuidv7()];
 const seedUsers = new Map<string, string>();
 const people: Record<string, string> = {};
@@ -31,6 +37,10 @@ const make = (over: Partial<Parameters<typeof createTicket>[1]> = {}) =>
       newId: uuidv7,
       ...over,
     }),
+  );
+const change = (id: string, version: number, c: TicketChange, actorRole = 'manager') =>
+  inWs((tx) =>
+    changeTicket(tx, { id, version, change: c, actorUserId: owner, actorRole, newId: uuidv7 }),
   );
 const person = (name: string): string => {
   const id = people[name];
@@ -148,5 +158,101 @@ describe('createTicket', () => {
     await expect(make({ assigneeUserId: seedUsers.get(B) ?? '' })).rejects.toBeInstanceOf(
       InvalidTicketAssigneeError,
     );
+  });
+});
+
+describe('changeTicket', () => {
+  it('moves along U27 only, reopens a done ticket, and writes one event per kind of change', async () => {
+    const t = await make();
+    await expect(change(t.id, 0, { status: 'done' })).rejects.toBeInstanceOf(
+      InvalidTicketTransitionError,
+    );
+    const started = await change(t.id, 0, {
+      status: 'in_progress',
+      assigneeUserId: person('support'),
+      priority: 'urgent',
+    });
+    expect(started).toMatchObject({ status: 'in_progress', version: 1, priority: 'urgent' });
+    const done = await change(t.id, 1, { status: 'done' });
+    const reopened = await change(t.id, 2, { status: 'in_progress', title: 'Giao thiếu 3 thùng' });
+    expect(reopened).toMatchObject({
+      status: 'in_progress',
+      version: 3,
+      title: 'Giao thiếu 3 thùng',
+    });
+    expect(done.version).toBe(2);
+    expect(await events(t.id)).toEqual([
+      { type: 'created', from_status: null, to_status: 'new' },
+      { type: 'status_changed', from_status: 'new', to_status: 'in_progress' },
+      { type: 'assigned', from_status: null, to_status: null },
+      { type: 'edited', from_status: null, to_status: null },
+      { type: 'status_changed', from_status: 'in_progress', to_status: 'done' },
+      { type: 'status_changed', from_status: 'done', to_status: 'in_progress' },
+      { type: 'edited', from_status: null, to_status: null },
+    ]);
+    // Clearing the assignee is a change of assignee; the same values again are no event.
+    await change(t.id, 3, { assigneeUserId: null, title: 'Giao thiếu 3 thùng' });
+    expect((await events(t.id)).slice(-1)).toEqual([
+      { type: 'assigned', from_status: null, to_status: null },
+    ]);
+  });
+
+  it('lets only an Owner, Admin or Manager cancel, and nothing follows cancelled', async () => {
+    const t = await make();
+    await expect(change(t.id, 0, { status: 'cancelled' }, 'support')).rejects.toBeInstanceOf(
+      TicketCancelForbiddenError,
+    );
+    const cancelled = await change(t.id, 0, { status: 'cancelled' }, 'admin');
+    expect(cancelled.status).toBe('cancelled');
+    for (const to of ['new', 'in_progress', 'done'] as const)
+      await expect(change(t.id, 1, { status: to })).rejects.toBeInstanceOf(
+        InvalidTicketTransitionError,
+      );
+  });
+
+  it('refuses a change read at an old version, and of two changes at the same version keeps exactly one', async () => {
+    const t = await make();
+    await change(t.id, 0, { priority: 'high' });
+    await expect(change(t.id, 0, { priority: 'urgent' })).rejects.toBeInstanceOf(
+      TicketVersionConflictError,
+    );
+    const both = await Promise.allSettled([
+      change(t.id, 1, { title: 'Một' }),
+      change(t.id, 1, { title: 'Hai' }),
+    ]);
+    expect(both.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const lost = both.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+    expect(lost.reason).toBeInstanceOf(TicketVersionConflictError);
+  });
+
+  it('refuses an assignee who cannot handle the ticket, and leaves it as it was', async () => {
+    const t = await make();
+    await expect(change(t.id, 0, { assigneeUserId: person('sales') })).rejects.toBeInstanceOf(
+      InvalidTicketAssigneeError,
+    );
+    expect(await events(t.id)).toHaveLength(1);
+  });
+
+  it('does not find a ticket of another workspace or organisation', async () => {
+    const t = await make();
+    const other = (workspaces: string[], org: string) =>
+      inWs(
+        (tx) =>
+          changeTicket(tx, {
+            id: t.id,
+            version: 0,
+            change: { priority: 'high' },
+            actorUserId: org === A ? owner : seedUsers.get(B)!,
+            actorRole: 'owner',
+            newId: uuidv7,
+          }),
+        workspaces,
+        org,
+      );
+    await expect(other([ws2], A)).rejects.toBeInstanceOf(TicketNotFoundError);
+    const wsB = (
+      await admin.query<{ id: string }>('SELECT id FROM workspaces WHERE org_id = $1', [B])
+    ).rows[0]!.id;
+    await expect(other([wsB], B)).rejects.toBeInstanceOf(TicketNotFoundError);
   });
 });
