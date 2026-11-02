@@ -62,6 +62,14 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   comment" tách khỏi điều kiện: làm vậy là auto-merge trá hình.
   **Phạm vi** (02/11/2026, ký A (CEO), brief `2810-02112026-FE-BRIEF-37`): đồng hồ chỉ áp cho PR tầng 2 hoặc trường hợp đặc biệt.
   PR tầng 1 code tự merge ngay khi 9 job success thật và `clean` (mục "Tầng 1 code" ở trên), không đăng heads-up, không chờ 30 phút.
+- **Heads-up 5 phút cho PR docs nhỏ (5a)** (02/11/2026, ký A (CEO)): PR docs tầng 2, diff ≤ 10 dòng, chỉ sửa `QUESTIONS.md`
+  hoặc file trong `docs/`: đồng hồ 5 phút thay 30, cùng điều kiện (a)–(c) và cùng cách reset. Không áp cho PR đụng code,
+  schema, `CLAUDE.md` hay file nào khác. Nghi ngờ thì 30 phút.
+- **Update branch không reset heads-up khi `main` chỉ đổi file không liên quan (5b)** (02/11/2026, ký A (CEO)): để merge song
+  song PR không đụng file chung. Trước khi giữ đồng hồ, người merge so danh sách file `main` vừa đổi với file của PR. **Vẫn
+  reset** khi `main` đổi: cùng đường dẫn với PR (khác nội dung cũng vậy); `packages/db` (schema, migration); `CLAUDE.md` hay
+  `QUESTIONS.md`. Giữ đồng hồ thì ghi vào comment PR: "main đổi commit X, file Y, không overlap → giữ heads-up cũ". Không chắc
+  thì reset, không đoán. Commit của chính PR vẫn reset như luật 30 phút.
 
 ### Quy trình mỗi PR
 
@@ -76,6 +84,9 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 
 Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ để lại file thuộc PR này
 (không `.env`, không file do công cụ tự sinh ở root).
+
+Kết nối GitHub (MCP) gián đoạn hay phiên khởi động lại: đăng ký theo dõi PR có thể mất. Kiểm lại bằng tay mọi PR đang mở của mình
+(merge chưa, `APPROVED`, hold, CI), không chờ thông báo (#538 merge 14:23 UTC 02/11, phiên không nhận được tin nào).
 
 ## KÍCH THƯỚC PR
 
@@ -139,6 +150,8 @@ Lưu ý trước bước 4: chạy `git status` và `git diff --stat`, chỉ đ�
 ## CẤM
 
 - Không commit file do công cụ tự sinh ở root (`AGENTS.md`, `.cursorrules`, v.v.).
+- Không chạy `prettier --write` lên `QUESTIONS.md`: file không theo prettier (`format:check` không quét `.md`), một dòng sửa
+  thành hàng trăm dòng diff (K1c-1, 02/11).
 - Turbo: `turbo.json` phải có `"agentGuidance": false` (tắt tự sinh `AGENTS.md`).
 - Turbo telemetry: tắt bằng `turbo telemetry disable` (toàn cục, mỗi máy một lần); CI đặt `TURBO_TELEMETRY_DISABLED=1`. **Không thêm khóa `telemetry` vào `turbo.json`** (`turbo` báo `unknown key` và từ chối chạy).
 

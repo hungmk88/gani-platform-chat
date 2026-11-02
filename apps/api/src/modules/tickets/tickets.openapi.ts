@@ -2,7 +2,6 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
-import { planned } from '../../openapi/planned-status.js';
 import {
   TicketChangeSchema,
   TicketCreateSchema,
@@ -20,8 +19,13 @@ const forbidden = problemResponse(
 );
 const tags = ['tickets'];
 
-/** `/v1/tickets` (U27, Brief P9 "GET/POST/PATCH /v1/tickets"): served since K1c-1 (document.ts). */
+/** `/v1/tickets` and `/v1/tickets/{id}` (U27, Brief P9 "GET/POST/PATCH /v1/tickets"): served since K1c-1 and K1c-2 (document.ts). */
 export function registerTickets(registry: OpenAPIRegistry): void {
+  const notFound = problemResponse(
+    'not_found: no ticket with this id in the session’s workspaces (not visible is the same).',
+  );
+  const byId = { params: z.object({ id: TicketIdSchema }) };
+
   registry.registerPath({
     method: 'get',
     path: '/v1/tickets',
@@ -59,18 +63,8 @@ export function registerTickets(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
-}
-
-/** `/v1/tickets/{id}`: planned for S4 (planned.ts) until K1c-2 serves it. */
-export function registerTicketById(registry: OpenAPIRegistry): void {
-  const notFound = problemResponse(
-    'not_found: no ticket with this id in the session’s workspaces (not visible is the same).',
-  );
-  const byId = { params: z.object({ id: TicketIdSchema }) };
-  const when = planned('S4');
 
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/tickets/{id}',
     summary: 'One ticket with what happened to it (`events`, oldest first).',
@@ -85,7 +79,6 @@ export function registerTicketById(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'patch',
     path: '/v1/tickets/{id}',
     summary:
