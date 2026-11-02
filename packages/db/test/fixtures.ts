@@ -5,6 +5,8 @@ import type pg from 'pg';
 
 // Child tables first: cleanup deletes in this order, then the user and the organization.
 const TENANT_TABLES = [
+  'ticket_events',
+  'tickets',
   'message_deliveries',
   'outbox_events',
   'conversation_events',
@@ -58,7 +60,9 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     botVersion,
     botNode,
     botSession,
+    ticket,
   ] = [
+    uuidv7(),
     uuidv7(),
     uuidv7(),
     uuidv7(),
@@ -98,6 +102,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO conversations (id, org_id, workspace_id, state) VALUES ('${conversation}', '${org}', '${workspace}', 'BOT_ACTIVE');
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
     INSERT INTO message_deliveries (id, org_id, workspace_id, conversation_id, message_id, channel_account_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', '${uuidv7()}', '${channelAccount}');
+    INSERT INTO tickets (id, org_id, workspace_id, title, customer_id, conversation_id, created_by) VALUES ('${ticket}', '${org}', '${workspace}', 'Seed', '${customer}', '${conversation}', '${user}');
+    INSERT INTO ticket_events (id, org_id, workspace_id, ticket_id, type, to_status, actor_user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${ticket}', 'created', 'new', '${user}');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');
     INSERT INTO bot_sessions (id, org_id, conversation_id, version_id) VALUES ('${botSession}', '${org}', '${conversation}', '${botVersion}');
     INSERT INTO bot_session_steps (id, org_id, session_id, conversation_id, step_index, node_key, node_type) VALUES ('${uuidv7()}', '${org}', '${botSession}', '${conversation}', 0, 'start', 'trigger');
