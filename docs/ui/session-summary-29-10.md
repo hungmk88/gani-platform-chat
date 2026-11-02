@@ -151,7 +151,23 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     cấp endpoint ở phiên sau (02/11).
   - **Kênh 2b (CEO duyệt 02/11, brief `2810-01112026-FE-BRIEF-17`):** subscribe_pr_activity cho PR BE, che comment/CI/merge;
     không che push main, không che branch protection; không nhận nếu phiên khác đã đăng ký. Áp cho PR BE đang mở và PR BE mới
-    mở. Chỉ theo dõi: không comment, không push lên PR của BE; điều cần nói thì báo CEO.
+    mở. Chỉ theo dõi: không comment, không push lên PR của BE; điều cần nói thì báo CEO. **Chứng minh hiệu quả lần đầu (CEO
+    02/11):** #521 của BE, FE nhận ngay sự kiện CI, ready, merge (05:05:28 UTC, squash `878ec01`) mà không chờ lần kiểm; tiếp tục
+    theo dõi PR BE đang mở. **Kênh 2b che PR đã biết mở; bù bằng đọc 10 commit gần nhất trên main mỗi lần kiểm 2 giờ** (CEO
+    02/11, sau #524: mở 05:14:20, merge 05:20:21, giữa hai lần kiểm).
+  - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
+    thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
+    CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
+    từ comment, 9 giây từ lúc đủ điều kiện): đúng tinh thần, không phải vi phạm, nhưng lần sau phải theo cách tính trên.
+  - **B1 sau #521, #522, #524, #525:** giữ "một phần". #521 chỉ DB (lease, lần thử kế tiếp, `app.outbound_pending_orgs`); #522 (O2a,
+    tầng 1 code, auto-merge 05:13:02 sau CI 9/9) chỉ kho của outbound worker; #524 (O2b, 05:20:21) chỉ job gửi + interface
+    `ChannelSender`; #525 (O2c, merge 05:37:05, squash `c0a843c`) nối worker nhưng tắt: chưa có sender kênh, `OUTBOUND_ENABLED=1` bị
+    từ chối. Client Zalo (O3) chưa có. Bằng chứng
+    B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do. **B1 chỉ chuyển "có" khi đủ đồng thời** (CEO 02/11): (a) O3 xong,
+    có adapter Zalo thật, `createChannelSenders` trả về ít nhất một sender; (b) `OUTBOUND_ENABLED=1` không bị từ chối; (c) có bằng
+    chứng tin thật ra được Zalo (test E2E hoặc log production mẫu). O2d, O2e… không đổi B1: chuyển "có" sớm là báo cáo sai.
+  - Prettier cảnh báo 2 file .md có từ trước, không thuộc phạm vi #523 (`docs/reviews/progress-20261101.md`,
+    `docs/ui/session-summary-29-10.md`; `format:check` của repo không kiểm `docs/*.md`).
   - **Kênh 2, chu kỳ kiểm:** `trig_01Br6sSpPXw9Xej9KzBakxUt` phút 06 mỗi 2 giờ UTC (phiên `session_015SNdqeCQvNjK6rFoqzt5Su`)
     khi không có việc mở, một dòng "không đổi". Có việc mở (PR đang mở; câu hỏi U FE đang làm dở; việc chờ CEO duyệt): thêm lần
     kiểm 30 phút một lần bằng `send_later` nối tiếp, ghi lý do tăng tần suất trong báo cáo; hết việc mở thì quay lại 2 giờ
@@ -374,7 +390,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `803d0bd`):** không có một % cho cả dự án, 4 mẫu số. **A** tính năng Đợt 1 (58 mã) 21,5/58 ≈ 37 % (31/10: 17,5/58); **B**
   deliverable S1–S5 16/29 ≈ 55 % (30/10: 15/29); **C** màn FE Đợt 1 17/30 ≈ 57 %; **D** cả dự án (135 mã) 21,5/135 ≈ 16 %. Bảng
   58 mã: có 12, một phần 19, chưa 25, chưa xác định 2 (C20, D15: P7 có dòng, không định nghĩa). **A17 = một phần** (CEO 01/11):
-  định nghĩa ở U28 (`QUESTIONS.md`, CEO 26/10); có đọc và lọc audit, chưa Xuất CSV, chưa `/platform`.
+  định nghĩa ở U28 (`QUESTIONS.md`, CEO 26/10); có đọc và lọc audit, chưa Xuất CSV, chưa `/platform`. CEO xác nhận C20, D15 giữ
+  'chưa xác định', không tìm được định nghĩa trong repo. Không chặn. (Brief 24, 02/11: không tự suy diễn nội dung; tìm được nguồn
+  ngoài repo thì cập nhật sau.)
 - **Bot Engine chỉ đọc (A1, A2, B) xong.** Bước tiếp của Bot Engine chờ BE trả lời U77; trong lúc chờ FE không mở code mới
   (CEO 01/11).
 - **Luật hủy heads-up (CEO 01/11, nguyên văn, áp dụng ngay):** Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó,
@@ -383,7 +401,7 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   kiểm đủ 9 job theo tên". Không áp heads-up cho PR nào cho tới khi luật này vào `CLAUDE.md` gốc trên `main`.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
   (CEO cần xác định); nguồn mốc giờ của sự kiện không có commit squash (comment `hold`, chuyển ready, heads-up), mục 2;
-  định nghĩa C20, D15 (cần file "Phạm vi triển khai — 135 mã"); số U78 BE đã dùng ở #515, FE không dùng trùng;
+  số U78 BE đã dùng ở #515, FE không dùng trùng;
   U60, U62, U64–U77 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
   GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
