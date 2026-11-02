@@ -23,12 +23,14 @@ CREATE TABLE public.workspace_hours (
     REFERENCES public.workspaces (org_id, id) ON DELETE RESTRICT,
   CONSTRAINT workspace_hours_key UNIQUE (org_id, workspace_id, weekday),
   CONSTRAINT workspace_hours_weekday_check CHECK (weekday BETWEEN 1 AND 7),
-  -- Open (both hours, opening first) or closed (neither); a break needs both ends, inside the day.
+  -- Open (both hours, opening first) or closed (neither); a break needs both ends, inside the day. Every comparison names its
+  -- operands NOT NULL first: a comparison with NULL is NULL, and a CHECK lets NULL through.
   CONSTRAINT workspace_hours_day_check CHECK (
     (opens_at IS NULL AND closes_at IS NULL AND break_starts_at IS NULL AND break_ends_at IS NULL)
-    OR (opens_at < closes_at AND (
+    OR (opens_at IS NOT NULL AND closes_at IS NOT NULL AND opens_at < closes_at AND (
       (break_starts_at IS NULL AND break_ends_at IS NULL)
-      OR (opens_at < break_starts_at AND break_starts_at < break_ends_at AND break_ends_at < closes_at)
+      OR (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL
+        AND opens_at < break_starts_at AND break_starts_at < break_ends_at AND break_ends_at < closes_at)
     ))
   )
 );

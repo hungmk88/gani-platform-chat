@@ -50,10 +50,10 @@ const off = (name: string, startsOn: string, endsOn: string, workspace = ws) =>
 
 describe('workspace_hours', () => {
   it('takes an open day with or without a break inside it, or a closed day, once per ISO weekday', async () => {
-    expect(await day(1, ['08:00', '18:00', '12:00', '13:00'])).toBeUndefined();
+    expect(await day(5, ['08:00', '18:00', '12:00', '13:00'])).toBeUndefined();
     expect(await day(2, ['08:00', '18:00', null, null])).toBeUndefined();
     expect(await day(7, [null, null, null, null])).toBeUndefined();
-    expect(await day(1, ['09:00', '17:00', null, null])).toBe('23505');
+    expect(await day(5, ['09:00', '17:00', null, null])).toBe('23505');
     for (const [weekday, hours] of [
       [0, ['08:00', '18:00', null, null]],
       [8, ['08:00', '18:00', null, null]],
