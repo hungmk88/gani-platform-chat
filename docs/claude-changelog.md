@@ -10,6 +10,8 @@
   success thật.
 - GIT WORKFLOW thêm **Song song và gộp PR** (Cách 2, 3): tối đa 4 nhánh, kiểm file trùng trước khi mở nhánh, gộp khi ≤ 500 dòng
   có test bắt buộc và không sửa file dùng chung, PR đụng `customers` đứng riêng, merge và Update branch từng PR một.
+- `packages/db/CLAUDE.md`: test sắp theo tên dùng tên khác nhau ở chữ không dấu đứng đầu (collation local và CI khác nhau;
+  lỗi lặp lần 2, CEO 18:40 UTC).
 
 ## 02/11/2026: Mức A, DEV tự merge tầng 3 theo phương án đã duyệt; mốc go-live 31/01/2027 (ký A (CEO))
 
