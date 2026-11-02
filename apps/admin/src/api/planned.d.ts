@@ -4,186 +4,6 @@
  */
 
 export interface paths {
-    "/v1/tickets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Tickets of the session’s workspaces, newest first; filter by workspace, status, assignee and conversation. Sales see the ones they made. */
-        get: {
-            parameters: {
-                query?: {
-                    cursor?: string;
-                    limit?: number;
-                    /** @description UUIDv7. */
-                    workspaceId?: components["schemas"]["Uuid"];
-                    status?: "new" | "in_progress" | "waiting_customer" | "done" | "cancelled";
-                    assignee?: ("me" | "none") | components["schemas"]["Uuid"];
-                    /** @description UUIDv7. */
-                    conversationId?: components["schemas"]["Uuid"];
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description A page. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TicketPage"];
-                    };
-                };
-                /** @description validation_failed: a parameter or the cursor. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: marketing and viewer; sales reads only the tickets they made; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: a workspace not among the session’s. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Make a ticket (Owner, Admin, Manager, Sales, Support: Phụ lục B "Ticket: tạo"), status `new`, from a conversation or not. */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
-                    "Idempotency-Key": string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["TicketCreate"];
-                };
-            };
-            responses: {
-                /** @description The ticket. */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Ticket"];
-                    };
-                };
-                /** @description validation_failed: a field, or the Idempotency-Key is missing. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: marketing and viewer; sales reads only the tickets they made; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: the workspace, customer or conversation is not visible. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description idempotency_in_progress: the same key is still running. */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description invalid_assignee: not an Owner, Admin, Manager or Support of the workspace (U52); or idempotency_key_reused. */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/tickets/{id}": {
         parameters: {
             query?: never;
@@ -1704,78 +1524,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        TicketPage: {
-            data: components["schemas"]["Ticket"][];
-            nextCursor: string | null;
-        };
-        Ticket: {
-            id: components["schemas"]["Uuid"];
-            workspaceId: components["schemas"]["Uuid"];
-            title: string;
-            description: string | null;
-            /** @enum {string} */
-            status: "new" | "in_progress" | "waiting_customer" | "done" | "cancelled";
-            /** @enum {string} */
-            priority: "normal" | "high" | "urgent";
-            type: string | null;
-            customer: components["schemas"]["TicketCustomer"];
-            /**
-             * Format: uuid
-             * @description UUIDv7, or null.
-             */
-            conversationId: string | null;
-            assignee: components["schemas"]["TicketAssignee"];
-            sla: components["schemas"]["TicketSla"];
-            version: number;
-            createdBy: components["schemas"]["Uuid"];
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        /**
-         * Format: uuid
-         * @description UUIDv7.
-         */
-        Uuid: string;
-        TicketCustomer: {
-            id: components["schemas"]["Uuid"];
-            displayName: string | null;
-        } | null;
-        TicketAssignee: {
-            id: components["schemas"]["Uuid"];
-            name: string;
-        } | null;
-        TicketSla: {
-            /** Format: date-time */
-            dueAt: string;
-            /** @enum {string|null} */
-            pausedReason: "waiting_customer" | "outside_hours" | null;
-        } | null;
-        /** @description RFC 9457 problem details; `code` is the stable word (Brief P9). */
-        Problem: {
-            /** @enum {string} */
-            type: "about:blank";
-            title: string;
-            status: number;
-            code: string;
-            detail?: string;
-            /** Format: uuid */
-            traceId?: string;
-        };
-        TicketCreate: {
-            workspaceId: components["schemas"]["Uuid"];
-            title: string;
-            description?: string;
-            /**
-             * @default normal
-             * @enum {string}
-             */
-            priority: "normal" | "high" | "urgent";
-            customerId?: components["schemas"]["Uuid"];
-            conversationId?: components["schemas"]["Uuid"];
-            assigneeUserId?: components["schemas"]["Uuid"];
-        };
         TicketDetail: {
             id: components["schemas"]["Uuid"];
             workspaceId: components["schemas"]["Uuid"];
@@ -1802,6 +1550,25 @@ export interface components {
             updatedAt: string;
             events: components["schemas"]["TicketEvent"][];
         };
+        /**
+         * Format: uuid
+         * @description UUIDv7.
+         */
+        Uuid: string;
+        TicketCustomer: {
+            id: components["schemas"]["Uuid"];
+            displayName: string | null;
+        } | null;
+        TicketAssignee: {
+            id: components["schemas"]["Uuid"];
+            name: string | null;
+        } | null;
+        TicketSla: {
+            /** Format: date-time */
+            dueAt: string;
+            /** @enum {string|null} */
+            pausedReason: "waiting_customer" | "outside_hours" | null;
+        } | null;
         TicketEvent: {
             /** @enum {string} */
             type: "created" | "status_changed" | "assigned" | "edited";
@@ -1816,6 +1583,42 @@ export interface components {
             actorUserId: string | null;
             /** Format: date-time */
             occurredAt: string;
+        };
+        /** @description RFC 9457 problem details; `code` is the stable word (Brief P9). */
+        Problem: {
+            /** @enum {string} */
+            type: "about:blank";
+            title: string;
+            status: number;
+            code: string;
+            detail?: string;
+            /** Format: uuid */
+            traceId?: string;
+        };
+        Ticket: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            title: string;
+            description: string | null;
+            /** @enum {string} */
+            status: "new" | "in_progress" | "waiting_customer" | "done" | "cancelled";
+            /** @enum {string} */
+            priority: "normal" | "high" | "urgent";
+            type: string | null;
+            customer: components["schemas"]["TicketCustomer"];
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            conversationId: string | null;
+            assignee: components["schemas"]["TicketAssignee"];
+            sla: components["schemas"]["TicketSla"];
+            version: number;
+            createdBy: components["schemas"]["Uuid"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         TicketChange: {
             version: number;

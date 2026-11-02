@@ -1,6 +1,6 @@
 // #14 Ticket (U27, N167): the tickets of the workspace being worked in from `GET /v1/tickets`, a contract planned for S4
 // (docs/openapi/planned.json). Until the API serves it, the route answers 404 and the screen says it is not there yet.
-import type { components } from '../api/planned';
+import type { components } from '../api/schema';
 
 export type Ticket = components['schemas']['Ticket'];
 export type TicketPage = components['schemas']['TicketPage'];

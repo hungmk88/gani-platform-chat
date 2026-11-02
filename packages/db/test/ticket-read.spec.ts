@@ -9,6 +9,7 @@ import {
   InvalidCursorError,
   listTickets,
   loadTicket,
+  ticketNames,
   withTenant,
   type TicketQuery,
 } from '../src/index.js';
@@ -155,5 +156,27 @@ describe('loadTicket', () => {
     ]);
     expect(await inWs((tx) => loadTicket(tx, ids[4]!), [ws2])).toBeNull();
     expect(await inWs((tx) => loadTicket(tx, uuidv7()))).toBeNull();
+  });
+});
+
+describe('ticketNames', () => {
+  it('names the customers and the active people of the tickets, and nobody of another organisation', async () => {
+    const customer = (
+      await admin.query<{ id: string }>('SELECT id FROM customers WHERE org_id = $1', [A])
+    ).rows[0]!.id;
+    await admin.query(`UPDATE users SET display_name = ' Chị Lan ' WHERE id = $1`, [owner]);
+    const names = await inWs((tx) =>
+      ticketNames(tx, [
+        { customerId: customer, assigneeUserId: owner },
+        { customerId: null, assigneeUserId: salesId },
+        { customerId: uuidv7(), assigneeUserId: seedUsers.get(B)! },
+      ]),
+    );
+    expect([...names.customers.keys()]).toEqual([customer]);
+    expect(Object.fromEntries(names.people)).toEqual({ [owner]: 'Chị Lan', [salesId]: null });
+    expect(await inWs((tx) => ticketNames(tx, []))).toEqual({
+      customers: new Map(),
+      people: new Map(),
+    });
   });
 });

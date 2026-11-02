@@ -7,8 +7,8 @@ import {
   UuidSchema,
 } from '../../openapi/schemas.js';
 
-// The shapes of /v1/tickets (U27, #14/#15): the contract given to the front end before the module is built (S4, planned.ts). The
-// controller will validate with these same schemas, as every module does.
+// The shapes of /v1/tickets (U27, #14/#15): served for the collection (K1c-1), still planned for /v1/tickets/{id} (K1c-2). The
+// controller validates with these same schemas, as every module does.
 
 const at = z.iso.datetime();
 
@@ -36,7 +36,6 @@ export const TICKET_TRANSITIONS: Readonly<Record<TicketStatus, readonly TicketSt
 
 /** The three levels of C8: Thường, Cao, Khẩn. */
 const priority = z.enum(['normal', 'high', 'urgent']);
-const named = z.object({ id: UuidSchema, name: z.string() });
 
 export const TicketSchema = z
   .object({
@@ -54,7 +53,11 @@ export const TicketSchema = z
       .meta({ id: 'TicketCustomer' }),
     /** The conversation it was made from, if any. */
     conversationId: NullableUuidSchema,
-    assignee: named.nullable().meta({ id: 'TicketAssignee' }),
+    /** `name` null when the person gave none or is no longer an active member (as ConversationAssignee). */
+    assignee: z
+      .object({ id: UuidSchema, name: z.string().nullable() })
+      .nullable()
+      .meta({ id: 'TicketAssignee' }),
     /** The clock stops while the ticket waits for the customer (U27) and out of hours (Q7). Null until SLA exists (Q7, Q8). */
     sla: z
       .object({
@@ -97,6 +100,7 @@ export const TicketListQuerySchema = CursorQuerySchema.extend({
   /** The tickets of one conversation (U53, N170); a Sales still sees only the ones they made. */
   conversationId: UuidSchema.optional(),
 });
+export type TicketListQuery = z.output<typeof TicketListQuerySchema>;
 
 export const TicketCreateSchema = z
   .object({
@@ -111,6 +115,7 @@ export const TicketCreateSchema = z
   })
   .strict()
   .meta({ id: 'TicketCreate' });
+export type TicketCreateBody = z.output<typeof TicketCreateSchema>;
 
 /** What changes, with the `version` last read; at least one field besides it. `null` clears the description or the assignee. */
 export const TicketChangeSchema = z

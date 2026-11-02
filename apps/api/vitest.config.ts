@@ -29,6 +29,7 @@ export default defineConfig({
         'src/modules/customers/customers.controller.ts',
         'src/modules/audit/audit.controller.ts',
         'src/modules/bot-flows/bot-flows.controller.ts',
+        'src/modules/tickets/tickets.controller.ts',
       ],
     },
   },
