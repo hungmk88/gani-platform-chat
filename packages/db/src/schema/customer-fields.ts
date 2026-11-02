@@ -1,5 +1,7 @@
 import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
+import { bytea } from './bytea.js';
+
 // Mirror migration 202611091100_create_customer_fields.sql: the custom fields of a company's customers and their values (J1, T-5, N191).
 // A field ends with deleted_at; a value is cleared by setting it to NULL, never a DELETE (spec RLS M01 §7 case 11).
 export const customerFieldDefs = pgTable('customer_field_defs', {
@@ -23,6 +25,9 @@ export const customerFieldValues = pgTable('customer_field_values', {
   customerId: uuid('customer_id').notNull(),
   fieldId: uuid('field_id').notNull(),
   value: jsonb('value'),
+  // A sensitive field's value, encrypted by SecretBox (202611091300, Tag 2b); never with value.
+  valueEnc: bytea('value_enc'),
+  keyVersion: integer('key_version'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -97,6 +99,62 @@ describe('customer_field_values', () => {
        WHERE a.attrelid = 'public.customer_field_values'::regclass AND a.attnum > 0 AND NOT a.attisdropped
          AND NOT has_column_privilege('support_role', a.attrelid, a.attnum, 'SELECT')`,
     );
-    expect(rows.map((r) => r.column)).toEqual(['value']);
+    expect(rows.map((r) => r.column).sort()).toEqual(['value', 'value_enc']);
+  });
+});
+
+describe('customer_field_values, encrypted (Tag 2b)', () => {
+  const sealed = () => randomBytes(12 + 16 + 8);
+  /** A row of `customer` for a new field with this value, ciphertext and key version; resolves to the SQLSTATE, or undefined. */
+  const row = async (value: unknown, valueEnc: Buffer | null, keyVersion: number | null) =>
+    sqlState(
+      admin.query(
+        `INSERT INTO customer_field_values (id, org_id, customer_id, field_id, value, value_enc, key_version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          uuidv7(),
+          org,
+          customer,
+          await field(`Mã ${uuidv7()}`, 'text'),
+          value === null ? null : JSON.stringify(value),
+          valueEnc,
+          keyVersion,
+        ],
+      ),
+    );
+
+  it('holds a plain or an encrypted value, never both, and a key version exactly with a ciphertext', async () => {
+    expect(await row(null, sealed(), 1)).toBeUndefined();
+    expect(await row('rõ', null, null)).toBeUndefined();
+    expect(await row(null, null, null)).toBeUndefined();
+    expect(await row('rõ', sealed(), 1)).toBe('23514');
+    expect(await row(null, sealed(), null)).toBe('23514');
+    expect(await row(null, null, 1)).toBe('23514');
+    expect(await row(null, sealed(), 0)).toBe('23514');
+  });
+
+  it('lets app_role set, re-encrypt and clear a ciphertext', async () => {
+    const f = await field('Mã hóa', 'text');
+    const write = (sql: string, params: unknown[] = []) =>
+      asApp(app, org, [], () => sqlState(app.query(sql, params)));
+    expect(
+      await write(
+        `INSERT INTO customer_field_values (id, org_id, customer_id, field_id, value_enc, key_version)
+         VALUES ($1, $2, $3, $4, $5, 1)`,
+        [uuidv7(), org, customer, f, sealed()],
+      ),
+    ).toBeUndefined();
+    expect(
+      await write(
+        'UPDATE customer_field_values SET value_enc = $2, key_version = 2 WHERE field_id = $1',
+        [f, sealed()],
+      ),
+    ).toBeUndefined();
+    expect(
+      await write(
+        'UPDATE customer_field_values SET value_enc = NULL, key_version = NULL WHERE field_id = $1',
+        [f],
+      ),
+    ).toBeUndefined();
   });
 });
