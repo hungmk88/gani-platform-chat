@@ -95,7 +95,8 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   | Chỉ FE (`apps/admin`, `apps/widget`, `packages/ui`) | changes, verify, security, docker, admin (5) | 4 job còn lại |
   | Chỉ docs (`*.md`, `docs/`) | changes, verify, security (3) | 6 job còn lại |
   | Chỉ Terraform | changes, verify, security, terraform (4) | 5 job còn lại |
-  | Lẫn, file ở gốc, workflow, `infra/ci/`; push lên `main` | cả 9 | — |
+  | Lẫn BE + FE; file ở gốc (`package.json`, `pnpm-lock.yaml`…) | changes, verify, security, docker, database, queue, coverage, admin (8) | terraform |
+  | Workflow, `infra/ci/`; push lên `main` | cả 9 | — |
 
 - **Song song và gộp PR** (02/11/2026, ký A (CEO), Cách 2 và 3):
   - Tối đa 4 nhánh song song. Trước khi mở nhánh, so file với các PR đang mở: trùng `packages/db/test/fixtures.ts`,
