@@ -85,6 +85,11 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   - CEO xem lại trong 24 giờ sau merge; lệch phương án thì revert hoặc migration bù (rollback vẫn do CEO quyết).
   - Mọi phê duyệt phải là comment GitHub của CEO (#498); tin nhắn không tính. Bỏ FE review hay heads-up của một PR chỉ khi CEO
     ghi rõ trên PR đó (ví dụ #542–#544: "bỏ FE comment + heads-up").
+- **Nhận việc và báo cáo** (02/11/2026, ký A (CEO), quy trình 7 bước):
+  - Nhận việc qua chat: DEV soạn ngay brief giao việc gửi lại CEO (bối cảnh, phạm vi, tầng, hạn, acceptance, ràng buộc, câu hỏi
+    cần chốt), không code ở bước này; sau đó mới Plan Mode.
+  - Sau mỗi merge, báo CEO 5 mục: HEAD trước merge; commit squash; 9 job trước merge theo tên và giờ xong; 9 job của `main` sau
+    merge theo tên; diff HEAD ↔ squash = 0 (kèm xác nhận diff khớp phương án khi theo Mức A).
 
 ### Quy trình mỗi PR
 

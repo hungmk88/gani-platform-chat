@@ -8,6 +8,8 @@
   trần dòng, không đụng dữ liệu khách thật, Trivy/GitGuardian, diff HEAD ↔ squash = 0 và báo sau merge); CEO xem lại trong 24 giờ;
   phê duyệt chỉ là comment GitHub; bỏ FE review/heads-up phải ghi trên PR. Áp lần đầu cho #540, #543, #544 (#542 CEO tự bật
   auto-merge). `packages/db/CLAUDE.md` (phân tầng BE) trỏ tới Mức A.
+- GIT WORKFLOW thêm **Nhận việc và báo cáo**: bước 1 (soạn brief giao việc, chưa code) và bước 6 (báo 5 mục sau mỗi merge) của
+  quy trình 7 bước CEO gửi 02/11.
 - Brief P21: S6 17/01 – 30/01, go-live Đợt 1 31/01/2027 (trước Tết), pentest vòng 1 05–09/01, UAT/SUS song song S5, rủi ro CEO
   đã ký (phương án b).
 
