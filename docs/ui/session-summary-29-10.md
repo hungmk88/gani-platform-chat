@@ -390,7 +390,9 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   `803d0bd`):** không có một % cho cả dự án, 4 mẫu số. **A** tính năng Đợt 1 (58 mã) 21,5/58 ≈ 37 % (31/10: 17,5/58); **B**
   deliverable S1–S5 16/29 ≈ 55 % (30/10: 15/29); **C** màn FE Đợt 1 17/30 ≈ 57 %; **D** cả dự án (135 mã) 21,5/135 ≈ 16 %. Bảng
   58 mã: có 12, một phần 19, chưa 25, chưa xác định 2 (C20, D15: P7 có dòng, không định nghĩa). **A17 = một phần** (CEO 01/11):
-  định nghĩa ở U28 (`QUESTIONS.md`, CEO 26/10); có đọc và lọc audit, chưa Xuất CSV, chưa `/platform`.
+  định nghĩa ở U28 (`QUESTIONS.md`, CEO 26/10); có đọc và lọc audit, chưa Xuất CSV, chưa `/platform`. CEO xác nhận C20, D15 giữ
+  'chưa xác định', không tìm được định nghĩa trong repo. Không chặn. (Brief 24, 02/11: không tự suy diễn nội dung; tìm được nguồn
+  ngoài repo thì cập nhật sau.)
 - **Bot Engine chỉ đọc (A1, A2, B) xong.** Bước tiếp của Bot Engine chờ BE trả lời U77; trong lúc chờ FE không mở code mới
   (CEO 01/11).
 - **Luật hủy heads-up (CEO 01/11, nguyên văn, áp dụng ngay):** Khi có comment hold trên PR: dừng mọi hoạt động trên PR đó,
@@ -399,7 +401,7 @@ Mã lỗi ticket cần rà khi K1 lên (theo planned):
   kiểm đủ 9 job theo tên". Không áp heads-up cho PR nào cho tới khi luật này vào `CLAUDE.md` gốc trên `main`.
 - **Câu hỏi mở (không tự đoán):** ai bật `strict` trước B2b (CEO chưa trả lời); nguồn brief 'Thay đổi quy trình phối hợp với BE'
   (CEO cần xác định); nguồn mốc giờ của sự kiện không có commit squash (comment `hold`, chuyển ready, heads-up), mục 2;
-  định nghĩa C20, D15 (cần file "Phạm vi triển khai — 135 mã"); số U78 BE đã dùng ở #515, FE không dùng trùng;
+  số U78 BE đã dùng ở #515, FE không dùng trùng;
   U60, U62, U64–U77 chờ BE (U63 đã trả lời bằng hợp đồng trong #498); nguyên nhân lệch giờ của
   GitHub trong 08:00–09:00 UTC (giả thuyết DST vùng Mountain, chưa kiểm được).
 
