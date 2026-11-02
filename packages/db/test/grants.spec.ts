@@ -60,7 +60,7 @@ const APP_UPDATE: Record<string, string[]> = {
     'type',
     'updated_at',
   ],
-  customer_field_values: ['updated_at', 'value'],
+  customer_field_values: ['key_version', 'updated_at', 'value', 'value_enc'],
   customer_tags: ['deleted_at', 'updated_at'],
   customers: ['deleted_at', 'display_name', 'email', 'human_only', 'phone_e164', 'updated_at'],
   feature_flags_overrides: ['enabled', 'updated_at'],
