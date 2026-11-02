@@ -2024,6 +2024,55 @@
         ],
         "additionalProperties": false
       },
+      "CustomerTags": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerTag"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "CustomerTag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hidden": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "hidden"
+        ]
+      },
+      "CustomerTagsChange": {
+        "type": "object",
+        "properties": {
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "tagIds"
+        ],
+        "additionalProperties": false
+      },
       "BotFlowList": {
         "type": "object",
         "properties": {
@@ -3001,6 +3050,12 @@
               "$ref": "#/components/schemas/CustomerIdentity"
             }
           },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerTag"
+            }
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -3017,6 +3072,7 @@
           "email",
           "humanOnly",
           "identities",
+          "tags",
           "createdAt",
           "updatedAt"
         ]
@@ -7624,6 +7680,107 @@
         }
       }
     },
+    "/v1/customers/{id}/tags": {
+      "put": {
+        "summary": "Set the whole set of a customer’s tags (Owner, Admin, Manager, Sales, Support; existing tags only). A hidden tag the customer has stays; a hidden tag added is refused.",
+        "tags": [
+          "tags"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerTagsChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The customer’s tags, by name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerTags"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a field, or a tag twice.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: marketing and viewer; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: the customer, or a tag, is not of the company.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "tag_hidden: a hidden tag the customer does not have yet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/bot-flows": {
       "get": {
         "summary": "The live bot flows of a workspace, last changed first (at most 200).",
@@ -8316,6 +8473,15 @@
             },
             "required": false,
             "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": false,
+            "description": "UUIDv7.",
+            "name": "tagId",
             "in": "query"
           }
         ],

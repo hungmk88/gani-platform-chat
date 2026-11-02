@@ -10,7 +10,7 @@ import { registerCustomers } from '../modules/customers/customers.openapi.js';
 import { registerBotFlows } from '../modules/bot-flows/bot-flows.openapi.js';
 import { registerQuickReplies } from '../modules/quick-replies/quick-replies.openapi.js';
 import { MeChangeSchema } from '../modules/request-context/me.schemas.js';
-import { registerTags } from '../modules/tags/tags.openapi.js';
+import { registerCustomerTags, registerTags } from '../modules/tags/tags.openapi.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
 import { registerTickets } from '../modules/tickets/tickets.openapi.js';
 import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
@@ -139,6 +139,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerQuickReplies,
   registerTickets,
   registerTags,
+  registerCustomerTags,
   registerBotFlows,
   registerCustomers,
   registerAuditLogs,

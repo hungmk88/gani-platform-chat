@@ -12,6 +12,7 @@ const row = {
   identities: [
     { type: 'zalo_uid' as const, channelAccountId: 'a', verification: 'unverified' as const },
   ],
+  tags: [{ id: 't', name: 'VIP', hidden: true }],
   createdAt: new Date('2026-10-26T00:00:00Z'),
   updatedAt: new Date('2026-10-26T01:00:00Z'),
 };
@@ -28,6 +29,7 @@ describe('customerView', () => {
     expect(customerView(row, true)).toMatchObject({
       phone: '+8491*****78',
       email: 'l***@example.test',
+      tags: [{ id: 't', name: 'VIP', hidden: true }],
       createdAt: '2026-10-26T00:00:00.000Z',
     });
     expect(customerView({ ...row, phoneE164: null, email: null }, true)).toMatchObject({

@@ -6,6 +6,7 @@ import {
   NullableUuidSchema,
   UuidSchema,
 } from '../../openapi/schemas.js';
+import { CustomerTagSchema } from '../tags/tags.schemas.js';
 
 // The shapes of /v1/customers (J1, Brief P9, N165): one Zod schema validates the request and describes it in OpenAPI.
 
@@ -32,6 +33,8 @@ export const CustomerSchema = z
         })
         .meta({ id: 'CustomerIdentity' }),
     ),
+    /** The customer's tags by name, hidden ones too (N190); set with PUT /v1/customers/{id}/tags. */
+    tags: z.array(CustomerTagSchema),
     createdAt: at,
     updatedAt: at,
   })
@@ -42,6 +45,8 @@ export const CustomerPageSchema = cursorPage(CustomerSchema, 'CustomerPage');
 export const CustomerListQuerySchema = CursorQuerySchema.extend({
   /** A part of the name, the start of a phone number (`0912…`, `+84 912…`, from 3 digits), or a whole email (U48). */
   q: z.string().trim().min(1).max(100).optional(),
+  /** Only the customers who have this tag; a hidden tag still filters (T-4, N190). */
+  tagId: UuidSchema.optional(),
 });
 export type CustomerListQuery = z.output<typeof CustomerListQuerySchema>;
 

@@ -2,7 +2,6 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 import { EDGE_ERRORS, problemResponse, UuidSchema } from '../../openapi/schemas.js';
-import { planned } from '../../openapi/planned-status.js';
 import {
   CustomerTagsChangeSchema,
   CustomerTagsSchema,
@@ -88,15 +87,13 @@ export function registerTags(registry: OpenAPIRegistry): void {
 
 /**
  * Setting a customer's tags follows "Sửa hồ sơ khách": Owner, Admin, Manager, Sales, Support, existing tags only; Marketing and Viewer
- * 403. Still planned for S4 (Tag 3a-ii): /v1/tags is served first.
+ * 403 (served since Tag 3a-iii).
  */
 export function registerCustomerTags(registry: OpenAPIRegistry): void {
   const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
   const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
   const tags = ['tags'];
-  const when = planned('S4');
   registry.registerPath({
-    ...when,
     method: 'put',
     path: '/v1/customers/{id}/tags',
     summary:

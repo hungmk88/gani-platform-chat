@@ -3,6 +3,7 @@ import {
   InvalidCursorError,
   listCustomers,
   loadCustomer,
+  setCustomerTags,
   updateCustomer,
   type CustomerChange,
   type TenantTx,
@@ -17,12 +18,15 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Put,
   Query,
 } from '@nestjs/common';
 
 import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { currentRequestContext, type RequestContext } from '../request-context/request-context.js';
+import { tagHttpErrorOf } from '../tags/tags.errors.js';
+import { CustomerTagsChangeSchema } from '../tags/tags.schemas.js';
 import { searchOf } from './customer-search.js';
 import { mayEditCustomers, seesCustomersMasked } from './customers.permissions.js';
 import {
@@ -51,6 +55,7 @@ export class CustomersController {
       listCustomers(tx, {
         limit: q.limit,
         ...(q.cursor === undefined ? {} : { cursor: q.cursor }),
+        ...(q.tagId === undefined ? {} : { tagId: q.tagId }),
         ...(q.q === undefined ? {} : searchOf(q.q, masked)),
       }),
     );
@@ -91,6 +96,27 @@ export class CustomersController {
     });
     if (!row) throw new NotFoundException();
     return customerView(row, false);
+  }
+
+  /**
+   * Set the whole set of a customer's tags (N190; "Sửa hồ sơ khách": Owner to Support). Existing tags only (404); a hidden tag the
+   * customer does not have yet is 422 tag_hidden, one they have stays (T-4). Not audited (contract N190).
+   */
+  @Put(':id/tags')
+  async setTags(
+    @Param('id', new ZodPipe(CustomerIdSchema)) id: string,
+    @Body(new ZodPipe(CustomerTagsChangeSchema)) body: { tagIds: string[] },
+  ) {
+    const ctx = currentRequestContext();
+    if (!mayEditCustomers(ctx.role)) throw new ForbiddenException();
+    let rows;
+    try {
+      rows = await this.database.withTenant(ctx, (tx) => setCustomerTags(tx, id, body.tagIds));
+    } catch (error) {
+      throw tagHttpErrorOf(error);
+    }
+    if (!rows) throw new NotFoundException();
+    return { data: rows.map((t) => ({ ...t })) };
   }
 
   /** One read-only transaction of the session; a cursor this API did not give is the client's mistake (400), not a 500. */

@@ -25,6 +25,7 @@ export const CUSTOMERS: Customer[] = [
   email: email as string | null,
   humanOnly: false,
   identities: onZalo ? [zalo] : [],
+  tags: [],
   createdAt: `2026-10-2${4 - n}T03:00:00.000Z`,
   updatedAt: `2026-10-2${4 - n}T03:00:00.000Z`,
 }));

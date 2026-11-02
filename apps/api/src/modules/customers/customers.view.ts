@@ -17,6 +17,7 @@ export const customerView = (row: CustomerView, masked: boolean) => ({
   email: row.email === null ? null : masked ? maskEmail(row.email) : row.email,
   humanOnly: row.humanOnly,
   identities: row.identities.map((i) => ({ ...i })),
+  tags: row.tags.map((t) => ({ ...t })),
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
 });
