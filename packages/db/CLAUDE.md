@@ -51,8 +51,9 @@ Chạy một lần trên mỗi môi trường có hội thoại từ trước mi
 
 ## Phân tầng merge của BE (CLAUDE.md gốc, #466; anh chốt 31/10/2026)
 
-Mọi PR mở ở draft. "Sẵn sàng merge" = 9 job `ci.yml` xanh trên đúng HEAD, HEAD khớp `git ls-remote`, `mergeable_state = clean`
-(đọc sau khi mọi job xong), job `docker` chạy thật có log Trivy (PR chỉ docs: Skipped, kèm log của job `changes`), GitGuardian
+Mọi PR mở ở draft. "Sẵn sàng merge" = mọi job phải chạy theo bảng "Job chạy theo loại PR" (`CLAUDE.md` gốc) xanh trên đúng
+HEAD, job bị skip đúng bảng (log `changes`), HEAD khớp `git ls-remote`, `mergeable_state = clean` (đọc sau khi mọi job xong), PR
+code có job `docker` chạy thật kèm log Trivy, GitGuardian
 success trên đúng HEAD.
 
 - **Tầng 1/2: BE tự merge** khi đủ các điều kiện trên, chuyển ready ngay trước khi merge. Gồm mọi PR không gây hậu quả không hoàn
