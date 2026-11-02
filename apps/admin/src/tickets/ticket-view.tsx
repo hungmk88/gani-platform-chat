@@ -10,6 +10,7 @@ import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { Assignee } from './assignee';
 import { eventText, moveLabel, movesFor, ticketPath, type TicketDetail } from './ticket-detail';
 import { PRIORITY, slaText, STATUS, timeText, type TicketStatus } from './tickets';
 
@@ -25,7 +26,7 @@ const back = (
 /**
  * #15 Chi tiết ticket (U27, N167): the ticket, who handles it, its SLA and its history, oldest first. The moves its status may make
  * are buttons (`movesFor`); each waits for the server with the version last read, cancelling asks again. 409 invalid_transition or
- * version_conflict read the ticket again. Planned S4: until the API serves it the list already says the screen is not there.
+ * version_conflict read the ticket again. Real API since K1c-2 (#540); who handles it is said as in the list (`Assignee`).
  */
 export function TicketView({ id, role, meId }: { id: string; role: Role; meId: string }) {
   const scope = useScope();
@@ -104,7 +105,7 @@ export function TicketView({ id, role, meId }: { id: string; role: Role; meId: s
         'Không có'
       ),
     ],
-    ['Phụ trách', t.assignee?.name ?? 'Chưa giao'],
+    ['Phụ trách', <Assignee t={t} />],
     ['SLA', slaText(t)],
     ['Tạo lúc', timeText(t.createdAt)],
     ['Cập nhật', timeText(t.updatedAt)],
