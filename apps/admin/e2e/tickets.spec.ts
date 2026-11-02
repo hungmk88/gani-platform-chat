@@ -5,8 +5,9 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 import { TICKETS, TICKETS_PAGE } from './stub-tickets';
 
-// #14 Ticket (U27, N167): the tickets of the workspace from GET /v1/tickets (planned S4), newest first, by pages, filtered by status
-// and assignee; Sales see the ones they made; while the API has no such route (404) the screen says it is not there yet.
+// #14 Ticket (U27, N167): the tickets of the workspace from GET /v1/tickets (real API since K1c-1, #538), newest first, by pages,
+// filtered by status and assignee; Sales see the ones they made; while the API has no such route (404) the screen says it is not
+// there yet.
 const rows = (page: Page) => page.getByRole('region', { name: 'Ticket' }).getByRole('row');
 
 test('a Manager opens Ticket from the menu and reads the tickets in plain words, by pages', async ({
@@ -69,5 +70,22 @@ test('while the API has no tickets yet (404), the screen says it is not there', 
   await expect(
     page.getByRole('heading', { name: 'Ticket: màn này chưa có trong bản hiện tại.' }),
   ).toBeVisible();
+  await expectAccessible(page);
+});
+
+test('an assignee the API gives without a name is said by the end of its id, never "Chưa giao"', async ({
+  page,
+}) => {
+  const id = '0190c300-0000-7000-8000-00000000abcd';
+  await page.route('**/v1/tickets?*', (r) =>
+    r.fulfill({
+      json: { data: [{ ...TICKETS[1]!, assignee: { id, name: null } }], nextCursor: null },
+    }),
+  );
+  await signIn(page, accountOf('manager'));
+  await page.goto('/tickets');
+  const cell = rows(page).nth(1).getByTitle('Nhân viên chưa có tên');
+  await expect(cell).toHaveText('…abcd');
+  await expect(rows(page).nth(1)).not.toContainText('Chưa giao');
   await expectAccessible(page);
 });

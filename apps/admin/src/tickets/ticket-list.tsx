@@ -9,12 +9,14 @@ import { useApiPages, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { TicketCreateDialog } from './ticket-create-dialog';
 import {
+  assigneeOf,
   changedAt,
   PRIORITY,
   slaText,
   STATUS,
   ticketsPath,
   type AssigneeFilter,
+  type Ticket,
   type TicketFilter,
   type TicketPage,
 } from './tickets';
@@ -29,10 +31,17 @@ const ASSIGNEE: Readonly<Record<AssigneeFilter, string>> = {
   none: 'Chưa giao',
 };
 
+/** Who handles the ticket (`assigneeOf`): nobody muted, a person without a name by the end of the id with its reason on hover. */
+function Assignee({ t }: { t: Ticket }) {
+  const a = assigneeOf(t);
+  if (a.none) return <span className="text-text-muted">{a.text}</span>;
+  return a.title ? <abbr title={a.title}>{a.text}</abbr> : <>{a.text}</>;
+}
+
 /**
  * #14 Ticket of the workspace being worked in (T1), newest first, by cursor ("Tải thêm"): title, customer, status in words, priority,
  * who handles it, SLA (none until Q7/Q8), last change; filtered by status and assignee. A 404 means the API does not serve the route
- * yet (planned S4, N167): the screen then says it is not there, as before. "Tạo ticket" (#15(b)) is its one primary button.
+ * (an API without it): the screen then says it is not there, as before. Real API since K1c-1 (#538). "Tạo ticket" (#15(b)) is its one primary button.
  */
 export function TicketList({ item, go, role }: { item: NavItem; go: NavItem; role: Role }) {
   const { workspaceId } = useScope();
@@ -160,7 +169,7 @@ export function TicketList({ item, go, role }: { item: NavItem; go: NavItem; rol
                         {PRIORITY[t.priority]}
                       </td>
                       <td className="p-2">
-                        {t.assignee?.name ?? <span className="text-text-muted">Chưa giao</span>}
+                        <Assignee t={t} />
                       </td>
                       <td className="p-2">{slaText(t)}</td>
                       <td className="p-2 whitespace-nowrap">{changedAt(t)}</td>
