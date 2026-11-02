@@ -58,16 +58,37 @@ infra/
 - `api` deploy bằng `pnpm deploy --config.auto-install-peers=false --config.dedupe-peer-dependents=false` (chỉ trong Dockerfile): bỏ peer tùy chọn `next`/`react` của better-auth (~480 MB). Vì vậy peer phải là dependency trực tiếp (`socket.io-adapter` trong `apps/api`).
 - Admin (Next.js) không bắt SIGTERM: `docker stop` kết thúc bằng exit 143, bình thường.
 - CI job `docker` build cả 4 rồi chạy `infra/docker/test-images.sh` với PostgreSQL + Valkey thật. Ngưỡng: bản nén > 100 MB cảnh báo, > 150 MB đỏ; bản giải nén chỉ cảnh báo (> 400 MB; riêng `node:22-slim` đã ~326 MB). Trivy: CRITICAL có bản sửa → đỏ, HIGH chỉ in.
-- **Lọc đường dẫn của job `docker`** (job `changes`, `infra/ci/docker-needed.sh` + test cùng thư mục):
-  - PR **chỉ** đổi file thuộc denylist thì bỏ `docker`: `**/*.md`, `docs/**`, `prototype/**`, `evals/**`, `.github/ISSUE_TEMPLATE/**`.
-  - Push lên `main` và chạy tay luôn chạy.
-  - Denylist (liệt kê thứ được bỏ), không allowlist: hai Dockerfile `COPY . .`, mọi path khác đều có thể vào image.
-  - Thêm chỗ đọc file `.md` hay file trong `docs/` lúc build hoặc lúc chạy (ví dụ prompt `.md`) thì **phải** sửa denylist.
-  - Không dùng `paths-ignore` cấp workflow: nó bỏ cả job `security`, mà PR tài liệu vẫn phải quét secret.
+- **Lọc đường dẫn** (job `changes`, `infra/ci/changes.sh` + `changes.test.sh`; CEO 02/11/2026 Cách 1): script ghi 4 câu trả lời,
+  mỗi job có điều kiện chỉ bị bỏ khi câu trả lời của nó đúng bằng `false`.
+  - `docker`: `false` khi **mọi** file thuộc `**/*.md`, `docs/**`, `prototype/**`, `evals/**`, `.github/ISSUE_TEMPLATE/**`, `infra/terraform/**`.
+  - `backend` (job `database`, `queue`; `coverage` cần cả hai nên bỏ theo): `false` khi **mọi** file thuộc danh sách của `docker` hoặc
+    `apps/admin/**`, `apps/widget/**`, `packages/ui/**`. Job `database` chạy cả test tích hợp của API, `queue` chạy worker và API: không
+    tách theo `packages/db`.
+  - `admin`: `true` khi có file **không phải `.md`** thuộc `apps/admin/**`, `apps/widget/**`, `packages/ui/**`, `packages/config/**`,
+    `docs/ui/**`, file ở gốc repo, `.github/workflows/**`, `infra/ci/**`.
+  - `terraform`: `true` khi có file thuộc `infra/terraform/**`, `.github/workflows/**`, `infra/ci/**`.
+  - Job chạy theo loại PR (luật "job chạy thật" của `CLAUDE.md` gốc theo bảng này):
+
+    | PR | Chạy thật, phải success | Bỏ |
+    |---|---|---|
+    | Code BE (`apps/api`, `apps/worker`, `packages/*` trừ `ui`) | changes, verify, security, docker, database, queue, coverage | admin, terraform |
+    | Chỉ FE (`apps/admin`, `apps/widget`, `packages/ui`) | changes, verify, security, docker, admin | database, queue, coverage, terraform |
+    | Chỉ docs (`*.md`, `docs/`) | changes, verify, security | 6 job còn lại |
+    | Chỉ Terraform | changes, verify, security, terraform | docker, database, queue, coverage, admin |
+    | Lẫn, file ở gốc, workflow, `infra/ci/`; push lên `main`; chạy tay | cả 9 | — |
+
+  - Denylist cho `docker` và `backend` (liệt kê thứ được bỏ), không allowlist: hai Dockerfile `COPY . .`, mọi path khác đều có thể vào
+    image. Thêm chỗ đọc file `.md`, `docs/` hay `infra/terraform/` lúc build hoặc lúc chạy (ví dụ prompt `.md`) thì **phải** sửa danh sách.
+  - Không dùng `paths-ignore` cấp workflow: nó bỏ cả job `security`, mà PR tài liệu vẫn phải quét secret. Không đổi tên job: 9 required
+    check đi theo tên (`changes (docker needed?)` giữ nguyên).
   - Fail-safe hai lớp:
-    - Script luôn exit 0 và trả `docker=true` khi không chắc: git lỗi, không có merge commit, `HEAD^1` khác `base.sha`, không có file đổi.
-    - `if:` của `docker` là `!= 'false'`, không bao giờ `== 'true'`: `changes` đỏ hay không có output thì `docker` vẫn chạy.
-    - Đừng "dọn gọn" hai chỗ này: dọn thì bộ lọc hỏng mà CI vẫn xanh, docker bị bỏ không ai biết.
+    - Script luôn exit 0 và trả cả 4 `true` khi không chắc: không phải pull request, git lỗi, không có merge commit, `HEAD^1` khác
+      `base.sha`, không có file đổi.
+    - `if:` của mỗi job là `!= 'false'`, không bao giờ `== 'true'`: `changes` đỏ hay không có output thì mọi job vẫn chạy.
+    - Đừng "dọn gọn" hai chỗ này: dọn thì bộ lọc hỏng mà CI vẫn xanh, job bị bỏ không ai biết. Đổi một regex thì `changes.test.sh` phải
+      có ca đỏ khi bỏ regex đó (đột biến khi viết: 10/10 bị bắt).
+- **`concurrency`**: PR hủy lần chạy cũ của chính nó; `main` không bao giờ hủy (`cancel-in-progress: github.ref != 'refs/heads/main'`),
+  để mỗi commit của `main` có lần chạy riêng cho báo cáo sau merge (CEO 02/11/2026, sau lần #552 bị hủy giữa chừng).
 - **"Sẵn sàng merge"** theo quy ước Sẵn sàng merge (`docs/ui/session-summary-29-10.md` mục 2, #412), không ghi số job cứng:
   - Mọi job trong `ci.yml` của `main` xanh trên đúng HEAD.
   - HEAD khớp `git ls-remote`.
