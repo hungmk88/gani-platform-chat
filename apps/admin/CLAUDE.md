@@ -5,7 +5,7 @@ Brief Backend & Core v1.0 thắng Brief UI. Khi mâu thuẫn → ghi vào `QUEST
 
 ## Phạm vi theo đợt
 
-Dự án có **2 đợt** (Đợt 1 = 58 mã, go-live 15/02/2027; Đợt 2 = 77 mã, 3 cổng). Căn cứ: file
+Dự án có **2 đợt** (Đợt 1 = 58 mã, go-live 31/01/2027, Brief P21, #546; Đợt 2 = 77 mã, 3 cổng). Căn cứ: file
 "Phạm vi triển khai — 135 mã". Mã không có trong file thì ngoài phạm vi.
 
 - Màn Đợt 2 được ẩn bằng feature flag ở Đợt 1; không hiện rồi báo "không có quyền".
