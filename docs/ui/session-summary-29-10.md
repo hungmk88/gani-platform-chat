@@ -158,8 +158,9 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
     từ comment, 9 giây từ lúc đủ điều kiện): đúng tinh thần, không phải vi phạm, nhưng lần sau phải theo cách tính trên.
-  - **B1 sau #521:** giữ "một phần" (chỉ DB: lease, lần thử kế tiếp, `app.outbound_pending_orgs`; chưa có worker gửi, chưa có
-    client Zalo); bằng chứng B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do.
+  - **B1 sau #521, #522:** giữ "một phần". #521 chỉ DB (lease, lần thử kế tiếp, `app.outbound_pending_orgs`); #522 (O2a, tầng 1
+    code, auto-merge 05:13:02 sau CI 9/9) chỉ kho của outbound worker; job O2b, nối worker O2c và client Zalo chưa có. Bằng chứng
+    B1 trong `docs/reviews/progress-20261101.md` đã ghi lý do.
   - **Kênh 2, chu kỳ kiểm:** `trig_01Br6sSpPXw9Xej9KzBakxUt` phút 06 mỗi 2 giờ UTC (phiên `session_015SNdqeCQvNjK6rFoqzt5Su`)
     khi không có việc mở, một dòng "không đổi". Có việc mở (PR đang mở; câu hỏi U FE đang làm dở; việc chờ CEO duyệt): thêm lần
     kiểm 30 phút một lần bằng `send_later` nối tiếp, ghi lý do tăng tần suất trong báo cáo; hết việc mở thì quay lại 2 giờ
