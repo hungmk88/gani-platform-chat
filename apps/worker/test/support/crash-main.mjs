@@ -17,6 +17,8 @@ import { createDbPool, withTenant } from '@gani/db';
 
 import { createDbRefreshStore } from '../../dist/channels/db-store.js';
 import { createTokenRefresher } from '../../dist/channels/refresher.js';
+import { createDbOutboundStore } from '../../dist/outbound/db-store.js';
+import { createChannelSenders } from '../../dist/outbound/senders.js';
 import { readConfig } from '../../dist/config.js';
 import { realtimeHandlers } from '../../dist/consumer/realtime-handlers.js';
 import { createBotTurn } from '../../dist/inbound/bot-turn.js';
@@ -44,6 +46,7 @@ const pool = createDbPool(config.databaseUrl, {
     config.outbox.orgParallel +
     config.inbound.orgParallel +
     config.refresh.orgParallel +
+    config.outbound.orgParallel +
     config.events.concurrency +
     2,
 }); // same as main.ts
@@ -77,6 +80,8 @@ const queue = {
 // The packets of realtime (V8b): only with the consumer, whose handlers send them.
 const emitter = config.events.enabled ? createAgentEmitter(config.redisUrl, log) : null; // same as main.ts
 const refresher = config.refresh.enabled ? createTokenRefresher() : null; // same as main.ts
+// The sending of the pending deliveries (O2, N185): only when turned on and given a channel sender, which comes with O3 (Q6).
+const senders = config.outbound.enabled ? createChannelSenders() : null; // same as main.ts
 startWorker({
   store: createDbRelayStore({ pool }),
   queue,
@@ -100,6 +105,14 @@ startWorker({
       store: createDbRefreshStore({ pool }),
       refresher,
       settings: config.refresh,
+      metrics,
+    },
+  }),
+  ...(senders && {
+    outbound: {
+      store: createDbOutboundStore({ pool }),
+      senders,
+      settings: config.outbound,
       metrics,
     },
   }),

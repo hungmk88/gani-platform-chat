@@ -8,6 +8,8 @@ import { installCrashHandlers, redactPii } from '@gani/domain';
 
 import { createDbRefreshStore } from './channels/db-store.js';
 import { createTokenRefresher } from './channels/refresher.js';
+import { createDbOutboundStore } from './outbound/db-store.js';
+import { createChannelSenders } from './outbound/senders.js';
 import { ConfigError, readConfig } from './config.js';
 import { realtimeHandlers } from './consumer/realtime-handlers.js';
 import { createBotTurn } from './inbound/bot-turn.js';
@@ -47,6 +49,7 @@ const pool = createDbPool(config.databaseUrl, {
     config.outbox.orgParallel +
     config.inbound.orgParallel +
     config.refresh.orgParallel +
+    config.outbound.orgParallel +
     config.events.concurrency +
     2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
@@ -70,6 +73,8 @@ log.info('worker_http_listening', { port: http.port });
 const emitter = config.events.enabled ? createAgentEmitter(config.redisUrl, log) : null;
 // The renewal of the channel tokens (B2, N173): only when turned on and given the platform client, which comes with B2-3 (Q6).
 const refresher = config.refresh.enabled ? createTokenRefresher() : null;
+// The sending of the pending deliveries (O2, N185): only when turned on and given a channel sender, which comes with O3 (Q6).
+const senders = config.outbound.enabled ? createChannelSenders() : null;
 const worker = startWorker({
   store: createDbRelayStore({ pool }),
   queue: createBullmqPublisher(config.redisUrl, log),
@@ -94,6 +99,14 @@ const worker = startWorker({
       store: createDbRefreshStore({ pool }),
       refresher,
       settings: config.refresh,
+      metrics,
+    },
+  }),
+  ...(senders && {
+    outbound: {
+      store: createDbOutboundStore({ pool }),
+      senders,
+      settings: config.outbound,
       metrics,
     },
   }),

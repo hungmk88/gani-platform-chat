@@ -1,4 +1,5 @@
 import type { RefreshMetrics } from './channels/token-refresh.js';
+import type { OutboundMetrics } from './outbound/outbound-sender.js';
 
 /** What the relay reports as it goes (review OPS-02). Every method is cheap and never throws. */
 export interface RelayMetrics {
@@ -32,7 +33,9 @@ export interface OutboxTotals {
  * numbers are for the platform, a label per tenant would leak who has work and grow without bound. The state of the outbox table
  * (pending, oldest age, dead letters) is not counted here: `scrape()` reads it from the database at each scrape (outbox spec §7).
  */
-export class WorkerMetrics implements RelayMetrics, ConsumerMetrics, RefreshMetrics {
+export class WorkerMetrics
+  implements RelayMetrics, ConsumerMetrics, RefreshMetrics, OutboundMetrics
+{
   private passes = 0;
   private failedPasses = 0;
   private lastPassAt: number;
@@ -46,6 +49,7 @@ export class WorkerMetrics implements RelayMetrics, ConsumerMetrics, RefreshMetr
   private jobsFailed = 0;
   private queues = 0;
   private readonly refreshes = { ok: 0, failed: 0, refused: 0, lease_lost: 0 };
+  private readonly deliveries = { sent: 0, retried: 0, failed: 0, lease_lost: 0 };
 
   constructor(
     private readonly now: () => number = Date.now,
@@ -95,6 +99,10 @@ export class WorkerMetrics implements RelayMetrics, ConsumerMetrics, RefreshMetr
     this.refreshes[result]++;
   }
 
+  delivered(result: Parameters<OutboundMetrics['delivered']>[0]): void {
+    this.deliveries[result]++;
+  }
+
   /** Alive while the relay ended a pass (even a failed one) within `maxAgeMs`: a loop that hangs stops the passes. */
   healthy(maxAgeMs: number): boolean {
     return this.now() - this.lastPassAt <= maxAgeMs;
@@ -119,6 +127,10 @@ export class WorkerMetrics implements RelayMetrics, ConsumerMetrics, RefreshMetr
       ['channel_token_refresh_failed_total', 'counter', 'Renewals that failed and are tried again once their lease ends.', this.refreshes.failed],
       ['channel_token_refresh_refused_total', 'counter', 'Renewals the platform refused: the account was disconnected.', this.refreshes.refused],
       ['channel_token_refresh_lease_lost_total', 'counter', 'Renewals not written because their claim was taken back.', this.refreshes.lease_lost],
+      ['outbound_sent_total', 'counter', 'Deliveries the channel took.', this.deliveries.sent],
+      ['outbound_retried_total', 'counter', 'Attempts that failed and wait for the next one.', this.deliveries.retried],
+      ['outbound_failed_total', 'counter', 'Deliveries failed for good (last attempt, refusal, closed window).', this.deliveries.failed],
+      ['outbound_lease_lost_total', 'counter', 'Results not written because their claim was taken back.', this.deliveries.lease_lost],
     ];
     return format(series);
   }
