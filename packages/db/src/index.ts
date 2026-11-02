@@ -85,3 +85,4 @@ export {
 } from './tenant-context.js';
 export { withCurrentTenant, withTenant, type TenantTx } from './tenant-tx.js';
 export { InvalidTenantContextError } from './validate.js';
+export * from './ticket-store.js';
