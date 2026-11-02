@@ -53,6 +53,16 @@ test('a Viewer goes to the profile; an item outside the menu of the role is stil
   page,
 }) => {
   await signIn(page, accountOf('viewer'));
+  // #12 is built on a draft contract (brief 29): the real API does not serve it yet and answers 404, as here.
+  await page.route(
+    (u) => u.pathname === '/v1/leads',
+    (r) =>
+      r.fulfill({
+        status: 404,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ status: 404, code: 'not_found', traceId: 'trace-404' }),
+      }),
+  );
   await page.goto('/leads');
   await expect(page.getByRole('heading', { name: /^Lead: màn này chưa có/ })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Mở hồ sơ cá nhân' })).toHaveAttribute('href', '/me');
