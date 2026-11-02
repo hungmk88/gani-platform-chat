@@ -70,6 +70,31 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   reset** khi `main` đổi: cùng đường dẫn với PR (khác nội dung cũng vậy); `packages/db` (schema, migration); `CLAUDE.md` hay
   `QUESTIONS.md`. Giữ đồng hồ thì ghi vào comment PR: "main đổi commit X, file Y, không overlap → giữ heads-up cũ". Không chắc
   thì reset, không đoán. Commit của chính PR vẫn reset như luật 30 phút.
+- **Mức A: DEV tự merge PR tầng 3 theo phương án đã duyệt** (02/11/2026, ký A (CEO)). Chỉ khi đủ cả 7 điều kiện; thiếu một
+  điều thì không merge, báo CEO:
+  1. Phương án đã được CEO duyệt: brief giao việc ghi rõ, hoặc CEO comment "Duyệt phương án" / "APPROVED theo Mức A" trên PR.
+  2. 9 job xanh thật trên đúng HEAD sau lần Update branch cuối (PR code: `docker images` success; PR docs: 8 success +
+     `docker images` skipped, log `changes` ghi "chỉ docs").
+  3. `mergeable_state = clean`, HEAD khớp `git ls-remote`.
+  4. Diff mã khớp phương án: không thêm/bớt file, schema hay dependency ngoài phương án; ≤ 400 dòng (500 nếu test bắt buộc),
+     không tính file sinh.
+  5. Không đụng dữ liệu khách thật (INSERT/UPDATE/DELETE trên `customers`, `conversations`, `messages`, `tickets` ở production).
+  6. Trivy không có HIGH/CRITICAL có bản sửa; GitGuardian xanh.
+  7. Sau merge: diff HEAD ↔ commit squash = 0; báo CEO HEAD, commit squash, 9 job trước và sau merge theo tên, xác nhận diff
+     khớp phương án.
+  - CEO xem lại trong 24 giờ sau merge; lệch phương án thì revert hoặc migration bù (rollback vẫn do CEO quyết).
+  - Mọi phê duyệt phải là comment GitHub của CEO (#498); tin nhắn không tính. Bỏ FE review hay heads-up của một PR chỉ khi CEO
+    ghi rõ trên PR đó (ví dụ #542–#544: "bỏ FE comment + heads-up").
+- **Duyệt lô theo sprint** (02/11/2026, ký A (CEO), sprint 02/11–09/11):
+  - Trong sprint CEO duyệt lô, mọi PR tầng 2/3 có phương án đã duyệt (brief hoặc comment GitHub): DEV tự merge khi đủ 7 điều
+    kiện Mức A, không cần CEO comment lại từng PR; diff lệch phương án thì dừng, báo CEO.
+  - Trong sprint đó bỏ FE comment (FE review sau merge 24 giờ, sai thì CEO quyết revert) và bỏ heads-up 30' của tầng 2. Ngoài
+    sprint quay về luật cũ, trừ khi CEO gia hạn bằng comment GitHub. Báo cáo cuối ngày và cuối sprint.
+- **Nhận việc và báo cáo** (02/11/2026, ký A (CEO), quy trình 7 bước):
+  - Nhận việc qua chat: DEV soạn ngay brief giao việc gửi lại CEO (bối cảnh, phạm vi, tầng, hạn, acceptance, ràng buộc, câu hỏi
+    cần chốt), không code ở bước này; sau đó mới Plan Mode.
+  - Sau mỗi merge, báo CEO 5 mục: HEAD trước merge; commit squash; 9 job trước merge theo tên và giờ xong; 9 job của `main` sau
+    merge theo tên; diff HEAD ↔ squash = 0 (kèm xác nhận diff khớp phương án khi theo Mức A).
 
 ### Quy trình mỗi PR
 
