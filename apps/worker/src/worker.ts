@@ -11,6 +11,13 @@ import { InboundProcessor, type InboundStore } from './inbound/inbound-processor
 import type { Logger } from './logger.js';
 import { PartitionMaintenanceJob, type PartitionStore } from './maintenance/partition-job.js';
 import type { ConsumerMetrics, RelayMetrics } from './metrics.js';
+import {
+  type ChannelSenders,
+  type OutboundMetrics,
+  type OutboundSettings,
+  OutboundSenderJob,
+  type OutboundStore,
+} from './outbound/outbound-sender.js';
 import { OutboxRelay, type QueuePublisher, type RelayStore } from './relay/outbox-relay.js';
 
 export interface WorkerDeps {
@@ -31,6 +38,14 @@ export interface WorkerDeps {
     readonly settings: ChannelRefreshSettings;
     readonly metrics?: RefreshMetrics;
   };
+  /** The sending of the pending deliveries to their channel (O2, N185): absent, it is not run (OUTBOUND_ENABLED=0, and always until
+   * O3 builds a channel sender). */
+  readonly outbound?: {
+    readonly store: OutboundStore;
+    readonly senders: ChannelSenders;
+    readonly settings: OutboundSettings;
+    readonly metrics?: OutboundMetrics;
+  };
   /** The consumer of the event queues (N141): absent, it is not run (EVENTS_CONSUMER_ENABLED=0, and the tests of the relay). */
   readonly events?: {
     readonly source: QueueSource;
@@ -48,7 +63,7 @@ export interface WorkerDeps {
 }
 
 export interface RunningWorker {
-  /** Stops the relay, then closes the HTTP endpoints, then stops the inbound processor and the token refresh, then closes the queue
+  /** Stops the relay, then closes the HTTP endpoints, then stops the inbound processor, the token refresh and the outbound worker, then closes the queue
    * and the pool. True when all went well; the second call gives the first answer. */
   shutdown(): Promise<boolean>;
 }
@@ -70,6 +85,10 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
     ? new ChannelTokenRefreshJob({ ...deps.refresh, log, shutdownMs: settings.shutdownMs })
     : null;
   refresh?.start();
+  const outbound = deps.outbound
+    ? new OutboundSenderJob({ ...deps.outbound, log, shutdownMs: settings.shutdownMs })
+    : null;
+  outbound?.start();
   const consumer = deps.events
     ? new EventConsumer({ ...deps.events, log, shutdownMs: settings.shutdownMs })
     : null;
@@ -112,6 +131,8 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
         const drained = inbound ? await step('inbound', () => inbound.stop(), false) : true;
         // The same for the token refresh: it writes the account in progress before it stops (its own deadline too).
         const renewed = refresh ? await step('refresh', () => refresh.stop(), false) : true;
+        // The same for the outbound worker: it writes the delivery in progress before it stops (its own deadline too).
+        const delivered = outbound ? await step('outbound', () => outbound.stop(), false) : true;
         // After the loops that feed the queues; it waits for the jobs running and has its own deadline too.
         const consumed = consumer ? await step('events', () => consumer.stop(), false) : true;
         const emitter = deps.events?.emitter;
@@ -125,6 +146,7 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
           served &&
           drained &&
           renewed &&
+          delivered &&
           consumed &&
           silent &&
           maintained &&

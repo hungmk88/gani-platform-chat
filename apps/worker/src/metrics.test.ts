@@ -36,6 +36,10 @@ describe('WorkerMetrics', () => {
       channel_token_refresh_failed_total: '0',
       channel_token_refresh_refused_total: '0',
       channel_token_refresh_lease_lost_total: '0',
+      outbound_sent_total: '0',
+      outbound_retried_total: '0',
+      outbound_failed_total: '0',
+      outbound_lease_lost_total: '0',
     });
     expect(text).not.toMatch(/[{}]/);
   });
@@ -76,6 +80,21 @@ describe('WorkerMetrics', () => {
       channel_token_refresh_lease_lost_total: '1',
     });
     expect(text).not.toMatch(/[{}]/);
+  });
+
+  it('counts each result of the outbound worker in its own series, with no organisation (O2)', () => {
+    const m = new WorkerMetrics();
+    for (const result of ['sent', 'sent', 'retried', 'failed', 'lease_lost'] as const)
+      m.delivered(result);
+    const text = m.render();
+    // prettier-ignore
+    const values = Object.fromEntries(text.split('\n').filter((l) => l.startsWith('outbound_')).map((l) => l.split(' ') as [string, string]));
+    expect(values).toEqual({
+      outbound_sent_total: '2',
+      outbound_retried_total: '1',
+      outbound_failed_total: '1',
+      outbound_lease_lost_total: '1',
+    });
   });
 
   it('is healthy while a pass ended within the limit, counting from the start until the first one', () => {
