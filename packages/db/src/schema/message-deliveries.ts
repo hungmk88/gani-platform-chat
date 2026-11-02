@@ -1,6 +1,7 @@
 import { integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-// Mirrors migration 202610211000_create_message_deliveries.sql: whether a message of the account reached the person (N146).
+// Mirrors migrations 202610211000_create_message_deliveries.sql (whether a message of the account reached the person, N146) and
+// 202611071000_add_message_deliveries_outbound_lease.sql (the lease and the next attempt of the outbound worker, O1, N185).
 export const messageDeliveries = pgTable('message_deliveries', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -15,6 +16,8 @@ export const messageDeliveries = pgTable('message_deliveries', {
   lastError: text('last_error'),
   platformMessageId: text('platform_message_id'),
   sentAt: timestamp('sent_at', { withTimezone: true }),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

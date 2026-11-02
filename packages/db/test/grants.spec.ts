@@ -72,7 +72,9 @@ const APP_UPDATE: Record<string, string[]> = {
   ],
   message_deliveries: [
     'attempts',
+    'claimed_at',
     'last_error',
+    'next_attempt_at',
     'platform_message_id',
     'sent_at',
     'status',

@@ -17,6 +17,7 @@ const ADR_004 = [
   'app.log_default_partition_rows',
   'app.lookup_invite',
   'app.memberships_for_user',
+  'app.outbound_pending_orgs',
   'app.outbox_pending_orgs',
   'app.outbox_stats',
   'app.purge_idempotency_keys',
