@@ -26,7 +26,7 @@ test('an Admin opens the tab and reads the default week of the system, asking no
   });
   await signIn(page, accountOf('admin'));
   await page.goto('/settings/workspace');
-  await expect(tabs(page).getByRole('link')).toHaveText(['Workspace', 'Giờ làm việc']);
+  await expect(tabs(page).getByRole('link')).toHaveText(['Workspace', 'Giờ làm việc', 'Ngày nghỉ']);
   await tabs(page).getByRole('link', { name: 'Giờ làm việc' }).click();
   await expect(page).toHaveURL(/\?tab=hours$/);
   await expect(tabs(page).getByRole('link', { name: 'Giờ làm việc' })).toHaveAttribute(
