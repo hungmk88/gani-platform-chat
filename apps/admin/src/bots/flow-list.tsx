@@ -85,6 +85,11 @@ export function FlowList({ item, go }: { item: NavItem; go: NavItem }) {
                       <Link href={`/bots/${encodeURIComponent(f.id)}`} className="underline">
                         {f.name}
                       </Link>
+                      {f.description ? (
+                        <p className="text-12 whitespace-pre-line text-text-muted">
+                          {f.description}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="py-2 pr-4">
                       <span className={`rounded-input px-2 ${tone ? TONE[tone] : 'bg-bg-subtle'}`}>

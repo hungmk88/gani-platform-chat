@@ -26,7 +26,10 @@ const flow = (
 });
 
 export const BOT_FLOWS: readonly BotFlow[] = [
-  flow(1, 'Chào khách mới', 'active', 3, 7, '2026-10-31T03:00:00.000Z'),
+  {
+    ...flow(1, 'Chào khách mới', 'active', 3, 7, '2026-10-31T03:00:00.000Z'),
+    description: 'Chào khách nhắn lần đầu, rồi hỏi nhu cầu.',
+  },
   flow(2, 'Ngoài giờ', 'inactive', 1, 2, '2026-10-28T09:00:00.000Z'),
   flow(3, 'Hỏi giá sỉ', 'draft', null, 0, '2026-10-27T01:00:00.000Z'),
 ];

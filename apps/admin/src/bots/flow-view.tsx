@@ -60,6 +60,9 @@ export function FlowView({ id }: { id: string }) {
     <>
       {back}
       <h1 className="text-20 font-semibold">{f.name}</h1>
+      {f.description ? (
+        <p className="whitespace-pre-line text-text-muted">{f.description}</p>
+      ) : null}
       <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr]">
         <dt className="text-text-muted">Trạng thái</dt>
         <dd>
