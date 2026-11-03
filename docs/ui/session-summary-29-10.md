@@ -205,6 +205,17 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       bộ lọc; dòng "Lẫn" của bảng đã sửa thành 8 job ở #567 (CEO duyệt 19:15 UTC 02/11 theo mô tả #567, merge 01:45:32 UTC 03/11). Hệ quả cho FE, **chưa làm, chờ
       CEO**: phần "Giờ làm việc, ngày nghỉ" của #21 Workspace (đang ghi "chờ API") nay có API đọc và ghi giờ làm việc. FE không
       comment PR BE.
+    - BE sửa file FE sinh `apps/admin/src/api/schema.d.ts` (+185, file FE duy nhất) trong #570 (C10-3b-i, tầng 1, ngày nghỉ của
+      workspace, merge 02:02:20 UTC 03/11, squash `f42701d`; luật #546, review trong 24 giờ, brief 49). **Đúng:** `openapi.json` chỉ
+      thêm `GET/POST /v1/workspaces/{id}/holidays` và 3 schema `Holiday`, `HolidayCreate`, `HolidayList`; không đường hay schema cũ
+      nào đổi; không chạm `QUESTIONS.md` hay U-series. CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn" (8 job) sau
+      #567. Hệ quả cho FE, **chưa làm, chờ CEO** (brief 49 mục 4: a/b/c): #21 Workspace có API thật cho cả giờ làm việc (#566) lẫn
+      ngày nghỉ (#570); `planned.json` không có đường nào cho hai phần này. FE không comment PR BE.
+    - BE sửa file FE sinh `apps/admin/src/api/schema.d.ts` (+177/−3, file FE duy nhất) trong #571 (C10-3b-ii, tầng 1, sửa và xóa
+      ngày nghỉ, merge 05:36:48 UTC 03/11, squash `0a4881c`; luật #546, review trong 24 giờ). **Đúng:** thêm
+      `PATCH/DELETE /v1/workspaces/{id}/holidays/{hid}` và schema `HolidayChange`; `GET/POST /v1/workspaces/{id}/holidays` chỉ đổi chữ
+      mô tả lỗi 404/422 (thêm "no such live day off"), không đổi mã lỗi, body hay schema; không chạm U-series. CI trước merge 8 success
+      + `terraform` skipped, đúng dòng "Lẫn". Hệ quả cho FE: như #570, chờ CEO chọn a/b/c cho #21. FE không comment PR BE.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
