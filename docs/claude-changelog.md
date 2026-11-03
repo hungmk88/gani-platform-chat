@@ -2,6 +2,11 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 02/11/2026: sửa bảng job, dòng PR lẫn (ký A (CEO), 19:15 UTC)
+
+- Bảng "Job chạy theo loại PR" (`CLAUDE.md`, `infra/CLAUDE.md`): PR lẫn BE + FE hay đổi file ở gốc chạy 8 job, `terraform` skip
+  (đúng bộ lọc `changes.sh` đã duyệt, #563); chỉ workflow, `infra/ci/`, push lên `main` chạy cả 9.
+
 ## 02/11/2026: job chạy theo loại PR, song song và gộp PR (ký A (CEO), brief tăng tốc 17:55, duyệt 18:00 và 18:10 UTC)
 
 - GIT WORKFLOW thêm **Job chạy theo loại PR** (Cách 1, #562): bảng job phải chạy theo loại PR (code BE 7, chỉ FE 5, chỉ docs 3,
