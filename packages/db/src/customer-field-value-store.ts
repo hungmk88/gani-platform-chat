@@ -17,6 +17,14 @@ import { assertUuid } from './validate.js';
 /** The column a sensitive value is bound to, with its row id, in the additional data of the encryption (Tag 2b migration). */
 export const FIELD_VALUE_COLUMN = 'customer_field_values.value_enc';
 
+/** A value does not fit its field: its type, or not one of its choices (422 invalid_field_value). */
+export class FieldValueInvalidError extends Error {
+  constructor() {
+    super('a value does not fit its field');
+    this.name = 'FieldValueInvalidError';
+  }
+}
+
 /** A field named is not a live field of the company (404). */
 export class FieldNotFoundError extends Error {
   constructor() {
@@ -29,6 +37,11 @@ export class FieldNotFoundError extends Error {
 export type FieldValue = string | number | readonly string[];
 /** Encrypts the JSON of a value for the row `rowId`; gives the ciphertext and the key version. */
 export type FieldSeal = (rowId: string, plaintext: string) => { enc: Buffer; keyVersion: number };
+/** The value a field takes, as stored (the caller may normalise it), or undefined when it does not fit the field. */
+export type FieldFit = (
+  field: { readonly type: string; readonly options: readonly string[] },
+  value: FieldValue,
+) => FieldValue | undefined;
 /** Decrypts the ciphertext of the row `rowId` back to the JSON of its value. */
 export type FieldOpen = (rowId: string, enc: Buffer, keyVersion: number) => string;
 
@@ -101,6 +114,7 @@ export async function setFieldValues(
   customerId: string,
   values: readonly { readonly fieldId: string; readonly value: FieldValue | null }[],
   seal: FieldSeal,
+  fit: FieldFit = (_field, value) => value,
 ): Promise<string[] | null> {
   const customer = assertUuid(customerId, 'customerId');
   const [found] = await tx
@@ -112,11 +126,25 @@ export async function setFieldValues(
   const ids = [...new Set(values.map((v) => assertUuid(v.fieldId, 'fieldId')))];
   if (ids.length === 0) return [];
   const fields = await tx
-    .select({ id: customerFieldDefs.id, sensitive: customerFieldDefs.sensitive })
+    .select({
+      id: customerFieldDefs.id,
+      type: customerFieldDefs.type,
+      options: customerFieldDefs.options,
+      sensitive: customerFieldDefs.sensitive,
+    })
     .from(customerFieldDefs)
     .where(and(inArray(customerFieldDefs.id, ids), live))
     .for('share', { of: customerFieldDefs });
   if (fields.length !== ids.length) throw new FieldNotFoundError();
+  const fitted = values.map(({ fieldId, value }) => {
+    if (value === null) return { fieldId, value };
+    const next = fit(
+      fields.find((f) => f.id === fieldId)!,
+      value,
+    );
+    if (next === undefined) throw new FieldValueInvalidError();
+    return { fieldId, value: next };
+  });
   const existing = await tx
     .select({ id: customerFieldValues.id, fieldId: customerFieldValues.fieldId })
     .from(customerFieldValues)
@@ -125,7 +153,7 @@ export async function setFieldValues(
     )
     .for('update');
   const { orgId } = currentTenantContext();
-  for (const { fieldId, value } of values) {
+  for (const { fieldId, value } of fitted) {
     const sensitive = fields.find((f) => f.id === fieldId)!.sensitive;
     const rowId = existing.find((e) => e.fieldId === fieldId)?.id ?? uuidv7();
     const sealed = value !== null && sensitive ? seal(rowId, JSON.stringify(value)) : null;

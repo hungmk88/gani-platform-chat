@@ -1,7 +1,17 @@
-import { FieldHasDataError, FieldLimitError } from '@gani/db';
+import {
+  FieldHasDataError,
+  FieldLimitError,
+  FieldNotFoundError,
+  FieldValueInvalidError,
+} from '@gani/db';
+import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
-import { fieldHttpErrorOf } from './customer-fields.errors.js';
+import {
+  FieldKeysMissingHttpError,
+  fieldHttpErrorOf,
+  fieldValueHttpErrorOf,
+} from './customer-fields.errors.js';
 import { mayManageFields } from './customer-fields.permissions.js';
 
 describe('customer fields', () => {
@@ -15,6 +25,19 @@ describe('customer fields', () => {
     ]);
     const other = new Error('x');
     expect(fieldHttpErrorOf(other)).toBe(other);
+  });
+
+  it('answers the refusals of the value store: 404 for a field not of the company, 422, and 503 without a key', () => {
+    expect(fieldValueHttpErrorOf(new FieldNotFoundError())).toBeInstanceOf(NotFoundException);
+    const invalid = fieldValueHttpErrorOf(new FieldValueInvalidError()) as {
+      status: number;
+      code: string;
+    };
+    expect([invalid.status, invalid.code]).toEqual([422, 'invalid_field_value']);
+    const keys = new FieldKeysMissingHttpError();
+    expect([keys.status, keys.code]).toEqual([503, 'service_unavailable']);
+    const other = new Error('x');
+    expect(fieldValueHttpErrorOf(other)).toBe(other);
   });
 
   it('lets only an Owner or an Admin define fields', () => {
