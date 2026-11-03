@@ -2,11 +2,13 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
-## 03/11/2026: scan secret chạy riêng, mẫu `sk-` (ký A (CEO), brief 52)
+## 03/11/2026: scan secret chạy riêng, mẫu `sk-` (ký A (CEO), brief 52, 53)
 
 - "Scan trước khi push": mẫu `sk-` đổi thành `sk-[a-zA-Z0-9]{20,}` (`sk-` trần trúng `risk-ownership`); scan chạy riêng, không
-  nối với `git commit`/`git push`; có dòng PR thêm vào khớp mẫu thì exit 1, không push. Sự cố gốc: #575 (handoff FE
+  nối với `git commit`/`git push`; có dòng PR thêm vào khớp mẫu thì exit 1, không push tự động. Sự cố gốc: #575 (handoff FE
   `docs/ui/session-summary-29-10.md`).
+- Có kết quả: kiểm từng dòng; tất cả là dòng mẫu quét hoặc dòng đã có trên `main` thì ghi vào mô tả PR rồi push, còn lại DỪNG
+  (brief 53; ca đầu là chính PR này: 2 dòng mẫu quét vừa sửa).
 
 ## 02/11/2026: sửa bảng job, dòng PR lẫn (ký A (CEO), 19:15 UTC)
 

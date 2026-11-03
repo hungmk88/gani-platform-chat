@@ -242,8 +242,10 @@ Get-ChildItem -Recurse -File -Exclude "*.git*","node_modules" |
 Có kết quả → **DỪNG**.
 
 - Scan chạy **riêng**, không nối với `git commit`/`git push` trong cùng một lệnh. Trước push quét các dòng PR thêm vào; có kết
-  quả thì lệnh scan trả exit 1 và **không push**, xem từng dòng bằng tay (CEO 03/11, brief 52, sau #575):
+  quả thì lệnh scan trả exit 1, **không push tự động** (CEO 03/11, brief 52, sau #575):
   `git diff origin/main...HEAD -U0 | grep '^+' | grep -i -E "<mẫu ở trên>"` có dòng → exit 1.
+- Khi quét trả kết quả, kiểm từng dòng. Nếu TẤT CẢ là dòng mẫu quét hoặc dòng đã có trên main từ trước PR: ghi vào mô tả PR
+  (dòng khớp + lý do) rồi push. Mọi trường hợp khác: DỪNG, không push. (CEO 03/11, brief 53.)
 - Mẫu `sk-[a-zA-Z0-9]{20,}`, không phải `sk-` trần: `sk-` trúng chữ thường như `risk-ownership` (#575).
 
 ### Khi secret lộ — 5 bước
