@@ -1,5 +1,5 @@
 // #17 Danh sách bot flow and its detail (D1a3a #496, CEO 01/11: Đợt 1, read only), real API: `GET /v1/bot-flows?workspaceId=`
-// (the live flows of a workspace, last changed first, at most 200, no cursor) and `GET /v1/bot-flows/{id}` (draft + published).
+// (all the live flows of a workspace, last changed first: a workspace has at most 200, U77 (c), so no cursor) and `GET /v1/bot-flows/{id}` (draft + published).
 import type { components } from '../api/schema';
 
 export type BotFlow = components['schemas']['BotFlow'];
@@ -7,7 +7,7 @@ export type BotFlowList = components['schemas']['BotFlowList'];
 export type BotFlowDetail = components['schemas']['BotFlowDetail'];
 type BotGraph = components['schemas']['BotGraph'];
 
-/** The most flows the list answers (openapi.json); whether a full list leaves older flows out is U77 (c). */
+/** The most live flows a workspace has (U77 (c), CEO 03/11/2026: 422 bot_flow_limit_reached past it): a full list leaves none out. */
 export const MAX_FLOWS = 200;
 
 export const flowsPath = (workspaceId: string) =>

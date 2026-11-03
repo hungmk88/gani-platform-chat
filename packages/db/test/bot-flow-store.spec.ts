@@ -4,14 +4,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   type BotGraph,
+  BOT_FLOW_LIMIT,
+  BotFlowLimitError,
   BotFlowNotFoundError,
   BotGraphInvalidError,
   botGraphProblem,
   createBotFlow,
   createDbPool,
+  listBotFlows,
   loadBotFlow,
   loadBotFlowVersion,
   lockBotFlow,
+  publishBotFlow,
   saveBotFlowDraft,
   updateBotFlow,
   withTenant,
@@ -218,5 +222,51 @@ describe('bot-flow-store', () => {
     // Blank or too long never reaches the table (the API trims first; the CHECK is the last net).
     for (const description of ['  ', 'x'.repeat(501)])
       await expect(change({ description })).rejects.toThrow();
+  });
+
+  it('pauses and resumes a flow, and a paused flow stays paused when published again (U77 (b))', async () => {
+    const { flow } = await make();
+    await save(flow.id, GRAPH);
+    const publish = () =>
+      as(A, (tx) =>
+        publishBotFlow(tx, { flowId: flow.id, publishedBy: seedUsers.get(A)!, newId: uuidv7 }),
+      );
+    const status = (s: 'active' | 'inactive') =>
+      as(A, async (tx) => {
+        await lockBotFlow(tx, flow.id);
+        return (await updateBotFlow(tx, flow.id, { status: s }))!.status;
+      });
+    expect((await publish()).flow.status).toBe('active');
+    expect(await status('inactive')).toBe('inactive');
+    expect((await publish()).flow.status).toBe('inactive');
+    expect(await status('active')).toBe('active');
+  });
+
+  it(`refuses a flow past ${BOT_FLOW_LIMIT} live ones of a workspace, one maker at a time, deleted ones aside (U77 (c))`, async () => {
+    const ws = workspaceOf.get(B)!;
+    const live = (
+      await admin.query<{ n: number }>(
+        'SELECT count(*)::int AS n FROM bot_flows WHERE workspace_id = $1 AND deleted_at IS NULL',
+        [ws],
+      )
+    ).rows[0]!.n;
+    await admin.query(
+      `INSERT INTO bot_flows (id, org_id, workspace_id, name) SELECT id, $2, $3, 'Lô' FROM unnest($1::uuid[]) AS t(id)`,
+      [Array.from({ length: BOT_FLOW_LIMIT - 1 - live }, () => uuidv7()), B, ws],
+    );
+    await admin.query(
+      `INSERT INTO bot_flows (id, org_id, workspace_id, name, deleted_at) VALUES ($1, $2, $3, 'Đã xóa', now())`,
+      [uuidv7(), B, ws],
+    );
+    const both = await Promise.allSettled([make(B), make(B)]);
+    expect(both.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(
+      (both.find((r) => r.status === 'rejected') as PromiseRejectedResult).reason,
+    ).toBeInstanceOf(BotFlowLimitError);
+    expect(await as(B, (tx) => listBotFlows(tx, { workspaceId: ws }))).toHaveLength(BOT_FLOW_LIMIT);
+    await admin.query(
+      `UPDATE bot_flows SET deleted_at = now() WHERE workspace_id = $1 AND name = 'Lô'`,
+      [ws],
+    );
   });
 });
