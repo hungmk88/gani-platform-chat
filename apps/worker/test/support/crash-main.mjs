@@ -17,6 +17,7 @@ import { createDbPool, withTenant } from '@gani/db';
 
 import { createDbRefreshStore } from '../../dist/channels/db-store.js';
 import { createTokenRefresher } from '../../dist/channels/refresher.js';
+import { createDbReleaseStore } from '../../dist/after-hours/db-store.js';
 import { createDbOutboundStore } from '../../dist/outbound/db-store.js';
 import { createChannelSenders } from '../../dist/outbound/senders.js';
 import { readConfig } from '../../dist/config.js';
@@ -47,6 +48,7 @@ const pool = createDbPool(config.databaseUrl, {
     config.inbound.orgParallel +
     config.refresh.orgParallel +
     config.outbound.orgParallel +
+    config.afterHours.orgParallel +
     config.events.concurrency +
     2,
 }); // same as main.ts
@@ -115,6 +117,9 @@ startWorker({
       settings: config.outbound,
       metrics,
     },
+  }),
+  ...(config.afterHours.enabled && {
+    afterHours: { store: createDbReleaseStore({ pool, fsm }), settings: config.afterHours }, // same as main.ts
   }),
   ...(emitter && {
     events: {
