@@ -1,5 +1,5 @@
 // #23 Dữ liệu khách, tabs "Trường tùy chỉnh" and "Tag", for the e2e stub API only (src/customer-data/catalog.ts):
-// `GET /v1/customer-fields` (planned S4, #548, N191), the company's fields by `position`, and `GET /v1/tags` (real API, #559,
+// `GET /v1/customer-fields` (real API since Tag 3b-ii, N191), the company's fields by `position`, and `GET /v1/tags` (real API, #559,
 // N190), its tags by name, hidden ones too. Every role of the company reads them. Empty lists, errors and the 404 of an API that does not serve the route yet are
 // given by the tests with page.route. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';

@@ -14,22 +14,17 @@ import {
 } from './customer-fields.schemas.js';
 
 /**
- * The custom fields (J1, T-1(a), T-5/U46, U36, CEO 02/11 decision 4 and answers 1 and 4), planned for S4. Every role reads the
- * fields; only an Owner or an Admin defines them (audited). A customer's values follow "Sửa hồ sơ khách": Owner, Admin, Manager,
- * Sales, Support write; Marketing and Viewer read, a sensitive value masked by the API.
+ * The custom fields (J1, T-1(a), T-5/U46, U36, CEO 02/11 decision 4 and answers 1 and 4): their definitions, served since Tag 3b-ii,
+ * the contract planned for S4 moved as it was. Every role reads the fields; only an Owner or an Admin defines them (audited).
  */
 export function registerCustomerFields(registry: OpenAPIRegistry): void {
-  const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
-  const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
-  const tags = ['customer-fields'];
-  const when = planned('S4');
+  const { json, edge, tags } = shared();
   const byId = { params: z.object({ id: CustomerFieldIdSchema }) };
   const admins = problemResponse('forbidden: only an Owner or an Admin; or a refusal of the edge.');
   const notFound = problemResponse('not_found: no field with this id in the company.');
   const hasData = 'field_has_data: some customer has a value';
 
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/customer-fields',
     summary: 'Every custom field of the company, by position, hidden ones too.',
@@ -37,7 +32,6 @@ export function registerCustomerFields(registry: OpenAPIRegistry): void {
     responses: { 200: { description: 'The fields.', ...json(CustomerFieldListSchema) }, ...edge },
   });
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/customer-fields',
     summary:
@@ -53,7 +47,6 @@ export function registerCustomerFields(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'patch',
     path: '/v1/customer-fields/{id}',
     summary:
@@ -72,7 +65,6 @@ export function registerCustomerFields(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'delete',
     path: '/v1/customer-fields/{id}',
     summary:
@@ -87,6 +79,15 @@ export function registerCustomerFields(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+}
+
+/**
+ * A customer's values of the custom fields, still planned for S4 (Tag 3b-iii builds them). They follow "Sửa hồ sơ khách": Owner,
+ * Admin, Manager, Sales, Support write; Marketing and Viewer read, a sensitive value masked by the API.
+ */
+export function registerCustomerFieldValues(registry: OpenAPIRegistry): void {
+  const { json, edge, tags } = shared();
+  const when = planned('S4');
   const customer = { params: z.object({ id: UuidSchema }) };
   registry.registerPath({
     ...when,
@@ -125,4 +126,10 @@ export function registerCustomerFields(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+}
+
+function shared() {
+  const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
+  const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
+  return { json, edge, tags: ['customer-fields'] };
 }
