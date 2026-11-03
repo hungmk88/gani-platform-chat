@@ -2413,6 +2413,87 @@
         },
         "additionalProperties": false
       },
+      "CustomerFieldValues": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerFieldValueItem"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "CustomerFieldValueItem": {
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "value": {
+            "$ref": "#/components/schemas/CustomerFieldValue"
+          }
+        },
+        "required": [
+          "fieldId",
+          "value"
+        ]
+      },
+      "CustomerFieldValue": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 1000
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "maxItems": 50
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "CustomerFieldValuesChange": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fieldId": {
+                  "$ref": "#/components/schemas/Uuid"
+                },
+                "value": {
+                  "$ref": "#/components/schemas/CustomerFieldValue"
+                }
+              },
+              "required": [
+                "fieldId",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "additionalProperties": false
+      },
       "BotFlowList": {
         "type": "object",
         "properties": {
@@ -8986,6 +9067,176 @@
           },
           "503": {
             "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/customers/{id}/fields": {
+      "get": {
+        "summary": "A customer’s values (every role); a sensitive value is `\"••••\"` for Marketing and Viewer, masked by the API (P8).",
+        "tags": [
+          "customer-fields"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerFieldValues"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no customer with this id in the company.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read, or no key is set for a sensitive value.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set some of a customer’s values (Owner, Admin, Manager, Sales, Support): only the fields sent change, `null` clears one.",
+        "tags": [
+          "customer-fields"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerFieldValuesChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "All the customer’s values after the change.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerFieldValues"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a field, or a field twice.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: marketing and viewer; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: the customer, or a field, is not of the company.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid_field_value: a value of the wrong type, or not one of the choices.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read, or no key is set for a sensitive value.",
             "content": {
               "application/problem+json": {
                 "schema": {

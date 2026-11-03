@@ -2,7 +2,6 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 import { EDGE_ERRORS, problemResponse, UuidSchema } from '../../openapi/schemas.js';
-import { planned } from '../../openapi/planned-status.js';
 import {
   CustomerFieldChangeSchema,
   CustomerFieldCreateSchema,
@@ -82,15 +81,20 @@ export function registerCustomerFields(registry: OpenAPIRegistry): void {
 }
 
 /**
- * A customer's values of the custom fields, still planned for S4 (Tag 3b-iii builds them). They follow "Sửa hồ sơ khách": Owner,
- * Admin, Manager, Sales, Support write; Marketing and Viewer read, a sensitive value masked by the API.
+ * A customer's values of the custom fields, served since Tag 3b-iii, the contract planned for S4 moved as it was. They follow "Sửa hồ
+ * sơ khách": Owner, Admin, Manager, Sales, Support write; Marketing and Viewer read, a sensitive value masked by the API.
  */
 export function registerCustomerFieldValues(registry: OpenAPIRegistry): void {
-  const { json, edge, tags } = shared();
-  const when = planned('S4');
+  const { json, edge: shared401And503, tags } = shared();
+  // The 503 of the edge, and of a sensitive value without a key to seal or open it (CEO 03/11 answer 4): same status and code.
+  const edge = {
+    ...shared401And503,
+    503: problemResponse(
+      'service_unavailable: the session or the membership could not be read, or no key is set for a sensitive value.',
+    ),
+  };
   const customer = { params: z.object({ id: UuidSchema }) };
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/customers/{id}/fields',
     summary:
@@ -105,7 +109,6 @@ export function registerCustomerFieldValues(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'put',
     path: '/v1/customers/{id}/fields',
     summary:

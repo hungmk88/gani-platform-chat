@@ -68,6 +68,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/customers/{id}/tags',
       '/v1/customer-fields',
       '/v1/customer-fields/{id}',
+      '/v1/customers/{id}/fields',
       '/v1/bot-flows',
       '/v1/bot-flows/{id}',
       '/v1/bot-flows/{id}/draft',

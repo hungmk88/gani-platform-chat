@@ -12,7 +12,10 @@ import { registerBusinessHours } from '../modules/business-hours/business-hours.
 import { registerHolidays } from '../modules/business-hours/holidays.openapi.js';
 import { registerQuickReplies } from '../modules/quick-replies/quick-replies.openapi.js';
 import { MeChangeSchema } from '../modules/request-context/me.schemas.js';
-import { registerCustomerFields } from '../modules/customer-fields/customer-fields.openapi.js';
+import {
+  registerCustomerFields,
+  registerCustomerFieldValues,
+} from '../modules/customer-fields/customer-fields.openapi.js';
 import { registerCustomerTags, registerTags } from '../modules/tags/tags.openapi.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
 import { registerTickets } from '../modules/tickets/tickets.openapi.js';
@@ -146,6 +149,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerTags,
   registerCustomerTags,
   registerCustomerFields,
+  registerCustomerFieldValues,
   registerBotFlows,
   registerCustomers,
   registerAuditLogs,
