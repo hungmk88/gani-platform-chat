@@ -26,6 +26,7 @@ describe('readConfig', () => {
       events: { enabled: true, discoveryMs: 5000, maxQueues: 200, concurrency: 4 },
       refresh: { enabled: false, pollMs: 30_000, beforeSeconds: 600, leaseSeconds: 120, timeoutMs: 15_000, warnSeconds: 86_400, orgsPerTick: 50, orgParallel: 1 },
       outbound: { enabled: false, pollMs: 2000, leaseSeconds: 60, timeoutMs: 10_000, maxAttempts: 5, orgsPerTick: 50, orgParallel: 1 },
+      afterHours: { enabled: true, pollMs: 60_000, orgsPerTick: 50, orgParallel: 1, batch: 100 },
       http: { port: 9464, healthMaxAgeMs: 120_000 },
     });
   });
@@ -42,6 +43,8 @@ describe('readConfig', () => {
     expect(readConfig(refresh).refresh).toEqual({ enabled: false, pollMs: 5000, beforeSeconds: 0, leaseSeconds: 60, timeoutMs: 30_000, warnSeconds: 3600, orgsPerTick: 8, orgParallel: 3 });
     const outbound = { ...URLS, OUTBOUND_POLL_MS: '500', OUTBOUND_LEASE_S: '90', OUTBOUND_TIMEOUT_MS: '20000', OUTBOUND_MAX_ATTEMPTS: '3', OUTBOUND_ORGS_PER_TICK: '6', OUTBOUND_ORG_PARALLEL: '2' };
     expect(readConfig(outbound).outbound).toEqual({ enabled: false, pollMs: 500, leaseSeconds: 90, timeoutMs: 20_000, maxAttempts: 3, orgsPerTick: 6, orgParallel: 2 });
+    const afterHours = { ...URLS, AFTER_HOURS_ENABLED: '0', AFTER_HOURS_POLL_MS: '5000', AFTER_HOURS_ORGS_PER_TICK: '4', AFTER_HOURS_ORG_PARALLEL: '2', AFTER_HOURS_BATCH: '10' };
+    expect(readConfig(afterHours).afterHours).toEqual({ enabled: false, pollMs: 5000, orgsPerTick: 4, orgParallel: 2, batch: 10 });
   });
 
   it('reads the HTTP settings, and takes port 0 (a free port)', () => {
@@ -72,6 +75,7 @@ describe('readConfig', () => {
     ['CHANNEL_REFRESH_WARN_S', '2592001'], ['CHANNEL_REFRESH_ORGS_PER_TICK', '1001'], ['CHANNEL_REFRESH_ORG_PARALLEL', '0'],
     ['OUTBOUND_ENABLED', '2'], ['OUTBOUND_POLL_MS', '99'], ['OUTBOUND_LEASE_S', '3601'], ['OUTBOUND_TIMEOUT_MS', '999'], ['OUTBOUND_MAX_ATTEMPTS', '0'],
     ['OUTBOUND_ORGS_PER_TICK', '1001'], ['OUTBOUND_ORG_PARALLEL', '33'],
+    ['AFTER_HOURS_ENABLED', '2'], ['AFTER_HOURS_POLL_MS', '999'], ['AFTER_HOURS_ORGS_PER_TICK', '1001'], ['AFTER_HOURS_ORG_PARALLEL', '0'], ['AFTER_HOURS_BATCH', '1001'],
   ])('refuses %s = %s and says which variable and what is allowed', (name, value) => {
     const [only] = problems({ ...URLS, [name]: value });
     expect(only).toContain(`${name} must be a whole number from`);

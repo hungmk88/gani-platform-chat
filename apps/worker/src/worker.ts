@@ -1,4 +1,9 @@
 import {
+  AfterHoursReleaseJob,
+  type ReleaseSettings,
+  type ReleaseStore,
+} from './after-hours/release-job.js';
+import {
   type ChannelRefreshSettings,
   ChannelTokenRefreshJob,
   type RefreshMetrics,
@@ -46,6 +51,8 @@ export interface WorkerDeps {
     readonly settings: OutboundSettings;
     readonly metrics?: OutboundMetrics;
   };
+  /** The release of the conversations held outside business hours (T08, C10-4b): absent, it is not run (AFTER_HOURS_ENABLED=0). */
+  readonly afterHours?: { readonly store: ReleaseStore; readonly settings: ReleaseSettings };
   /** The consumer of the event queues (N141): absent, it is not run (EVENTS_CONSUMER_ENABLED=0, and the tests of the relay). */
   readonly events?: {
     readonly source: QueueSource;
@@ -89,6 +96,10 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
     ? new OutboundSenderJob({ ...deps.outbound, log, shutdownMs: settings.shutdownMs })
     : null;
   outbound?.start();
+  const afterHours = deps.afterHours
+    ? new AfterHoursReleaseJob({ ...deps.afterHours, log, shutdownMs: settings.shutdownMs })
+    : null;
+  afterHours?.start();
   const consumer = deps.events
     ? new EventConsumer({ ...deps.events, log, shutdownMs: settings.shutdownMs })
     : null;
@@ -133,6 +144,10 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
         const renewed = refresh ? await step('refresh', () => refresh.stop(), false) : true;
         // The same for the outbound worker: it writes the delivery in progress before it stops (its own deadline too).
         const delivered = outbound ? await step('outbound', () => outbound.stop(), false) : true;
+        // The same for the release of held conversations: it ends the conversation in progress (its own deadline too).
+        const released = afterHours
+          ? await step('after_hours', () => afterHours.stop(), false)
+          : true;
         // After the loops that feed the queues; it waits for the jobs running and has its own deadline too.
         const consumed = consumer ? await step('events', () => consumer.stop(), false) : true;
         const emitter = deps.events?.emitter;
@@ -147,6 +162,7 @@ export function startWorker(deps: WorkerDeps): RunningWorker {
           drained &&
           renewed &&
           delivered &&
+          released &&
           consumed &&
           silent &&
           maintained &&

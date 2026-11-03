@@ -1,3 +1,4 @@
+import type { ReleaseSettings } from './after-hours/release-job.js';
 import type { ChannelRefreshSettings } from './channels/token-refresh.js';
 import type { OutboundSettings } from './outbound/outbound-sender.js';
 
@@ -42,6 +43,8 @@ export interface WorkerConfig {
   readonly refresh: ChannelRefreshSettings & { readonly enabled: boolean };
   /** The sending of the pending deliveries to their channel (O2, N185): off until a channel sender exists (O3, Q6). */
   readonly outbound: OutboundSettings & { readonly enabled: boolean };
+  /** The release of the conversations held outside business hours when their workspace opens (T08, C10-4b, N193): on by default. */
+  readonly afterHours: ReleaseSettings & { readonly enabled: boolean };
   /** The worker's own HTTP endpoints (`/healthz`, `/metrics`), for the probes and the monitoring (review OPS-02). */
   readonly http: {
     /** 0: a free port the system picks (the tests); the port is logged in `worker_http_listening`. */
@@ -129,6 +132,15 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       // 1..1000 is what app.outbound_pending_orgs accepts (22023 otherwise).
       orgsPerTick: whole('OUTBOUND_ORGS_PER_TICK', 50, 1, 1_000),
       orgParallel: whole('OUTBOUND_ORG_PARALLEL', 1, 1, 32),
+    },
+    afterHours: {
+      enabled: whole('AFTER_HOURS_ENABLED', 1, 0, 1) === 1,
+      // CEO 03/11/2026: a held conversation reaches the queue within about a minute of the opening.
+      pollMs: whole('AFTER_HOURS_POLL_MS', 60_000, 1_000, 600_000),
+      // 1..1000 is what app.after_hours_held_orgs accepts (22023 otherwise).
+      orgsPerTick: whole('AFTER_HOURS_ORGS_PER_TICK', 50, 1, 1_000),
+      orgParallel: whole('AFTER_HOURS_ORG_PARALLEL', 1, 1, 32),
+      batch: whole('AFTER_HOURS_BATCH', 100, 1, 1_000),
     },
     http: {
       port: whole('WORKER_HTTP_PORT', 9464, 0, 65_535),
