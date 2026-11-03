@@ -12,9 +12,9 @@ chưa có đường và trường cụ thể cho #13a và chưa code #13a. Nguy�
 `main` (#544, merge 15:57:07 UTC, squash `9e29bea`; N188). 12a dùng kiểu sinh (`apps/admin/src/api/planned.d.ts`), bỏ kiểu viết
 tay. Câu 8–9 (mục 4) **đã có** trả lời trong hợp đồng. Mục 1–4 dưới giữ làm lịch sử; mục 5 đối chiếu với hợp đồng.
 
-**T-2 (brief CEO `2810-03112026-FE-BRIEF-46`, 03/11/2026): chưa chốt.** N188 trong `QUESTIONS.md` vẫn "Chờ APPROVED". Support
-vẫn ở menu `/leads` và mở được `/leads/[id]`; FE không chặn UI. CEO xác nhận thì FE làm PR riêng (bỏ Support khỏi menu, E2E
-Support → 403).
+**T-2 đã chốt (brief CEO `2810-03112026-FE-BRIEF-51`, 03/11/2026): Support 403.** N188 trong `QUESTIONS.md`: "Đã chốt (CEO
+03/11): Support 403". FE bỏ Support khỏi menu `/leads`; `/leads` và `/leads/[id]` trả trang 403 cho Support, không gọi API (E2E
+trong `apps/admin/e2e/leads.spec.ts`). Trước đó (brief 46): chưa chốt, Support vẫn ở menu.
 
 ## 1. Lead (`GET /v1/leads`, Brief P9 dòng 443)
 
@@ -79,7 +79,7 @@ FE không tự đặt đường hay trường cho hai câu này; chưa có trả
 | 4 | Hợp đồng không ghi riêng | Giữ giả định |
 | 5 | Khớp; thêm bộ lọc; `limit` tối đa 100 | FE gửi `limit=100`, khớp; chưa dùng bộ lọc |
 | 6 | Thêm `position` cho mỗi bước và `lostReasons` của workspace | Giữ thứ tự API trả (hợp đồng: "steps … in order"); chưa dùng hai trường này |
-| 7 | **T-2 (N188):** Owner/Admin/Manager mọi lead của workspace; Sales lead mình tạo hoặc phụ trách (lead khác 404); Marketing/Viewer chỉ đọc (ghi 403); **Support 403** cả đọc lẫn pipeline | **Menu `/leads` vẫn cho mọi vai trò**: brief 45 chỉ bỏ Support khi CEO xác nhận T-2 đã chốt; N188 trong `QUESTIONS.md` còn "Chờ APPROVED" |
+| 7 | **T-2 (N188):** Owner/Admin/Manager mọi lead của workspace; Sales lead mình tạo hoặc phụ trách (lead khác 404); Marketing/Viewer chỉ đọc (ghi 403); **Support 403** cả đọc lẫn pipeline | **Đã chốt (CEO 03/11, brief 51):** menu `/leads` mọi vai trò trừ Support; Support trang 403 ở `/leads`, `/leads/[id]` |
 
 Thêm so với kiểu viết tay: `createdBy` (luật Sales), `score` luôn `null` tới Đợt 2.
 

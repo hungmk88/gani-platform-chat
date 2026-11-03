@@ -3,7 +3,7 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
-import { LOST_REASON, STAGES } from './stub-leads';
+import { LEADS, LOST_REASON, STAGES } from './stub-leads';
 
 // #12 Pipeline lead (CEO 02/11, brief 29–30: 12a, read only) on the contract planned for S4 (docs/openapi/planned.json, #544):
 // the steps from `GET /v1/workspaces/{id}/pipeline`, the leads from `GET /v1/leads` by cursor; the steps as columns, then Thắng
@@ -197,4 +197,31 @@ test('open leads at a step the pipeline no longer lists keep a column; the board
   await board(page).focus();
   await expect(board(page)).toBeFocused();
   await expectAccessible(page);
+});
+
+test('Support has no Lead (T-2, N188): no menu item, the 403 on the board and on a lead, nothing asked', async ({
+  page,
+}) => {
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith('/v1/leads') || isPipeline(u)) asked.push(u.pathname);
+  });
+  const lead = (p: Page) =>
+    p
+      .getByRole('navigation', { name: 'Menu chính' })
+      .getByRole('link', { name: 'Lead', exact: true });
+  await signIn(page, accountOf('viewer'));
+  await expect(lead(page)).toBeVisible();
+  await signIn(page, accountOf('support'));
+  await expect(page.getByRole('navigation', { name: 'Menu chính' })).toBeVisible();
+  await expect(lead(page)).toHaveCount(0);
+  for (const path of ['/leads', `/leads/${LEADS[0]!.id}`]) {
+    await page.goto(path);
+    await expect(
+      page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),
+    ).toBeVisible();
+  }
+  await expectAccessible(page);
+  expect(asked).toEqual([]);
 });
