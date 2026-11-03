@@ -7,7 +7,7 @@ import { PendingPage } from '../pending-page';
 import { useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { hoursPath, type BusinessHours } from './hours';
-import { HoursWeek } from './hours-table';
+import { HoursPanel } from './hours-form';
 
 /** "Giờ làm việc" of the workspace chosen in the top bar (#21): loading, error with trace and "Thử lại", 404 the pending screen. */
 export function HoursTab({ item, go }: { item: NavItem; go: NavItem }) {
@@ -38,7 +38,7 @@ export function HoursTab({ item, go }: { item: NavItem; go: NavItem }) {
         <RetryAction onRetry={() => void hours.refetch()} busy={hours.isFetching} />
       </div>
     );
-  else body = <HoursWeek hours={hours.data} />;
+  else body = <HoursPanel workspaceId={workspaceId} hours={hours.data} />;
   return (
     <section aria-labelledby="hours-title" className="flex flex-col gap-3">
       <h2 id="hours-title" className="text-16 font-semibold">
