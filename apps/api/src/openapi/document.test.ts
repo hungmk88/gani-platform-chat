@@ -49,6 +49,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/workspaces/{id}/members',
       '/v1/workspaces/{id}/business-hours',
       '/v1/workspaces/{id}/holidays',
+      '/v1/workspaces/{id}/holidays/{hid}',
       '/v1/teams',
       '/v1/teams/{id}',
       '/v1/teams/{id}/members',

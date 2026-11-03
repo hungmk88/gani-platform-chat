@@ -1,15 +1,19 @@
 import {
   createDayOff,
+  deleteDayOff,
   insertAuditLog,
   listDaysOff,
+  lockDayOff,
   lockWorkspace,
   readWorkingWeek,
+  updateDayOff,
   type TenantTx,
 } from '@gani/db';
 import { localTime, uuidv7 } from '@gani/domain';
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
@@ -17,11 +21,12 @@ import {
   Logger,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
 
-import { ZodPipe } from '../../openapi/zod-pipe.js';
+import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { mayInvite } from '../members/members.permissions.js';
@@ -32,13 +37,19 @@ import {
   HolidayInPastHttpError,
   HolidayOverlapHttpError,
 } from './holidays.errors.js';
-import { HolidayCreateSchema, HolidayListQuerySchema } from './holidays.schemas.js';
+import {
+  HolidayChangeSchema,
+  HolidayCreateSchema,
+  HolidayIdSchema,
+  HolidayListQuerySchema,
+  type HolidayChange,
+} from './holidays.schemas.js';
 
 /**
- * The days off of a workspace (C10-3b-i, N192, U44): an Owner or an Admin only (CEO 02/11/2026). A day off that overlaps another is
- * 422 holiday_overlap; one that is over (ends before today, workspace time) is 422 holiday_in_past, so the history SLA reads stays (C8).
- * Every change is audited; a refused one too (`workspace.holiday_rejected`), in a transaction of its own once the refused one rolled
- * back.
+ * The days off of a workspace (C10-3b, N192, U44): an Owner or an Admin only (CEO 02/11/2026). A day off that overlaps another is 422
+ * holiday_overlap; one that is over (ends before today, workspace time) is 422 holiday_in_past, to add, to change and to remove alike,
+ * so the history SLA reads stays (C8). Every change is audited; a refused one too (`workspace.holiday_rejected`), in a transaction of
+ * its own once the refused one rolled back.
  */
 @Controller('v1/workspaces/:id/holidays')
 export class HolidaysController {
@@ -72,11 +83,51 @@ export class HolidaysController {
     });
   }
 
+  @Patch(':hid')
+  async change(
+    @Param('id', new ZodPipe(WorkspaceIdParamSchema)) id: string,
+    @Param('hid', new ZodPipe(HolidayIdSchema)) hid: string,
+    @Body(new ZodPipe(HolidayChangeSchema)) body: HolidayChange,
+  ) {
+    return this.write(id, 'workspace.holiday_changed', async (tx) => {
+      const current = await this.current(tx, id, hid);
+      const [startsOn, endsOn] = [body.startsOn ?? current.startsOn, body.endsOn ?? current.endsOn];
+      if (startsOn > endsOn) throw new ValidationFailedError(['startsOn: after endsOn']);
+      return updateDayOff(tx, id, current, {
+        ...(body.name === undefined ? {} : { name: body.name }),
+        ...(body.startsOn === undefined ? {} : { startsOn: body.startsOn }),
+        ...(body.endsOn === undefined ? {} : { endsOn: body.endsOn }),
+      });
+    });
+  }
+
+  @Delete(':hid')
+  @HttpCode(204)
+  async remove(
+    @Param('id', new ZodPipe(WorkspaceIdParamSchema)) id: string,
+    @Param('hid', new ZodPipe(HolidayIdSchema)) hid: string,
+  ) {
+    await this.write(id, 'workspace.holiday_removed', async (tx) => {
+      const current = await this.current(tx, id, hid);
+      await deleteDayOff(tx, hid);
+      return current;
+    });
+  }
+
   /** The workspace, locked (every write of its days off queues on it); 404 when it is not of the organisation. */
   private async workspace(tx: TenantTx, id: string) {
     const ws = await lockWorkspace(tx, id);
     if (!ws) throw new NotFoundException();
     return ws;
+  }
+
+  /** The live day off `hid` of the workspace, locked; 404 when there is none, 422 holiday_in_past when it is over. */
+  private async current(tx: TenantTx, id: string, hid: string) {
+    const ws = await this.workspace(tx, id);
+    const row = await lockDayOff(tx, id, hid);
+    if (!row) throw new NotFoundException();
+    if (row.endsOn < localTime(new Date(), ws.timezone).date) throw new HolidayInPastHttpError();
+    return row;
   }
 
   /** One write and its audit row; a 422 of the rules is audited too, after its transaction rolled back. */
