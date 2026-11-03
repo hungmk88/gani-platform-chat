@@ -238,6 +238,21 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       FE không gọi tạo flow hay PATCH (#17 chỉ đọc), nên chưa cần thêm hai mã lỗi mới vào `errors.ts`. CI trước merge 8 success +
       `terraform` skipped, đúng dòng "Lẫn". Còn lại cho PR mô tả #17: câu "Mô tả flow: chưa có trong hợp đồng (U77 (a))" vẫn ở
       `apps/admin/CLAUDE.md`. FE không comment PR BE.
+    - BE sửa file FE `apps/admin/src/customer-data/catalog.ts` (kiểu `CustomerField` lấy từ `schema.d.ts`, chú thích),
+      `e2e/stub-customer-data.ts` (chú thích), mục Dữ liệu khách của `apps/admin/CLAUDE.md`, hai file sinh (`planned.d.ts` −325,
+      `schema.d.ts` +325) và N191 trong #583 (Tag 3b-ii, merge 08:23:40 UTC 03/11, squash `84f7c62`; luật #546, review trong 24
+      giờ). **Đúng:** `/v1/customer-fields` và `/v1/customer-fields/{id}` cùng 4 schema (`CustomerField`, `CustomerFieldList`,
+      `CustomerFieldCreate`, `CustomerFieldChange`) chuyển nguyên từ planned sang `openapi.json`, hợp đồng không đổi; tab Trường tùy
+      chỉnh (23a) chỉ đổi nguồn kiểu, không đổi hành vi. CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". Còn lại:
+      `docs/ui/customer-data-shape-assumptions.md` vẫn ghi 23a dùng `planned.d.ts`; FE sửa ở PR này. FE không comment PR BE.
+    - BE sửa hai file FE sinh (`planned.d.ts` −170, `schema.d.ts` +170) và N191 trong #588 (Tag 3b-iii-b, merge 09:08:14 UTC
+      03/11, squash `fe6f98c`; luật #546, review trong 24 giờ). **Đúng:** `GET/PUT /v1/customers/{id}/fields` và 3 schema
+      (`CustomerFieldValues`, `CustomerFieldValueItem`, `CustomerFieldValuesChange`) chuyển từ planned sang `openapi.json`, hợp đồng
+      giữ nguyên (chỉ mô tả 503 thêm trường hợp thiếu khóa); FE chưa dùng đường này (giá trị trường trên hồ sơ khách chưa có trong
+      phạm vi đã duyệt). CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". FE không comment PR BE.
+    - #581, #586 (BE, Tag 3b-i-b, 3b-iii-a) không chạm file FE.
+  - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
+    2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
     `sk-` trúng 2 dòng có sẵn của `QUESTIONS.md` (chữ `risk-ownership.md`; báo nhầm, không dòng nào #575 thêm vào khớp mẫu) nhưng
     push vẫn chạy vì lệnh không dừng. Không lộ secret. Sửa: scan chạy riêng, có kết quả thì exit 1 và không push; mẫu `sk-` thành

@@ -6,7 +6,9 @@
 `/v1/customer-field-defs` FE đoán theo endpoint-M8; `GET /v1/tags` giữ nguyên. 23a dùng kiểu sinh (`apps/admin/src/api/planned.d.ts`)
 và đường thật; mục 1–2 dưới giữ làm lịch sử, mục 3 đối chiếu. **Cập nhật (brief 47):** `GET /v1/tags` thành API thật ở #559
 (merge 18:20:49 UTC 02/11, squash `eaf29a9`, `openapi.json`), hợp đồng không đổi so với bản planned; tab Tag dùng kiểu sinh từ
-`apps/admin/src/api/schema.d.ts`. Tab Trường tùy chỉnh ở #561, tab Tag ở PR B.
+`apps/admin/src/api/schema.d.ts`. Tab Trường tùy chỉnh ở #561, tab Tag ở PR B. **Cập nhật (03/11):** `/v1/customer-fields` thành API thật
+ở #583 (Tag 3b-ii, merge 08:23:40 UTC 03/11, squash `84f7c62`), hợp đồng không đổi; `catalog.ts` lấy `CustomerField` từ
+`schema.d.ts`, không còn từ `planned.d.ts`.
 
 **Nguồn: `docs/ui/endpoint-M8.md` (bản nháp 3, 13/10/2026, trên `main`) mục 6 (J1) và mục 7 (J4); chưa có trong `openapi.json`
 hay `planned.json`.** FE soạn theo brief CEO `2810-02112026-FE-BRIEF-33` mục 4, cùng cách với `docs/ui/lead-shape-from-be.md`.
