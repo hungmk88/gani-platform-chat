@@ -1,9 +1,8 @@
 // #23 Dữ liệu khách, the tabs of /settings/customer-data (CEO 02/11, brief 33, 46: 23a, read only). The custom fields of the
-// company are `GET /v1/customer-fields` of the contract planned for S4 (docs/openapi/planned.json, #548, N191), generated in
-// src/api/planned.d.ts; the route FE guessed before the contract (`/v1/customer-field-defs`, endpoint-M8) is not used
+// company are `GET /v1/customer-fields`, real API since Tag 3b-ii (docs/openapi/openapi.json, N191; the contract planned in #548
+// unchanged); the route FE guessed before the contract (`/v1/customer-field-defs`, endpoint-M8) is not used
 // (docs/ui/customer-data-shape-assumptions.md). The tags are `GET /v1/tags`, real API since #559 (docs/openapi/openapi.json, N190).
 // Until the API serves a route it answers 404 and its tab says it is not there yet.
-import type { components } from '../api/planned';
 import type { components as real } from '../api/schema';
 
 /** The tabs of /settings/customer-data, by `?tab=` as /me (brief 33 (3)); the requests on personal data stay the first. */
@@ -19,7 +18,7 @@ export const tabOf = (raw: string | undefined): Tab =>
   TABS.find(([k]) => k === raw)?.[0] ?? 'requests';
 
 /** A custom field of the company's customers (J1), the API gives them by `position`. */
-export type CustomerField = components['schemas']['CustomerField'];
+export type CustomerField = real['schemas']['CustomerField'];
 
 /** The seven kinds of the contract (N191), in words. */
 export const FIELD_TYPE: Readonly<Record<CustomerField['type'], string>> = {

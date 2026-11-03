@@ -32,6 +32,7 @@ export default defineConfig({
         'src/modules/tickets/tickets.controller.ts',
         'src/modules/business-hours/business-hours.controller.ts',
         'src/modules/business-hours/holidays.controller.ts',
+        'src/modules/customer-fields/customer-fields.controller.ts',
       ],
     },
   },
