@@ -1,4 +1,5 @@
 export * from './account-audit-store.js';
+export * from './after-hours-store.js';
 export { createAuthDb } from './auth-db.js';
 export { withAuthUser } from './auth-tx.js';
 export * from './channel-refresh-store.js';
