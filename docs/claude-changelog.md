@@ -2,6 +2,12 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 03/11/2026: scan secret chạy riêng, mẫu `sk-` (ký A (CEO), brief 52)
+
+- "Scan trước khi push": mẫu `sk-` đổi thành `sk-[a-zA-Z0-9]{20,}` (`sk-` trần trúng `risk-ownership`); scan chạy riêng, không
+  nối với `git commit`/`git push`; có dòng PR thêm vào khớp mẫu thì exit 1, không push. Sự cố gốc: #575 (handoff FE
+  `docs/ui/session-summary-29-10.md`).
+
 ## 02/11/2026: sửa bảng job, dòng PR lẫn (ký A (CEO), 19:15 UTC)
 
 - Bảng "Job chạy theo loại PR" (`CLAUDE.md`, `infra/CLAUDE.md`): PR lẫn BE + FE hay đổi file ở gốc chạy 8 job, `terraform` skip

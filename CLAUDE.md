@@ -234,12 +234,17 @@ Nhấn `#` để thêm quy tắc vào file này.
 ### Scan trước khi push
 
 ```powershell
-git grep -i -E "npg_|sk-|sk-ant-|AIza|AKIA|ghp_|PASSWORD="
+git grep -i -E "npg_|sk-[a-zA-Z0-9]{20,}|sk-ant-|AIza|AKIA|ghp_|PASSWORD="
 Get-ChildItem -Recurse -File -Exclude "*.git*","node_modules" |
-  Select-String -Pattern "npg_|sk-|sk-ant-|AIza|AKIA|ghp_"
+  Select-String -Pattern "npg_|sk-[a-zA-Z0-9]{20,}|sk-ant-|AIza|AKIA|ghp_"
 ```
 
 Có kết quả → **DỪNG**.
+
+- Scan chạy **riêng**, không nối với `git commit`/`git push` trong cùng một lệnh. Trước push quét các dòng PR thêm vào; có kết
+  quả thì lệnh scan trả exit 1 và **không push**, xem từng dòng bằng tay (CEO 03/11, brief 52, sau #575):
+  `git diff origin/main...HEAD -U0 | grep '^+' | grep -i -E "<mẫu ở trên>"` có dòng → exit 1.
+- Mẫu `sk-[a-zA-Z0-9]{20,}`, không phải `sk-` trần: `sk-` trúng chữ thường như `risk-ownership` (#575).
 
 ### Khi secret lộ — 5 bước
 
