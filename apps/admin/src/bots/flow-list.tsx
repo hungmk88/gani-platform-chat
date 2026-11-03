@@ -99,7 +99,7 @@ export function FlowList({ item, go }: { item: NavItem; go: NavItem }) {
             </tbody>
           </table>
           {rows.length >= MAX_FLOWS ? (
-            <p className="text-12 text-text-muted">Đang hiện {MAX_FLOWS} flow đổi gần nhất.</p>
+            <p className="text-12 text-text-muted">Workspace đã có {MAX_FLOWS} flow, mức tối đa của một workspace.</p>
           ) : null}
         </>
       )}

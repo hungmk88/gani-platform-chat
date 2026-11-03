@@ -4702,7 +4702,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The live bot flows of a workspace, last changed first (at most 200). */
+        /** All the live bot flows of a workspace, last changed first: a workspace has at most 200 (U77 (c)), so the list is never cut. */
         get: {
             parameters: {
                 query: {
@@ -4772,7 +4772,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Make a flow in a workspace, with an empty draft (not publishable until a graph is saved). */
+        /** Make a flow in a workspace, with an empty draft (not publishable until a graph is saved); a workspace has at most 200 live flows. */
         post: {
             parameters: {
                 query?: never;
@@ -4843,7 +4843,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description idempotency_key_reused: the same key with another request. */
+                /** @description bot_flow_limit_reached: the workspace has 200 live flows; or idempotency_key_reused: the same key with another request. */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -5016,7 +5016,7 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Rename a flow or change its description (null clears it); audited `bot_flow.updated {fields}`, the names of the fields only. The version of the graph does not move. */
+        /** Rename a flow, change its description (null clears it), or pause (`inactive`) and resume (`active`) it; audited `bot_flow.updated {fields}`, the names of the fields only. The version of the graph does not move. A paused flow starts for no new message (a paused first_message flow: new customers go to a person) and is no jump target; sessions running go on. */
         patch: {
             parameters: {
                 query?: never;
@@ -5042,7 +5042,7 @@ export interface paths {
                         "application/json": components["schemas"]["BotFlowDetail"];
                     };
                 };
-                /** @description validation_failed: the id, nothing to change, a name outside 1–100 or a description outside 1–500 characters once trimmed. */
+                /** @description validation_failed: the id, nothing to change, a name outside 1–100 or a description outside 1–500 characters once trimmed, or a draft flow paused. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -5071,6 +5071,15 @@ export interface paths {
                 };
                 /** @description not_found: no live flow with this id in the session’s workspaces. */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description bot_flow_not_published: a flow never published cannot be resumed. */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5197,7 +5206,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish the draft as the next version (audited: `bot_flow.published {version}`); a new draft copies it and the flow is active. */
+        /** Publish the draft as the next version (audited: `bot_flow.published {version}`); a new draft copies it and the flow is active, unless it is paused (inactive): it stays paused until a PATCH resumes it. */
         post: {
             parameters: {
                 query?: never;
@@ -6473,6 +6482,8 @@ export interface components {
         BotFlowChange: {
             name?: string;
             description?: string | null;
+            /** @enum {string} */
+            status?: "active" | "inactive";
         };
         CustomerPage: {
             data: components["schemas"]["Customer"][];

@@ -126,11 +126,21 @@ export const BotFlowCreateSchema = z
   .strict()
   .meta({ id: 'BotFlowCreate' });
 
-/** `PATCH /v1/bot-flows/{id}` (U77 (i)): rename the flow or change its description (null clears it); at least one of the two. */
+/**
+ * `PATCH /v1/bot-flows/{id}` (U77 (i), (b)): rename the flow, change its description (null clears it), or pause (`inactive`) and resume
+ * (`active`) it; at least one of the three.
+ */
 export const BotFlowChangeSchema = z
-  .object({ name: flowName.optional(), description: flowDescription.nullable().optional() })
+  .object({
+    name: flowName.optional(),
+    description: flowDescription.nullable().optional(),
+    status: z.enum(['active', 'inactive']).optional(),
+  })
   .strict()
-  .refine((c) => c.name !== undefined || c.description !== undefined, 'nothing to change')
+  .refine(
+    (c) => c.name !== undefined || c.description !== undefined || c.status !== undefined,
+    'nothing to change',
+  )
   .meta({ id: 'BotFlowChange' });
 export type BotFlowChange = z.output<typeof BotFlowChangeSchema>;
 
