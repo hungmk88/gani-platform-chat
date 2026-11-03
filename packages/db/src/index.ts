@@ -44,6 +44,7 @@ export * from './business-hours-store.js';
 export * from './bot-session-store.js';
 export * from './bot-trigger-read.js';
 export * from './customer-store.js';
+export * from './customer-field-store.js';
 export * from './customer-read.js';
 export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';
