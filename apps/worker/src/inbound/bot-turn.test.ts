@@ -63,6 +63,10 @@ const INPUT: BotTurnInput = {
   now: new Date(0),
 };
 
+/** A week open all day, every day: the turn is in hours whatever the clock (C10-4a). */
+const ALWAYS = Array.from({ length: 7 }, () => ({ opensAt: '00:00', closesAt: '24:00' }));
+const hours = (week: unknown) => resolves({ timezone: 'Asia/Ho_Chi_Minh', week, isDefault: false });
+
 function setup(over: Partial<{ [K in keyof BotTurnStore]: unknown }> = {}, graph = GRAPH) {
   const store = {
     loadConversation: resolves({ state: 'BOT_ACTIVE', afterHoursHold: false }),
@@ -76,6 +80,8 @@ function setup(over: Partial<{ [K in keyof BotTurnStore]: unknown }> = {}, graph
     insertPendingDelivery: resolves(undefined),
     advanceBotSession: resolves(session()),
     setConversationPriority: resolves(true),
+    readWorkingWeek: hours(ALWAYS),
+    listDaysOff: resolves([]),
     ...over,
   };
   let sent = 0;
@@ -97,11 +103,11 @@ function setup(over: Partial<{ [K in keyof BotTurnStore]: unknown }> = {}, graph
 /** What the turn wrote to the session (the first advance). */
 const advanced = (t: ReturnType<typeof setup>): unknown =>
   ((t.store.advanceBotSession as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[])[1];
-/** T02 asked by the bot, with the reason kept in the history (U78). */
-const needsHuman = (reason: string) => [
+/** T02 (in hours) or T03 (outside them) asked by the bot, with the reason kept in the history (U78). */
+const needsHuman = (reason: string, inHours = true) => [
   tx,
   'c1',
-  { type: 'needs_human', inHours: true },
+  { type: 'needs_human', inHours },
   { actor: { kind: 'bot' }, traceId: 't1', detail: { reason } },
 ];
 
@@ -129,6 +135,54 @@ describe('runBotTurn', () => {
     waiting.fsm.transition.mockResolvedValueOnce({ kind: 'unchanged' });
     await waiting.run();
     expect(waiting.store.setConversationPriority).not.toHaveBeenCalled();
+  });
+
+  it('holds a conversation that needs a person outside the hours of its workspace, the priority kept for the release', async () => {
+    const closed = Array.from({ length: 7 }, () => null);
+    for (const over of [
+      { readWorkingWeek: hours(closed) },
+      {
+        listDaysOff: resolves([
+          { id: 'd1', name: 'Tết', startsOn: '1970-01-01', endsOn: '1970-01-02' },
+        ]),
+      },
+    ]) {
+      const t = setup({ listBotTriggers: resolves([]), ...over });
+      expect(await t.run()).toBe('no_flow');
+      expect(t.fsm.transition).toHaveBeenCalledWith(...needsHuman('no_flow', false));
+      expect(t.store.setConversationPriority).toHaveBeenCalledWith(tx, 'c1', 'normal');
+      expect(t.store.readWorkingWeek).toHaveBeenCalledWith(tx, 'w1');
+    }
+  });
+
+  it('tells a condition of the flow whether the workspace is open', async () => {
+    const graph: RuntimeGraph = {
+      nodes: [
+        n('start', 'trigger', { on: 'first_message' }),
+        n('open', 'condition', {
+          expression: { field: 'workspace.isBusinessHours', op: 'eq', value: true },
+        }),
+        n('yes', 'message', { text: 'Mở' }),
+        n('no', 'message', { text: 'Đóng' }),
+        n('done', 'end'),
+      ],
+      edges: [
+        { from: 'start', to: 'open', label: null },
+        { from: 'open', to: 'yes', label: 'true' },
+        { from: 'open', to: 'no', label: 'false' },
+        { from: 'yes', to: 'done', label: null },
+        { from: 'no', to: 'done', label: null },
+      ],
+    };
+    const bodies = async (over: Partial<{ [K in keyof BotTurnStore]: unknown }>) => {
+      const t = setup(over, graph);
+      await t.run();
+      return t.messages.append.mock.calls.map((c) => (c as unknown[])[1]);
+    };
+    expect(await bodies({})).toEqual([expect.objectContaining({ body: 'Mở' })]);
+    expect(await bodies({ readWorkingWeek: hours(Array(7).fill(null)) })).toEqual([
+      expect.objectContaining({ body: 'Đóng' }),
+    ]);
   });
 
   it('starts the flow, sends each message as a pending delivery, and waits for the answer', async () => {
