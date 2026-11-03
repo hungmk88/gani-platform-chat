@@ -3,16 +3,19 @@ import { notFound } from 'next/navigation';
 
 import { readsConversations } from '../../../../src/inbox/actions';
 import { LeadDetailView } from '../../../../src/leads/lead-detail-view';
+import { deniedLeads } from '../../../../src/leads/leads';
 import { roleOf } from '../../../../src/me';
 import { getMe } from '../../../../src/me.server';
 import { menuItemAt } from '../../../../src/nav';
+import { SystemPage } from '../../../../src/system-page';
 
 export const metadata: Metadata = { title: 'Chi tiết lead — Gani Platform' };
 
-/** #13a Chi tiết lead (brief 36, 44–45, read only): the roles of `/leads`, as the menu; anyone else, the 404. */
+/** #13a Chi tiết lead (brief 36, 44–45, read only): the roles of `/leads`, as the menu; Support the 403 (T-2); anyone else, the 404. */
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, result] = await Promise.all([params, getMe()]);
   const role = result.kind === 'ok' ? roleOf(result.me) : null;
+  if (role && deniedLeads(role)) return <SystemPage kind="forbidden" />;
   if (result.kind !== 'ok' || !role || !menuItemAt(role, '/leads')) notFound();
   return (
     <section aria-label="Chi tiết lead" className="flex max-w-[720px] flex-col gap-6">

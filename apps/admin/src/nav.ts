@@ -44,6 +44,8 @@ const ALL_ORG: readonly Role[] = [
   'viewer',
 ];
 const AGENTS: readonly Role[] = ['owner', 'admin', 'manager', 'sales', 'support'];
+/** Who reads leads (T-2, N188, CEO 03/11): every role of the company but Support, which the API answers 403. */
+const LEAD_READERS: readonly Role[] = ALL_ORG.filter((r) => r !== 'support');
 const LEADS: readonly Role[] = ['owner', 'admin', 'manager'];
 const ORG_ADMINS: readonly Role[] = ['owner', 'admin'];
 
@@ -54,7 +56,7 @@ const MENU: readonly [string, readonly (readonly [string, string, readonly Role[
     'Khách hàng',
     [
       ['/customers', 'Khách hàng', ALL_ORG],
-      ['/leads', 'Lead', ALL_ORG],
+      ['/leads', 'Lead', LEAD_READERS],
       ['/tickets', 'Ticket', AGENTS],
     ],
   ],
