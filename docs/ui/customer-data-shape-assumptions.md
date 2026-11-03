@@ -4,7 +4,9 @@
 `main`, sớm hơn hẹn 13/11: Tag ở #547 (merge 16:08:27 UTC 02/11, squash `0f4c256`, N190), trường tùy chỉnh ở #548 (merge
 16:20:40, squash `a4c883f`, N191). **Đường trường tùy chỉnh đã đổi:** `GET /v1/customer-fields`, không phải
 `/v1/customer-field-defs` FE đoán theo endpoint-M8; `GET /v1/tags` giữ nguyên. 23a dùng kiểu sinh (`apps/admin/src/api/planned.d.ts`)
-và đường thật; mục 1–2 dưới giữ làm lịch sử, mục 3 đối chiếu.
+và đường thật; mục 1–2 dưới giữ làm lịch sử, mục 3 đối chiếu. **Cập nhật (brief 47):** `GET /v1/tags` thành API thật ở #559
+(merge 18:20:49 UTC 02/11, squash `eaf29a9`, `openapi.json`), hợp đồng không đổi so với bản planned; tab Tag dùng kiểu sinh từ
+`apps/admin/src/api/schema.d.ts`. Tab Trường tùy chỉnh ở #561, tab Tag ở PR B.
 
 **Nguồn: `docs/ui/endpoint-M8.md` (bản nháp 3, 13/10/2026, trên `main`) mục 6 (J1) và mục 7 (J4); chưa có trong `openapi.json`
 hay `planned.json`.** FE soạn theo brief CEO `2810-02112026-FE-BRIEF-33` mục 4, cùng cách với `docs/ui/lead-shape-from-be.md`.
@@ -47,4 +49,4 @@ kiểu sinh và sửa theo; sửa lớn thì báo CEO. **Đã làm** (mục 3).
 | 7 | Quyền đọc: mọi vai trò của công ty; màn chỉ Owner/Admin theo menu (U36) | `GET` cho mọi vai trò; ghi (tạo, sửa, ẩn, gộp, xóa) Owner/Admin | Đúng; màn vẫn Owner/Admin theo menu |
 
 **Chưa đúng:** chỉ đường trường tùy chỉnh (`/v1/customer-field-defs` → `/v1/customer-fields`). Tab Tag làm ở PR riêng sau tab
-Trường tùy chỉnh (brief 46: tách khi quá 400 dòng).
+Trường tùy chỉnh (brief 46: tách khi quá 400 dòng); giả định 5–6 của Tag vẫn đúng với API thật (#559).

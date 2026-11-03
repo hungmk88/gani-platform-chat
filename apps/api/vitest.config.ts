@@ -30,6 +30,7 @@ export default defineConfig({
         'src/modules/audit/audit.controller.ts',
         'src/modules/bot-flows/bot-flows.controller.ts',
         'src/modules/tickets/tickets.controller.ts',
+        'src/modules/business-hours/business-hours.controller.ts',
       ],
     },
   },
