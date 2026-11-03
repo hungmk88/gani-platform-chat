@@ -216,6 +216,32 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `PATCH/DELETE /v1/workspaces/{id}/holidays/{hid}` và schema `HolidayChange`; `GET/POST /v1/workspaces/{id}/holidays` chỉ đổi chữ
       mô tả lỗi 404/422 (thêm "no such live day off"), không đổi mã lỗi, body hay schema; không chạm U-series. CI trước merge 8 success
       + `terraform` skipped, đúng dòng "Lẫn". Hệ quả cho FE: như #570, chờ CEO chọn a/b/c cho #21. FE không comment PR BE.
+    - Hệ quả của #566, #570, #571 **đã chốt** (CEO 03/11, brief 51–52): wireframe #21 duyệt; tab trong `/settings/workspace` cho
+      workspace đang chọn ở thanh trên, Owner/Admin (Manager 403); PR 2a giờ làm việc (`?tab=hours`), PR 2b ngày nghỉ, sau 2a.
+      2a bản đầu 658 dòng (> 500): CEO chọn tách đọc/ghi (brief 53): 2a-i đọc, 2a-ii sửa dùng lại kiểu, component, API giả của 2a-i,
+      sửa 2a-i quá 10 dòng thì báo CEO.
+    - BE sửa file FE `apps/admin/e2e/stub-bot-flows.ts` (+1), file FE sinh `apps/admin/src/api/schema.d.ts` (+81) và dòng U77 của
+      `QUESTIONS.md` trong #574 (U77 (a), tầng 2, merge 06:11:35 UTC 03/11, squash `969d53d`; luật #546, review trong 24 giờ, hạn
+      06:11 UTC 04/11). **Đúng:** `BotFlow` và `BotFlowDetail` thêm `description: string | null`; `BotFlowCreate` thêm
+      `description?`; thêm `PATCH /v1/bot-flows/{id}` (`BotFlowChange {name?, description?}`, `null` xóa mô tả, trả `BotFlowDetail`,
+      Owner/Admin/Manager như các đường bot flow khác); không đường hay schema cũ nào đổi khác. Stub thêm `description: null` chỉ để
+      typecheck, E2E không đổi hành vi. U77 (a) ghi "A chốt 03/11", (b), (c) vẫn mở: đúng. CI trước merge 8 success + `terraform`
+      skipped, đúng dòng "Lẫn". Hệ quả cho FE: câu "Mô tả flow: chưa có trong hợp đồng (U77 (a))" ở mục Bot của
+      `apps/admin/CLAUDE.md` nay sai. **CEO chốt 03/11 (brief 53): chỉ hiện mô tả, chỉ đọc**: dưới tên flow khi có, ẩn khi `null`;
+      không nút "Sửa mô tả", không gọi `PATCH /v1/bot-flows/{id}` (#17 Đợt 1 chỉ đọc, CEO 01/11; mở PATCH là đổi phạm vi Đợt 1).
+      1 PR tầng 1 (~50 dòng + E2E) sau 2a-i, 2a-ii. FE không comment PR BE.
+    - BE sửa file FE `apps/admin/src/bots/bot-flows.ts` (chỉ chú thích), `flow-list.tsx` (1 câu), `e2e/bots.spec.ts`, mục Bot của
+      `apps/admin/CLAUDE.md`, file sinh `schema.d.ts` (+16/−7) và dòng U77 trong #578 (U77 (b), (c), merge 07:26:54 UTC 03/11, squash
+      `3e5dd56`; luật #546, review trong 24 giờ). **Đúng:** trần 200 flow sống mỗi workspace (flow 201 → 422
+      `bot_flow_limit_reached`), danh sách không bao giờ bị cắt, nên câu đủ 200 dòng đổi thành "Workspace đã có 200 flow, mức tối đa
+      của một workspace." và E2E theo; `PATCH /v1/bot-flows/{id}` nhận thêm `status: active|inactive` (422 `bot_flow_not_published`).
+      FE không gọi tạo flow hay PATCH (#17 chỉ đọc), nên chưa cần thêm hai mã lỗi mới vào `errors.ts`. CI trước merge 8 success +
+      `terraform` skipped, đúng dòng "Lẫn". Còn lại cho PR mô tả #17: câu "Mô tả flow: chưa có trong hợp đồng (U77 (a))" vẫn ở
+      `apps/admin/CLAUDE.md`. FE không comment PR BE.
+  - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
+    `sk-` trúng 2 dòng có sẵn của `QUESTIONS.md` (chữ `risk-ownership.md`; báo nhầm, không dòng nào #575 thêm vào khớp mẫu) nhưng
+    push vẫn chạy vì lệnh không dừng. Không lộ secret. Sửa: scan chạy riêng, có kết quả thì exit 1 và không push; mẫu `sk-` thành
+    `sk-[a-zA-Z0-9]{20,}` ("Scan trước khi push" của `CLAUDE.md` gốc, `docs/claude-changelog.md` 03/11).
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
