@@ -24,7 +24,7 @@ test('an Owner reads the flows of the workspace, last changed first, and nothing
   await open(page);
   await expect(rows(page)).toHaveText([
     'FlowTrạng tháiĐã xuất bảnCập nhật',
-    'Chào khách mớiĐang chạyPhiên bản 310:00 31/10/2026',
+    'Chào khách mớiChào khách nhắn lần đầu, rồi hỏi nhu cầu.Đang chạyPhiên bản 310:00 31/10/2026',
     'Ngoài giờTạm dừngPhiên bản 116:00 28/10/2026',
     'Hỏi giá sỉNháp, chưa xuất bảnChưa xuất bản08:00 27/10/2026',
   ]);
@@ -50,6 +50,9 @@ test('a Manager opens a flow: the version published last, the draft against it, 
   // The facts of the flow: the first list of the page, before the steps (part B) and their own lists.
   const facts = page.getByRole('main').locator('dl').first();
   await expect(page.getByRole('heading', { name: 'Chào khách mới', level: 1 })).toBeVisible();
+  // The description, plain text under the name, only when the flow has one (U77 (a), brief 53: read only).
+  const description = page.getByRole('main').locator('h1 + p');
+  await expect(description).toHaveText('Chào khách nhắn lần đầu, rồi hỏi nhu cầu.');
   await expect(facts).toContainText('Trạng tháiĐang chạy');
   await expect(facts).toContainText(
     'Bản đã xuất bảnPhiên bản 3, xuất bản lúc 09:30 30/10/2026 · 3 bước, 2 đường nối',
@@ -61,6 +64,7 @@ test('a Manager opens a flow: the version published last, the draft against it, 
   await page.getByRole('link', { name: 'Về danh sách flow' }).click();
   await page.getByRole('link', { name: 'Ngoài giờ' }).click();
   await expect(facts).toContainText('Bản nháp3 bước, 2 đường nối · Giống bản đã xuất bản.');
+  await expect(description).toHaveCount(0);
   await page.goto(`/bots/${BOT_FLOWS[2]!.id}`);
   await expect(facts).toContainText('Bản đã xuất bảnChưa xuất bản');
   await expect(facts).toContainText(
