@@ -9,8 +9,11 @@ import {
   botGraphProblem,
   createBotFlow,
   createDbPool,
+  loadBotFlow,
   loadBotFlowVersion,
+  lockBotFlow,
   saveBotFlowDraft,
+  updateBotFlow,
   withTenant,
 } from '../src/index.js';
 import { url } from './db.js';
@@ -18,7 +21,7 @@ import { cleanupTenant, seedTenant } from './fixtures.js';
 
 // The store of the scripted bot flows (D1a2a, N178): a flow starts with an empty draft, saving a draft gives the old one up and writes
 // the whole graph as a new version, under the flow's lock; a graph is checked before anything is written; RLS keeps each organisation
-// to its own flows.
+// to its own flows. A flow has a description (U77 (i)) that a rename or a change keeps or clears, without moving its version.
 const [A, B] = [uuidv7(), uuidv7()];
 const seedUsers = new Map<string, string>();
 const workspaceOf = new Map<string, string>();
@@ -182,5 +185,38 @@ describe('bot-flow-store', () => {
     await admin.query('UPDATE bot_flows SET deleted_at = now() WHERE id = $1', [flow.id]);
     await expect(save(flow.id, GRAPH)).rejects.toBeInstanceOf(BotFlowNotFoundError);
     expect(await versionsOf(flow.id)).toEqual(['draft']);
+  });
+
+  it('renames a flow and sets or clears its description, the version of its graph unchanged', async () => {
+    const { flow } = await as(A, (tx) =>
+      createBotFlow(tx, {
+        workspaceId: workspaceOf.get(A)!,
+        name: 'Hỏi giá',
+        description: 'Khách hỏi giá sỉ',
+        createdBy: seedUsers.get(A)!,
+        newId: uuidv7,
+      }),
+    );
+    expect(flow.description).toBe('Khách hỏi giá sỉ');
+    expect((await make()).flow.description).toBeNull();
+    const change = (c: { name?: string; description?: string | null }, org = A) =>
+      as(org, async (tx) => {
+        await lockBotFlow(tx, flow.id);
+        return updateBotFlow(tx, flow.id, c);
+      });
+    expect(await change({ name: 'Báo giá' })).toMatchObject({
+      name: 'Báo giá',
+      description: 'Khách hỏi giá sỉ',
+      version: flow.version,
+    });
+    expect(await change({ description: null })).toMatchObject({
+      name: 'Báo giá',
+      description: null,
+    });
+    expect((await as(A, (tx) => loadBotFlow(tx, flow.id)))!.description).toBeNull();
+    expect(await change({ name: 'B' }, B)).toBeNull();
+    // Blank or too long never reaches the table (the API trims first; the CHECK is the last net).
+    for (const description of ['  ', 'x'.repeat(501)])
+      await expect(change({ description })).rejects.toThrow();
   });
 });

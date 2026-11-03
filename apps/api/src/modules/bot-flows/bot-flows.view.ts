@@ -6,6 +6,7 @@ export const botFlowView = (row: BotFlowRow, publishedVersion: number | null) =>
   id: row.id,
   workspaceId: row.workspaceId,
   name: row.name,
+  description: row.description,
   status: row.status,
   version: row.version,
   publishedVersion,

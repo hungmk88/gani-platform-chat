@@ -92,6 +92,8 @@ export const BotFlowSchema = z
     id: UuidSchema,
     workspaceId: UuidSchema,
     name: z.string(),
+    /** What the flow is for, for the builders (U77 (i)); null when none. */
+    description: z.string().nullable(),
     status: z.enum(['draft', 'active', 'inactive']),
     /** The optimistic version of the flow (moves on at each save and publish). */
     version: z.int(),
@@ -115,10 +117,22 @@ export const BotFlowDetailSchema = BotFlowSchema.extend({
 
 export const BotFlowListQuerySchema = z.object({ workspaceId: UuidSchema }).strict();
 
+const flowName = z.string().trim().min(1).max(100);
+/** At most 500 characters like a team's, never blank (U77 (i)). */
+const flowDescription = z.string().trim().min(1).max(500);
+
 export const BotFlowCreateSchema = z
-  .object({ workspaceId: UuidSchema, name: z.string().trim().min(1).max(100) })
+  .object({ workspaceId: UuidSchema, name: flowName, description: flowDescription.optional() })
   .strict()
   .meta({ id: 'BotFlowCreate' });
+
+/** `PATCH /v1/bot-flows/{id}` (U77 (i)): rename the flow or change its description (null clears it); at least one of the two. */
+export const BotFlowChangeSchema = z
+  .object({ name: flowName.optional(), description: flowDescription.nullable().optional() })
+  .strict()
+  .refine((c) => c.name !== undefined || c.description !== undefined, 'nothing to change')
+  .meta({ id: 'BotFlowChange' });
+export type BotFlowChange = z.output<typeof BotFlowChangeSchema>;
 
 /** `POST /v1/bot-flows/{id}/dry-run` (D1d, Brief P13): a sample script, as a customer would send it. */
 export const BotDryRunSchema = z

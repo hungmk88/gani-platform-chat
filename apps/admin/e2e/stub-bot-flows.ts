@@ -17,6 +17,7 @@ const flow = (
   id: `0190f200-0000-7000-8000-00000000000${n}`,
   workspaceId: 'ws-e2e',
   name,
+  description: null,
   status,
   version,
   publishedVersion,

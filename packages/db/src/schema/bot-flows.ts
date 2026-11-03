@@ -1,12 +1,13 @@
 import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-// Mirrors migrations 202611031000_create_bot_flows.sql (flows and versions, D1a1a, N176) and 202611041000_create_bot_nodes.sql
-// (the graph of a version, D1a1b, N177).
+// Mirrors migrations 202611031000_create_bot_flows.sql (flows and versions, D1a1a, N176), 202611041000_create_bot_nodes.sql
+// (the graph of a version, D1a1b, N177) and 202611091400_add_bot_flows_description.sql (U77 (i)).
 export const botFlows = pgTable('bot_flows', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
   workspaceId: uuid('workspace_id').notNull(),
   name: text('name').notNull(),
+  description: text('description'),
   status: text('status', { enum: ['draft', 'active', 'inactive'] })
     .notNull()
     .default('draft'),
