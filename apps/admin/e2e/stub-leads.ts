@@ -1,6 +1,6 @@
 // #12 Pipeline lead for the e2e stub API only, on the contract planned for S4 (docs/openapi/planned.json, #544; src/leads/leads.ts):
 // `GET /v1/workspaces/{id}/pipeline` and `GET /v1/leads` of a workspace, by cursor, and `GET /v1/leads/{id}` with its history
-// (#13a). Every role of the company reads them. The steps and the reason a lead is lost are placeholders, "chờ Q9, dữ liệu tạm",
+// (#13a). Every role of the company reads them but Support (T-2, 403). The steps and the reason a lead is lost are placeholders, "chờ Q9, dữ liệu tạm",
 // as the API would give them. The empty board, errors and the 404 of an API that does not serve the routes
 // yet are given by the tests with page.route. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -101,7 +101,8 @@ export function routeLeads(
   const one = /^\/v1\/leads\/([^/]+)$/.exec(path);
   if (req.method !== 'GET' || (path !== '/v1/leads' && !pipeline && !one)) return false;
   if (!session) return (edge.problem(res, 401, 'unauthorized', 'trace-e2e-401'), true);
-  if (!session.role || session.role === 'platform_operator')
+  // T-2 (N188, CEO 03/11): Support 403 like the other roles outside the company.
+  if (!session.role || session.role === 'platform_operator' || session.role === 'support')
     return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
   if (one) {
     const l = LEADS.find((x) => x.id === decodeURIComponent(one[1]!));

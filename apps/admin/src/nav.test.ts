@@ -37,7 +37,7 @@ describe('navFor', () => {
       ],
     ],
     ['sales', ['/inbox', '/customers', '/leads', '/tickets', '/overview']],
-    ['support', ['/inbox', '/customers', '/leads', '/tickets', '/overview']],
+    ['support', ['/inbox', '/customers', '/tickets', '/overview']],
     ['marketing', ['/customers', '/leads', '/overview']],
     ['viewer', ['/customers', '/leads', '/overview']],
     ['platform_operator', ['/platform']],
@@ -48,6 +48,13 @@ describe('navFor', () => {
     if (role === 'manager')
       expect(settings).toEqual(['/settings/teams', '/settings/quick-replies']);
     else if (role !== 'owner' && role !== 'admin') expect(settings).toEqual([]);
+  });
+
+  it('shows Lead to every role of the company but Support (T-2, N188, CEO 03/11)', () => {
+    for (const role of ROLES)
+      expect(hrefs(role).includes('/leads')).toBe(
+        role !== 'support' && role !== 'platform_operator',
+      );
   });
 
   it('shows /platform to the platform operator only', () => {

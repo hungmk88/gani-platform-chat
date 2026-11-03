@@ -6,6 +6,9 @@
 import type { components } from '../api/planned';
 
 type Schemas = components['schemas'];
+
+/** T-2 (N188, CEO 03/11): Support may not read leads; the API answers 403, the screens say so before asking. */
+export const deniedLeads = (role: string) => role === 'support';
 /** A step of the workspace's pipeline, as the API names it; the steps come in the order of the pipeline. */
 export type PipelineStage = Schemas['PipelineStage'];
 export type Pipeline = Schemas['Pipeline'];
