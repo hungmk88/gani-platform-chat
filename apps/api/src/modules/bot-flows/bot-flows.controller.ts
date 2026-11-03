@@ -8,8 +8,10 @@ import {
   listBotTriggers,
   loadBotFlow,
   loadBotFlowVersion,
+  lockBotFlow,
   publishBotFlow,
   saveBotFlowDraft,
+  updateBotFlow,
   type BotFlowVersionRow,
   type BotGraph,
   type TenantTx,
@@ -25,6 +27,7 @@ import {
   Inject,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -37,10 +40,12 @@ import { currentRequestContext } from '../request-context/request-context.js';
 import { mayBuildBotFlows } from './bot-flows.permissions.js';
 import {
   BotDryRunSchema,
+  BotFlowChangeSchema,
   BotFlowCreateSchema,
   BotFlowIdSchema,
   BotFlowListQuerySchema,
   BotGraphSchema,
+  type BotFlowChange,
 } from './bot-flows.schemas.js';
 import { botDryRunView, botFlowVersionView, botFlowView } from './bot-flows.view.js';
 
@@ -66,8 +71,9 @@ export class BotFlowNotPublishedHttpError extends Error {
 
 /**
  * The scripted bot flows of a workspace (D1a3, Brief P9, U63): list, make, read with the graph (D1a3a); save the draft, publish it,
- * delete the flow (D1a3b). Only an Owner, an Admin or a Manager (Phụ lục B); a workspace or a flow outside the session's workspaces is
- * a 404, as row-level security hides another organisation's. Publishing and deleting are audited (bot_flow.published, bot_flow.deleted).
+ * delete the flow (D1a3b); rename it or change its description (U77 (i)). Only an Owner, an Admin or a Manager (Phụ lục B); a workspace or a flow outside the session's workspaces is
+ * a 404, as row-level security hides another organisation's. Publishing, changing and deleting are audited (bot_flow.published, bot_flow.updated
+ * {fields}, bot_flow.deleted).
  */
 @Controller('v1/bot-flows')
 export class BotFlowsController {
@@ -86,13 +92,19 @@ export class BotFlowsController {
   @HttpCode(201)
   @Idempotent()
   async create(
-    @Body(new ZodPipe(BotFlowCreateSchema)) body: { workspaceId: string; name: string },
+    @Body(new ZodPipe(BotFlowCreateSchema))
+    body: {
+      workspaceId: string;
+      name: string;
+      description?: string;
+    },
   ) {
     const ctx = this.allowed(body.workspaceId);
     return this.database.withTenant(ctx, async (tx) => {
       const { flow } = await createBotFlow(tx, {
         workspaceId: body.workspaceId,
         name: body.name,
+        description: body.description ?? null,
         createdBy: ctx.userId,
         newId: uuidv7,
       });
@@ -108,6 +120,26 @@ export class BotFlowsController {
     );
     if (!found) throw new NotFoundException();
     return found;
+  }
+
+  /** Renames the flow or changes its description (null clears it); the audit names the fields changed, never their values. */
+  @Patch(':id')
+  async change(
+    @Param('id', new ZodPipe(BotFlowIdSchema)) id: string,
+    @Body(new ZodPipe(BotFlowChangeSchema)) body: BotFlowChange,
+  ) {
+    const ctx = this.allowed();
+    return this.database.withTenant(ctx, async (tx) => {
+      await this.mine(tx, id, ctx.workspaceIds);
+      if (!(await lockBotFlow(tx, id))) throw new NotFoundException();
+      await updateBotFlow(tx, id, {
+        ...(body.name === undefined ? {} : { name: body.name }),
+        ...(body.description === undefined ? {} : { description: body.description }),
+      });
+      const fields = (['name', 'description'] as const).filter((f) => body[f] !== undefined);
+      await this.audit(tx, 'bot_flow.updated', id, { fields: fields.join(',') });
+      return (await this.detail(tx, id, ctx.workspaceIds))!;
+    });
   }
 
   /** Saves the whole graph as the new draft (the old draft is given up, never deleted). */
@@ -217,7 +249,7 @@ export class BotFlowsController {
     tx: TenantTx,
     action: string,
     targetId: string,
-    detail: Readonly<Record<string, number>>,
+    detail: Readonly<Record<string, number | string>>,
   ) {
     return insertAuditLog(tx, {
       id: uuidv7(),

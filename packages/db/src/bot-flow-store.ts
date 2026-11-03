@@ -34,7 +34,7 @@ type Flow = typeof botFlows.$inferSelect;
 type Version = typeof botFlowVersions.$inferSelect;
 export type BotFlowRow = Pick<
   Flow,
-  'id' | 'workspaceId' | 'name' | 'status' | 'version' | 'createdAt' | 'updatedAt'
+  'id' | 'workspaceId' | 'name' | 'description' | 'status' | 'version' | 'createdAt' | 'updatedAt'
 >;
 export type BotFlowVersionRow = Pick<
   Version,
@@ -91,6 +91,7 @@ const flowColumns = {
   id: botFlows.id,
   workspaceId: botFlows.workspaceId,
   name: botFlows.name,
+  description: botFlows.description,
   status: botFlows.status,
   version: botFlows.version,
   createdAt: botFlows.createdAt,
@@ -113,6 +114,7 @@ export async function createBotFlow(
   q: {
     readonly workspaceId: string;
     readonly name: string;
+    readonly description?: string | null;
     readonly createdBy: string;
     readonly newId: () => string;
   },
@@ -125,10 +127,32 @@ export async function createBotFlow(
     orgId,
     workspaceId: assertUuid(q.workspaceId, 'workspaceId'),
     name: q.name,
+    description: q.description ?? null,
     createdBy,
   });
   await tx.insert(botFlowVersions).values({ id: draftVersionId, orgId, flowId: id, createdBy });
   return { flow: (await lockBotFlow(tx, id)) as BotFlowRow, draftVersionId };
+}
+
+/**
+ * Renames the live flow `id` or changes its description (null: none), locked before (U77 (i)); its version (of the graph) does not move.
+ * Returns the flow as it now is, or null when there is no such live flow in the organisation.
+ */
+export async function updateBotFlow(
+  tx: TenantTx,
+  id: string,
+  change: { readonly name?: string; readonly description?: string | null },
+): Promise<BotFlowRow | null> {
+  const key = assertUuid(id, 'id');
+  await tx
+    .update(botFlows)
+    .set({
+      ...(change.name === undefined ? {} : { name: change.name }),
+      ...(change.description === undefined ? {} : { description: change.description }),
+      updatedAt: sql`now()`,
+    })
+    .where(and(eq(botFlows.id, key), isNull(botFlows.deletedAt)));
+  return lockBotFlow(tx, key);
 }
 
 /** Inserts `graph` as the nodes and edges of the draft version `versionId`. */

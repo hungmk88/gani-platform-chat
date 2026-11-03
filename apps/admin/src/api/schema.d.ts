@@ -5016,7 +5016,79 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Rename a flow or change its description (null clears it); audited `bot_flow.updated {fields}`, the names of the fields only. The version of the graph does not move. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BotFlowChange"];
+                };
+            };
+            responses: {
+                /** @description The flow as it now is. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotFlowDetail"];
+                    };
+                };
+                /** @description validation_failed: the id, nothing to change, a name outside 1–100 or a description outside 1–500 characters once trimmed. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a Manager builds and reads bot flows (Phụ lục B); or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no live flow with this id in the session’s workspaces. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/v1/bot-flows/{id}/draft": {
@@ -6208,6 +6280,7 @@ export interface components {
             id: components["schemas"]["Uuid"];
             workspaceId: components["schemas"]["Uuid"];
             name: string;
+            description: string | null;
             /** @enum {string} */
             status: "draft" | "active" | "inactive";
             version: number;
@@ -6221,6 +6294,7 @@ export interface components {
             id: components["schemas"]["Uuid"];
             workspaceId: components["schemas"]["Uuid"];
             name: string;
+            description: string | null;
             /** @enum {string} */
             status: "draft" | "active" | "inactive";
             version: number;
@@ -6348,6 +6422,7 @@ export interface components {
         BotFlowCreate: {
             workspaceId: components["schemas"]["Uuid"];
             name: string;
+            description?: string;
         };
         BotDryRunResult: {
             flowId: components["schemas"]["Uuid"];
@@ -6394,6 +6469,10 @@ export interface components {
             version: "draft" | "published";
             messages: string[];
             customerName?: string;
+        };
+        BotFlowChange: {
+            name?: string;
+            description?: string | null;
         };
         CustomerPage: {
             data: components["schemas"]["Customer"][];
