@@ -4,6 +4,7 @@ import { roleOf } from '../../../../src/me';
 import { getMe } from '../../../../src/me.server';
 import { builtFor, menuItemAt } from '../../../../src/nav';
 import { SystemPage } from '../../../../src/system-page';
+import { HolidaysTab } from '../../../../src/workspaces/holidays-tab';
 import { HoursTab } from '../../../../src/workspaces/hours-tab';
 import { tabOf } from '../../../../src/workspaces/tabs';
 import { WorkspaceNav } from '../../../../src/workspaces/workspace-nav';
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: 'Workspace — Gani Platform' };
 /**
  * #21 Workspace (N157): Owner and Admin only, as the API (`GET /v1/workspaces` refuses the others), so the page says so instead of
  * an error. Tabs by `?tab=` (CEO 03/11, brief 52): the workspaces of the company, then the working hours of the one chosen in the
- * top bar (#566).
+ * top bar (#566), its days off (#570, #571).
  */
 export default async function WorkspacePage({
   searchParams,
@@ -35,8 +36,14 @@ export default async function WorkspacePage({
         Workspace
       </h1>
       <WorkspaceNav tab={tab} />
-      {tab === 'hours' ? <HoursTab item={item} go={builtFor(role)} /> : <WorkspaceTable />}
-      <p className="text-12 text-text-muted">Ngày nghỉ, SLA và cách phân bổ: chưa có ở màn này.</p>
+      {tab === 'hours' ? (
+        <HoursTab item={item} go={builtFor(role)} />
+      ) : tab === 'holidays' ? (
+        <HolidaysTab item={item} go={builtFor(role)} />
+      ) : (
+        <WorkspaceTable />
+      )}
+      <p className="text-12 text-text-muted">SLA và cách phân bổ: chưa có ở màn này.</p>
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
   );

@@ -2,6 +2,7 @@
 export const TABS = [
   ['info', 'Workspace'],
   ['hours', 'Giờ làm việc'],
+  ['holidays', 'Ngày nghỉ'],
 ] as const;
 export type Tab = (typeof TABS)[number][0];
 
