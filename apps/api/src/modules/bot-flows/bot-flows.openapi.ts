@@ -5,6 +5,7 @@ import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../op
 import {
   BotDryRunResultSchema,
   BotDryRunSchema,
+  BotFlowChangeSchema,
   BotFlowCreateSchema,
   BotFlowDetailSchema,
   BotFlowIdSchema,
@@ -138,6 +139,26 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
       422: problemResponse(
         'bot_flow_not_published: version published asked of a flow never published.',
       ),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/bot-flows/{id}',
+    summary:
+      'Rename a flow or change its description (null clears it); audited `bot_flow.updated {fields}`, the names of the fields only. The version of the graph does not move.',
+    tags: ['bot-flows'],
+    request: {
+      params,
+      body: { required: true, content: { 'application/json': { schema: BotFlowChangeSchema } } },
+    },
+    responses: {
+      200: json('The flow as it now is.', BotFlowDetailSchema),
+      400: problemResponse(
+        'validation_failed: the id, nothing to change, a name outside 1–100 or a description outside 1–500 characters once trimmed.',
+      ),
+      403: builder,
+      404: noFlow,
       ...edge,
     },
   });

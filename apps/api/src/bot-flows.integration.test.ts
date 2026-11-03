@@ -275,6 +275,47 @@ describe('/v1/bot-flows', () => {
       expect((await call('manager', method, path, body)).status).toBe(404);
   });
 
+  it('makes a flow with a description, renames it and changes or clears the description, auditing the fields only', async () => {
+    const made = await call('manager', 'POST', '', {
+      workspaceId: W,
+      name: 'Mô tả',
+      description: ' Khách hỏi giá sỉ ',
+    });
+    expect(made).toMatchObject({ status: 201, body: { description: 'Khách hỏi giá sỉ' } });
+    const id = String(made.body['id']);
+    const version = made.body['version'];
+    expect(await call('owner', 'PATCH', `/${id}`, { name: ' Báo giá sỉ ' })).toMatchObject({
+      status: 200,
+      body: { name: 'Báo giá sỉ', description: 'Khách hỏi giá sỉ', version },
+    });
+    expect(
+      (await call('manager', 'PATCH', `/${id}`, { name: 'Sỉ', description: null })).body,
+    ).toMatchObject({ name: 'Sỉ', description: null, version });
+    expect((await call('manager', 'GET', `/${id}`)).body['description']).toBeNull();
+    for (const bad of [
+      {},
+      { description: '  ' },
+      { description: 'x'.repeat(501) },
+      { name: '' },
+      { version: 1 },
+    ])
+      expect((await call('manager', 'PATCH', `/${id}`, bad)).status, JSON.stringify(bad)).toBe(400);
+    expect(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'X', description: '' })).status,
+    ).toBe(400);
+    expect((await call('sales', 'PATCH', `/${id}`, { name: 'Y' })).status).toBe(403);
+    expect((await call('manager', 'PATCH', `/${inW2}`, { name: 'Y' })).status).toBe(404);
+    expect((await call('manager', 'PATCH', `/${randomUUID()}`, { name: 'Y' })).status).toBe(404);
+    const { rows } = await q(
+      `SELECT action, detail FROM audit_logs WHERE org_id = $1 AND target_id = $2 ORDER BY id`,
+      [orgA, id],
+    );
+    expect(rows).toEqual([
+      { action: 'bot_flow.updated', detail: { fields: 'name' } },
+      { action: 'bot_flow.updated', detail: { fields: 'name,description' } },
+    ]);
+  });
+
   it('keeps the writes to builders of the session’s workspaces', async () => {
     const id = String(
       (await call('manager', 'POST', '', { workspaceId: W, name: 'Quyền' })).body['id'],
