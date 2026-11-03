@@ -66,8 +66,9 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 | `app.held_conversation_counts_by_state` | `202610301000` | N168, U55 (thay hàm trên: tách `HUMAN_ACTIVE` (tải, Brief §M04) và `PENDING_CUSTOMER` (chờ khách); chỉ id người và hai số) |
 | `app.channel_refresh_due_orgs` | `202611021000` | N173 (công ty có kênh Zalo OA tới hạn làm mới token, B2; chỉ id công ty). `p_before_seconds` do job truyền, cho phép đổi ngưỡng theo cấu hình worker. Hàm thứ 17, anh chấp nhận 31/10 có điều kiện; chờ cố vấn cùng 16 hàm kia (#386) |
 | `app.outbound_pending_orgs` | `202611071000` | N185 (công ty có bản giao `pending` tới hạn hoặc thuê quá hạn, cho worker gửi tin ra kênh O2; chỉ id công ty; cùng khuôn `app.inbound_pending_orgs`). Hàm thứ 18, A duyệt phương án O1 ngày 02/11/2026; chờ cố vấn cùng các hàm trên |
+| `app.after_hours_held_orgs` | `202611091500` | N193 (công ty có hội thoại đang giữ ngoài giờ `after_hours_hold`, cho job thả hội thoại khi workspace mở cửa, T08, C10-4b; chỉ id công ty; cùng khuôn `app.outbound_pending_orgs`). Hàm thứ 19, A duyệt phương án C10-4 ngày 03/11/2026; chờ cố vấn cùng các hàm trên |
 
-`packages/db/test/security-definer.spec.ts` so tập hàm thật (18 hàm, 02/11/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
+`packages/db/test/security-definer.spec.ts` so tập hàm thật (19 hàm, 03/11/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 

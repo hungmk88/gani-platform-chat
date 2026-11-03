@@ -7,6 +7,7 @@ import { url } from './db.js';
 // the list as code, so a migration that adds one fails here until both are written.
 const ADR_004 = [
   'app.accept_invite',
+  'app.after_hours_held_orgs',
   'app.audit_own_account_event',
   'app.channel_account_for_webhook',
   'app.channel_refresh_due_orgs',
