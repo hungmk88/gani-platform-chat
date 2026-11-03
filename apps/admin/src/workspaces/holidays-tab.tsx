@@ -7,7 +7,7 @@ import { PendingPage } from '../pending-page';
 import { useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { holidaysPath, type HolidayList } from './holidays';
-import { HolidaysRead } from './holidays-table';
+import { HolidaysEditor } from './holidays-editor';
 
 /** "Ngày nghỉ" of the workspace chosen in the top bar (#21, PR 2b): loading, error with trace and "Thử lại", 404 the pending screen. */
 export function HolidaysTab({ item, go }: { item: NavItem; go: NavItem }) {
@@ -40,7 +40,8 @@ export function HolidaysTab({ item, go }: { item: NavItem; go: NavItem }) {
     );
   else
     body = (
-      <HolidaysRead
+      <HolidaysEditor
+        workspaceId={workspaceId}
         days={list.data.data}
         busy={list.isFetching}
         refresh={() => void list.refetch()}
