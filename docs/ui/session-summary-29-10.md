@@ -202,7 +202,7 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       workspace, merge 19:29:55 UTC 02/11, squash `424a81e`; luật #546, review trong 24 giờ, brief 48). **Đúng:** `openapi.json` chỉ
       thêm `GET/PUT /v1/workspaces/{id}/business-hours` và 3 schema `BusinessDay`, `BusinessHours`, `BusinessHoursChange`; không
       đường hay schema cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform` skipped (lẫn BE + file FE sinh): đúng
-      bộ lọc, khác dòng "Lẫn → 9" của bảng, #567 đang sửa bảng (CEO duyệt 19:15 UTC theo mô tả #567). Hệ quả cho FE, **chưa làm, chờ
+      bộ lọc; dòng "Lẫn" của bảng đã sửa thành 8 job ở #567 (CEO duyệt 19:15 UTC 02/11 theo mô tả #567, merge 01:45:32 UTC 03/11). Hệ quả cho FE, **chưa làm, chờ
       CEO**: phần "Giờ làm việc, ngày nghỉ" của #21 Workspace (đang ghi "chờ API") nay có API đọc và ghi giờ làm việc. FE không
       comment PR BE.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
