@@ -28,7 +28,8 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/bot-flows',
-    summary: 'The live bot flows of a workspace, last changed first (at most 200).',
+    summary:
+      'All the live bot flows of a workspace, last changed first: a workspace has at most 200 (U77 (c)), so the list is never cut.',
     tags: ['bot-flows'],
     request: { query: BotFlowListQuerySchema },
     responses: {
@@ -43,7 +44,7 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
     method: 'post',
     path: '/v1/bot-flows',
     summary:
-      'Make a flow in a workspace, with an empty draft (not publishable until a graph is saved).',
+      'Make a flow in a workspace, with an empty draft (not publishable until a graph is saved); a workspace has at most 200 live flows.',
     tags: ['bot-flows'],
     request: {
       headers: IdempotencyHeadersSchema,
@@ -57,7 +58,9 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
       403: builder,
       404: problemResponse('not_found: no workspace with this id among the session’s.'),
       409: problemResponse('idempotency_in_progress.'),
-      422: problemResponse('idempotency_key_reused: the same key with another request.'),
+      422: problemResponse(
+        'bot_flow_limit_reached: the workspace has 200 live flows; or idempotency_key_reused: the same key with another request.',
+      ),
       ...edge,
     },
   });
@@ -104,7 +107,7 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
     method: 'post',
     path: '/v1/bot-flows/{id}/versions',
     summary:
-      'Publish the draft as the next version (audited: `bot_flow.published {version}`); a new draft copies it and the flow is active.',
+      'Publish the draft as the next version (audited: `bot_flow.published {version}`); a new draft copies it and the flow is active, unless it is paused (inactive): it stays paused until a PATCH resumes it.',
     tags: ['bot-flows'],
     request: { params, headers: IdempotencyHeadersSchema },
     responses: {
@@ -146,7 +149,7 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
     method: 'patch',
     path: '/v1/bot-flows/{id}',
     summary:
-      'Rename a flow or change its description (null clears it); audited `bot_flow.updated {fields}`, the names of the fields only. The version of the graph does not move.',
+      'Rename a flow, change its description (null clears it), or pause (`inactive`) and resume (`active`) it; audited `bot_flow.updated {fields}`, the names of the fields only. The version of the graph does not move. A paused flow starts for no new message (a paused first_message flow: new customers go to a person) and is no jump target; sessions running go on.',
     tags: ['bot-flows'],
     request: {
       params,
@@ -155,10 +158,11 @@ export function registerBotFlows(registry: OpenAPIRegistry): void {
     responses: {
       200: json('The flow as it now is.', BotFlowDetailSchema),
       400: problemResponse(
-        'validation_failed: the id, nothing to change, a name outside 1–100 or a description outside 1–500 characters once trimmed.',
+        'validation_failed: the id, nothing to change, a name outside 1–100 or a description outside 1–500 characters once trimmed, or a draft flow paused.',
       ),
       403: builder,
       404: noFlow,
+      422: problemResponse('bot_flow_not_published: a flow never published cannot be resumed.'),
       ...edge,
     },
   });

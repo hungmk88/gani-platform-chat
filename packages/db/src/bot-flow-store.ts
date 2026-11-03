@@ -108,7 +108,22 @@ export async function lockBotFlow(tx: TenantTx, id: string): Promise<BotFlowRow 
   return row ?? null;
 }
 
-/** Makes a flow in a workspace of the organisation, with an empty draft version (not publishable until a graph is saved). */
+/** At most this many live flows a workspace (U77 (c), CEO 03/11/2026): counted under a lock of the workspace, so the list is never cut. */
+export const BOT_FLOW_LIMIT = 200;
+
+/** The first key of the two-key lock of a workspace's flows (any constant other than the other lock spaces). */
+const BOT_FLOW_LOCK_SPACE = 7303;
+
+/** The workspace has BOT_FLOW_LIMIT live flows already (422 bot_flow_limit_reached). */
+export class BotFlowLimitError extends Error {
+  constructor() {
+    super('the workspace has the most flows it may have');
+    this.name = 'BotFlowLimitError';
+  }
+}
+
+/** Makes a flow in a workspace of the organisation, with an empty draft version (not publishable until a graph is saved);
+ * BotFlowLimitError at BOT_FLOW_LIMIT. */
 export async function createBotFlow(
   tx: TenantTx,
   q: {
@@ -122,10 +137,20 @@ export async function createBotFlow(
   const { orgId } = currentTenantContext();
   const [id, draftVersionId] = [assertUuid(q.newId(), 'newId'), assertUuid(q.newId(), 'newId')];
   const createdBy = assertUuid(q.createdBy, 'createdBy');
+  const workspaceId = assertUuid(q.workspaceId, 'workspaceId');
+  // One count at a time per workspace: two makers at 199 cannot both pass.
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(${BOT_FLOW_LOCK_SPACE}, hashtext(${workspaceId}::text))`,
+  );
+  const [live] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(botFlows)
+    .where(and(eq(botFlows.workspaceId, workspaceId), isNull(botFlows.deletedAt)));
+  if ((live?.n ?? 0) >= BOT_FLOW_LIMIT) throw new BotFlowLimitError();
   await tx.insert(botFlows).values({
     id,
     orgId,
-    workspaceId: assertUuid(q.workspaceId, 'workspaceId'),
+    workspaceId,
     name: q.name,
     description: q.description ?? null,
     createdBy,
@@ -135,13 +160,18 @@ export async function createBotFlow(
 }
 
 /**
- * Renames the live flow `id` or changes its description (null: none), locked before (U77 (i)); its version (of the graph) does not move.
+ * Renames the live flow `id`, changes its description (null: none) or pauses and resumes it (`inactive`/`active`, U77 (b); the caller
+ * checks a flow is resumed only once published), locked before (U77 (i)); its version (of the graph) does not move.
  * Returns the flow as it now is, or null when there is no such live flow in the organisation.
  */
 export async function updateBotFlow(
   tx: TenantTx,
   id: string,
-  change: { readonly name?: string; readonly description?: string | null },
+  change: {
+    readonly name?: string;
+    readonly description?: string | null;
+    readonly status?: 'active' | 'inactive';
+  },
 ): Promise<BotFlowRow | null> {
   const key = assertUuid(id, 'id');
   await tx
@@ -149,6 +179,7 @@ export async function updateBotFlow(
     .set({
       ...(change.name === undefined ? {} : { name: change.name }),
       ...(change.description === undefined ? {} : { description: change.description }),
+      ...(change.status === undefined ? {} : { status: change.status }),
       updatedAt: sql`now()`,
     })
     .where(and(eq(botFlows.id, key), isNull(botFlows.deletedAt)));
@@ -268,7 +299,8 @@ export async function loadBotFlowVersion(
 
 /**
  * Publishes the draft of the flow: the flow is locked, the draft's graph checked again (an empty draft is never published), the draft
- * becomes published version max + 1, a new draft copies its graph, and the flow is active. BotGraphInvalidError, nothing written,
+ * becomes published version max + 1, a new draft copies its graph, and the flow is active; a paused (inactive) flow stays paused
+ * (U77 (b), CEO 03/11/2026: resuming is its own PATCH). BotGraphInvalidError, nothing written,
  * when the draft cannot run; BotFlowNotFoundError for no live flow.
  */
 export async function publishBotFlow(
@@ -309,13 +341,18 @@ export async function publishBotFlow(
   await insertGraph(tx, draftVersionId, graph, q.newId);
   await tx
     .update(botFlows)
-    .set({ status: 'active', version: sql`${botFlows.version} + 1`, updatedAt: sql`now()` })
+    .set({
+      status: sql`CASE WHEN ${botFlows.status} = 'inactive' THEN 'inactive' ELSE 'active' END`,
+      version: sql`${botFlows.version} + 1`,
+      updatedAt: sql`now()`,
+    })
     .where(eq(botFlows.id, flowId));
   const flow = (await lockBotFlow(tx, flowId)) as BotFlowRow;
   return { flow, versionId: draft!.id, version, draftVersionId };
 }
 
-/** The live flows of a workspace, last changed first, each with the number of its latest published version (null: never published). */
+/** All the live flows of a workspace (at most BOT_FLOW_LIMIT), last changed first, each with the number of its latest published version
+ * (null: never published). */
 export async function listBotFlows(
   tx: TenantTx,
   q: { readonly workspaceId: string },
@@ -335,7 +372,7 @@ export async function listBotFlows(
       ),
     )
     .orderBy(desc(botFlows.updatedAt), desc(botFlows.id))
-    .limit(200);
+    .limit(BOT_FLOW_LIMIT);
 }
 
 /**

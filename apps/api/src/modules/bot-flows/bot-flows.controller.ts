@@ -1,5 +1,6 @@
 import { chooseTrigger, coreHandlers, simulate } from '@gani/bot-runtime';
 import {
+  BotFlowLimitError,
   BotGraphInvalidError,
   createBotFlow,
   deleteBotFlow,
@@ -33,7 +34,7 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { ZodPipe } from '../../openapi/zod-pipe.js';
+import { ValidationFailedError, ZodPipe } from '../../openapi/zod-pipe.js';
 import { DatabaseService } from '../database/database.service.js';
 import { Idempotent } from '../idempotency/idempotency.interceptor.js';
 import { currentRequestContext } from '../request-context/request-context.js';
@@ -59,7 +60,17 @@ export class BotFlowGraphHttpError extends Error {
   }
 }
 
-/** 422: a dry-run of the published version of a flow never published. */
+/** 422: the workspace has BOT_FLOW_LIMIT live flows (U77 (c), CEO 03/11/2026). */
+export class BotFlowLimitHttpError extends Error {
+  readonly status = 422;
+  readonly code = 'bot_flow_limit_reached';
+  constructor() {
+    super('The workspace has the most flows it may have.');
+    this.name = 'BotFlowLimitHttpError';
+  }
+}
+
+/** 422: a dry-run of the published version, or a resume, of a flow never published. */
 export class BotFlowNotPublishedHttpError extends Error {
   readonly status = 422;
   readonly code = 'bot_flow_not_published';
@@ -101,13 +112,15 @@ export class BotFlowsController {
   ) {
     const ctx = this.allowed(body.workspaceId);
     return this.database.withTenant(ctx, async (tx) => {
-      const { flow } = await createBotFlow(tx, {
-        workspaceId: body.workspaceId,
-        name: body.name,
-        description: body.description ?? null,
-        createdBy: ctx.userId,
-        newId: uuidv7,
-      });
+      const { flow } = await this.limited(() =>
+        createBotFlow(tx, {
+          workspaceId: body.workspaceId,
+          name: body.name,
+          description: body.description ?? null,
+          createdBy: ctx.userId,
+          newId: uuidv7,
+        }),
+      );
       return (await this.detail(tx, flow.id, ctx.workspaceIds))!;
     });
   }
@@ -122,7 +135,11 @@ export class BotFlowsController {
     return found;
   }
 
-  /** Renames the flow or changes its description (null clears it); the audit names the fields changed, never their values. */
+  /**
+   * Renames the flow, changes its description (null clears it), or pauses and resumes it (U77 (b)): a paused flow starts for no new
+   * message and is no jump target, sessions running go on; only a published flow resumes (422 bot_flow_not_published), a draft is never
+   * paused (400). The audit names the fields changed, never their values.
+   */
   @Patch(':id')
   async change(
     @Param('id', new ZodPipe(BotFlowIdSchema)) id: string,
@@ -131,12 +148,20 @@ export class BotFlowsController {
     const ctx = this.allowed();
     return this.database.withTenant(ctx, async (tx) => {
       await this.mine(tx, id, ctx.workspaceIds);
-      if (!(await lockBotFlow(tx, id))) throw new NotFoundException();
+      const current = await lockBotFlow(tx, id);
+      if (!current) throw new NotFoundException();
+      if (body.status === 'inactive' && current.status === 'draft')
+        throw new ValidationFailedError(['status: a draft flow is not running']);
+      if (body.status === 'active' && !(await loadBotFlow(tx, id))?.publishedVersionId)
+        throw new BotFlowNotPublishedHttpError();
       await updateBotFlow(tx, id, {
         ...(body.name === undefined ? {} : { name: body.name }),
         ...(body.description === undefined ? {} : { description: body.description }),
+        ...(body.status === undefined ? {} : { status: body.status }),
       });
-      const fields = (['name', 'description'] as const).filter((f) => body[f] !== undefined);
+      const fields = (['name', 'description', 'status'] as const).filter(
+        (f) => body[f] !== undefined,
+      );
       await this.audit(tx, 'bot_flow.updated', id, { fields: fields.join(',') });
       return (await this.detail(tx, id, ctx.workspaceIds))!;
     });
@@ -234,6 +259,15 @@ export class BotFlowsController {
   private async mine(tx: TenantTx, id: string, workspaceIds: readonly string[]) {
     const flow = await loadBotFlow(tx, id);
     if (!flow || !workspaceIds.includes(flow.workspaceId)) throw new NotFoundException();
+  }
+
+  private async limited<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error instanceof BotFlowLimitError) throw new BotFlowLimitHttpError();
+      throw error;
+    }
   }
 
   private async graphRules<T>(fn: () => Promise<T>): Promise<T> {

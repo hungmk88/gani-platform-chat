@@ -133,7 +133,7 @@ test('loading, then a failure with its trace and Thử lại, then no flow with 
   await expectAccessible(page);
 });
 
-test('a full list says only the last changed are shown; a 404 is the screen not there yet', async ({
+test('a full list says the workspace has the most flows it may; a 404 is the screen not there yet', async ({
   page,
 }) => {
   let full = true;
@@ -149,7 +149,9 @@ test('a full list says only the last changed are shown; a 404 is the screen not 
   );
   await open(page);
   await expect(rows(page)).toHaveCount(201);
-  await expect(page.getByText(/flow đổi gần nhất/)).toHaveText('Đang hiện 200 flow đổi gần nhất.');
+  await expect(page.getByText(/mức tối đa của một workspace/)).toHaveText(
+    'Workspace đã có 200 flow, mức tối đa của một workspace.',
+  );
   full = false;
   await page.reload();
   await expect(

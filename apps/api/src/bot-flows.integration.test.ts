@@ -316,6 +316,57 @@ describe('/v1/bot-flows', () => {
     ]);
   });
 
+  it('pauses and resumes a published flow, never a draft nor one never published, and publishing keeps it paused', async () => {
+    const id = String(
+      (await call('manager', 'POST', '', { workspaceId: W, name: 'Tạm dừng' })).body['id'],
+    );
+    expect((await call('manager', 'PATCH', `/${id}`, { status: 'inactive' })).status).toBe(400);
+    expect(await call('manager', 'PATCH', `/${id}`, { status: 'active' })).toMatchObject({
+      status: 422,
+      body: { code: 'bot_flow_not_published' },
+    });
+    expect((await call('manager', 'PUT', `/${id}/draft`, GRAPH)).status).toBe(200);
+    expect((await call('manager', 'POST', `/${id}/versions`)).body['status']).toBe('active');
+    expect(await call('owner', 'PATCH', `/${id}`, { status: 'inactive' })).toMatchObject({
+      status: 200,
+      body: { status: 'inactive' },
+    });
+    expect((await call('manager', 'POST', `/${id}/versions`)).body['status']).toBe('inactive');
+    expect((await call('manager', 'PATCH', `/${id}`, { status: 'active' })).body['status']).toBe(
+      'active',
+    );
+    expect((await call('manager', 'PATCH', `/${id}`, { status: 'draft' })).status).toBe(400);
+    expect((await call('sales', 'PATCH', `/${id}`, { status: 'inactive' })).status).toBe(403);
+    const { rows } = await q(
+      `SELECT detail FROM audit_logs WHERE org_id = $1 AND target_id = $2 AND action = 'bot_flow.updated' ORDER BY id`,
+      [orgA, id],
+    );
+    expect(rows).toEqual([{ detail: { fields: 'status' } }, { detail: { fields: 'status' } }]);
+  });
+
+  it('refuses a flow past 200 live ones of the workspace (422 bot_flow_limit_reached)', async () => {
+    const { rows } = await q(
+      'SELECT count(*)::int AS n FROM bot_flows WHERE workspace_id = $1 AND deleted_at IS NULL',
+      [W],
+    );
+    const fill = Array.from({ length: 200 - (rows[0] as { n: number }).n }, () => uuidv7());
+    await q(
+      `INSERT INTO bot_flows (id, org_id, workspace_id, name) SELECT id, $2, $3, 'Đầy' FROM unnest($1::uuid[]) AS t(id)`,
+      [fill, orgA, W],
+    );
+    try {
+      expect(await call('manager', 'POST', '', { workspaceId: W, name: 'Thứ 201' })).toMatchObject({
+        status: 422,
+        body: { code: 'bot_flow_limit_reached' },
+      });
+      expect((await call('manager', 'GET', `?workspaceId=${W}`)).body['data']).toHaveLength(200);
+    } finally {
+      await q(`UPDATE bot_flows SET deleted_at = now() WHERE workspace_id = $1 AND name = 'Đầy'`, [
+        W,
+      ]);
+    }
+  });
+
   it('keeps the writes to builders of the session’s workspaces', async () => {
     const id = String(
       (await call('manager', 'POST', '', { workspaceId: W, name: 'Quyền' })).body['id'],
