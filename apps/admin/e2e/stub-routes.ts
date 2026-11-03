@@ -2,13 +2,14 @@
 // says false for any other. #19 Thành viên (N152–N156), #21 Workspace (N157–N159), #24 Kênh (N161), #20 Team (N160), #22 Mẫu trả
 // lời nhanh (N163), #7 Khách hàng (N165), #16 Tổng quan, #14/#15 Ticket, #26 AI nội bộ (prompt, ai-settings), #27 Tự chủ, #29 Bảo mật and #23
 // Dữ liệu khách (N167; tabs Trường tùy chỉnh #548, Tag #559), #28 Audit log (real API, N174), #17 Bot (real API, D1a3a), #12/#13a Pipeline
-// lead (planned S4, #544), #21 Giờ làm việc (real API, #566). Never deployed.
+// lead (planned S4, #544), #21 Giờ làm việc và Ngày nghỉ (real API, #566, #570, #571). Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { routeAiSettings } from './stub-ai-settings';
 import { routeAudit } from './stub-audit';
 import { routeBotFlows } from './stub-bot-flows';
 import { routeBusinessHours } from './stub-business-hours';
+import { routeHolidays } from './stub-holidays';
 import { routeAutonomy } from './stub-autonomy';
 import { routeChannels } from './stub-channels';
 import { routeCustomerData } from './stub-customer-data';
@@ -58,6 +59,7 @@ export async function routeScreens(
   for (const route of [
     routeAutonomy,
     routeBusinessHours,
+    routeHolidays,
     routeAiSettings,
     routeLeads,
     routePrivacy,
