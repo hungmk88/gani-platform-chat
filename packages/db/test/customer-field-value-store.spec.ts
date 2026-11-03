@@ -7,6 +7,7 @@ import {
   createField,
   FIELD_VALUE_COLUMN,
   FieldNotFoundError,
+  FieldValueInvalidError,
   listFields,
   readFieldValues,
   setFieldValues,
@@ -144,5 +145,28 @@ describe('customer-field-value-store', () => {
     );
     expect(await set([], uuidv7())).toBeNull();
     expect(await inOrg(A, (tx) => readFieldValues(tx, customerOf.get(B)!))).toBeNull();
+  });
+
+  it('writes what `fit` gives for a value of its field, and nothing at all when it refuses one', async () => {
+    const size = await make('Cỡ', 'select', { options: ['S', 'M'] });
+    const seen: unknown[] = [];
+    const fit = (field: { type: string; options: readonly string[] }, value: unknown) => {
+      seen.push([field.type, field.options]);
+      return typeof value === 'string' && field.options.includes(value.trim())
+        ? value.trim()
+        : undefined;
+    };
+    const put = (value: string) =>
+      inOrg(A, (tx) =>
+        setFieldValues(tx, customerOf.get(A)!, [{ fieldId: size.id, value }], seal, fit),
+      );
+    await put(' M ');
+    expect(seen).toEqual([['select', ['S', 'M']]]);
+    expect(await failure(put('XL'))).toBeInstanceOf(FieldValueInvalidError);
+    const stored = await admin.query(
+      'SELECT value FROM customer_field_values WHERE field_id = $1',
+      [size.id],
+    );
+    expect(stored.rows).toEqual([{ value: 'M' }]);
   });
 });
