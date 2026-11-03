@@ -75,7 +75,8 @@ infra/
     | Chỉ FE (`apps/admin`, `apps/widget`, `packages/ui`) | changes, verify, security, docker, admin | database, queue, coverage, terraform |
     | Chỉ docs (`*.md`, `docs/`) | changes, verify, security | 6 job còn lại |
     | Chỉ Terraform | changes, verify, security, terraform | docker, database, queue, coverage, admin |
-    | Lẫn, file ở gốc, workflow, `infra/ci/`; push lên `main`; chạy tay | cả 9 | — |
+    | Lẫn BE + FE; file ở gốc (`package.json`, `pnpm-lock.yaml`…) | 8 job trên, trừ terraform | terraform |
+    | Workflow, `infra/ci/`; push lên `main`; chạy tay | cả 9 | — |
 
   - Denylist cho `docker` và `backend` (liệt kê thứ được bỏ), không allowlist: hai Dockerfile `COPY . .`, mọi path khác đều có thể vào
     image. Thêm chỗ đọc file `.md`, `docs/` hay `infra/terraform/` lúc build hoặc lúc chạy (ví dụ prompt `.md`) thì **phải** sửa danh sách.
