@@ -198,6 +198,13 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `GET /v1/tags` không đổi (tab Tag của 23a, #565, không ảnh hưởng). Hệ quả cho FE, **chưa làm, chờ CEO**: danh sách khách (#7) và hồ
       sơ khách (#8) đang ghi "Tag … chờ API" nay có dữ liệu để hiện tag và lọc theo tag; gắn tag (Owner/Admin/Manager/Sales/Support, N190)
       là việc ghi, cần phương án riêng. FE không comment PR BE.
+    - BE sửa file FE sinh `apps/admin/src/api/schema.d.ts` (+163, file FE duy nhất) trong #566 (C10-3a, tầng 1, giờ làm việc của
+      workspace, merge 19:29:55 UTC 02/11, squash `424a81e`; luật #546, review trong 24 giờ, brief 48). **Đúng:** `openapi.json` chỉ
+      thêm `GET/PUT /v1/workspaces/{id}/business-hours` và 3 schema `BusinessDay`, `BusinessHours`, `BusinessHoursChange`; không
+      đường hay schema cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform` skipped (lẫn BE + file FE sinh): đúng
+      bộ lọc, khác dòng "Lẫn → 9" của bảng, #567 đang sửa bảng (CEO duyệt 19:15 UTC theo mô tả #567). Hệ quả cho FE, **chưa làm, chờ
+      CEO**: phần "Giờ làm việc, ngày nghỉ" của #21 Workspace (đang ghi "chờ API") nay có API đọc và ghi giờ làm việc. FE không
+      comment PR BE.
   - **Đồng hồ heads-up 30 phút (CEO 02/11, ghi vào `CLAUDE.md` gốc):** chỉ chạy khi (a) comment heads-up đã đăng, (b) 9 job xanh
     thật (PR docs: 8 + `docker images` skipped), (c) `clean`; push thêm commit sau heads-up thì về 0 và phải đăng heads-up mới;
     CI đỏ thì dừng, chạy lại khi xanh. #521: heads-up 04:30:06, push `cbcfe1f` 04:58:59, CI xong 05:05:19, merge 05:05:28 (35 phút
