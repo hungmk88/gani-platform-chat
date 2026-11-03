@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { UuidSchema } from '../../openapi/schemas.js';
 
-// The days off of a workspace (C10-3b-i, N192, U44; CEO 02/11/2026 16:48 and 18:40): whole local dates in the workspace's time zone.
+// The days off of a workspace (C10-3b, N192, U44; CEO 02/11/2026 16:48 and 18:40): whole local dates in the workspace's time zone.
 
 const date = z.iso.date();
 const name = z.string().trim().min(1).max(100);
@@ -22,3 +22,12 @@ export const HolidayCreateSchema = z
   .strict()
   .refine((h) => h.startsOn <= h.endsOn, 'startsOn is on or before endsOn')
   .meta({ id: 'HolidayCreate' });
+
+export const HolidayChangeSchema = z
+  .object({ name: name.optional(), startsOn: date.optional(), endsOn: date.optional() })
+  .strict()
+  .refine((change) => Object.keys(change).length > 0, 'nothing to change')
+  .meta({ id: 'HolidayChange' });
+export type HolidayChange = z.output<typeof HolidayChangeSchema>;
+
+export const HolidayIdSchema = UuidSchema;

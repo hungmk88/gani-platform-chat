@@ -172,4 +172,40 @@ describe('/v1/workspaces/{id}/holidays', () => {
     expect((await call('owner', 'GET', `${W}/holidays?from=1/2/2027`)).status).toBe(400);
     expect((await call('owner', 'GET', `${W}/holidays?to=${day(1)}`)).status).toBe(400);
   });
+
+  it('changes and removes a day off that is not over, never one that is, and audits each', async () => {
+    const id = ((await add('Sửa', day(60), day(61))).body as Holiday).id;
+    expect(
+      await call('admin', 'PATCH', `${W}/holidays/${id}`, { name: 'Đã sửa', endsOn: day(62) }),
+    ).toMatchObject({ status: 200, body: { name: 'Đã sửa', startsOn: day(60), endsOn: day(62) } });
+    expect(
+      (await call('owner', 'PATCH', `${W}/holidays/${id}`, { startsOn: day(63) })).status,
+    ).toBe(400);
+    expect(
+      (await call('owner', 'PATCH', `${W}/holidays/${id}`, { startsOn: day(35), endsOn: day(37) }))
+        .body,
+    ).toMatchObject({ code: 'holiday_overlap' });
+    expect(
+      (await call('owner', 'PATCH', `${W}/holidays/${past}`, { name: 'X' })).body,
+    ).toMatchObject({ code: 'holiday_in_past' });
+    expect((await call('owner', 'DELETE', `${W}/holidays/${past}`)).status).toBe(422);
+    expect((await call('manager', 'PATCH', `${W}/holidays/${id}`, { name: 'X' })).status).toBe(403);
+    expect((await call('manager', 'DELETE', `${W}/holidays/${id}`)).status).toBe(403);
+    expect((await call('owner', 'PATCH', `${W}/holidays/${uuidv7()}`, { name: 'X' })).status).toBe(
+      404,
+    );
+    expect((await call('owner', 'PATCH', `${WB}/holidays/${id}`, { name: 'X' })).status).toBe(404);
+    expect((await call('owner', 'DELETE', `${W}/holidays/${id}`)).status).toBe(204);
+    expect((await call('owner', 'DELETE', `${W}/holidays/${id}`)).status).toBe(404);
+    expect((await add('Lại', day(60), day(62))).status).toBe(201);
+    expect((await actions()).slice(4)).toEqual([
+      ['added', day(60)],
+      ['changed', day(60)],
+      ['rejected', 'holiday_overlap'],
+      ['rejected', 'holiday_in_past'],
+      ['rejected', 'holiday_in_past'],
+      ['removed', day(60)],
+      ['added', day(60)],
+    ]);
+  });
 });
