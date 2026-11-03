@@ -77,6 +77,15 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   idempotency_key_reused: ['reload', 'Yêu cầu không khớp lần gửi trước. Tải lại rồi làm lại.'],
   forbidden_origin: ['reload', 'Yêu cầu bị chặn. Tải lại trang rồi thử lại.'],
   service_unavailable: ['wait', 'Hệ thống tạm thời chưa phản hồi. Thử lại sau ít phút.'],
+  // The days off of a workspace (#570, #571, PR 2b-ii): one never meets another, and one that is over stays as it was.
+  holiday_overlap: [
+    'show',
+    'Ngày nghỉ này trùng với một ngày nghỉ khác của workspace. Đổi ngày, hoặc sửa ngày nghỉ đang có.',
+  ],
+  holiday_in_past: [
+    'show',
+    'Ngày nghỉ đã qua không thêm, sửa hay xóa được. Chọn ngày từ hôm nay trở đi.',
+  ],
   // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
   conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };
