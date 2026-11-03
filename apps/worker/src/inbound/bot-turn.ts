@@ -18,10 +18,12 @@ import {
   CONVERSATION_PRIORITIES,
   insertPendingDelivery,
   listBotTriggers,
+  listDaysOff,
   loadBotFlowVersion,
   loadConversation,
   loadCustomer,
   lockActiveBotSession,
+  readWorkingWeek,
   setConversationPriority,
   startBotSession,
   type TenantTx,
@@ -29,17 +31,19 @@ import {
 import { uuidv7 } from '@gani/domain';
 
 import type { Logger } from '../logger.js';
+import { workspaceOpenAt } from './business-hours.js';
 
 // The scripted bot's turn on a customer's message (D1b3a, Brief P13, N184; A 01/11/2026), in the transaction of the inbound event,
 // after the message is stored: a crash rolls the whole event back and the event is claimed again, so a turn is never sent twice nor
 // lost. Only a conversation the bot holds (BOT_ACTIVE, no after-hours hold) gets a turn; a person's conversation never hears the bot
 // (P14 Silent Co-pilot). The active session goes on; without one, the flow the message starts (chooseTrigger), and when no flow fits
-// the conversation goes to a person (T02: always in hours until business hours exist, C8/C10). A bot message goes out the way an
+// the conversation goes to a person: the queue in the workspace's hours (T02), held outside them (T03, after_hours_hold, C10-4a, F6;
+// no message, CEO 03/11/2026: a flow on after_hours will say it). A bot message goes out the way an
 // agent's does (N146): ChannelPolicyService.check, MessageService.append, a pending delivery. A closed window stops the turn and
 // abandons the session; a broken flow is abandoned and handed over. Logs carry ids and codes only.
 
 // prettier-ignore
-export const botTurnStore = { loadConversation, lockActiveBotSession, listBotTriggers, startBotSession, loadBotFlowVersion, loadCustomer, insertPendingDelivery, advanceBotSession, setConversationPriority };
+export const botTurnStore = { loadConversation, lockActiveBotSession, listBotTriggers, startBotSession, loadBotFlowVersion, loadCustomer, insertPendingDelivery, advanceBotSession, setConversationPriority, readWorkingWeek, listDaysOff };
 /** The SQL of packages/db the turn uses; a unit test passes a fake. */
 export type BotTurnStore = typeof botTurnStore;
 
@@ -82,13 +86,14 @@ export async function runBotTurn(
     workspaceId: input.workspaceId,
     traceId: input.traceId,
   };
-  // T02 with the reason in the history (conversation_events.detail) and the priority on the conversation (U78): the handoff node's,
-  // else normal. A conversation the state machine did not move (already waiting) keeps its priority.
+  const inHours = await workspaceOpenAt(tx, db, input.workspaceId, input.now);
+  // T02 in hours, T03 outside them, with the reason in the history (conversation_events.detail) and the priority on the conversation (U78): the handoff node's,
+  // else normal, kept through the hold for the release (T08). A conversation the state machine did not move keeps its priority.
   const handOver = async (reason: string, priority?: unknown) => {
     const moved = await services.fsm.transition(
       tx,
       input.conversationId,
-      { type: 'needs_human', inHours: true },
+      { type: 'needs_human', inHours },
       { actor: { kind: 'bot' }, traceId: input.traceId, detail: { reason } },
     );
     if (moved.kind !== 'changed') return;
@@ -117,7 +122,7 @@ export async function runBotTurn(
   const customer = await db.loadCustomer(tx, input.customerId);
   const handlers = coreHandlers({
     customer: { name: customer?.displayName ?? null },
-    workspace: { isBusinessHours: true },
+    workspace: { isBusinessHours: inHours },
   });
   const state = { nodeKey: session.currentNodeKey, awaiting: session.awaiting, vars: session.vars };
   // jump_to_flow (D1b3b, shared with the dry-run, D1d): the other flow is its published version in the same workspace.

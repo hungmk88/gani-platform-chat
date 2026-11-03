@@ -22,15 +22,16 @@ import { adminPool, appPool, seedOrg, type Pool } from './db.js';
 
 // The scripted bot in the inbound transaction on PostgreSQL as app_role (D1b3a): a published flow greets the first message of a
 // conversation and asks, the answer completes it; the bot's messages are stored with a pending delivery; a workspace without a flow
-// hands the conversation to a person (T02). The SQL that lists the flows is tested in packages/db (bot-trigger-read.spec.ts).
+// hands the conversation to a person (T02) in its hours and holds it outside them (T03, C10-4a). The SQL that lists the flows is tested in packages/db (bot-trigger-read.spec.ts).
 let admin: Pool;
 let app: Pool;
 let org = '';
-const [user, withFlow, noFlow, jumpWs] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
+const [user, withFlow, noFlow, jumpWs, closed] = [uuidv7(), uuidv7(), uuidv7(), uuidv7(), uuidv7()];
 const accounts = new Map<string, string>([
   [withFlow, uuidv7()],
   [noFlow, uuidv7()],
   [jumpWs, uuidv7()],
+  [closed, uuidv7()],
 ]);
 const fsm = new ConversationStateMachine();
 const messages = new MessageService(fsm, undefined, undefined, { warn: () => undefined });
@@ -134,6 +135,13 @@ beforeAll(async () => {
        VALUES ($1, $2, $3, 'zalo_oa', $4, 'OA', 'connected')`,
       [account, org, ws, `oa-${account}`],
     );
+    // Open all day every day, whatever the clock of CI; `closed` never opens (C10-4a).
+    const [opens, closes] = ws === closed ? [null, null] : ['00:00', '24:00'];
+    for (let weekday = 1; weekday <= 7; weekday++)
+      await admin.query(
+        'INSERT INTO workspace_hours (id, org_id, workspace_id, weekday, opens_at, closes_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [uuidv7(), org, ws, weekday, opens, closes],
+      );
   }
 });
 
@@ -241,5 +249,32 @@ describe('the bot in the inbound transaction', () => {
         conversation.id,
       ]),
     ).toEqual([]);
+  });
+
+  it('holds a conversation that needs a person outside the hours of its workspace (T03), the bot silent', async () => {
+    const person = `zu-${uuidv7()}`;
+    await say(closed, person, 'xin chào');
+    const conversation = await conversationOf(person);
+    expect(conversation.state).toBe('BOT_ACTIVE');
+    expect(
+      await rows(
+        "SELECT c.after_hours_hold AS held, c.priority, e.detail->>'reason' AS reason, e.detail->>'transition' AS transition FROM conversation_events e JOIN conversations c ON c.id = e.conversation_id WHERE e.conversation_id = $1 AND e.to_hold",
+        [conversation.id],
+      ),
+    ).toEqual([{ held: true, priority: 'normal', reason: 'no_flow', transition: 'T03' }]);
+    // Not in the queue: no handoff for the agents until it opens (T08, C10-4b).
+    expect(
+      await rows(
+        "SELECT 1 FROM outbox_events WHERE aggregate_id = $1 AND event_type = 'conversation.handoff_requested'",
+        [conversation.id],
+      ),
+    ).toEqual([]);
+    await say(closed, person, 'alo');
+    expect(
+      await rows("SELECT 1 FROM messages WHERE conversation_id = $1 AND sender_kind = 'bot'", [
+        conversation.id,
+      ]),
+    ).toEqual([]);
+    expect((await conversationOf(person)).state).toBe('BOT_ACTIVE');
   });
 });
