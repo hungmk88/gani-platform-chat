@@ -53,6 +53,7 @@ export class ConversationsController {
       ...(scope === 'mine_or_unassigned' ? { mineOrUnassigned: ctx.userId } : {}),
       ...(q.channelId === undefined ? {} : { channelAccountId: q.channelId }),
       ...(q.q === undefined ? {} : { customer: searchOf(q.q, seesCustomersMasked(ctx.role)) }),
+      ...(q.tagId === undefined ? {} : { tagId: q.tagId }),
     };
     return this.read(ctx, (tx) => listConversations(tx, query)).then((page) => ({
       data: page.rows,

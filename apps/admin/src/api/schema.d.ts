@@ -283,6 +283,8 @@ export interface paths {
                     /** @description UUIDv7. */
                     channelId?: components["schemas"]["Uuid"];
                     q?: string;
+                    /** @description UUIDv7. */
+                    tagId?: components["schemas"]["Uuid"];
                 };
                 header?: never;
                 path?: never;
