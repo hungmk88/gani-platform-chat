@@ -38,6 +38,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/conversations/{id}/transfer',
       '/v1/conversations/{id}/assign',
       '/v1/conversations/{id}/close',
+      '/v1/conversations/{id}/notes',
       '/v1/members',
       '/v1/members/{id}/role',
       '/v1/members/{id}/capacity',

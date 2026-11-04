@@ -17,6 +17,7 @@ export default defineConfig({
         ...coverage.exclude,
         'src/modules/conversations/conversations.controller.ts',
         'src/modules/conversations/conversation-actions.controller.ts',
+        'src/modules/conversations/conversation-notes.controller.ts',
         'src/modules/idempotency/idempotency.interceptor.ts',
         'src/modules/auth/invitations.ts',
         'src/modules/auth/password-reset.ts',

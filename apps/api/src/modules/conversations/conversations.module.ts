@@ -7,13 +7,19 @@ import {
 
 import { DatabaseModule } from '../database/database.module.js';
 import { ConversationActionsController } from './conversation-actions.controller.js';
+import { ConversationNotesController } from './conversation-notes.controller.js';
 import { ConversationsController } from './conversations.controller.js';
 import { SendMessageController } from './send-message.controller.js';
 
 /** One ConversationStateMachine, one MessageService and one ChannelPolicyService for the application. They hold no connection: callers hand them the TenantTx of their own transaction. */
 @Module({
   imports: [DatabaseModule],
-  controllers: [ConversationsController, ConversationActionsController, SendMessageController],
+  controllers: [
+    ConversationsController,
+    ConversationActionsController,
+    SendMessageController,
+    ConversationNotesController,
+  ],
   providers: [
     { provide: ConversationStateMachine, useFactory: () => new ConversationStateMachine() },
     {
