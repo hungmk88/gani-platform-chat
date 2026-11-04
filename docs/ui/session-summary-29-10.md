@@ -251,6 +251,14 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       giữ nguyên (chỉ mô tả 503 thêm trường hợp thiếu khóa); FE chưa dùng đường này (giá trị trường trên hồ sơ khách chưa có trong
       phạm vi đã duyệt). CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". FE không comment PR BE.
     - #581, #586 (BE, Tag 3b-i-b, 3b-iii-a) không chạm file FE.
+    - BE sửa file FE sinh `apps/admin/src/api/schema.d.ts` (+2, file FE duy nhất) trong #593 (C3, N195, lọc Hộp thư theo tag,
+      merge 16:56:29 UTC 04/11, squash `add82c7`; luật #546, review trong 24 giờ, brief 59). **Đúng:** `GET /v1/conversations`
+      thêm tham số tùy chọn `tagId` (UUIDv7); tag lạ hay của công ty khác trả 200 danh sách rỗng, như `GET /v1/customers?tagId=`.
+      Không đường, schema hay tham số cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform` skipped, đúng dòng
+      "Lẫn". Hộp thư FE chưa gửi `tagId`, hành vi không đổi; lọc tag ở Hộp thư chờ brief riêng (brief 59 mục 4). FE không comment PR
+      BE.
+    - #591 (docs, N194–N198), #592 (C6-1, bảng `conversation_notes`) và #594 (C6-2, kho ghi chú) không chạm file FE, không cần
+      review.
   - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
     2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
