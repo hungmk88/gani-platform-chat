@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { registerAuditLogs } from '../modules/audit/audit.openapi.js';
 import { registerChannels } from '../modules/channels/channels.openapi.js';
+import { registerConversationNotes } from '../modules/conversations/conversation-notes.openapi.js';
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
 import { registerCustomers } from '../modules/customers/customers.openapi.js';
@@ -138,6 +139,7 @@ function registerPlatform(registry: OpenAPIRegistry): void {
 const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerPlatform,
   registerConversations,
+  registerConversationNotes,
   registerMembers,
   registerWorkspaces,
   registerBusinessHours,
