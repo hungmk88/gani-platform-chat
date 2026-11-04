@@ -10,6 +10,7 @@ const TENANT_TABLES = [
   'message_deliveries',
   'outbox_events',
   'conversation_events',
+  'conversation_notes',
   'bot_session_steps',
   'bot_sessions',
   'messages',
@@ -117,6 +118,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO tickets (id, org_id, workspace_id, title, customer_id, conversation_id, created_by) VALUES ('${ticket}', '${org}', '${workspace}', 'Seed', '${customer}', '${conversation}', '${user}');
     INSERT INTO ticket_events (id, org_id, workspace_id, ticket_id, type, to_status, actor_user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${ticket}', 'created', 'new', '${user}');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');
+    INSERT INTO conversation_notes (id, org_id, conversation_id, author_user_id, body) VALUES ('${uuidv7()}', '${org}', '${conversation}', '${user}', 'Seed');
     INSERT INTO bot_sessions (id, org_id, conversation_id, version_id) VALUES ('${botSession}', '${org}', '${conversation}', '${botVersion}');
     INSERT INTO bot_session_steps (id, org_id, session_id, conversation_id, step_index, node_key, node_type) VALUES ('${uuidv7()}', '${org}', '${botSession}', '${conversation}', 0, 'start', 'trigger');
     INSERT INTO outbox_events (id, org_id, event_type, aggregate_type, aggregate_id, actor_kind, trace_id) VALUES ('${uuidv7()}', '${org}', 'conversation.created', 'conversation', '${conversation}', 'system', 'seed');
