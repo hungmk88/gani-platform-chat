@@ -87,6 +87,8 @@ export interface ConversationListQuery extends InboxScope {
   readonly channelAccountId?: string;
   /** Its live customer matches this search (U30), as the Khách hàng list searches; a conversation with no customer never does. */
   readonly customer?: CustomerSearch;
+  /** Its live customer carries this tag (C3, N195), as `GET /v1/customers?tagId=`; a tag of another organisation matches nothing. */
+  readonly tagId?: string;
   readonly cursor?: string;
   /** 1..100 (P9). */
   readonly limit: number;
@@ -231,6 +233,12 @@ export async function listConversations(
     where.push(eq(c.channelAccountId, assertUuid(q.channelAccountId, 'channelAccountId')));
   if (q.customer !== undefined)
     where.push(isNull(customers.deletedAt), customerSearchWhere(q.customer));
+  if (q.tagId !== undefined)
+    where.push(
+      isNull(customers.deletedAt),
+      sql`EXISTS (SELECT 1 FROM customer_tags ct WHERE ct.org_id = ${c.orgId} AND ct.customer_id = ${c.customerId}
+        AND ct.tag_id = ${assertUuid(q.tagId, 'tagId')}::uuid AND ct.deleted_at IS NULL)`,
+    );
   // Every filter sits in the same WHERE as the keyset below, joined by AND: they narrow before the page is cut, never after it.
   if (q.cursor !== undefined) {
     const fields = decodeCursor(q.cursor);

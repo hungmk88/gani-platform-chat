@@ -33,6 +33,8 @@ const [customer, channel, channelB, channel2, channelW2] = [
   randomUUID(),
   randomUUID(),
 ];
+// C3 (N195): the tag VIP of org A on the customer of 'mine' and on customer2; taken off the customer of 'held'; a tag of org B.
+const [vip, tagB, customer2, customer3] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
 const cookies: Record<string, string> = {};
 let app: NestExpressApplication | undefined;
 let url = '';
@@ -104,6 +106,11 @@ beforeAll(async () => {
     await q(`INSERT INTO channel_accounts (id, org_id, workspace_id, type, external_account_id, display_name, app_id, oa_secret_key_enc) VALUES ($1, $2, $3, 'zalo_oa', $4, $5, 'app', decode(repeat('ab', 32), 'hex'))`, [id, orgA, ws, `oa-${id}`, name]);
   for (const [key, ch] of [['theirs', channel2], ['otherWs', channelW2], ['otherOrg', channelB]] as const)
     await q(`UPDATE conversations SET channel_account_id = $1, external_user_id = $2 WHERE id = $3`, [ch, `zu-${key}`, c[key]]);
+  await q(`INSERT INTO customers (id, org_id) VALUES ($1, $3), ($2, $3)`, [customer2, customer3, orgA]);
+  await q('UPDATE conversations SET customer_id = $1 WHERE id = $2', [customer3, c['held']]);
+  await q(`INSERT INTO tags (id, org_id, name) VALUES ($1, $2, 'VIP'), ($3, $4, 'VIP')`, [vip, orgA, tagB, orgB]);
+  for (const [who, gone] of [[customer, false], [customer2, false], [customer3, true]] as const)
+    await q(`INSERT INTO customer_tags (id, org_id, customer_id, tag_id, deleted_at) VALUES ($1, $2, $3, $4, $5)`, [randomUUID(), orgA, who, vip, gone ? new Date() : null]);
   for (let n = 1; n <= 3; n++)
     await q(`INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ($1, $2, $3, $4, $5, 'customer', 'text', 'm')`, [randomUUID(), orgA, W1, c['queue'], n]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -120,7 +127,7 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['channel_accounts WHERE org_id', orgs], ['sessions WHERE user_id', users],
+    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customer_tags WHERE org_id', orgs], ['tags WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['channel_accounts WHERE org_id', orgs], ['sessions WHERE user_id', users],
     ['workspace_members WHERE org_id', orgs], ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs],
     ['organizations WHERE id', orgs], ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
@@ -181,6 +188,25 @@ describe('GET /v1/conversations', () => {
     expect(await find(`channelId=${randomUUID()}&q=lan`)).toEqual([]);
   });
 
+  it('filters by the tag of the customer (C3, N195), within the scope of the role, before the page is cut; a stranger tag matches nothing', async () => {
+    const find = async (key: string, query: string) => ids((await get(key, `/v1/conversations?${query}`)).body);
+    // 'theirs' (a colleague's, outside the scope of sales) gets a VIP customer for this test only: the other tests want it without one.
+    await q('UPDATE conversations SET customer_id = $1 WHERE id = $2', [customer2, c['theirs']]);
+    try {
+    expect(await find('manager', `tagId=${vip}`)).toEqual([c['mine'], c['theirs']]);
+    expect(await find('sales', `tagId=${vip}`)).toEqual([c['mine']]);
+    expect(await find('manager', `tagId=${vip}&q=lan`)).toEqual([c['mine']]);
+    expect(await find('manager', `tagId=${vip}&assignee=none`)).toEqual([]);
+    const first = await get('manager', `/v1/conversations?tagId=${vip}&limit=1`);
+    const next = await get('manager', `/v1/conversations?tagId=${vip}&limit=1&cursor=${String(first.body['nextCursor'])}`);
+    expect([ids(first.body), ids(next.body), next.body['nextCursor']]).toEqual([[c['mine']], [c['theirs']], null]);
+    for (const tag of [tagB, randomUUID()])
+      expect(await get('manager', `/v1/conversations?tagId=${tag}`)).toMatchObject({ status: 200, body: { data: [] } });
+    } finally {
+      await q('UPDATE conversations SET customer_id = NULL WHERE id = $1', [c['theirs']]);
+    }
+  });
+
   it('offers the channels of the conversations each role reads, and each one filters to at least one (U56)', async () => {
     const offered = async (key: string, query = '') => {
       const res = await get(key, `/v1/conversations/channels${query}`);
@@ -205,7 +231,7 @@ describe('GET /v1/conversations', () => {
   it('refuses marketing with 403 forbidden, and a bad query or cursor with 400 validation_failed', async () => {
     const refused = await get('marketing', '/v1/conversations');
     expect([refused.status, refused.type, refused.body['code']]).toEqual([403, 'application/problem+json', 'forbidden']);
-    for (const query of ['limit=101', 'state=OPEN', 'assignee=everyone', 'workspaceId=x', 'cursor=bm90IG91cnM', 'channelId=x', 'q=', 'q=%20%20%20', `q=${'a'.repeat(101)}`])
+    for (const query of ['limit=101', 'state=OPEN', 'assignee=everyone', 'workspaceId=x', 'cursor=bm90IG91cnM', 'channelId=x', 'q=', 'q=%20%20%20', 'tagId=x', `q=${'a'.repeat(101)}`])
       expect((await get('manager', `/v1/conversations?${query}`)).body, query).toMatchObject({ status: 400, code: 'validation_failed' });
   });
 });

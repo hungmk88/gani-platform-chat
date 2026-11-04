@@ -98,6 +98,8 @@ export const ConversationListQuerySchema = CursorQuerySchema.extend({
    * digits, else a part of the name. Absent: no search; blank: 400.
    */
   q: z.string().trim().min(1).max(100).optional(),
+  /** Its customer carries this tag (C3, N195), as `GET /v1/customers?tagId=`; a tag the session cannot see matches nothing, never an error. */
+  tagId: UuidSchema.optional(),
 });
 export type ConversationListQuery = z.output<typeof ConversationListQuerySchema>;
 
