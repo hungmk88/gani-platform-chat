@@ -46,6 +46,7 @@ export * from './bot-trigger-read.js';
 export * from './customer-store.js';
 export * from './customer-field-store.js';
 export * from './customer-field-value-store.js';
+export * from './conversation-note-store.js';
 export * from './customer-read.js';
 export { pingDb } from './ping.js';
 export { accounts } from './schema/accounts.js';

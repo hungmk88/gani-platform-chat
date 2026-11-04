@@ -22,6 +22,7 @@ export default defineConfig({
         'src/conversation-store.ts',
         'src/customer-field-store.ts',
         'src/customer-field-value-store.ts',
+        'src/conversation-note-store.ts',
         'src/delivery-store.ts',
         'src/outbound-store.ts',
         'src/idempotency-store.ts',
