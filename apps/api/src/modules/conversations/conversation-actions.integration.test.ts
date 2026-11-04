@@ -106,6 +106,7 @@ beforeAll(async () => {
   await conversation('handed', 'HUMAN_ACTIVE', { assigned: people['sales'] as string });
   await conversation('queued', 'HUMAN_WAITING_Q');
   await conversation('done', 'PENDING_CUSTOMER', { assigned: people['sales'] as string });
+  await conversation('reasoned', 'HUMAN_ACTIVE', { assigned: people['sales'] as string });
   const team = randomUUID();
   await q(`INSERT INTO teams (id, org_id, workspace_id, name, slug) VALUES ($1, $2, $3, 'T', $4)`, [team, orgA, W1, `t-${team}`]);
   for (const key of ['sales', 'teammate'])
@@ -126,7 +127,7 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['outbox_events WHERE org_id', orgs], ['conversation_events WHERE org_id', orgs], ['conversations WHERE org_id', orgs],
+    ['outbox_events WHERE org_id', orgs], ['conversation_events WHERE org_id', orgs], ['conversation_notes WHERE org_id', orgs], ['conversations WHERE org_id', orgs],
     ['idempotency_keys WHERE org_id', orgs], ['audit_logs WHERE org_id', orgs], ['team_members WHERE org_id', orgs],
     ['teams WHERE org_id', orgs], ['sessions WHERE user_id', users], ['workspace_members WHERE org_id', orgs],
     ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs], ['organizations WHERE id', orgs],
@@ -222,6 +223,26 @@ describe('POST /v1/conversations/{id}/transfer and /assign', () => {
     expect(await act('manager', `${c['handed']}/assign`, { version: 1, toUserId: people['sales'] })).toMatchObject({ status: 200, body: { assignedUserId: people['sales'], version: 2 } });
     expect((await audits(c['queued'] as string))[0]).toMatchObject({ action: 'conversation.reassigned', detail: { fromUserId: null, toUserId: people['colleague'] } });
     expect((await act('manager', `${c['bot']}/assign`, { version: 0, toUserId: people['sales'] })).body).toMatchObject({ status: 409, code: 'invalid_transition' });
+  });
+
+  it('writes the reason of a transfer as a note of kind transfer_reason in the same transaction, audited by id only (N135, N194)', async () => {
+    const id = c['reasoned'] as string;
+    type Note = { id: string; kind: string; body: string; author: string };
+    const notes = async () => (await q('SELECT id, kind, body, author_user_id AS author FROM conversation_notes WHERE conversation_id = $1', [id])).rows as Note[];
+    expect((await act('manager', `${id}/transfer`, { version: 0, toUserId: people['colleague'], reason: 'x'.repeat(501) })).status).toBe(400);
+    expect((await act('manager', `${id}/assign`, { version: 0, toUserId: people['colleague'], reason: 'Lý do' })).status).toBe(400);
+    expect((await act('manager', `${id}/transfer`, { version: 0, toUserId: people['marketing'], reason: 'Không nhận được' })).body).toMatchObject({ code: 'invalid_assignee' });
+    expect(await notes()).toEqual([]);
+    expect(await act('manager', `${id}/transfer`, { version: 0, toUserId: people['colleague'], reason: '  Khách cần báo giá sỉ  ' })).toMatchObject({ status: 200, body: { assignedUserId: people['colleague'], version: 1 } });
+    const [note] = await notes();
+    expect(note).toMatchObject({ kind: 'transfer_reason', body: 'Khách cần báo giá sỉ', author: people['manager'] });
+    // One transaction, one created_at: the two rows come in no set order.
+    const rows = await audits(id);
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(expect.arrayContaining([
+      { action: 'conversation.transferred', actor_user_id: people['manager'], detail: { fromUserId: people['sales'], toUserId: people['colleague'], version: 1 } },
+      { action: 'conversation.note_added', actor_user_id: people['manager'], detail: { noteId: note?.id, kind: 'transfer_reason' } },
+    ]));
   });
 });
 

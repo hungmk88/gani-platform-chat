@@ -153,6 +153,19 @@ export const AssigneeBodySchema = z
   .strict()
   .meta({ id: 'AssigneeBody' });
 
+/**
+ * Transfer (T15): `reason`, optional, 1 to 500 characters once trimmed, becomes an internal note of kind `transfer_reason` in the same
+ * transaction as the transfer (N135, U54, N194): never in the audit row, never logged.
+ */
+export const TransferBodySchema = z
+  .object({
+    version: z.number().int().min(0),
+    toUserId: UuidSchema,
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict()
+  .meta({ id: 'TransferBody' });
+
 /** Close (T13): the outcome is required (Brief P14); won or lost belong to the lead, not here. */
 export const CloseBodySchema = z
   .object({

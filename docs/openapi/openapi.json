@@ -725,6 +725,28 @@
         ],
         "additionalProperties": false
       },
+      "TransferBody": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "toUserId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "version",
+          "toUserId"
+        ],
+        "additionalProperties": false
+      },
       "AssigneeBody": {
         "type": "object",
         "properties": {
@@ -4874,7 +4896,7 @@
         "tags": [
           "conversations"
         ],
-        "summary": "Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited.",
+        "summary": "Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited. A `reason` becomes an internal note of kind `transfer_reason` in the same transaction (N135, N194).",
         "parameters": [
           {
             "schema": {
@@ -4901,7 +4923,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssigneeBody"
+                "$ref": "#/components/schemas/TransferBody"
               }
             }
           }
