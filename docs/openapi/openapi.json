@@ -4012,6 +4012,15 @@
             "required": false,
             "name": "q",
             "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": false,
+            "description": "UUIDv7.",
+            "name": "tagId",
+            "in": "query"
           }
         ],
         "responses": {
