@@ -3,13 +3,18 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  changeLeadStage,
+  closeLead,
   createDbPool,
   createLead,
   InvalidLeadOwnerError,
   InvalidLeadStageError,
+  InvalidLostReasonError,
   LeadAccessDeniedError,
+  LeadClosedError,
   LeadPipelineMissingError,
   LeadReferenceNotFoundError,
+  LeadVersionConflictError,
   withTenant,
   type LeadCreate,
   type LeadViewer,
@@ -19,8 +24,8 @@ import {
 import { url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
-// Making leads (L3a-2; G1–G3, N188, N196) as app_role through RLS: who may, which step and which owner, and the created event written
-// in the same transaction. Moving and closing come in L3b.
+// Making, moving and closing leads (L3a-2, L3b; G1–G3, T-3, N188, N196) as app_role through RLS: who may, which step and which owner,
+// the version, and the event written with each change in the same transaction.
 const [A, B] = [uuidv7(), uuidv7()];
 const seedUsers = new Map<string, string>();
 // `away` is a Sales of the organisation who is not a member of the workspace; `helper` a Support who is.
@@ -61,6 +66,46 @@ const create = (v: LeadViewer, input: Partial<LeadCreate> = {}, workspaces = [id
       }),
     workspaces,
   );
+const move = (v: LeadViewer, id: string, stageId: string, version = 0) =>
+  inWs((tx) => changeLeadStage(tx, v, { id, stageId, version, newId: uuidv7 }));
+const close = (
+  v: LeadViewer,
+  id: string,
+  outcome: 'won' | 'lost',
+  lostReason?: string,
+  version = 0,
+) =>
+  inWs((tx) =>
+    closeLead(tx, v, {
+      id,
+      version,
+      outcome,
+      newId: uuidv7,
+      ...(lostReason === undefined ? {} : { lostReason }),
+    }),
+  );
+/** A lead made straight in the database, at the first step. */
+const lead = async (
+  by = people.manager,
+  owner: string | null = null,
+  ws = ids.ws,
+  stage = ids.stage,
+) => {
+  const id = uuidv7();
+  await admin.query(
+    `INSERT INTO leads (id, org_id, workspace_id, title, customer_id, stage_id, owner_user_id, created_by)
+     VALUES ($1, $2, $3, 'Báo giá', $4, $5, $6, $7)`,
+    [id, A, ws, ids.customer, stage, owner, by],
+  );
+  return id;
+};
+const stored = async (id: string) =>
+  (
+    await admin.query<{ stage_id: string; status: string; version: number }>(
+      'SELECT stage_id, status, version FROM leads WHERE id = $1',
+      [id],
+    )
+  ).rows[0];
 const events = async (id: string) =>
   (
     await admin.query<{
@@ -171,5 +216,90 @@ describe('createLead', () => {
     await expect(create(manager(), { workspaceId: ids.ws3 }, [ids.ws3])).rejects.toThrow(
       LeadPipelineMissingError,
     );
+  });
+});
+
+describe('changeLeadStage', () => {
+  it('moves an open lead either way with a stage_changed event, one version at a time', async () => {
+    const id = await lead();
+    expect(await move(manager(), id, ids.stage2)).toMatchObject({
+      stageId: ids.stage2,
+      stageName: 'Bước 2',
+      version: 1,
+    });
+    expect((await move(manager(), id, ids.stage, 1))?.version).toBe(2);
+    expect(
+      (await events(id)).map((e) => [e.type, e.from_stage_id, e.to_stage_id, e.actor_user_id]),
+    ).toEqual([
+      ['stage_changed', ids.stage, ids.stage2, people.manager],
+      ['stage_changed', ids.stage2, ids.stage, people.manager],
+    ]);
+  });
+
+  it('refuses the step it is at or another workspace’s, and a stale version, writing nothing', async () => {
+    const id = await lead();
+    await expect(move(manager(), id, ids.stage)).rejects.toThrow(InvalidLeadStageError);
+    await expect(move(manager(), id, ids.stageWs2)).rejects.toThrow(InvalidLeadStageError);
+    await expect(move(manager(), id, ids.stage2, 3)).rejects.toThrow(LeadVersionConflictError);
+    expect(await stored(id)).toEqual({ stage_id: ids.stage, status: 'open', version: 0 });
+    expect(await events(id)).toEqual([]);
+  });
+
+  it('lets a Sales move the leads they made or own and no other (not found), and refuses a reader or Support', async () => {
+    expect(await move(sales(), await lead(people.sales), ids.stage2)).not.toBeNull();
+    expect(
+      await move(sales(), await lead(people.manager, people.sales), ids.stage2),
+    ).not.toBeNull();
+    const theirs = await lead(people.manager, people.manager);
+    expect(await move(sales(), theirs, ids.stage2)).toBeNull();
+    for (const role of ['marketing', 'viewer', 'support'] as const)
+      await expect(move(as(role, people.marketing), theirs, ids.stage2)).rejects.toThrow(
+        LeadAccessDeniedError,
+      );
+    expect(
+      await move(manager(), await lead(people.manager, null, ids.ws2, ids.stageWs2), ids.stage2),
+    ).toBeNull();
+    expect(await stored(theirs)).toEqual({ stage_id: ids.stage, status: 'open', version: 0 });
+  });
+});
+
+describe('closeLead', () => {
+  it('wins a lead for good, with a closed event that has the outcome and no reason', async () => {
+    const id = await lead();
+    expect(await close(manager(), id, 'won')).toMatchObject({
+      status: 'won',
+      lostReason: null,
+      version: 1,
+    });
+    expect((await events(id)).map((e) => [e.type, e.outcome, e.to_stage_id])).toEqual([
+      ['closed', 'won', null],
+    ]);
+    await expect(close(manager(), id, 'lost', 'Seed', 1)).rejects.toThrow(LeadClosedError);
+    await expect(move(manager(), id, ids.stage2, 1)).rejects.toThrow(LeadClosedError);
+  });
+
+  it('loses a lead only with a reason in force, audits the outcome alone, and a Sales closes only their own', async () => {
+    const id = await lead(people.sales);
+    await expect(close(sales(), id, 'lost', 'Không có')).rejects.toThrow(InvalidLostReasonError);
+    await expect(close(sales(), id, 'lost')).rejects.toThrow(RangeError);
+    await expect(close(sales(), id, 'won', 'Seed')).rejects.toThrow(RangeError);
+    expect(await stored(id)).toEqual({ stage_id: ids.stage, status: 'open', version: 0 });
+    const row = await close(sales(), id, 'lost', ' Seed ');
+    expect(row).toMatchObject({ status: 'lost', lostReason: 'Seed', version: 1 });
+    expect(row?.closedAt).toBeInstanceOf(Date);
+    // The audit row has the outcome only: no reason, no title.
+    const audit = await admin.query(
+      `SELECT actor_user_id, action, target_type, detail FROM audit_logs WHERE target_id = $1`,
+      [id],
+    );
+    expect(audit.rows).toEqual([
+      {
+        actor_user_id: people.sales,
+        action: 'lead.closed',
+        target_type: 'lead',
+        detail: { outcome: 'lost' },
+      },
+    ]);
+    expect(await close(sales(), await lead(), 'won')).toBeNull();
   });
 });

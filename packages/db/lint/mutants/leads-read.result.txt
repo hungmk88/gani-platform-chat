@@ -1,14 +1,19 @@
-# lint/mutants/leads-read.sh trên gani_o1, 05/11/2026 (L3a-2): 8/8 bị bắt.
-# C1, C2, C3, C4, C6, C7, C10 chạy bằng lint/db-mutants.sh (exit 0); C2 (canSeeLead) giờ bị spec integration bắt (getLead).
-# C5 (mayWriteLead), chưa dùng trong store tới L3b, chạy tay bằng cấu hình unit: sed lên src/lead-access.ts → npx vitest run
-# src/lead-access.test.ts → khôi phục, cmp khớp.
+# lint/mutants/leads-read.sh trên gani_o1, 05/11/2026 (L3b): 15/15 bị bắt, tất cả bằng lint/db-mutants.sh (exit 0).
+# C2 (canSeeLead) do getLead bắt, C5 (mayWriteLead) do changeLeadStage và closeLead bắt: spec integration, không còn chạy tay.
 # Dòng: tên | exit vitest (1 = đỏ) | số test | test đỏ (cắt 100 ký tự).
-C1-list-sales-without-owner|exit=1| Tests 1 failed | 8 passed (9)|narrows a Sales to the leads they made or own, whatever the filters 12ms;
-C2-canSee-sales-without-owner|exit=1| Tests 1 failed | 8 passed (9)|answers null for a lead the person may not see, outside the session or of another organisation; Supp;
-C3-support-not-thrown|exit=1| Tests 2 failed | 7 passed (9)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;answers null for a lead the person may not see, outside the session or of another organisation; Supp;
-C4-cursor-without-tie-break|exit=1| Tests 1 failed | 8 passed (9)|gives a Manager every lead of the session’s workspaces, newest first, and a page boundary inside a;
-C6-support-reads-workspace|exit=1| Tests 2 failed | 7 passed (9)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;answers null for a lead the person may not see, outside the session or of another organisation; Supp;
-C7-create-any-role|exit=1| Tests 1 failed | 8 passed (9)|refuses a step, an owner, a customer or a conversation that is not the workspace’s, and a role tha;
-C10-owner-any-role|exit=1| Tests 1 failed | 8 passed (9)|refuses a step, an owner, a customer or a conversation that is not the workspace’s, and a role tha;
+C1-list-sales-without-owner|exit=1| Tests 1 failed | 14 passed (15)|narrows a Sales to the leads they made or own, whatever the filters 16ms;
+C2-canSee-sales-without-owner|exit=1| Tests 1 failed | 14 passed (15)|answers null for a lead the person may not see, outside the session or of another organisation; Supp;
+C3-support-not-thrown|exit=1| Tests 4 failed | 11 passed (15)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;answers null for a lead the person may not see, outside the session or of another organisation; Supp;gives the steps of a workspace in order and its reasons to lose in force; Support throws 21ms;lets a Sales move the leads they made or own and no other (not found), and refuses a reader or Suppo;
+C4-cursor-without-tie-break|exit=1| Tests 1 failed | 14 passed (15)|gives a Manager every lead of the session’s workspaces, newest first, and a page boundary inside a;
+C5-mayWrite-sales-any|exit=1| Tests 2 failed | 13 passed (15)|lets a Sales move the leads they made or own and no other (not found), and refuses a reader or Suppo;loses a lead only with a reason in force, audits the outcome alone, and a Sales closes only their ow;
+C6-support-reads-workspace|exit=1| Tests 3 failed | 12 passed (15)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;answers null for a lead the person may not see, outside the session or of another organisation; Supp;gives the steps of a workspace in order and its reasons to lose in force; Support throws 17ms;
+C7-create-any-role|exit=1| Tests 1 failed | 14 passed (15)|refuses a step, an owner, a customer or a conversation that is not the workspace’s, and a role tha;
+C8-write-any-role|exit=1| Tests 1 failed | 14 passed (15)|lets a Sales move the leads they made or own and no other (not found), and refuses a reader or Suppo;
+C9-hidden-is-forbidden|exit=1| Tests 2 failed | 13 passed (15)|lets a Sales move the leads they made or own and no other (not found), and refuses a reader or Suppo;loses a lead only with a reason in force, audits the outcome alone, and a Sales closes only their ow;
+C10-owner-any-role|exit=1| Tests 1 failed | 14 passed (15)|refuses a step, an owner, a customer or a conversation that is not the workspace’s, and a role tha;
+C11-no-version-check|exit=1| Tests 1 failed | 14 passed (15)|refuses the step it is at or another workspace’s, and a stale version, writing nothing 29ms;
+C12-no-closed-check|exit=1| Tests 1 failed | 14 passed (15)|wins a lead for good, with a closed event that has the outcome and no reason 36ms;
+C13-same-stage-allowed|exit=1| Tests 1 failed | 14 passed (15)|refuses the step it is at or another workspace’s, and a stale version, writing nothing 21ms;
+C14-any-lost-reason|exit=1| Tests 1 failed | 14 passed (15)|loses a lead only with a reason in force, audits the outcome alone, and a Sales closes only their ow;
+C15-audit-has-reason|exit=1| Tests 1 failed | 14 passed (15)|loses a lead only with a reason in force, audits the outcome alone, and a Sales closes only their ow;
 schema identical after restore (<out-dir>)
-C5-mayWrite-sales-any|exit=1| Tests 1 failed | 1 passed (2)|follows Phụ lục B role by role: [made, owned, someone else’s] 10ms;
