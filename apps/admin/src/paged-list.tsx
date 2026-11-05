@@ -13,18 +13,21 @@ export const button =
 type Pages<P> = ReturnType<typeof useApiPages<P & { readonly nextCursor: string | null }>>;
 
 /** One list read by cursor: loading, error (the list, or only the next page), empty, the table, "Tải thêm" and its end. */
-export function Paged<R extends { readonly id: string }>({
+export function Paged<R>({
   query,
   loading,
   empty,
   head,
   row,
+  keyOf,
 }: {
   query: Pages<{ readonly data: readonly R[] }>;
   loading: string;
   empty: ReactNode;
   head: readonly string[];
   row: (r: R) => ReactNode;
+  /** How two rows are told apart when they have no `id` (`uniqueRows`). */
+  keyOf?: (r: R) => string;
 }) {
   if (query.isPending)
     return (
@@ -44,7 +47,7 @@ export function Paged<R extends { readonly id: string }>({
     </div>
   ) : null;
   if (!query.data) return failed;
-  const rows = uniqueRows(query.data.pages);
+  const rows = uniqueRows(query.data.pages, keyOf);
   if (rows.length === 0)
     return (
       <>

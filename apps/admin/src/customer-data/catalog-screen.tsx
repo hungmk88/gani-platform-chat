@@ -35,8 +35,8 @@ export function CustomerDataNav({ tab }: { tab: Tab }) {
   );
 }
 
-/** One list of the company read whole: loading, its own 404 line, error with trace and "Thử lại", empty, the table. */
-function ReadList<R extends { readonly id: string }>(p: {
+/** One list read whole: loading, its own 404 line, error with trace and "Thử lại", empty, the table (#23; #30 policies). */
+export function ReadList<R extends { readonly id: string }>(p: {
   title: string;
   path: string;
   empty: string;
