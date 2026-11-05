@@ -153,6 +153,20 @@ export const AssigneeBodySchema = z
   .strict()
   .meta({ id: 'AssigneeBody' });
 
+/**
+ * Transfer (T15): `reason`, optional, 1 to 500 characters once trimmed, becomes an internal note of kind `transfer_reason` in the same
+ * transaction as the transfer (N135, U54, N194): never in the audit row, never logged.
+ */
+export const TransferBodySchema = z
+  .object({
+    version: z.number().int().min(0),
+    toUserId: UuidSchema,
+    // NFC before counting, as the note is stored: a character NFC writes as two never slips past 500 into the table's CHECK.
+    reason: z.string().trim().normalize('NFC').min(1).max(500).optional(),
+  })
+  .strict()
+  .meta({ id: 'TransferBody' });
+
 /** Close (T13): the outcome is required (Brief P14); won or lost belong to the lead, not here. */
 export const CloseBodySchema = z
   .object({
