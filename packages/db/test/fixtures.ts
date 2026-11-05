@@ -5,6 +5,8 @@ import type pg from 'pg';
 
 // Child tables first: cleanup deletes in this order, then the user and the organization.
 const TENANT_TABLES = [
+  'lead_events',
+  'leads',
   'ticket_events',
   'tickets',
   'message_deliveries',
@@ -70,7 +72,11 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     botNode,
     botSession,
     ticket,
+    stage,
+    lead,
   ] = [
+    uuidv7(),
+    uuidv7(),
     uuidv7(),
     uuidv7(),
     uuidv7(),
@@ -100,7 +106,7 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
     INSERT INTO quick_replies (id, org_id, workspace_id, shortcut, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'seed', 'Seed');
-    INSERT INTO pipeline_stages (id, org_id, workspace_id, name, position) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'Seed', 0);
+    INSERT INTO pipeline_stages (id, org_id, workspace_id, name, position) VALUES ('${stage}', '${org}', '${workspace}', 'Seed', 0);
     INSERT INTO pipeline_lost_reasons (id, org_id, workspace_id, name, position) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'Seed', 0);
     INSERT INTO bot_flows (id, org_id, workspace_id, name) VALUES ('${botFlow}', '${org}', '${workspace}', 'Seed');
     INSERT INTO bot_flow_versions (id, org_id, flow_id) VALUES ('${botVersion}', '${org}', '${botFlow}');
@@ -120,6 +126,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO messages (id, org_id, workspace_id, conversation_id, sequence_number, sender_kind, kind, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', 1, 'customer', 'text', 'seed');
     INSERT INTO message_deliveries (id, org_id, workspace_id, conversation_id, message_id, channel_account_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${conversation}', '${uuidv7()}', '${channelAccount}');
     INSERT INTO tickets (id, org_id, workspace_id, title, customer_id, conversation_id, created_by) VALUES ('${ticket}', '${org}', '${workspace}', 'Seed', '${customer}', '${conversation}', '${user}');
+    INSERT INTO leads (id, org_id, workspace_id, title, customer_id, conversation_id, stage_id, created_by) VALUES ('${lead}', '${org}', '${workspace}', 'Seed', '${customer}', '${conversation}', '${stage}', '${user}');
+    INSERT INTO lead_events (id, org_id, workspace_id, lead_id, type, to_stage_id, actor_user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${lead}', 'created', '${stage}', '${user}');
     INSERT INTO ticket_events (id, org_id, workspace_id, ticket_id, type, to_status, actor_user_id) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${ticket}', 'created', 'new', '${user}');
     INSERT INTO conversation_events (id, org_id, conversation_id, event_type, to_state, actor_kind, version_after, trace_id) VALUES ('${uuidv7()}', '${org}', '${conversation}', 'created', 'BOT_ACTIVE', 'system', 0, 'seed');
     INSERT INTO conversation_notes (id, org_id, conversation_id, author_user_id, body) VALUES ('${uuidv7()}', '${org}', '${conversation}', '${user}', 'Seed');
