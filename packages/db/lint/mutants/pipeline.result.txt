@@ -1,0 +1,24 @@
+# lint/mutants/pipeline.sh trên gani_o1, 05/11/2026 (#601), chạy bằng lint/db-mutants.sh của PR này: 21/21 bị bắt, schema giống hệt, exit 0.
+# Dòng: tên | exit vitest (1 = đỏ) | số test | test đỏ (cắt 100 ký tự).
+P-pipeline_stages-app-no-workspace|exit=1| Tests 2 failed | 244 passed (246)|the tables whose policies test app.current_workspaces() are exactly the O+W tables;let app_role read the pipeline of the workspaces of its session only, and never write it;
+P-pipeline_stages-support-no-access-check|exit=1| Tests 1 failed | 245 passed (246)|has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy beh;
+G-pipeline_stages-app-insert|exit=1| Tests 1 failed | 245 passed (246)|let app_role read the pipeline of the workspaces of its session only, and never write it;
+G-pipeline_stages-app-update-name|exit=1| Tests 2 failed | 244 passed (246)|let app_role read the pipeline of the workspaces of its session only, and never write it;is on exactly the listed columns, and never on a whole table;
+G-pipeline_stages-app-delete|exit=1| Tests 1 failed | 245 passed (246)|case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all;
+P-pipeline_lost_reasons-app-no-workspace|exit=1| Tests 2 failed | 244 passed (246)|the tables whose policies test app.current_workspaces() are exactly the O+W tables;shows nothing of a workspace outside the session or of another organisation;
+P-pipeline_lost_reasons-support-no-access-check|exit=1| Tests 1 failed | 245 passed (246)|has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy beh;
+G-pipeline_lost_reasons-app-insert|exit=1| Tests 1 failed | 245 passed (246)|let app_role read the pipeline of the workspaces of its session only, and never write it;
+G-pipeline_lost_reasons-app-update-name|exit=1| Tests 2 failed | 244 passed (246)|let app_role read the pipeline of the workspaces of its session only, and never write it;is on exactly the listed columns, and never on a whole table;
+G-pipeline_lost_reasons-app-delete|exit=1| Tests 1 failed | 245 passed (246)|case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all;
+D1-stages-drop-name-check|exit=1| Tests 1 failed | 245 passed (246)|takes a step of 1 to 100 characters, trimmed and in NFC, at one free place of the workspace;
+D2-reasons-drop-name-check|exit=1| Tests 1 failed | 245 passed (246)|takes a reason of 1 to 200 characters in NFC, one name and one place a list, a new list at a later e;
+D3-stages-drop-position-check|exit=1| Tests 1 failed | 245 passed (246)|takes a step of 1 to 100 characters, trimmed and in NFC, at one free place of the workspace;
+D4-reasons-drop-position-check|exit=1| Tests 1 failed | 245 passed (246)|takes a reason of 1 to 200 characters in NFC, one name and one place a list, a new list at a later e;
+D5-stages-drop-position-key|exit=1| Tests 1 failed | 245 passed (246)|takes a step of 1 to 100 characters, trimmed and in NFC, at one free place of the workspace;
+D6-reasons-drop-name-key|exit=1| Tests 1 failed | 245 passed (246)|takes a reason of 1 to 200 characters in NFC, one name and one place a list, a new list at a later e;
+D7-stages-drop-workspace-fk|exit=1| Tests 1 failed | 245 passed (246)|ties a step to a workspace of its own organisation;
+D8-reasons-drop-workspace-fk|exit=1| Tests 1 failed | 245 passed (246)|takes a reason of 1 to 200 characters in NFC, one name and one place a list, a new list at a later e;
+C1-in-force-strictly-before|exit=1| Tests 1 failed | 245 passed (246)|reads the list of the latest effective_from not in the future, in order; a later list only from its ;
+C2-in-force-ignores-future|exit=1| Tests 2 failed | 244 passed (246)|reads the list of the latest effective_from not in the future, in order; a later list only from its ;turns to a list set for later once the clock of the database reaches it;
+C3-in-force-any-list|exit=1| Tests 2 failed | 244 passed (246)|reads the list of the latest effective_from not in the future, in order; a later list only from its ;turns to a list set for later once the clock of the database reaches it;
+schema identical after restore (<out-dir>)
