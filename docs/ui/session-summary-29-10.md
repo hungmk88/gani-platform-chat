@@ -284,9 +284,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
     - Heads-up #602 lần 5: lần gọi đăng comment bị công cụ báo timeout nhưng vẫn lên GitHub muộn (07:04:52 UTC), thành bản trùng ghi
       sai giờ. Đã sửa comment đó, tính đồng hồ từ lần đăng muộn nhất; merge 07:35:27 UTC, squash `bafe375`. Sau timeout: chờ vài phút,
       kiểm lại rồi mới đăng lại.
-    - **Sự cố quy trình 05/11:** worker của phiên FE khởi động lại ba lần (khoảng 07:42, 08:08 và 10:08 UTC); cả ba lần FE trả "No
-      response requested" dù báo cáo 5 mục #602 chưa gửi và B2 chưa push: chậm khoảng 4 giờ 30. Sau mỗi lần khởi động lại: kiểm việc
-      còn dở (nhánh chưa push, báo cáo chưa gửi, CI đang chờ) trước khi kết luận lượt trước đã xong.
+    - **Sự cố quy trình 05/11:** worker của phiên FE khởi động lại bốn lần (khoảng 07:42, 08:08, 10:08 và 12:10 UTC); cả bốn lần FE
+      trả "No response requested" dù báo cáo 5 mục #602 chưa gửi và B2 chưa push: chậm khoảng 6 giờ. CEO ghi nhận là lỗi hệ thống
+      phiên, không trừ điểm FE (brief 77). Sau mỗi lần khởi động lại: làm tiếp việc còn dở (nhánh chưa push, báo cáo chưa gửi, CI
+      đang chờ) trước khi kết luận lượt trước đã xong.
+    - BE sửa file FE sinh `apps/admin/src/api/planned.d.ts` (+393/−0) và dòng U65 của `QUESTIONS.md` trong #610 (hợp đồng planned của
+      #30, tầng 3, CEO APPROVED, merge 14:08:50 UTC 05/11, squash `3c16f9f`; review trong 24 giờ, brief 78). **Đúng:** `planned.json`
+      chỉ thêm 4 đường (`GET /v1/platform/tenants/health`, `POST /v1/platform/access-sessions`, `GET /v1/channel-policies`,
+      `PUT /v1/channel-policies/{id}`) và 8 schema; không đường hay schema cũ nào đổi hoặc bị xóa. `gen:api` trên `3c16f9f` không lệch.
+      CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". FE dùng ở PR 30a (hai đường đọc). FE không comment PR BE.
   - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
     2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
