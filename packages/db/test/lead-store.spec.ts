@@ -7,6 +7,7 @@ import {
   getLead,
   LeadAccessDeniedError,
   listLeads,
+  readPipeline,
   withTenant,
   type LeadQuery,
   type LeadViewer,
@@ -188,5 +189,24 @@ describe('getLead', () => {
     );
     const detail = await inWs((tx) => getLead(tx, viewer('owner', seedUsers.get(A)), lead.older));
     expect([detail?.events.length, detail?.eventsCapped]).toEqual([500, true]);
+  });
+});
+
+describe('readPipeline', () => {
+  it('gives the steps of a workspace in order and its reasons to lose in force; Support throws', async () => {
+    const pipeline = (ws: string, role: OrgRole = 'viewer') =>
+      inWs((tx) => readPipeline(tx, viewer(role), ws), [ids.ws, ids.ws2]);
+    expect(await pipeline(ids.ws)).toEqual({
+      stages: [
+        { id: ids.stage, name: 'Seed', position: 0 },
+        { id: ids.stage2, name: 'Bước 2', position: 1 },
+      ],
+      lostReasons: ['Seed'],
+    });
+    expect(await pipeline(ids.ws2)).toEqual({
+      stages: [{ id: ids.stageWs2, name: 'Bước 1', position: 0 }],
+      lostReasons: [],
+    });
+    await expect(pipeline(ids.ws, 'support')).rejects.toThrow(LeadAccessDeniedError);
   });
 });
