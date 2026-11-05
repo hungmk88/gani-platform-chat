@@ -270,6 +270,20 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `POST /v1/conversations/{id}/transfer` đổi từ `AssigneeBody` sang `TransferBody` `{version, toUserId, reason?}`, chỉ thêm `reason`
       tùy chọn; không đường hay schema cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn".
       FE vẫn gửi `{version, toUserId}`, hành vi không đổi. Ô lý do khi Chuyển (U54) là việc mới, chờ brief. FE không comment PR BE.
+    - #600, #603 (script đột biến DB), #601 (bảng pipeline), #604 (bảng leads) không chạm file FE, không cần review chéo (brief
+      72–76). Số đo chốt sau #604: A 27,5/58, B 19/29, C 21/30, D 27,5/135 (brief 72).
+    - #605 (CVE, merge 06:10:24 UTC 05/11, squash `72793a1`) sửa `infra/docker/Dockerfile.admin`, file build ảnh admin, không sửa mã
+      `apps/admin` (brief 76, review trong 24 giờ). **Đúng:** stage runtime chỉ nâng `apt`/`libapt-pkg6.0` (`--only-upgrade`, không cài
+      thêm), build đỏ nếu bản sau nâng còn dưới 2.6.2, xóa danh sách apt; `API_ORIGIN`, người chạy `node`, cổng 3001 không đổi. CI
+      #602 sau #605: `docker images` và `admin (e2e, axe)` xanh. FE không comment PR BE.
+    - #606, #607 (`apps/worker`, pipeline mặc định) và #608 (báo cáo cuối ngày BE, `docs/reviews/`) không chạm file FE, không cần
+      review chéo.
+    - CVE-2026-109518 đã đóng (05/11/2026). Trivy CI #602 HEAD 22207a9 lúc 06:14:48 UTC: 0 HIGH, 0 CRITICAL ở cả 4 ảnh (gani-api,
+      gani-worker, gani-admin, gani-migrate). Sửa ở #605 (squash 72793a1): apt/libapt-pkg6.0 ≥ 2.6.2 trong Dockerfile.admin +
+      Dockerfile.node.
+    - Heads-up #602 lần 5: lần gọi đăng comment bị công cụ báo timeout nhưng vẫn lên GitHub muộn (07:04:52 UTC), thành bản trùng ghi
+      sai giờ. Đã sửa comment đó, tính đồng hồ từ lần đăng muộn nhất; merge 07:35:27 UTC, squash `bafe375`. Sau timeout: chờ vài phút,
+      kiểm lại rồi mới đăng lại.
   - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
     2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
