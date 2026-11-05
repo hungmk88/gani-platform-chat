@@ -38,9 +38,8 @@ test('an Owner reads the level and the flags; at L0 nothing is lower to choose',
   await expect(flagRows(page).nth(2)).toHaveText(/ai\.customer_reply.*Khóa ở Đợt 1$/);
   await expect(flagRows(page).nth(3)).toHaveText(/channel\.zalo.*Đang tắt$/);
   // At L0 the only button is "Hạ mức…", greyed with why (PR B); the flags are read only; no developer banner on the screen.
-  const lower = page.getByRole('main').getByRole('button');
-  await expect(lower).toHaveCount(1);
-  await expect(lower).toHaveAccessibleName('Hạ mức…');
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(1);
+  const lower = page.getByRole('button', { name: 'Hạ mức…' });
   await expect(lower).toBeDisabled();
   await expect(lower).toHaveAccessibleDescription('Đang ở mức thấp nhất chọn được.');
   await expect(page.getByRole('main').getByRole('checkbox')).toHaveCount(0);

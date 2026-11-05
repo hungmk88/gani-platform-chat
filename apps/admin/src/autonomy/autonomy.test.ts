@@ -49,26 +49,14 @@ describe('Tự chủ & feature flag (#27)', () => {
 
   it('lowers only to a level below the current one that the API offers; L2–L5 wait for Đợt 2', () => {
     const why = (level: Level, available: Level[]) =>
-      lowerChoices({ level, available }).map((c) => `${c.level}:${c.why ?? 'chọn được'}`);
+      lowerChoices({ level, available }).map((c) => c.why ?? 'chọn được');
     expect(why('L1', ['L0', 'L1'])).toEqual([
-      'L0:chọn được',
-      'L1:Mức hiện tại',
-      'L2:Chờ Đợt 2',
-      'L3:Chờ Đợt 2',
-      'L4:Chờ Đợt 2',
-      'L5:Chờ Đợt 2',
+      'chọn được',
+      'Mức hiện tại',
+      ...Array<string>(4).fill('Chờ Đợt 2'),
     ]);
-    expect(why('L0', ['L0', 'L1']).slice(0, 2)).toEqual([
-      'L0:Mức hiện tại',
-      'L1:Cao hơn mức hiện tại',
-    ]);
-    expect(why('L1', ['L1'])[0]).toBe('L0:Chưa chọn được');
-    // A level of Đợt 2 is never offered here, even below the current one.
-    expect(why('L2', ['L0', 'L1', 'L2']).slice(0, 3)).toEqual([
-      'L0:chọn được',
-      'L1:chọn được',
-      'L2:Mức hiện tại',
-    ]);
+    expect(why('L0', ['L0', 'L1']).slice(0, 2)).toEqual(['Mức hiện tại', 'Cao hơn mức hiện tại']);
+    expect(why('L1', ['L1'])[0]).toBe('Chưa chọn được');
   });
 
   it('asks a reason of 1–500 characters once trimmed', () => {

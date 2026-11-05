@@ -32,17 +32,11 @@ export const meaningOf = (level: Level): string =>
 export const ALL_LEVELS: readonly Level[] = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'];
 const LATER = ALL_LEVELS.indexOf('L2');
 
-export interface Choice {
-  readonly level: Level;
-  /** Why it cannot be chosen, or null when it can. */
-  readonly why: string | null;
-}
-
 /**
- * The levels of "Hạ mức tự chủ" (CEO 05/11, brief 61): only one below the current level that the API offers (`available`) can be
- * chosen; the others say why not, L2–L5 always "Chờ Đợt 2". Raising is the Owner's and not in this dialog.
+ * The levels of "Hạ mức tự chủ" (CEO 05/11, brief 61) with why each cannot be chosen, null when it can: only one below the
+ * current level that the API offers (`available`); L2–L5 always "Chờ Đợt 2". Raising (the Owner's) is not in this dialog.
  */
-export function lowerChoices(a: Pick<Autonomy, 'level' | 'available'>): Choice[] {
+export function lowerChoices(a: Pick<Autonomy, 'level' | 'available'>) {
   const now = ALL_LEVELS.indexOf(a.level);
   return ALL_LEVELS.map((level, i) => ({
     level,

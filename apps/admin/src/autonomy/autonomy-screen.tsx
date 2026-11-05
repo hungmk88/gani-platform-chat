@@ -92,24 +92,24 @@ export function AutonomyScreen({
         </h2>
         <Loaded query={level} loading="Đang tải mức tự chủ…">
           {(a) => (
-            <>
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-                <dt className="text-text-muted">Hiện tại</dt>
-                <dd>
-                  <strong>{a.level}</strong> — {meaningOf(a.level)}
-                </dd>
-                <dt className="text-text-muted">Lý do</dt>
-                <dd>{a.reason ?? '—'}</dd>
-                <dt className="text-text-muted">Lần đổi gần nhất</dt>
-                <dd>{changeOf(a, meId)}</dd>
-              </dl>
-              <LowerLevel
-                autonomy={a}
-                workspace={workspaces.find((w) => w.id === ws)?.name ?? 'Workspace đang chọn'}
-              />
-            </>
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
+              <dt className="text-text-muted">Hiện tại</dt>
+              <dd>
+                <strong>{a.level}</strong> — {meaningOf(a.level)}
+              </dd>
+              <dt className="text-text-muted">Lý do</dt>
+              <dd>{a.reason ?? '—'}</dd>
+              <dt className="text-text-muted">Lần đổi gần nhất</dt>
+              <dd>{changeOf(a, meId)}</dd>
+            </dl>
           )}
         </Loaded>
+        {level.isSuccess ? (
+          <LowerLevel
+            autonomy={level.data}
+            workspace={workspaces.find((w) => w.id === ws)?.name ?? ws}
+          />
+        ) : null}
         <table className="w-full text-left">
           <caption className="sr-only">Ý nghĩa các mức tự chủ</caption>
           <thead className="text-text-muted">
