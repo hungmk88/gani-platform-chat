@@ -21,6 +21,14 @@ RUN pnpm --filter "@gani/admin..." run build
 # server.js, the traced node_modules and the static files only; owned by root, run as `node` (uid 1000). npm and corepack of the
 # base image are removed (as in Dockerfile.node). Next.js does not trap SIGTERM: `docker stop` ends it with exit code 143.
 FROM ${NODE_IMAGE} AS admin
+# CVE-2026-109518 (apt and libapt-pkg6.0 before 2.6.2; Trivy HIGH with a fix, CEO 05/11/2026): the base image ships 2.6.1. Upgrade
+# the two packages from the Debian archives of the base image, and fail the build if the fixed version is not there, so that a scan
+# never turns green by luck. Drop this step once NODE_IMAGE ships apt >= 2.6.2.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg6.0 \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' apt)" ge 2.6.2 \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libapt-pkg6.0)" ge 2.6.2 \
+  && rm -rf /var/lib/apt/lists/*
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 ARG API_ORIGIN=http://api:3000
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3001 API_ORIGIN=${API_ORIGIN}

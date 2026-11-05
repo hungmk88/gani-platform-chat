@@ -43,6 +43,14 @@ RUN pnpm --filter @gani/db deploy --prod /deployed \
 # Runtime images: files owned by root and read-only for the process, which runs as `node` (uid 1000), never as root. npm and
 # corepack of the base image are removed: nothing runs them, and their bundled packages carry most of the CVEs a scan finds.
 FROM ${NODE_IMAGE} AS runtime
+# CVE-2026-109518 (apt and libapt-pkg6.0 before 2.6.2; Trivy HIGH with a fix, CEO 05/11/2026): the base image ships 2.6.1. Upgrade
+# the two packages from the Debian archives of the base image, and fail the build if the fixed version is not there, so that a scan
+# never turns green by luck. Drop this step once NODE_IMAGE ships apt >= 2.6.2.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg6.0 \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' apt)" ge 2.6.2 \
+  && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libapt-pkg6.0)" ge 2.6.2 \
+  && rm -rf /var/lib/apt/lists/*
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
 FROM runtime AS api
