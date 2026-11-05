@@ -2,7 +2,9 @@
 //   pnpm --filter @gani/worker tenant:create-org --name "Gani Foods" --slug gani-foods --owner-email owner@… --operator ops@…
 //     with DATABASE_URL_MIGRATION, APP_ENV, ADMIN_URL and the email settings (SMTP_URL, EMAIL_FROM; N149);
 //   pnpm --filter @gani/worker tenant:create-workspace --org gani-foods --name "Bán sỉ" --slug b2b --template b2b --operator ops@…
-//     [--timezone Asia/Ho_Chi_Minh] with DATABASE_URL_MIGRATION and APP_ENV.
+//     [--timezone Asia/Ho_Chi_Minh] with DATABASE_URL_MIGRATION and APP_ENV;
+//   pnpm --filter @gani/worker tenant:create-pipeline --org gani-foods (--workspace b2b | --all) --operator ops@…
+//     with DATABASE_URL_MIGRATION and APP_ENV (N200: the default pipeline of workspaces made before it; adds nothing a second time).
 // Prints one JSON line: the ids on success, the reason of a refusal (exit 1), or the code of a failure. Never an email or the token.
 import console from 'node:console';
 import process from 'node:process';
@@ -17,6 +19,11 @@ import {
   ownerInvitation,
   readCreateOrgArgs,
 } from '../dist/ops/create-org.js';
+import {
+  CreatePipelineRefusedError,
+  createPipelines,
+  readCreatePipelineArgs,
+} from '../dist/ops/create-pipeline.js';
 import {
   CreateWorkspaceRefusedError,
   createWorkspace,
@@ -61,20 +68,17 @@ async function createOrg(argv) {
   return 0;
 }
 
-async function createWs(argv) {
-  const input = readCreateWorkspaceArgs(argv, process.env);
+/** Runs `make(client)` in one transaction as migration_role; resolves to its result, or null when DATABASE_URL_MIGRATION is missing. */
+async function inTransaction(make) {
   const url = process.env.DATABASE_URL_MIGRATION;
-  if (!url) {
-    say({ event: 'workspace_create_refused', reason: 'database_url_missing' });
-    return 1;
-  }
+  if (!url) return null;
   const pool = createDbPool(url, { max: 1 });
   const client = await pool.connect();
-  let created;
   try {
     await client.query('BEGIN');
-    created = await createWorkspace(client, input, uuidv7);
+    const result = await make(client);
     await client.query('COMMIT');
+    return result;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
     throw error;
@@ -82,11 +86,35 @@ async function createWs(argv) {
     client.release();
     await pool.end();
   }
+}
+
+async function createWs(argv) {
+  const input = readCreateWorkspaceArgs(argv, process.env);
+  const created = await inTransaction((client) => createWorkspace(client, input, uuidv7));
+  if (!created) {
+    say({ event: 'workspace_create_refused', reason: 'database_url_missing' });
+    return 1;
+  }
   say({ event: 'workspace_created', ...created, reason: 'tenant:create-workspace' });
   return 0;
 }
 
-const COMMANDS = { 'create-org': createOrg, 'create-workspace': createWs };
+async function createPipeline(argv) {
+  const input = readCreatePipelineArgs(argv, process.env);
+  const done = await inTransaction((client) => createPipelines(client, input, uuidv7));
+  if (!done) {
+    say({ event: 'pipeline_create_refused', reason: 'database_url_missing' });
+    return 1;
+  }
+  say({ event: 'pipeline_created', ...done, reason: 'tenant:create-pipeline' });
+  return 0;
+}
+
+const COMMANDS = {
+  'create-org': createOrg,
+  'create-workspace': createWs,
+  'create-pipeline': createPipeline,
+};
 const [command, ...argv] = process.argv.slice(2);
 const run = Object.hasOwn(COMMANDS, command)
   ? COMMANDS[command](argv)
@@ -98,12 +126,16 @@ run.then(
       say({ event: 'organization_create_refused', reason: error.reason });
     } else if (error instanceof CreateWorkspaceRefusedError) {
       say({ event: 'workspace_create_refused', reason: error.reason });
+    } else if (error instanceof CreatePipelineRefusedError) {
+      say({ event: 'pipeline_create_refused', reason: error.reason });
     } else if (error instanceof EmailConfigError) {
       // Checked before anything is written: production without a mail server makes nothing.
       say({ event: 'organization_create_refused', reason: 'email_not_configured' });
     } else {
       // A driver or SMTP message can name a host, a role or an address: only the code goes out.
-      const what = command === 'create-workspace' ? 'workspace' : 'organization';
+      const what =
+        { 'create-workspace': 'workspace', 'create-pipeline': 'pipeline' }[command] ??
+        'organization';
       say({ event: `${what}_create_failed`, code: error?.code ?? 'unknown' });
     }
     process.exit(1);
