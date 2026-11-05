@@ -35,6 +35,9 @@ export function CustomerDataNav({ tab }: { tab: Tab }) {
   );
 }
 
+/** The cache key of a `ReadList` under the scope, for a screen that reads it again after a change (#30 policies). */
+export const readListKey = (path: string) => ['customer-data', path] as const;
+
 /** One list read whole: loading, its own 404 line, error with trace and "Thử lại", empty, the table (#23; #30 policies). */
 export function ReadList<R extends { readonly id: string }>(p: {
   title: string;
@@ -43,7 +46,7 @@ export function ReadList<R extends { readonly id: string }>(p: {
   head: readonly string[];
   row: (r: R) => ReactNode;
 }) {
-  const list = useApiQuery<{ readonly data: readonly R[] }>(['customer-data', p.path], p.path);
+  const list = useApiQuery<{ readonly data: readonly R[] }>(readListKey(p.path), p.path);
   let body: ReactNode;
   if (list.isPending)
     body = (

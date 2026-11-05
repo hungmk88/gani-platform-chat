@@ -95,6 +95,11 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   ],
   // A security incident once closed stays closed (#29 PR B2, planned S5); the list is read again.
   incident_closed: ['reload', 'Sự cố này đã đóng. Đang tải lại danh sách.'],
+  // A new version of a channel policy starts after the one in force (#30 PR 30b, planned S5); the list is read again.
+  invalid_effective_from: [
+    'reload',
+    'Ngày hiệu lực phải sau ngày của phiên bản đang dùng. Đang tải lại danh sách, chọn ngày muộn hơn.',
+  ],
   // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
   conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };

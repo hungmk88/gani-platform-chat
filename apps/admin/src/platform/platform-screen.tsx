@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
 import { CHANNEL_TYPE } from '../channels/channels';
 import { ReadList } from '../customer-data/catalog-screen';
@@ -8,6 +9,7 @@ import type { NavItem } from '../nav';
 import { Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
+import { PolicyDialog } from './policy-dialog';
 import {
   dayText,
   healthPath,
@@ -94,7 +96,7 @@ function HealthTab() {
 }
 
 /** The channel policies in force, one per channel and class, in the API's order (the read list of #23). */
-function PoliciesTab() {
+function PolicyList({ onAdd }: { onAdd: (p: ChannelPolicy) => void }) {
   return (
     <ReadList<ChannelPolicy>
       title="Chính sách kênh"
@@ -109,6 +111,7 @@ function PoliciesTab() {
         'Hiệu lực từ',
         'Nguồn',
         'Ghi chú',
+        'Thao tác',
       ]}
       row={(p) => {
         const link = sourceLink(p.sourceUrl);
@@ -131,10 +134,41 @@ function PoliciesTab() {
               {p.sourceDate ? ` (${dayText(p.sourceDate)})` : null}
             </td>
             <td className="whitespace-pre-line p-2">{p.note || '—'}</td>
+            <td className="p-2">
+              <button
+                type="button"
+                className="rounded-input border border-border-strong px-3 py-1"
+                aria-label={`Thêm phiên bản cho ${CHANNEL_TYPE[p.channelType]} · ${MESSAGE_CLASS[p.messageClass]}`}
+                onClick={() => onAdd(p)}
+              >
+                Thêm phiên bản…
+              </button>
+            </td>
           </tr>
         );
       }}
     />
+  );
+}
+
+/** The policies, and "Thêm phiên bản" of one (PR 30b, tầng 2): once saved, a status sentence takes the focus. */
+function PoliciesTab() {
+  const [editing, setEditing] = useState<ChannelPolicy | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const said = useRef<HTMLParagraphElement>(null);
+  useEffect(() => said.current?.focus(), [notice]);
+  return (
+    <>
+      <PolicyList onAdd={(p) => (setNotice(null), setEditing(p))} />
+      {notice ? (
+        <p ref={said} role="status" tabIndex={-1}>
+          {notice}
+        </p>
+      ) : null}
+      {editing ? (
+        <PolicyDialog policy={editing} onClose={() => setEditing(null)} onSaved={setNotice} />
+      ) : null}
+    </>
   );
 }
 
