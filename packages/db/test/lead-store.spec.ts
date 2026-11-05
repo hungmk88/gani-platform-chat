@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   createDbPool,
+  getLead,
   LeadAccessDeniedError,
   listLeads,
   withTenant,
@@ -14,8 +15,8 @@ import {
 import { url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
-// Reading leads (L3a-1, N188, N196) as app_role through RLS: every role's scope applied by the store, newest first a page at a time
-// without losing a lead that shares its creation time. One lead with its events comes in L3a-2.
+// Reading leads (L3a-1, N188, N196, N201) as app_role through RLS: every role's scope applied by the store, newest first a page at a
+// time without losing a lead that shares its creation time, and one lead with its events, oldest first, at most 500.
 const [A, B] = [uuidv7(), uuidv7()];
 const seedUsers = new Map<string, string>();
 const people = { sales: uuidv7(), other: uuidv7() };
@@ -87,6 +88,16 @@ beforeAll(async () => {
   await insert(lead.theirs, people.other, people.other, ids.stage);
   await insert(lead.older, people.other, null, ids.stage, ids.ws, '2026-11-01T08:00:00Z');
   await insert(lead.ws2, people.other, null, ids.stageWs2, ids.ws2);
+  await admin.query(
+    `INSERT INTO lead_events (id, org_id, workspace_id, lead_id, type, to_stage_id, actor_user_id, occurred_at)
+     VALUES ($1, $2, $3, $4, 'created', $5, $6, '2026-11-05T08:00:00Z')`,
+    [uuidv7(), A, ids.ws, lead.made, ids.stage, people.sales],
+  );
+  await admin.query(
+    `INSERT INTO lead_events (id, org_id, workspace_id, lead_id, type, from_stage_id, to_stage_id, actor_user_id, occurred_at)
+     VALUES ($1, $2, $3, $4, 'stage_changed', $5, $6, $7, '2026-11-05T09:00:00Z')`,
+    [uuidv7(), A, ids.ws, lead.made, ids.stage, ids.stage2, people.sales],
+  );
 });
 
 afterAll(async () => {
@@ -135,5 +146,47 @@ describe('listLeads', () => {
     await expect(list(viewer('support'))).rejects.toThrow(LeadAccessDeniedError);
     await expect(list(viewer('owner'), { limit: 101 })).rejects.toThrow(RangeError);
     await expect(list(viewer('owner'), { status: 'pending' as never })).rejects.toThrow(RangeError);
+  });
+});
+
+describe('getLead', () => {
+  it('gives a lead with its events oldest first and the names of its steps', async () => {
+    const detail = await inWs((tx) => getLead(tx, viewer('sales'), lead.made));
+    expect(detail?.lead).toMatchObject({
+      id: lead.made,
+      stageName: 'Seed',
+      status: 'open',
+      title: 'Báo giá',
+    });
+    expect(
+      detail?.events.map((e) => [e.type, e.fromStage?.name ?? null, e.toStage?.name ?? null]),
+    ).toEqual([
+      ['created', null, 'Seed'],
+      ['stage_changed', 'Seed', 'Bước 2'],
+    ]);
+    expect(detail?.eventsCapped).toBe(false);
+  });
+
+  it('answers null for a lead the person may not see, outside the session or of another organisation; Support throws', async () => {
+    // A Sales reads a lead they follow but did not make, and not one of someone else.
+    expect((await inWs((tx) => getLead(tx, viewer('sales'), lead.owned)))?.lead.id).toBe(
+      lead.owned,
+    );
+    expect(await inWs((tx) => getLead(tx, viewer('sales'), lead.theirs))).toBeNull();
+    expect(await inWs((tx) => getLead(tx, viewer('owner', seedUsers.get(A)), lead.ws2))).toBeNull();
+    expect(await inWs((tx) => getLead(tx, viewer('owner'), lead.made), [ids.ws], B)).toBeNull();
+    await expect(inWs((tx) => getLead(tx, viewer('support'), lead.made))).rejects.toThrow(
+      LeadAccessDeniedError,
+    );
+  });
+
+  it('gives at most 500 events, and says it cut the rest', async () => {
+    await admin.query(
+      `INSERT INTO lead_events (id, org_id, workspace_id, lead_id, type, actor_user_id)
+       SELECT unnest($5::uuid[]), $1, $2, $3, 'owner_changed', $4`,
+      [A, ids.ws, lead.older, people.other, Array.from({ length: 501 }, () => uuidv7())],
+    );
+    const detail = await inWs((tx) => getLead(tx, viewer('owner', seedUsers.get(A)), lead.older));
+    expect([detail?.events.length, detail?.eventsCapped]).toEqual([500, true]);
   });
 });
