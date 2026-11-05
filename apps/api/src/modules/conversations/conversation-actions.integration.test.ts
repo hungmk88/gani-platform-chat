@@ -246,6 +246,12 @@ describe('POST /v1/conversations/{id}/transfer and /assign', () => {
       { action: 'conversation.transferred', actor_user_id: people['manager'], detail: { fromUserId: people['sales'], toUserId: people['colleague'], version: 1 } },
       { action: 'conversation.note_added', actor_user_id: people['manager'], detail: { noteId: note?.id, kind: 'transfer_reason' } },
     ]));
+    // The limit is on the reason in NFC (N199): 500 taken plain or decomposed, 501 refused either way.
+    const decomposed = (n: number) => 'e\u0301'.repeat(n);
+    expect((await act('manager', `${id}/transfer`, { version: 1, toUserId: people['sales'], reason: decomposed(501) })).status).toBe(400);
+    expect((await act('manager', `${id}/transfer`, { version: 1, toUserId: people['sales'], reason: 'y'.repeat(500) })).status).toBe(200);
+    expect((await act('manager', `${id}/transfer`, { version: 2, toUserId: people['colleague'], reason: decomposed(500) })).status).toBe(200);
+    expect((await notes()).map((n) => n.body.length).sort()).toEqual([20, 500, 500]);
   });
 });
 

@@ -152,6 +152,16 @@ describe('/v1/conversations/{id}/notes', () => {
       expect((await write('manager', c[key]!, { body: `Ghi chú ${key}` })).status, key).toBe(201);
   });
 
+  it('counts the body in NFC, as the table does: 2000 taken, 2001 refused, written plain or decomposed (N199)', async () => {
+    const decomposed = (n: number) => 'e\u0301'.repeat(n); // NFD: 2n code units, n once in NFC
+    for (const body of ['x'.repeat(2000), decomposed(2000)]) {
+      const made = await write('manager', c['closed']!, { body });
+      expect([made.status, (made.body['body'] as string).length]).toEqual([201, 2000]);
+    }
+    for (const body of ['x'.repeat(2001), decomposed(2001)])
+      expect((await write('manager', c['closed']!, { body })).status).toBe(400);
+  });
+
   it('refuses a writer who may not, and a body or a header that is not valid', async () => {
     expect((await write('sales', c['queue']!, { body: 'Chưa nhận' })).status).toBe(403);
     expect((await write('sales', c['theirs']!, { body: 'Của đồng nghiệp' })).status).toBe(404);
