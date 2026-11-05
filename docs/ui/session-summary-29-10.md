@@ -293,6 +293,17 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       chỉ thêm 4 đường (`GET /v1/platform/tenants/health`, `POST /v1/platform/access-sessions`, `GET /v1/channel-policies`,
       `PUT /v1/channel-policies/{id}`) và 8 schema; không đường hay schema cũ nào đổi hoặc bị xóa. `gen:api` trên `3c16f9f` không lệch.
       CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". FE dùng ở PR 30a (hai đường đọc). FE không comment PR BE.
+    - BE sửa file FE trong #616 (L4, tầng 2, merge 16:12:40 UTC 05/11, squash `c364149`; review trong 24 giờ, brief 91–98):
+      `apps/admin/src/leads/leads.ts`, `lead-detail.ts` (chỉ đổi import kiểu `../api/planned` → `../api/schema` và chú thích), hai file
+      sinh `planned.d.ts`/`schema.d.ts`. **Đúng:** 3 đường đọc lead chuyển từ `planned.json` sang `openapi.json`, hợp đồng giữ nguyên;
+      `gen:api` trên `c364149` không lệch; không file FE nào còn import kiểu lead từ `planned`. Hành vi: #12/#13a đọc API thật (trước là
+      404 → `PendingPage`). CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn" (lần đầu đỏ vì coverage branches
+      `apps/api` 79,04 % < 80 %, BE sửa). FE sửa docs theo (`apps/admin/CLAUDE.md` #12/#13a, câu mô tả `leads.test.ts`,
+      `lead-detail.test.ts`) ở PR #24 E2E Kênh. #612, #613, #615 (`packages/db`) không chạm FE. FE không comment PR BE.
+    - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
+      05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
+      (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng
+      "Restore branch" trên PR gốc (`refs/pull/N/head`).
   - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
     2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu

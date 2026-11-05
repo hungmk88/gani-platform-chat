@@ -21,7 +21,7 @@ const lead = (id: string, stageId: string, status: Lead['status'] = 'open'): Lea
   updatedAt: '2026-11-02T00:00:00.000Z',
 });
 
-describe('the board of #12 Pipeline lead, on the contract planned for S4 (#544)', () => {
+describe('the board of #12 Pipeline lead, on the contract of #544 (real API since L4, #616)', () => {
   it('has the steps in the order of the pipeline, then Thắng and Thua, a closed lead in its own column only', () => {
     const cols = columnsOf(
       [stage('b'), stage('a')],
