@@ -25,6 +25,8 @@ const GLOBAL_TABLES: Record<string, { app: string[]; support: string[] }> = {
 // column too but are O only, so the column cannot tell.
 const OW_TABLES = [
   'conversations',
+  'lead_events',
+  'leads',
   'message_deliveries',
   'messages',
   'pipeline_lost_reasons',
