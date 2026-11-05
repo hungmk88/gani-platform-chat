@@ -7,6 +7,7 @@ import { button, Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
 import { ALERT_KIND, SEVERITY, type Severity } from './labels';
+import { OpenIncident } from './open-incident';
 import {
   alertsPath,
   incidentsPath,
@@ -33,11 +34,11 @@ function SeverityBadge({ severity }: { severity: Severity }) {
 }
 
 /**
- * #29 Bảo mật of the company, read only in Đợt 1 (PR A, CEO 30/10): the incidents of one status (open first) and every alert,
- * newest first. The alerts have no person or channel column until the API gives their names (U69). A 404 of either route means the
+ * #29 Bảo mật of the company (PR A read only, CEO 30/10; PR B1 opens an incident, brief 61): the incidents of one status (open
+ * first) and every alert, newest first. The alerts have no person or channel column until the API gives their names (U69). A 404 of either route means the
  * API does not serve them yet (planned S5): the screen then says it is not there, never a list made up here.
  */
-export function SecurityScreen({ item, go }: { item: NavItem; go: NavItem }) {
+export function SecurityScreen({ item, go, meId }: { item: NavItem; go: NavItem; meId: string }) {
   const [status, setStatus] = useState<IncidentStatus>('open');
   const incidents = useApiPages<SecurityIncidentPage>(['security', 'incidents', status], (c) =>
     incidentsPath(status, c),
@@ -55,6 +56,7 @@ export function SecurityScreen({ item, go }: { item: NavItem; go: NavItem }) {
         <h2 id="incidents-title" className="text-16 font-semibold">
           Sự cố
         </h2>
+        <OpenIncident meId={meId} onOpened={() => setStatus('open')} />
         <label className="flex flex-col gap-1 self-start">
           Trạng thái
           <select
@@ -139,9 +141,7 @@ export function SecurityScreen({ item, go }: { item: NavItem; go: NavItem }) {
           )}
         />
       </section>
-      <p className="text-12 text-text-muted">
-        Chỉ xem: không mở, đóng hay giao sự cố ở màn này. Không áp dụng AI ở màn này.
-      </p>
+      <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
   );
 }

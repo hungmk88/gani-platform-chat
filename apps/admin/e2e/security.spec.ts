@@ -4,8 +4,8 @@ import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 
-// #29 Bảo mật, Đợt 1 read only (PR A, CEO 30/10): the incidents of one status and every alert of the company, from two routes
-// planned for S5. No button opens, closes or hands over an incident (PR B); the alerts have no person or channel column (U69).
+// #29 Bảo mật (PR A, CEO 30/10): the incidents of one status and every alert of the company, from two routes planned for S5.
+// "Mở sự cố" is PR B1 (e2e/security-open.spec.ts); nothing closes or hands over one (B2); alerts have no person column (U69).
 const table = (page: Page, heading: string) =>
   page.getByRole('region', { name: heading }).getByRole('table');
 const rows = (page: Page, heading: string) => table(page, heading).getByRole('row');
@@ -17,7 +17,7 @@ const problem = (status: number, code: string, traceId: string) => ({
   body: JSON.stringify({ status, code, traceId }),
 });
 
-test('an Owner reads the open incidents and the alerts, with nothing to change them', async ({
+test('an Owner reads the open incidents and the alerts; only "Mở sự cố" changes anything', async ({
   page,
 }) => {
   const asked: string[] = [];
@@ -43,7 +43,8 @@ test('an Owner reads the open incidents and the alerts, with nothing to change t
     /Truy cập từ quản trị nền tảngThấp.*1Chưa gắn sự cố/,
   );
   await expect(page.getByRole('main').getByRole('button', { name: 'Tải thêm' })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /Mở sự cố|Đóng|Giao/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Mở sự cố' })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Đóng|Giao/ })).toHaveCount(0);
   await expectAccessible(page);
 });
 

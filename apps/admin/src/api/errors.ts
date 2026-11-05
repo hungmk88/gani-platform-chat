@@ -88,6 +88,11 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
   ],
   // The autonomy level of a workspace (#27 PR B, planned S5): L2 and above open in Đợt 2 (U29).
   not_in_phase: ['show', 'Mức này mở ở Đợt 2.'],
+  // Who handles a security incident (#29 PR B1, planned S5): an active Owner or Admin; the dialog reads its list again.
+  invalid_handler: [
+    'reload',
+    'Người xử lý phải là Owner hoặc Admin đang hoạt động. Đang tải lại danh sách, chọn lại.',
+  ],
   // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
   conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };

@@ -16,6 +16,6 @@ export default async function SecurityPage() {
   const result = await getMe();
   const role = result.kind === 'ok' ? roleOf(result.me) : null;
   const item = role ? menuItemAt(role, '/settings/security') : undefined;
-  if (!role || !item) notFound();
-  return <SecurityScreen item={item} go={builtFor(role)} />;
+  if (result.kind !== 'ok' || !role || !item) notFound();
+  return <SecurityScreen item={item} go={builtFor(role)} meId={result.me.id} />;
 }
