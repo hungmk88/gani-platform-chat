@@ -161,7 +161,8 @@ export const TransferBodySchema = z
   .object({
     version: z.number().int().min(0),
     toUserId: UuidSchema,
-    reason: z.string().trim().min(1).max(500).optional(),
+    // NFC before counting, as the note is stored: a character NFC writes as two never slips past 500 into the table's CHECK.
+    reason: z.string().trim().normalize('NFC').min(1).max(500).optional(),
   })
   .strict()
   .meta({ id: 'TransferBody' });

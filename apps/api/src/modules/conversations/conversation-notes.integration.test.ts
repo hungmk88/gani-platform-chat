@@ -161,6 +161,7 @@ describe('/v1/conversations/{id}/notes', () => {
     for (const body of [
       { body: '   ' },
       { body: 'x'.repeat(2001) },
+      { body: '\u0958'.repeat(1001) },
       { body: 'x', kind: 'transfer_reason' },
       {},
     ])

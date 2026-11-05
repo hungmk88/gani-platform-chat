@@ -229,15 +229,18 @@ describe('POST /v1/conversations/{id}/transfer and /assign', () => {
     const id = c['reasoned'] as string;
     type Note = { id: string; kind: string; body: string; author: string };
     const notes = async () => (await q('SELECT id, kind, body, author_user_id AS author FROM conversation_notes WHERE conversation_id = $1', [id])).rows as Note[];
-    expect((await act('manager', `${id}/transfer`, { version: 0, toUserId: people['colleague'], reason: 'x'.repeat(501) })).status).toBe(400);
+    for (const reason of ['x'.repeat(501), '\u0958'.repeat(251), '   '])
+      expect((await act('manager', `${id}/transfer`, { version: 0, toUserId: people['colleague'], reason })).status, reason.slice(0, 5)).toBe(400);
     expect((await act('manager', `${id}/assign`, { version: 0, toUserId: people['colleague'], reason: 'Lý do' })).status).toBe(400);
     expect((await act('manager', `${id}/transfer`, { version: 0, toUserId: people['marketing'], reason: 'Không nhận được' })).body).toMatchObject({ code: 'invalid_assignee' });
     expect(await notes()).toEqual([]);
     expect(await act('manager', `${id}/transfer`, { version: 0, toUserId: people['colleague'], reason: '  Khách cần báo giá sỉ  ' })).toMatchObject({ status: 200, body: { assignedUserId: people['colleague'], version: 1 } });
     const [note] = await notes();
     expect(note).toMatchObject({ kind: 'transfer_reason', body: 'Khách cần báo giá sỉ', author: people['manager'] });
-    // One transaction, one created_at: the two rows come in no set order.
-    const rows = await audits(id);
+    // One transaction, one created_at: the two rows come in no set order. Exactly one note_added; the transferred row has no noteId.
+    const rows = (await audits(id)) as { action: string; detail: Record<string, unknown> }[];
+    expect(rows.filter((r) => r.action === 'conversation.note_added')).toHaveLength(1);
+    expect(rows.find((r) => r.action === 'conversation.transferred')?.detail).not.toHaveProperty('noteId');
     expect(rows).toHaveLength(2);
     expect(rows).toEqual(expect.arrayContaining([
       { action: 'conversation.transferred', actor_user_id: people['manager'], detail: { fromUserId: people['sales'], toUserId: people['colleague'], version: 1 } },
