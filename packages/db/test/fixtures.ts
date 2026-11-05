@@ -31,6 +31,8 @@ const TENANT_TABLES = [
   'customers',
   'channel_accounts',
   'quick_replies',
+  'pipeline_lost_reasons',
+  'pipeline_stages',
   'bot_edges',
   'bot_nodes',
   'bot_flow_versions',
@@ -98,6 +100,8 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO feature_flags_overrides (id, org_id, workspace_id, flag_key, enabled) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${flagKeyOf(org)}', true);
     INSERT INTO agent_settings (id, org_id, user_id) VALUES ('${uuidv7()}', '${org}', '${user}');
     INSERT INTO quick_replies (id, org_id, workspace_id, shortcut, body) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'seed', 'Seed');
+    INSERT INTO pipeline_stages (id, org_id, workspace_id, name, position) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'Seed', 0);
+    INSERT INTO pipeline_lost_reasons (id, org_id, workspace_id, name, position) VALUES ('${uuidv7()}', '${org}', '${workspace}', 'Seed', 0);
     INSERT INTO bot_flows (id, org_id, workspace_id, name) VALUES ('${botFlow}', '${org}', '${workspace}', 'Seed');
     INSERT INTO bot_flow_versions (id, org_id, flow_id) VALUES ('${botVersion}', '${org}', '${botFlow}');
     INSERT INTO bot_nodes (id, org_id, version_id, key, type) VALUES ('${botNode}', '${org}', '${botVersion}', 'start', 'trigger');
