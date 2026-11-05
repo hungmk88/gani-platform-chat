@@ -1,11 +1,13 @@
 import { APP_ENVS, EMAIL, flag, SLUG, type Queryable } from './create-org.js';
+import { addDefaultPipeline } from './default-pipeline.js';
 
 // `tenant:create-workspace` (A2, spec-M8 §A2, N158): a platform operator makes a workspace of an organisation through the deploy
 // pipeline, as for tenant:create-org (N150); there is no POST /v1/workspaces (N157). In one transaction as migration_role: the
-// workspace, every active Owner and Admin of the organisation as its members (else nobody could see its conversations), an audit row
-// and the operator's access log. Run twice with the same slug, the second run is refused and makes nothing.
-// The content of a template (default flows, pipeline, SLA, default team, business hours: WorkspaceTemplateService, Brief P16) comes
-// with the tables that hold it; today the template is only recorded (N158).
+// workspace, every active Owner and Admin of the organisation as its members (else nobody could see its conversations), the default
+// pipeline (six steps and one reason to lose, every template: N200), an audit row and the operator's access log. Run twice with the
+// same slug, the second run is refused and makes nothing.
+// The rest of a template (default flows, SLA, default team, business hours: WorkspaceTemplateService, Brief P16) comes with the tables
+// that hold it; today the template is only recorded (N158).
 
 const TEMPLATES = { b2b: 'b2b_sales', b2c: 'b2c_order', service: 'service' } as const;
 
@@ -76,6 +78,9 @@ export interface CreatedWorkspace {
   readonly workspaceId: string;
   /** How many Owners and Admins became its members. */
   readonly members: number;
+  /** The default steps and reasons it got (6 and 1). */
+  readonly stages: number;
+  readonly reasons: number;
 }
 
 /**
@@ -109,6 +114,7 @@ export async function createWorkspace(
     `INSERT INTO public.workspaces (id, org_id, slug, name, template, timezone) VALUES ($1, $2, $3, $4, $5, $6)`,
     [workspaceId, orgId, input.slug, input.name, input.template, input.timezone],
   );
+  const pipeline = await addDefaultPipeline(client, orgId, workspaceId, newId);
   const leaders = await client.query<{ user_id: string }>(
     `SELECT user_id FROM public.org_members
      WHERE org_id = $1 AND role IN ('owner', 'admin') AND status = 'active' AND deleted_at IS NULL ORDER BY user_id`,
@@ -136,5 +142,5 @@ export async function createWorkspace(
      VALUES ($1, $2, $3, current_user, 'tenant:create-workspace', now() + interval '1 minute')`,
     [newId(), orgId, operatorId],
   );
-  return { orgId, workspaceId, members: leaders.rows.length };
+  return { orgId, workspaceId, members: leaders.rows.length, ...pipeline };
 }
