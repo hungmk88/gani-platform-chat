@@ -1,9 +1,9 @@
-// #12 Pipeline lead (CEO 02/11, brief 28–30): read only, on the contract planned for S4 (docs/openapi/planned.json, #544, N188),
-// generated in src/api/planned.d.ts; until the API serves the routes, they answer 404 and the screen says it is not there yet.
+// #12 Pipeline lead (CEO 02/11, brief 28–30): read only, on the contract of #544 (N188), served since L4 (docs/openapi/openapi.json,
+// generated in src/api/schema.d.ts).
 // - `GET /v1/leads`: the leads of a workspace by cursor (`limit` at most 100); other filters of the contract are not used here.
 // - `GET /v1/workspaces/{id}/pipeline`: the steps in the order of the pipeline; `position` and `lostReasons` are not used here.
 // The names of the steps and the reasons a lead is lost come from the API only: Q9 has not settled them, none is written here.
-import type { components } from '../api/planned';
+import type { components } from '../api/schema';
 
 type Schemas = components['schemas'];
 

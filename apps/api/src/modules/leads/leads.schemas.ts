@@ -88,6 +88,8 @@ export const LeadListQuerySchema = CursorQuerySchema.extend({
   customerId: UuidSchema.optional(),
 });
 
+export type LeadListQuery = z.output<typeof LeadListQuerySchema>;
+
 export const LeadCreateSchema = z
   .object({
     workspaceId: UuidSchema,

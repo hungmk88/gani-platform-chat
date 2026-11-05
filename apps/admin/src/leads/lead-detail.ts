@@ -1,8 +1,8 @@
 // #13a Chi tiết lead, read only (CEO 02/11, brief 33, 36, 44–45): one lead from `GET /v1/leads/{id}` with what happened to it,
-// oldest first, on the contract planned for S4 (docs/openapi/planned.json, #544, N188; questions 8–9 of
+// oldest first, on the contract of #544 served since L4 (docs/openapi/openapi.json, N188; questions 8–9 of
 // docs/ui/lead-shape-from-be.md). No button changes the lead (12b, 12c). An event has no free text: the reason a lead was lost is
 // the lead's own `lostReason`.
-import type { components } from '../api/planned';
+import type { components } from '../api/schema';
 import { STATUS } from './leads';
 
 export type LeadDetail = components['schemas']['LeadDetail'];

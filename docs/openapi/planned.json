@@ -7,110 +7,6 @@
   },
   "components": {
     "schemas": {
-      "Pipeline": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PipelineStage"
-            }
-          },
-          "lostReasons": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "data",
-          "lostReasons"
-        ]
-      },
-      "PipelineStage": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/Uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "position": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "position"
-        ]
-      },
-      "Uuid": {
-        "type": "string",
-        "format": "uuid",
-        "description": "UUIDv7."
-      },
-      "Problem": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "about:blank"
-            ]
-          },
-          "title": {
-            "type": "string"
-          },
-          "status": {
-            "type": "integer",
-            "minimum": 400,
-            "maximum": 599
-          },
-          "code": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]{0,63}$"
-          },
-          "detail": {
-            "type": "string"
-          },
-          "traceId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "type",
-          "title",
-          "status",
-          "code"
-        ],
-        "description": "RFC 9457 problem details; `code` is the stable word (Brief P9)."
-      },
-      "LeadPage": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Lead"
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "data",
-          "nextCursor"
-        ]
-      },
       "Lead": {
         "type": "object",
         "properties": {
@@ -198,6 +94,11 @@
           "updatedAt"
         ]
       },
+      "Uuid": {
+        "type": "string",
+        "format": "uuid",
+        "description": "UUIDv7."
+      },
       "LeadCustomer": {
         "type": "object",
         "properties": {
@@ -252,6 +153,43 @@
           "name"
         ]
       },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "about:blank"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "description": "RFC 9457 problem details; `code` is the stable word (Brief P9)."
+      },
       "LeadCreate": {
         "type": "object",
         "properties": {
@@ -282,169 +220,6 @@
           "title"
         ],
         "additionalProperties": false
-      },
-      "LeadDetail": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/Uuid"
-          },
-          "workspaceId": {
-            "$ref": "#/components/schemas/Uuid"
-          },
-          "title": {
-            "type": "string"
-          },
-          "customer": {
-            "$ref": "#/components/schemas/LeadCustomer"
-          },
-          "conversationId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid",
-            "description": "UUIDv7, or null."
-          },
-          "stage": {
-            "$ref": "#/components/schemas/LeadStage"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "open",
-              "won",
-              "lost"
-            ]
-          },
-          "owner": {
-            "$ref": "#/components/schemas/LeadOwner"
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/Uuid"
-          },
-          "lostReason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "closedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "score": {
-            "type": "null"
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LeadEvent"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "workspaceId",
-          "title",
-          "customer",
-          "conversationId",
-          "stage",
-          "status",
-          "owner",
-          "createdBy",
-          "lostReason",
-          "closedAt",
-          "score",
-          "version",
-          "createdAt",
-          "updatedAt",
-          "events"
-        ]
-      },
-      "LeadEvent": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "created",
-              "stage_changed",
-              "owner_changed",
-              "closed"
-            ]
-          },
-          "fromStage": {
-            "$ref": "#/components/schemas/LeadEventStage"
-          },
-          "toStage": {
-            "$ref": "#/components/schemas/LeadEventStage"
-          },
-          "outcome": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "won",
-              "lost",
-              null
-            ]
-          },
-          "actorUserId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid",
-            "description": "UUIDv7, or null."
-          },
-          "occurredAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "type",
-          "fromStage",
-          "toStage",
-          "outcome",
-          "actorUserId",
-          "occurredAt"
-        ]
-      },
-      "LeadEventStage": {
-        "type": [
-          "object",
-          "null"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/Uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ]
       },
       "LeadStageChange": {
         "type": "object",
@@ -1639,260 +1414,7 @@
     "parameters": {}
   },
   "paths": {
-    "/v1/workspaces/{id}/pipeline": {
-      "get": {
-        "x-status": "planned",
-        "x-sprint": "S4",
-        "summary": "The steps of the workspace’s pipeline in order, and its reasons to lose a lead (Q9: data of each workspace). Every role that reads leads.",
-        "tags": [
-          "leads"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Uuid"
-            },
-            "required": true,
-            "description": "UUIDv7.",
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The pipeline.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Pipeline"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation_failed: the id.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "unauthorized: no valid session.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "forbidden: support; or a refusal of the edge.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "not_found: a workspace not among the session’s.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "service_unavailable: the session or the membership could not be read.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/leads": {
-      "get": {
-        "x-status": "planned",
-        "x-sprint": "S4",
-        "summary": "Leads of the session’s workspaces, newest first; filter by workspace, step, status, owner, maker and customer. A Sales sees the ones they made or own.",
-        "tags": [
-          "leads"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 512
-            },
-            "required": false,
-            "name": "cursor",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            },
-            "required": false,
-            "name": "limit",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Uuid"
-            },
-            "required": false,
-            "description": "UUIDv7.",
-            "name": "workspaceId",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Uuid"
-            },
-            "required": false,
-            "description": "UUIDv7.",
-            "name": "stageId",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "open",
-                "won",
-                "lost"
-              ]
-            },
-            "required": false,
-            "name": "status",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "me",
-                    "none"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/Uuid"
-                }
-              ]
-            },
-            "required": false,
-            "name": "owner",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "me"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/Uuid"
-                }
-              ]
-            },
-            "required": false,
-            "name": "createdBy",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Uuid"
-            },
-            "required": false,
-            "description": "UUIDv7.",
-            "name": "customerId",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A page.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LeadPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation_failed: a parameter or the cursor.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "unauthorized: no valid session.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "forbidden: support; or a refusal of the edge.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "not_found: a workspace not among the session’s.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "service_unavailable: the session or the membership could not be read.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "x-status": "planned",
         "x-sprint": "S4",
@@ -1986,89 +1508,6 @@
           },
           "422": {
             "description": "invalid_stage: not a step of the workspace’s pipeline; invalid_assignee: not an active Owner, Admin, Manager or Sales of the workspace; or idempotency_key_reused.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "service_unavailable: the session or the membership could not be read.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/leads/{id}": {
-      "get": {
-        "x-status": "planned",
-        "x-sprint": "S4",
-        "summary": "One lead with what happened to it (`events`, oldest first).",
-        "tags": [
-          "leads"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Uuid"
-            },
-            "required": true,
-            "description": "UUIDv7.",
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The lead.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LeadDetail"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation_failed: the id.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "unauthorized: no valid session.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "forbidden: support; or a refusal of the edge.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "not_found: no lead with this id in the session’s workspaces, or one a Sales neither made nor owns (not visible is the same).",
             "content": {
               "application/problem+json": {
                 "schema": {

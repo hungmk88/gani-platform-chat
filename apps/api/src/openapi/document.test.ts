@@ -63,6 +63,9 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/quick-replies/preview',
       '/v1/tickets',
       '/v1/tickets/{id}',
+      '/v1/workspaces/{id}/pipeline',
+      '/v1/leads',
+      '/v1/leads/{id}',
       '/v1/tags',
       '/v1/tags/{id}',
       '/v1/tags/{id}/merge',
@@ -87,7 +90,7 @@ describe('the planned document (N167)', () => {
     expect(committed('planned.json')).toBe(serialiseOpenApi(buildPlannedDocument()));
   });
 
-  it('marks every operation planned with its sprint, uses no allOf, and shares no path with what is served', () => {
+  it('marks every operation planned with its sprint, uses no allOf, and shares no operation with what is served', () => {
     const doc = buildPlannedDocument();
     const operations = Object.values(doc.paths ?? {}).flatMap((item) =>
       Object.values(item as Record<string, Record<string, unknown>>),
@@ -96,7 +99,12 @@ describe('the planned document (N167)', () => {
     for (const op of operations)
       expect([op['x-status'], typeof op['x-sprint']]).toEqual(['planned', 'string']);
     expect(serialiseOpenApi(doc)).not.toContain('"allOf"');
-    const served = new Set(Object.keys(buildOpenApiDocument().paths ?? {}));
-    expect(Object.keys(doc.paths ?? {}).filter((path) => served.has(path))).toEqual([]);
+    // One path may be served for some methods and planned for others (N202: GET /v1/leads served, POST planned), never one operation.
+    const keys = (paths: object | undefined) =>
+      Object.entries(paths ?? {}).flatMap(([path, item]) =>
+        Object.keys(item as object).map((method) => `${method} ${path}`),
+      );
+    const served = new Set(keys(buildOpenApiDocument().paths));
+    expect(keys(doc.paths).filter((op) => served.has(op))).toEqual([]);
   });
 });
