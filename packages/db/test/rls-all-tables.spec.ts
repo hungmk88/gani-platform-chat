@@ -27,6 +27,8 @@ const OW_TABLES = [
   'conversations',
   'message_deliveries',
   'messages',
+  'pipeline_lost_reasons',
+  'pipeline_stages',
   'quick_replies',
   'ticket_events',
   'tickets',
