@@ -47,6 +47,42 @@ export const AccessSessionSchema = z
   .object({ id: UuidSchema, orgId: UuidSchema, startedAt: at, expiresAt: at })
   .meta({ id: 'AccessSession' });
 
+// U79 (CEO 05/11/2026): the sessions of the operator who calls, and ending one early. An operator sees only their own sessions (a
+// reason may name sensitive work); seeing every operator's waits for an `audit` flag of the operator (QUESTIONS.md U79).
+
+export const ACCESS_SESSION_END_REASONS = ['manual', 'expired'] as const;
+
+/** One access session as the list and `…/end` give it. `endedAt`/`endReason` null while it runs. */
+export const AccessSessionRecordSchema = z
+  .object({
+    id: UuidSchema,
+    orgId: UuidSchema,
+    orgName: z.string(),
+    operatorUserId: UuidSchema,
+    reason: z.string(),
+    startedAt: at,
+    expiresAt: at,
+    endedAt: at.nullable().meta({
+      description: 'When it ended: `expiresAt` once it ran out, or when the operator ended it.',
+    }),
+    endReason: z.enum(ACCESS_SESSION_END_REASONS).nullable().meta({
+      description:
+        '`manual`: the operator ended it early (`POST …/end`); `expired`: it ran its 60 minutes; null while it runs.',
+    }),
+  })
+  .meta({ id: 'AccessSessionRecord' });
+
+export const AccessSessionPageSchema = cursorPage(AccessSessionRecordSchema, 'AccessSessionPage');
+
+export const AccessSessionListQuerySchema = CursorQuerySchema.extend({
+  /** The sessions of one organisation. */
+  orgId: UuidSchema.optional(),
+  /** `true` (the default): only the sessions still running; `false`: every session of the operator, newest first. */
+  active: z.enum(['true', 'false']).optional(),
+}).strict();
+
+export const AccessSessionIdSchema = UuidSchema;
+
 export const CHANNEL_TYPES = ['zalo_oa', 'facebook', 'webchat'] as const;
 export const MESSAGE_CLASSES = ['advisory', 'transaction', 'broadcast'] as const;
 

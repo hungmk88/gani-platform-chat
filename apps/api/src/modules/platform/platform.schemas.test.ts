@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AccessSessionCreateSchema,
+  AccessSessionListQuerySchema,
+  AccessSessionRecordSchema,
   ChannelPolicyChangeSchema,
   TenantHealthSchema,
 } from './platform.schemas.js';
@@ -63,5 +65,37 @@ describe('the platform contract', () => {
     };
     expect(TenantHealthSchema.safeParse(health).success).toBe(true);
     expect(TenantHealthSchema.safeParse({ ...health, aiCostMonthVnd: 120000 }).success).toBe(false);
+  });
+
+  it('lists the operator’s sessions by organisation and running or not, and says how one ended (U79)', () => {
+    expect(AccessSessionListQuerySchema.parse({ orgId: ORG, active: 'false' })).toMatchObject({
+      active: 'false',
+      limit: 50,
+    });
+    expect(AccessSessionListQuerySchema.safeParse({ operatorUserId: ORG }).success).toBe(false);
+    expect(AccessSessionListQuerySchema.safeParse({ active: 'yes' }).success).toBe(false);
+    const running = {
+      id: ORG,
+      orgId: ORG,
+      orgName: 'Gani Foods',
+      operatorUserId: ORG,
+      reason: 'Hỗ trợ sự cố 42',
+      startedAt: '2026-11-05T08:00:00Z',
+      expiresAt: '2026-11-05T09:00:00Z',
+      endedAt: null,
+      endReason: null,
+    };
+    expect(AccessSessionRecordSchema.safeParse(running).success).toBe(true);
+    for (const endReason of ['manual', 'expired'])
+      expect(
+        AccessSessionRecordSchema.safeParse({
+          ...running,
+          endedAt: '2026-11-05T08:30:00Z',
+          endReason,
+        }).success,
+      ).toBe(true);
+    expect(AccessSessionRecordSchema.safeParse({ ...running, endReason: 'revoked' }).success).toBe(
+      false,
+    );
   });
 });

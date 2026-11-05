@@ -5,6 +5,10 @@ import { planned } from '../../openapi/planned-status.js';
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
   AccessSessionCreateSchema,
+  AccessSessionIdSchema,
+  AccessSessionListQuerySchema,
+  AccessSessionPageSchema,
+  AccessSessionRecordSchema,
   AccessSessionSchema,
   ChannelPolicyChangeSchema,
   ChannelPolicyIdSchema,
@@ -59,6 +63,43 @@ export function registerPlatform(registry: OpenAPIRegistry): void {
       404: problemResponse('not_found: no such organisation.'),
       409: problemResponse('idempotency_in_progress'),
       422: problemResponse('idempotency_key_reused'),
+      ...edge,
+    },
+  });
+  // U79 (CEO 05/11/2026): the operator's own sessions, and ending one early.
+  const applying =
+    'A session is applied with the header `X-Access-Session-Id: <id>` on each request into the organisation’s data. The header carries only the id of the session: the organisation is read from the stored session, never from the header (rule 1). The tenant middleware checks it on every request, whatever the controller: the session must be the caller’s (`operatorUserId` = the user of the session) and neither expired nor ended, else 403 `access_session_expired`. A session opens reading only: it gives no role in the organisation, and the second factor and every per-resource check still apply.';
+  registry.registerPath({
+    ...when,
+    method: 'get',
+    path: '/v1/platform/access-sessions',
+    summary: 'The access sessions of the operator who calls, newest first (only their own).',
+    description: applying,
+    tags: ['platform'],
+    request: { query: AccessSessionListQuerySchema },
+    responses: {
+      200: { description: 'A page.', ...json(AccessSessionPageSchema) },
+      400: problemResponse('validation_failed: a parameter or the cursor.'),
+      403: operatorOnly,
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    ...when,
+    method: 'post',
+    path: '/v1/platform/access-sessions/{id}/end',
+    summary:
+      'End a session early (audited: `platform.access_session_ended`). Only the operator who opened it; ending an ended session gives it back as it is.',
+    description: applying,
+    tags: ['platform'],
+    request: { params: z.object({ id: AccessSessionIdSchema }) },
+    responses: {
+      200: {
+        description: 'The session, ended (`endReason: manual`, or `expired` if it ran out first).',
+        ...json(AccessSessionRecordSchema),
+      },
+      403: operatorOnly,
+      404: problemResponse('not_found: no such session of the operator who calls.'),
       ...edge,
     },
   });

@@ -1073,7 +1073,7 @@
           "monthlyBudgetUsd": {
             "type": "number",
             "minimum": 0,
-            "description": "The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow)."
+            "description": "The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow); 0 means the internal AI is stopped at once (used ≥ budget, U74)."
           },
           "usedThisMonthUsd": {
             "type": "number",
@@ -1083,7 +1083,22 @@
           "resetsAt": {
             "type": "string",
             "format": "date-time",
-            "description": "When the next month begins in `workspace.timezone`, and the spending starts again at 0."
+            "description": "When the next month begins in `workspace.timezone`, and the spending starts again at 0. The budget itself never resets: it stays what was set (U74)."
+          },
+          "productionLocked": {
+            "type": "boolean",
+            "description": "true while `production` is refused (409 `ai_production_locked`), for every role, the Owner included: the UI warns before any PATCH. Always sent by the API once built."
+          },
+          "productionLockReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "legal_q1",
+              null
+            ],
+            "description": "Why `production` is locked: `legal_q1` while Q1 (legal) is not settled; null when not locked."
           }
         },
         "required": [
@@ -1252,6 +1267,86 @@
           "reason"
         ],
         "additionalProperties": false
+      },
+      "AccessSessionPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessSessionRecord"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "AccessSessionRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "orgName": {
+            "type": "string"
+          },
+          "operatorUserId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When it ended: `expiresAt` once it ran out, or when the operator ended it."
+          },
+          "endReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "manual",
+              "expired",
+              null
+            ],
+            "description": "`manual`: the operator ended it early (`POST …/end`); `expired`: it ran its 60 minutes; null while it runs."
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "orgName",
+          "operatorUserId",
+          "reason",
+          "startedAt",
+          "expiresAt",
+          "endedAt",
+          "endReason"
+        ]
       },
       "ChannelPolicyList": {
         "type": "object",
@@ -3243,7 +3338,7 @@
             }
           },
           "409": {
-            "description": "ai_production_locked: `production` while Q1 (legal) is not settled.",
+            "description": "ai_production_locked: `production` while Q1 (legal) is not settled; or E1/L1 turned on while the environment is `production` (or moves to it in the same body) without the tier 3 approval of Q1 and the CEO (U75): the API refuses it, not only the UI.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3444,6 +3539,185 @@
           },
           "422": {
             "description": "idempotency_key_reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "The access sessions of the operator who calls, newest first (only their own).",
+        "description": "A session is applied with the header `X-Access-Session-Id: <id>` on each request into the organisation’s data. The header carries only the id of the session: the organisation is read from the stored session, never from the header (rule 1). The tenant middleware checks it on every request, whatever the controller: the session must be the caller’s (`operatorUserId` = the user of the session) and neither expired nor ended, else 403 `access_session_expired`. A session opens reading only: it gives no role in the organisation, and the second factor and every per-resource check still apply.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": false,
+            "description": "UUIDv7.",
+            "name": "orgId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "active",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSessionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a parameter or the cursor.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only a platform operator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/access-sessions/{id}/end": {
+      "post": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "End a session early (audited: `platform.access_session_ended`). Only the operator who opened it; ending an ended session gives it back as it is.",
+        "description": "A session is applied with the header `X-Access-Session-Id: <id>` on each request into the organisation’s data. The header carries only the id of the session: the organisation is read from the stored session, never from the header (rule 1). The tenant middleware checks it on every request, whatever the controller: the session must be the caller’s (`operatorUserId` = the user of the session) and neither expired nor ended, else 403 `access_session_expired`. A session opens reading only: it gives no role in the organisation, and the second factor and every per-resource check still apply.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The session, ended (`endReason: manual`, or `expired` if it ran out first).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSessionRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only a platform operator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such session of the operator who calls.",
             "content": {
               "application/problem+json": {
                 "schema": {
