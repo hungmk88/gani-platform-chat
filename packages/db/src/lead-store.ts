@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, isNull, or, sql, type SQL } from 'drizzle-orm';
 
+import { insertAuditLog } from './audit-log.js';
 import type { Page } from './conversation-read.js';
 import { cursorString, decodeCursor, encodeCursor } from './cursor.js';
 import {
@@ -8,18 +9,20 @@ import {
   LeadAccessDeniedError,
   leadReadScope,
   mayCreateLead,
+  mayWriteLead,
   type LeadViewer,
 } from './lead-access.js';
+import { lostReasonsInForce } from './pipeline-read.js';
 import { leadEvents, leads } from './schema/leads.js';
 import { pipelineStages } from './schema/pipelines.js';
 import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
 import { assertUuid } from './validate.js';
 
-// The leads of a workspace: reading one or many, and making one (L3a; G1–G3, N188, N196, N200; CEO 05/11/2026). Row-level security
-// keeps them to the organisation and the workspaces of the transaction; lead-access.ts narrows them to who may see them, here, on every
-// read, so the API never writes that rule itself. Reading the pipeline, moving a lead along it and closing it come in L3b. The title is
-// the agents' free words: never logged, and no lead_events row carries it.
+// The leads of a workspace: reading, making, moving and closing them (L3a, L3b; G1–G3, T-3, N188, N196, N200; CEO 05/11/2026).
+// Row-level security keeps them to the organisation and the workspaces of the transaction; lead-access.ts narrows them to who may see
+// and change them, here, on every read and write, so the API never writes that rule itself. Every change writes its lead_events row in
+// the same transaction. The title is the agents' free words: never logged, and no lead_events row carries it.
 
 export const LEAD_STATUSES = ['open', 'won', 'lost'] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
@@ -50,6 +53,30 @@ export class LeadReferenceNotFoundError extends Error {
   constructor() {
     super('the customer or the conversation of the lead is not there');
     this.name = 'LeadReferenceNotFoundError';
+  }
+}
+
+/** Won or lost already: closing is final (409 lead_closed, T-3). */
+export class LeadClosedError extends Error {
+  constructor() {
+    super('the lead is won or lost, which is final');
+    this.name = 'LeadClosedError';
+  }
+}
+
+/** The `version` sent back is not the lead's any more (409 version_conflict). */
+export class LeadVersionConflictError extends Error {
+  constructor() {
+    super('the lead changed since it was read');
+    this.name = 'LeadVersionConflictError';
+  }
+}
+
+/** Not one of the workspace's reasons to lose in force (422 invalid_lost_reason). */
+export class InvalidLostReasonError extends Error {
+  constructor() {
+    super('not one of the workspace’s reasons to lose');
+    this.name = 'InvalidLostReasonError';
   }
 }
 
@@ -355,4 +382,190 @@ export async function getLead(
     })),
     eventsCapped: rows.length > LEAD_EVENTS_CAP,
   };
+}
+
+export interface Pipeline {
+  readonly stages: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly position: number;
+  }[];
+  /** The list in force (lostReasonsInForce, N200). */
+  readonly lostReasons: readonly string[];
+}
+
+/** The steps of a workspace in order and its reasons to lose a lead. Support throws (403 on the pipeline too, N196). */
+export async function readPipeline(
+  tx: TenantTx,
+  viewer: LeadViewer,
+  workspaceId: string,
+): Promise<Pipeline> {
+  scopeOf(viewer);
+  const ws = assertUuid(workspaceId, 'workspaceId');
+  const stages = await tx
+    .select({ id: pipelineStages.id, name: pipelineStages.name, position: pipelineStages.position })
+    .from(pipelineStages)
+    .where(eq(pipelineStages.workspaceId, ws))
+    .orderBy(asc(pipelineStages.position));
+  return { stages, lostReasons: await lostReasonsInForce(tx, ws) };
+}
+
+/** What a change locks and checks of the lead it changes. */
+interface LockedLead {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly stageId: string;
+  readonly status: LeadStatus;
+  readonly createdBy: string;
+  readonly ownerUserId: string | null;
+  readonly version: number;
+}
+
+/**
+ * Locks the lead `id` for a change by the viewer: null when it is not there or the viewer may not see it (404), LeadAccessDeniedError
+ * when they see it but may not change it (403), then a stale `version` (409) and a closed lead (409).
+ */
+async function lockForChange(
+  tx: TenantTx,
+  viewer: LeadViewer,
+  id: string,
+  version: number,
+): Promise<LockedLead | null> {
+  scopeOf(viewer);
+  const [lead] = await tx
+    .select({
+      id: l.id,
+      workspaceId: l.workspaceId,
+      stageId: l.stageId,
+      status: l.status,
+      createdBy: l.createdBy,
+      ownerUserId: l.ownerUserId,
+      version: l.version,
+    })
+    .from(l)
+    .where(eq(l.id, assertUuid(id, 'id')))
+    .for('update');
+  if (!lead) return null;
+  if (!mayWriteLead(viewer, lead)) {
+    if (canSeeLead(viewer, lead)) throw new LeadAccessDeniedError();
+    return null;
+  }
+  if (lead.version !== version) throw new LeadVersionConflictError();
+  if (lead.status !== 'open') throw new LeadClosedError();
+  return lead;
+}
+
+/** Writes the change and its event, bumps the version, and gives the lead back as it is now. */
+async function applyChange(
+  tx: TenantTx,
+  viewer: LeadViewer,
+  lead: LockedLead,
+  set: Partial<Pick<typeof l.$inferInsert, 'stageId' | 'status' | 'lostReason'>> & {
+    closedAt?: SQL;
+  },
+  event: Pick<typeof leadEvents.$inferInsert, 'type' | 'fromStageId' | 'toStageId' | 'outcome'>,
+  newId: () => string,
+): Promise<LeadRow> {
+  const { orgId } = currentTenantContext();
+  await tx
+    .update(l)
+    .set({ ...set, version: lead.version + 1, updatedAt: sql`now()` })
+    .where(eq(l.id, lead.id));
+  await tx.insert(leadEvents).values({
+    id: newId(),
+    orgId,
+    workspaceId: lead.workspaceId,
+    leadId: lead.id,
+    actorUserId: assertUuid(viewer.userId, 'userId'),
+    ...event,
+  });
+  const [row] = await tx.select(leadColumns).from(l).where(eq(l.id, lead.id));
+  return row as LeadRow;
+}
+
+export interface LeadStageChange {
+  readonly id: string;
+  /** The `version` last read. */
+  readonly version: number;
+  readonly stageId: string;
+  readonly newId: () => string;
+}
+
+/**
+ * Moves an open lead to another step of its workspace's pipeline (any step, either way) with a `stage_changed` event. null: not
+ * there or not visible (404). The step it is at already, or one of another workspace: InvalidLeadStageError, nothing written.
+ */
+export async function changeLeadStage(
+  tx: TenantTx,
+  viewer: LeadViewer,
+  change: LeadStageChange,
+): Promise<LeadRow | null> {
+  const lead = await lockForChange(tx, viewer, change.id, change.version);
+  if (!lead) return null;
+  const to = assertUuid(change.stageId, 'stageId');
+  if (to === lead.stageId) throw new InvalidLeadStageError();
+  const [stage] = await tx
+    .select({ id: pipelineStages.id })
+    .from(pipelineStages)
+    .where(and(eq(pipelineStages.workspaceId, lead.workspaceId), eq(pipelineStages.id, to)));
+  if (!stage) throw new InvalidLeadStageError();
+  return applyChange(
+    tx,
+    viewer,
+    lead,
+    { stageId: to },
+    { type: 'stage_changed', fromStageId: lead.stageId, toStageId: to },
+    change.newId,
+  );
+}
+
+export interface LeadClose {
+  readonly id: string;
+  /** The `version` last read. */
+  readonly version: number;
+  readonly outcome: 'won' | 'lost';
+  /** Required when lost, one of the workspace's reasons in force; never when won. */
+  readonly lostReason?: string;
+  readonly newId: () => string;
+}
+
+/**
+ * Wins or loses an open lead, for good, with a `closed` event and a `lead.closed` audit row that have the outcome and no reason (the
+ * reason is the lead's). null: not there or not visible (404). A reason that is not in force: InvalidLostReasonError, nothing written.
+ */
+export async function closeLead(
+  tx: TenantTx,
+  viewer: LeadViewer,
+  close: LeadClose,
+): Promise<LeadRow | null> {
+  if (close.outcome !== 'won' && close.outcome !== 'lost')
+    throw new RangeError('outcome is won or lost');
+  if ((close.outcome === 'lost') !== (close.lostReason !== undefined))
+    throw new RangeError('lostReason is required when lost, and only then');
+  const lead = await lockForChange(tx, viewer, close.id, close.version);
+  if (!lead) return null;
+  let lostReason: string | null = null;
+  if (close.lostReason !== undefined) {
+    lostReason = close.lostReason.trim().normalize('NFC');
+    if (!(await lostReasonsInForce(tx, lead.workspaceId)).includes(lostReason))
+      throw new InvalidLostReasonError();
+  }
+  const row = await applyChange(
+    tx,
+    viewer,
+    lead,
+    { status: close.outcome, lostReason, closedAt: sql`now()` },
+    { type: 'closed', outcome: close.outcome },
+    close.newId,
+  );
+  // The outcome only: the reason and the title are the workspace's and the agents' words, kept on the lead, never in the audit log.
+  await insertAuditLog(tx, {
+    id: close.newId(),
+    actorUserId: assertUuid(viewer.userId, 'userId'),
+    action: 'lead.closed',
+    targetType: 'lead',
+    targetId: lead.id,
+    detail: { outcome: close.outcome },
+  });
+  return row;
 }
