@@ -54,7 +54,8 @@ Chạy một lần trên mỗi môi trường có hội thoại từ trước mi
   - Chỉ chạy trên **DB nháp** của dev (`gani_*`, `localhost`), **không bao giờ** production hay staging; script tự từ chối khi `APP_ENV` khác `dev`, URL không phải DB nháp local, hoặc thiếu `DB_MUTANTS_CONFIRM=yes`.
   - Mỗi mutant là DDL (DROP/ALTER) **và** DDL khôi phục; mutant cần DROP phải trình CEO trước. Khôi phục lỗi thì dừng, khôi phục tay.
   - Script so `pg_dump -s` của bảng trước và sau (bỏ dòng `\restrict` ngẫu nhiên); khác nhau là lỗi, dừng.
-  - Chạy: trong `packages/db`, nạp env của DB nháp, `DB_MUTANTS_CONFIRM=yes bash lint/db-mutants.sh <thư mục log>`. Mutant nào `exit=0` (spec vẫn xanh) là **sống**: dừng, báo, không tự miễn. Bảng mới thêm các dòng `run` của nó.
+  - Chạy: trong `packages/db`, nạp env của DB nháp, `DB_MUTANTS_CONFIRM=yes bash lint/db-mutants.sh lint/mutants/<bộ>.sh <thư mục log>`. Mutant nào `exit=0` (spec vẫn xanh) là **sống**: dừng, báo, không tự miễn.
+  - Mỗi bảng mới một bộ `lint/mutants/<bộ>.sh` (`TABLES`, `SPECS`, hàm `mutants` gồm các dòng `run` cho DDL và `run_code` cho mã đọc bảng, ví dụ chọn danh sách theo `effective_from`); kết quả lần chạy lưu ở `lint/mutants/<bộ>.result.txt`.
 
 ## Phân tầng merge của BE (CLAUDE.md gốc, #466; anh chốt 31/10/2026)
 
