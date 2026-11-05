@@ -68,6 +68,8 @@ afterAll(async () => {
   for (const table of [
     'platform_access_logs',
     'audit_logs',
+    'pipeline_lost_reasons',
+    'pipeline_stages',
     'workspace_members',
     'workspaces',
     'org_members',
@@ -108,6 +110,23 @@ describe('tenant:create-workspace', () => {
       [id],
     );
     expect(members.rows.map((m) => m.user_id)).toEqual([people.owner, people.admin].sort());
+    // The default pipeline, whatever the template (N200): six steps by place and the one reason until Q9.
+    expect(first.line).toMatchObject({ stages: 6, reasons: 1 });
+    const stages = await admin.query<{ name: string; position: number }>(
+      'SELECT name, position FROM pipeline_stages WHERE workspace_id = $1 ORDER BY position',
+      [id],
+    );
+    expect(stages.rows).toEqual(
+      ['Bước 1', 'Bước 2', 'Bước 3', 'Bước 4', 'Bước 5', 'Bước 6'].map((name, position) => ({
+        name,
+        position,
+      })),
+    );
+    const reasons = await admin.query(
+      'SELECT name, position FROM pipeline_lost_reasons WHERE workspace_id = $1',
+      [id],
+    );
+    expect(reasons.rows).toEqual([{ name: 'Khác (chờ Q9)', position: 0 }]);
     const audit = await admin.query(
       'SELECT action, actor_user_id, target_id, detail FROM audit_logs WHERE org_id = $1',
       [ORG],
@@ -130,6 +149,28 @@ describe('tenant:create-workspace', () => {
 
     const second = await run(args('b2b', { name: 'Khác' }));
     expect([second.code, second.line['reason']]).toEqual([1, 'slug_taken']);
+    const after = await admin.query(
+      'SELECT count(*)::int AS n FROM pipeline_stages WHERE workspace_id = $1',
+      [id],
+    );
+    expect(after.rows).toEqual([{ n: 6 }]);
+  });
+
+  it('gives the same default pipeline to a workspace of every template', async () => {
+    for (const template of ['b2c', 'service']) {
+      const made = await run(args(`t-${template}`, { template }));
+      expect(made.line, template).toMatchObject({
+        event: 'workspace_created',
+        stages: 6,
+        reasons: 1,
+      });
+      const counts = await admin.query(
+        `SELECT (SELECT count(*)::int FROM pipeline_stages WHERE workspace_id = $1) AS stages,
+                (SELECT count(*)::int FROM pipeline_lost_reasons WHERE workspace_id = $1) AS reasons`,
+        [String(made.line['workspaceId'])],
+      );
+      expect(counts.rows, template).toEqual([{ stages: 6, reasons: 1 }]);
+    }
   });
 
   it('refuses a deleted slug, an unknown org, someone who is not an operator and no APP_ENV, making nothing', async () => {
