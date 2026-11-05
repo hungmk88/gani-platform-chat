@@ -1909,6 +1909,338 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/platform/tenants/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The health of every organisation: its channel accounts and their Zalo tokens, and its AI spend (null until the AI Gateway). */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page, by organisation slug. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantHealthPage"];
+                    };
+                };
+                /** @description validation_failed: a parameter or the cursor. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/access-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open a 60 minute access to one organisation, with a reason: one row of platform_access_logs (reason, expires_at) and an audit row, so the access is seen once. */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back. */
+                    "Idempotency-Key": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AccessSessionCreate"];
+                };
+            };
+            responses: {
+                /** @description The session, open for 60 minutes. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessSession"];
+                    };
+                };
+                /** @description validation_failed: the reason (10 to 500 characters), or the Idempotency-Key is missing. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no such organisation. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_in_progress */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description idempotency_key_reused */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/channel-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The channel policies in force now, one per channel and class (every role reads them). */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The policies in force. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChannelPolicyList"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/channel-policies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Add a new version of the policy `{id}` (its channel and class) from `effectiveFrom`; no row is ever edited (audited: `channel_policy.versioned`). */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChannelPolicyChange"];
+                };
+            };
+            responses: {
+                /** @description The latest version in force of that channel and class after the change (the previous one while a future effectiveFrom is not reached). */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChannelPolicy"];
+                    };
+                };
+                /** @description validation_failed: a field. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no such policy. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description invalid_effective_from: not later than the effectiveFrom of the version in force. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2257,6 +2589,67 @@ export interface components {
                 l1?: boolean;
             };
             monthlyBudgetUsd?: number;
+        };
+        TenantHealthPage: {
+            data: components["schemas"]["TenantHealth"][];
+            nextCursor: string | null;
+        };
+        TenantHealth: {
+            orgId: components["schemas"]["Uuid"];
+            slug: string;
+            name: string;
+            channels: components["schemas"]["TenantHealthChannels"];
+            /** @description null until the AI Gateway exists; Q1 still locks production (U65, CEO 05/11/2026). */
+            aiCostMonthVnd: null;
+        };
+        TenantHealthChannels: {
+            total: number;
+            tokenExpiringSoon: number;
+            tokenExpired: number;
+        };
+        AccessSession: {
+            id: components["schemas"]["Uuid"];
+            orgId: components["schemas"]["Uuid"];
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        AccessSessionCreate: {
+            orgId: components["schemas"]["Uuid"];
+            reason: string;
+        };
+        ChannelPolicyList: {
+            data: components["schemas"]["ChannelPolicy"][];
+        };
+        ChannelPolicy: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            channelType: "zalo_oa" | "facebook" | "webchat";
+            /** @enum {string} */
+            messageClass: "advisory" | "transaction" | "broadcast";
+            /** Format: date-time */
+            effectiveFrom: string;
+            freeWindowSeconds: number | null;
+            freeMessageQuota: number | null;
+            unitPriceVnd: number | null;
+            outsideWindowAllowed: boolean;
+            sourceUrl: string | null;
+            /** Format: date */
+            sourceDate: string | null;
+            note: string;
+        };
+        ChannelPolicyChange: {
+            /** Format: date-time */
+            effectiveFrom: string;
+            freeWindowSeconds: number | null;
+            freeMessageQuota: number | null;
+            unitPriceVnd: number | null;
+            outsideWindowAllowed: boolean;
+            sourceUrl: string | null;
+            /** Format: date */
+            sourceDate: string | null;
+            note: string;
         };
     };
     responses: never;

@@ -1363,6 +1363,277 @@
           }
         },
         "additionalProperties": false
+      },
+      "TenantHealthPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantHealth"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "TenantHealth": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "channels": {
+            "$ref": "#/components/schemas/TenantHealthChannels"
+          },
+          "aiCostMonthVnd": {
+            "type": "null",
+            "description": "null until the AI Gateway exists; Q1 still locks production (U65, CEO 05/11/2026)."
+          }
+        },
+        "required": [
+          "orgId",
+          "slug",
+          "name",
+          "channels",
+          "aiCostMonthVnd"
+        ]
+      },
+      "TenantHealthChannels": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tokenExpiringSoon": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tokenExpired": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "total",
+          "tokenExpiringSoon",
+          "tokenExpired"
+        ]
+      },
+      "AccessSession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "orgId",
+          "startedAt",
+          "expiresAt"
+        ]
+      },
+      "AccessSessionCreate": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "orgId",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ChannelPolicyList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelPolicy"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "ChannelPolicy": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "channelType": {
+            "type": "string",
+            "enum": [
+              "zalo_oa",
+              "facebook",
+              "webchat"
+            ]
+          },
+          "messageClass": {
+            "type": "string",
+            "enum": [
+              "advisory",
+              "transaction",
+              "broadcast"
+            ]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "freeWindowSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "freeMessageQuota": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "unitPriceVnd": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "outsideWindowAllowed": {
+            "type": "boolean"
+          },
+          "sourceUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "channelType",
+          "messageClass",
+          "effectiveFrom",
+          "freeWindowSeconds",
+          "freeMessageQuota",
+          "unitPriceVnd",
+          "outsideWindowAllowed",
+          "sourceUrl",
+          "sourceDate",
+          "note"
+        ]
+      },
+      "ChannelPolicyChange": {
+        "type": "object",
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "freeWindowSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "freeMessageQuota": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "unitPriceVnd": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "outsideWindowAllowed": {
+            "type": "boolean"
+          },
+          "sourceUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "sourceDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "effectiveFrom",
+          "freeWindowSeconds",
+          "freeMessageQuota",
+          "unitPriceVnd",
+          "outsideWindowAllowed",
+          "sourceUrl",
+          "sourceDate",
+          "note"
+        ],
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -3534,6 +3805,351 @@
           },
           "409": {
             "description": "ai_production_locked: `production` while Q1 (legal) is not settled.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/tenants/health": {
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "The health of every organisation: its channel accounts and their Zalo tokens, and its AI spend (null until the AI Gateway).",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page, by organisation slug.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantHealthPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a parameter or the cursor.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only a platform operator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/access-sessions": {
+      "post": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "Open a 60 minute access to one organisation, with a reason: one row of platform_access_logs (reason, expires_at) and an audit row, so the access is seen once.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessSessionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The session, open for 60 minutes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the reason (10 to 500 characters), or the Idempotency-Key is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only a platform operator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_in_progress",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/channel-policies": {
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "The channel policies in force now, one per channel and class (every role reads them).",
+        "tags": [
+          "channel-policies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The policies in force.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelPolicyList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/channel-policies/{id}": {
+      "put": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "Add a new version of the policy `{id}` (its channel and class) from `effectiveFrom`; no row is ever edited (audited: `channel_policy.versioned`).",
+        "tags": [
+          "channel-policies"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelPolicyChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The latest version in force of that channel and class after the change (the previous one while a future effectiveFrom is not reached).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only a platform operator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such policy.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid_effective_from: not later than the effectiveFrom of the version in force.",
             "content": {
               "application/problem+json": {
                 "schema": {
