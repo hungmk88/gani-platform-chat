@@ -77,6 +77,7 @@ export { workspaceHolidays, workspaceHours } from './schema/workspace-hours.js';
 export { ticketEvents, tickets } from './schema/tickets.js';
 export { conversationNotes } from './schema/conversation-notes.js';
 export { pipelineLostReasons, pipelineStages } from './schema/pipelines.js';
+export { leadEvents, leads } from './schema/leads.js';
 export { botEdges, botFlowVersions, botFlows, botNodes } from './schema/bot-flows.js';
 export { botSessionSteps, botSessions } from './schema/bot-sessions.js';
 export { customerIdentities, customers } from './schema/customers.js';

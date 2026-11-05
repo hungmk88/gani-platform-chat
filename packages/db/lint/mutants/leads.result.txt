@@ -1,0 +1,35 @@
+# lint/mutants/leads.sh trên gani_o1, 05/11/2026 (L1b): 10 policy/quyền + 16 DROP (CEO duyệt 05/11).
+# Lần 1: 24/26 bị bắt, 2 mutant SỐNG (dừng, báo CEO):
+#   D2-leads-drop-status-check|exit=0| Tests 255 passed (255)|
+#   D6-events-drop-type-check|exit=0| Tests 255 passed (255)|
+#   Nguyên nhân: ca sai của test bị một CHECK khác từ chối thay ('pending' không có closed_at vi phạm cả leads_closed_at_check;
+#   'note' có bước vi phạm cả lead_events_shape_check). Sửa test: ca chỉ còn vi phạm đúng CHECK đang thử.
+# Lần 2 (sau khi sửa test): 26/26 bị bắt, schema giống hệt, exit 0.
+# Dòng: tên | exit vitest (1 = đỏ) | số test | test đỏ (cắt 100 ký tự).
+P-leads-app-no-workspace|exit=1| Tests 2 failed | 253 passed (255)|the tables whose policies test app.current_workspaces() are exactly the O+W tables;lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;
+P-leads-support-no-access-check|exit=1| Tests 1 failed | 254 passed (255)|has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy beh;
+G-leads-app-delete|exit=1| Tests 1 failed | 254 passed (255)|case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all;
+P-lead_events-app-no-workspace|exit=1| Tests 2 failed | 253 passed (255)|the tables whose policies test app.current_workspaces() are exactly the O+W tables;lets app_role add events of the workspaces it holds, and never change one;
+P-lead_events-support-no-access-check|exit=1| Tests 1 failed | 254 passed (255)|has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy beh;
+G-lead_events-app-delete|exit=1| Tests 1 failed | 254 passed (255)|case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all;
+G-leads-app-update-title|exit=1| Tests 2 failed | 253 passed (255)|lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;is on exactly the listed columns, and never on a whole table;
+G-leads-app-update-created-by|exit=1| Tests 2 failed | 253 passed (255)|lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;is on exactly the listed columns, and never on a whole table;
+G-leads-support-reads-title|exit=1| Tests 1 failed | 254 passed (255)|lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;
+G-lead_events-app-update-type|exit=1| Tests 2 failed | 253 passed (255)|lets app_role add events of the workspaces it holds, and never change one;is on exactly the listed columns, and never on a whole table;
+D1-leads-drop-title-check|exit=1| Tests 1 failed | 254 passed (255)|takes a title of 1 to 200 characters, trimmed and in NFC, and nothing else;
+D2-leads-drop-status-check|exit=1| Tests 1 failed | 254 passed (255)|takes a title of 1 to 200 characters, trimmed and in NFC, and nothing else;
+D3-leads-drop-closed-at-check|exit=1| Tests 1 failed | 254 passed (255)|is open exactly while it has no closing time, and lost exactly when it has a reason;
+D4-leads-drop-lost-reason-check|exit=1| Tests 1 failed | 254 passed (255)|is open exactly while it has no closing time, and lost exactly when it has a reason;
+D5-leads-drop-version-check|exit=1| Tests 1 failed | 254 passed (255)|is open exactly while it has no closing time, and lost exactly when it has a reason;
+D6-events-drop-type-check|exit=1| Tests 1 failed | 254 passed (255)|holds codes only, in the shape of each type;
+D7-events-drop-outcome-check|exit=1| Tests 1 failed | 254 passed (255)|holds codes only, in the shape of each type;
+D8-events-drop-shape-check|exit=1| Tests 1 failed | 254 passed (255)|holds codes only, in the shape of each type;
+D9-leads-drop-stage-fk|exit=1| Tests 1 failed | 254 passed (255)|sits at a step and points at a conversation of its own workspace, of a customer of its organisation ;
+D10-leads-conversation-fk-org-only|exit=1| Tests 1 failed | 254 passed (255)|sits at a step and points at a conversation of its own workspace, of a customer of its organisation ;
+D11-leads-drop-customer-fk|exit=1| Tests 1 failed | 254 passed (255)|sits at a step and points at a conversation of its own workspace, of a customer of its organisation ;
+D12-leads-drop-owner-fk|exit=1| Tests 1 failed | 254 passed (255)|sits at a step and points at a conversation of its own workspace, of a customer of its organisation ;
+D13-leads-drop-created-by-fk|exit=1| Tests 1 failed | 254 passed (255)|sits at a step and points at a conversation of its own workspace, of a customer of its organisation ;
+D14-events-drop-lead-fk|exit=1| Tests 1 failed | 254 passed (255)|ties an event to a lead and to steps of the lead’s own workspace;
+D15-events-drop-to-stage-fk|exit=1| Tests 1 failed | 254 passed (255)|ties an event to a lead and to steps of the lead’s own workspace;
+D16-events-drop-from-stage-fk|exit=1| Tests 1 failed | 254 passed (255)|ties an event to a lead and to steps of the lead’s own workspace;
+schema identical after restore (<out-dir>)
