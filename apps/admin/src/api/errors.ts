@@ -93,6 +93,8 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
     'reload',
     'Người xử lý phải là Owner hoặc Admin đang hoạt động. Đang tải lại danh sách, chọn lại.',
   ],
+  // A security incident once closed stays closed (#29 PR B2, planned S5); the list is read again.
+  incident_closed: ['reload', 'Sự cố này đã đóng. Đang tải lại danh sách.'],
   // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
   conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };

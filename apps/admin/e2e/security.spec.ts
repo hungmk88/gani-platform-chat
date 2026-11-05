@@ -5,7 +5,8 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 
 // #29 Bảo mật (PR A, CEO 30/10): the incidents of one status and every alert of the company, from two routes planned for S5.
-// "Mở sự cố" is PR B1 (e2e/security-open.spec.ts); nothing closes or hands over one (B2); alerts have no person column (U69).
+// "Mở sự cố" is PR B1 (e2e/security-open.spec.ts), closing and handing over B2 (e2e/security-change.spec.ts); alerts have no
+// person or channel column (U69).
 const table = (page: Page, heading: string) =>
   page.getByRole('region', { name: heading }).getByRole('table');
 const rows = (page: Page, heading: string) => table(page, heading).getByRole('row');
@@ -17,7 +18,7 @@ const problem = (status: number, code: string, traceId: string) => ({
   body: JSON.stringify({ status, code, traceId }),
 });
 
-test('an Owner reads the open incidents and the alerts; only "Mở sự cố" changes anything', async ({
+test('an Owner reads the open incidents, each with its actions, and the alerts', async ({
   page,
 }) => {
   const asked: string[] = [];
@@ -28,7 +29,9 @@ test('an Owner reads the open incidents and the alerts; only "Mở sự cố" ch
   await page.goto('/settings/security');
   await expect(page.getByRole('heading', { name: 'Bảo mật', level: 1 })).toBeVisible();
   await expect(rows(page, 'Sự cố')).toHaveCount(3);
-  await expect(rows(page, 'Sự cố').nth(0)).toHaveText(/^Sự cốMức độNgười xử lýNgười mởMở lúc$/);
+  await expect(rows(page, 'Sự cố').nth(0)).toHaveText(
+    /^Sự cốMức độNgười xử lýNgười mởMở lúcThao tác$/,
+  );
   await expect(rows(page, 'Sự cố').nth(1)).toHaveText(
     /Đăng nhập sai liên tục.*CaoNguyễn AnTrần Bình00:30 30\/10\/2026/,
   );
@@ -44,7 +47,8 @@ test('an Owner reads the open incidents and the alerts; only "Mở sự cố" ch
   );
   await expect(page.getByRole('main').getByRole('button', { name: 'Tải thêm' })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Mở sự cố' })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /Đóng|Giao/ })).toHaveCount(0);
+  // Each open incident can be handed over or closed (B2, e2e/security-change.spec.ts).
+  await expect(page.getByRole('button', { name: /^(Đóng|Giao lại) sự cố / })).toHaveCount(4);
   await expectAccessible(page);
 });
 
@@ -76,6 +80,8 @@ test('the closed incidents are asked with their status, with the time they close
   await expect(rows(page, 'Sự cố').nth(1)).toHaveText(
     /Xuất danh sách.*Trung bình.*10:15 21\/10\/2026$/,
   );
+  // A closed incident stays closed: no action on it.
+  await expect(page.getByRole('button', { name: /^(Đóng|Giao lại) sự cố / })).toHaveCount(0);
 });
 
 test('a Manager has no such screen: the 404 inside the frame', async ({ page }) => {

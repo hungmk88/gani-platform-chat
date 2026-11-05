@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { NavItem } from '../nav';
 import { button, Paged } from '../paged-list';
 import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
 import { ALERT_KIND, SEVERITY, type Severity } from './labels';
+import { IncidentActions } from './incident-actions';
 import { OpenIncident } from './open-incident';
 import {
   alertsPath,
@@ -40,6 +41,10 @@ function SeverityBadge({ severity }: { severity: Severity }) {
  */
 export function SecurityScreen({ item, go, meId }: { item: NavItem; go: NavItem; meId: string }) {
   const [status, setStatus] = useState<IncidentStatus>('open');
+  const [notice, setNotice] = useState<string | null>(null);
+  const said = useRef<HTMLParagraphElement>(null);
+  // The row closed may leave the list: the sentence saying so takes the focus.
+  useEffect(() => said.current?.focus(), [notice]);
   const incidents = useApiPages<SecurityIncidentPage>(['security', 'incidents', status], (c) =>
     incidentsPath(status, c),
   );
@@ -57,6 +62,11 @@ export function SecurityScreen({ item, go, meId }: { item: NavItem; go: NavItem;
           Sự cố
         </h2>
         <OpenIncident meId={meId} onOpened={() => setStatus('open')} />
+        {notice ? (
+          <p role="status" tabIndex={-1} ref={said}>
+            {notice}
+          </p>
+        ) : null}
         <label className="flex flex-col gap-1 self-start">
           Trạng thái
           <select
@@ -88,7 +98,7 @@ export function SecurityScreen({ item, go, meId }: { item: NavItem; go: NavItem;
             'Người xử lý',
             'Người mở',
             'Mở lúc',
-            ...(status === 'closed' ? ['Đóng lúc'] : []),
+            ...(status === 'closed' ? ['Đóng lúc'] : ['Thao tác']),
           ]}
           row={(i) => (
             <tr key={i.id}>
@@ -101,7 +111,11 @@ export function SecurityScreen({ item, go, meId }: { item: NavItem; go: NavItem;
               <td className="p-2 whitespace-nowrap">{timeText(i.openedAt)}</td>
               {status === 'closed' ? (
                 <td className="p-2 whitespace-nowrap">{timeText(i.closedAt)}</td>
-              ) : null}
+              ) : (
+                <td className="p-2">
+                  <IncidentActions incident={i} onDone={setNotice} />
+                </td>
+              )}
             </tr>
           )}
         />
