@@ -300,6 +300,13 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       404 → `PendingPage`). CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn" (lần đầu đỏ vì coverage branches
       `apps/api` 79,04 % < 80 %, BE sửa). FE sửa docs theo (`apps/admin/CLAUDE.md` #12/#13a, câu mô tả `leads.test.ts`,
       `lead-detail.test.ts`) ở PR #24 E2E Kênh. #612, #613, #615 (`packages/db`) không chạm FE. FE không comment PR BE.
+    - BE sửa file FE sinh `apps/admin/src/api/planned.d.ts` (+289/−8) và các dòng U61, U74, U75, U79, U80 của `QUESTIONS.md` trong #617
+      (K1, hợp đồng planned, tầng 3, CEO APPROVED, merge 16:27:53 UTC 05/11, squash `43c3e1c`; review trong 24 giờ, brief 100).
+      **Đúng:** `planned.json` chỉ thêm `GET /v1/platform/access-sessions`, `POST …/{id}/end`,
+      `GET /v1/channel-policies/{channelType}/{messageClass}/versions`, 4 schema, và 2 trường tùy chọn của `AiSettings`
+      (`productionLocked`, `productionLockReason`); không đường hay schema cũ nào bị bỏ; `gen:api` trên `43c3e1c` không lệch. U80 trả
+      lời bằng `versions` (có `state` scheduled/in_force/past), không có `effective_at` (CEO chốt bỏ, brief B-U80). FE làm U79, U80,
+      U74, U75 theo brief A–D. FE không comment PR BE.
     - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
       05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
       (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng
