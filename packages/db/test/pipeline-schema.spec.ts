@@ -68,8 +68,10 @@ function insert(
 
 describe('pipeline_stages', () => {
   it('takes a step of 1 to 100 characters, trimmed and in NFC, at one free place of the workspace', async () => {
+    // Place 1 is taken in ws2 (beforeAll): a place is unique in a workspace, not across workspaces.
     expect(await insert('pipeline_stages', { name: 'x'.repeat(100), position: 1 })).toBeUndefined();
     expect(await insert('pipeline_stages', { position: 1 })).toBe('23505');
+    expect(await insert('pipeline_stages', { workspace_id: ids.ws2, position: 1 })).toBe('23505');
     for (const over of [
       { name: '' },
       { name: ' Bước 2' },
@@ -106,6 +108,29 @@ describe('pipeline_lost_reasons', () => {
     expect(await insert('pipeline_lost_reasons', { position: 1, effective_from: at })).toBe(
       '23505',
     );
+    expect(
+      await insert('pipeline_lost_reasons', { name: 'Khác (chờ Q9)', effective_from: at }),
+    ).toBe('23505');
+    // The same place, and the same name, in the list of another workspace at the same time.
+    expect(
+      await insert('pipeline_lost_reasons', {
+        workspace_id: ids.ws2,
+        name: 'Khác (chờ Q9)',
+        position: 1,
+        effective_from: at,
+      }),
+    ).toBeUndefined();
+    // One name a list, in force or not: the rule holds for a list set for later too.
+    const later = '2027-06-01T00:00:00Z';
+    expect(
+      await insert('pipeline_lost_reasons', { name: 'Hết hàng', effective_from: later }),
+    ).toBeUndefined();
+    expect(
+      await insert('pipeline_lost_reasons', {
+        name: 'HẾT HÀNG'.toLowerCase(),
+        effective_from: later,
+      }),
+    ).toBe('23505');
     // The same name and place in the list that follows.
     expect(
       await insert('pipeline_lost_reasons', {
