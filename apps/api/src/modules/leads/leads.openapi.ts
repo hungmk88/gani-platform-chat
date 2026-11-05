@@ -20,29 +20,26 @@ import {
   PipelineSchema,
 } from './leads.schemas.js';
 
-/**
- * The leads and the pipeline (Brief P9 lines 443 and 464, U6, T-2, T-3, N188), planned for S4. Who may (Phụ lục B "Lead: tạo, đổi
- * bước, Thắng/Thua", T-2): Owner, Admin, Manager everything; a Sales reads and writes only the leads they made or own (another one is
- * a 404, as not visible); Marketing and Viewer read only; Support nothing (403). Another workspace or organisation is a 404.
- */
-export function registerLeads(registry: OpenAPIRegistry): void {
-  const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
-  const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
-  const tags = ['leads'];
-  const when = planned('S4');
-  const byId = { params: z.object({ id: LeadIdSchema }) };
-  const notFound = problemResponse(
-    'not_found: no lead with this id in the session’s workspaces, or one a Sales neither made nor owns (not visible is the same).',
-  );
-  const readers = problemResponse('forbidden: support; or a refusal of the edge.');
-  const writers = problemResponse(
-    'forbidden: support, marketing and viewer; or a refusal of the edge.',
-  );
-  const stale = 'version_conflict: the lead changed since it was read';
-  const closed = 'lead_closed: the lead is won or lost, which is final (T-3)';
+// The leads and the pipeline (Brief P9 lines 443 and 464, U6, T-2, T-3, N188). Who may (Phụ lục B "Lead: tạo, đổi bước, Thắng/Thua",
+// T-2): Owner, Admin, Manager everything; a Sales reads and writes only the leads they made or own (another one is a 404, as not
+// visible); Marketing and Viewer read only; Support nothing (403). Another workspace or organisation is a 404.
+const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
+const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
+const tags = ['leads'];
+const byId = { params: z.object({ id: LeadIdSchema }) };
+const notFound = problemResponse(
+  'not_found: no lead with this id in the session’s workspaces, or one a Sales neither made nor owns (not visible is the same).',
+);
+const readers = problemResponse('forbidden: support; or a refusal of the edge.');
+const writers = problemResponse(
+  'forbidden: support, marketing and viewer; or a refusal of the edge.',
+);
+const stale = 'version_conflict: the lead changed since it was read';
+const closed = 'lead_closed: the lead is won or lost, which is final (T-3)';
 
+/** Reading the pipeline and the leads (L4): served. */
+export function registerLeadReads(registry: OpenAPIRegistry): void {
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/workspaces/{id}/pipeline',
     summary:
@@ -58,7 +55,6 @@ export function registerLeads(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/leads',
     summary:
@@ -73,6 +69,25 @@ export function registerLeads(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/leads/{id}',
+    summary: 'One lead with what happened to it (`events`, oldest first).',
+    tags,
+    request: byId,
+    responses: {
+      200: { description: 'The lead.', ...json(LeadDetailSchema) },
+      400: problemResponse('validation_failed: the id.'),
+      403: readers,
+      404: notFound,
+      ...edge,
+    },
+  });
+}
+
+/** Making, moving and closing a lead (L5): planned for S4. */
+export function registerLeadWrites(registry: OpenAPIRegistry): void {
+  const when = planned('S4');
   registry.registerPath({
     ...when,
     method: 'post',
@@ -93,21 +108,6 @@ export function registerLeads(registry: OpenAPIRegistry): void {
       422: problemResponse(
         'invalid_stage: not a step of the workspace’s pipeline; invalid_assignee: not an active Owner, Admin, Manager or Sales of the workspace; or idempotency_key_reused.',
       ),
-      ...edge,
-    },
-  });
-  registry.registerPath({
-    ...when,
-    method: 'get',
-    path: '/v1/leads/{id}',
-    summary: 'One lead with what happened to it (`events`, oldest first).',
-    tags,
-    request: byId,
-    responses: {
-      200: { description: 'The lead.', ...json(LeadDetailSchema) },
-      400: problemResponse('validation_failed: the id.'),
-      403: readers,
-      404: notFound,
       ...edge,
     },
   });
