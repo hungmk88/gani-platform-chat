@@ -76,7 +76,7 @@ export function registerChannelWrites(registry: OpenAPIRegistry): void {
     method: 'post',
     path: '/v1/channels/{id}/disconnect',
     summary:
-      'Disconnect the channel: soft delete (it leaves GET /v1/channels, its webhooks are refused), its encrypted tokens set to null in the same transaction, audited `channel.disconnected` (the channel type, never a token).',
+      'Disconnect the channel, fail-closed (N102): in one transaction, all four secret columns (app_secret_enc, oa_secret_key_enc, access_token_enc, refresh_token_enc) set to null, status `disconnected`, soft delete (it leaves GET /v1/channels, its webhooks are refused), audited `channel.disconnected` (the channel type, never a secret). Using the channel again is a new connect (waits for Q6).',
     tags: ['channels'],
     request: byId,
     responses: {
