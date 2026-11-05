@@ -33,7 +33,12 @@ async function serve(page: Page, refuse?: Problem, hold?: Promise<void>) {
       refusal = undefined;
       return r.fulfill({ status, contentType: 'application/problem+json', body: problem });
     }
-    level = { ...body, changedBy: 'user-admin', changedAt: '2026-11-05T02:00:00.000Z', available: ['L0', 'L1'] };
+    level = {
+      ...body,
+      changedBy: 'user-admin',
+      changedAt: '2026-11-05T02:00:00.000Z',
+      available: ['L0', 'L1'],
+    };
     return r.fulfill({ json: level });
   });
   return sent;
@@ -52,7 +57,9 @@ test('an Admin lowers L1 to L0 in two steps; the block takes the answer and the 
   await signIn(page, accountOf('admin'));
   await page.goto('/settings/autonomy');
   // L1 is of Đợt 1 (U29): no "(Đợt 2)" on it any more.
-  await expect(page.getByText('L1 — AI trả lời khách chỉ từ Knowledge Base', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('L1 — AI trả lời khách chỉ từ Knowledge Base', { exact: true }),
+  ).toBeVisible();
   const dialog = await open(page);
   await expect(dialog.getByRole('radio', { name: /^L0 — / })).toBeChecked();
   await expect(dialog.getByRole('radio', { name: /^L0 — / })).toBeEnabled();
@@ -76,14 +83,18 @@ test('an Admin lowers L1 to L0 in two steps; the block takes the answer and the 
   // Back keeps the level and the reason.
   await dialog.getByRole('button', { name: 'Quay lại' }).click();
   await expect(dialog.getByRole('radio', { name: /^L0 — / })).toBeFocused();
-  await expect(dialog.getByLabel('Lý do (bắt buộc, ghi audit)')).toHaveValue('  Khách phàn nàn bot  ');
+  await expect(dialog.getByLabel('Lý do (bắt buộc, ghi audit)')).toHaveValue(
+    '  Khách phàn nàn bot  ',
+  );
   expect(sent).toHaveLength(0);
 
   await dialog.getByRole('button', { name: 'Tiếp tục' }).click();
   await dialog.getByRole('button', { name: 'Hạ xuống L0' }).click();
   await expect(dialog).toBeHidden();
   expect(sent).toEqual([{ level: 'L0', reason: 'Khách phàn nàn bot' }]);
-  await expect(page.getByText('L0 — Bot kịch bản, AI không trả lời khách', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('L0 — Bot kịch bản, AI không trả lời khách', { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText('Bạn, 09:00 05/11/2026')).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Đã hạ về L0. Đã ghi audit.');
   await expect(page.getByRole('status')).toBeFocused();
@@ -91,7 +102,9 @@ test('an Admin lowers L1 to L0 in two steps; the block takes the answer and the 
   await expectAccessible(page);
 });
 
-test('while lowering, nothing in the dialog can be pressed and Esc does not close it', async ({ page }) => {
+test('while lowering, nothing in the dialog can be pressed and Esc does not close it', async ({
+  page,
+}) => {
   let release = () => {};
   const sent = await serve(page, undefined, new Promise<void>((done) => (release = done)));
   await signIn(page, accountOf('owner'));
@@ -113,7 +126,10 @@ test('while lowering, nothing in the dialog can be pressed and Esc does not clos
 
 for (const [refusal, said] of [
   [{ status: 409, code: 'not_in_phase', traceId: 'trace-409' }, 'Mức này mở ở Đợt 2.'],
-  [{ status: 403, code: 'forbidden', traceId: 'trace-403' }, 'Chỉ Owner hoặc Admin hạ được mức tự chủ.'],
+  [
+    { status: 403, code: 'forbidden', traceId: 'trace-403' },
+    'Chỉ Owner hoặc Admin hạ được mức tự chủ.',
+  ],
   [
     { status: 500, code: 'internal_error', traceId: 'trace-500' },
     'Đã có lỗi, không phải do bạn. Nếu còn lỗi, gửi mã bên dưới cho Admin.',
@@ -131,11 +147,15 @@ for (const [refusal, said] of [
     const alert = dialog.getByRole('alert');
     await expect(alert).toContainText(said);
     await expect(alert).toContainText(`Mã: ${refusal.traceId}`);
-    await expect(page.getByText('L1 — AI trả lời khách chỉ từ Knowledge Base', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText('L1 — AI trả lời khách chỉ từ Knowledge Base', { exact: true }),
+    ).toBeVisible();
     await expectAccessible(page);
     await dialog.getByRole('button', { name: 'Quay lại' }).click();
     await expect(dialog.getByRole('radio', { name: /^L0 — / })).toBeChecked();
-    await expect(dialog.getByLabel('Lý do (bắt buộc, ghi audit)')).toHaveValue('Khách phàn nàn bot');
+    await expect(dialog.getByLabel('Lý do (bắt buộc, ghi audit)')).toHaveValue(
+      'Khách phàn nàn bot',
+    );
     // Sent again from the same dialog, the API now lowers it.
     await dialog.getByRole('button', { name: 'Tiếp tục' }).click();
     await dialog.getByRole('button', { name: 'Hạ xuống L0' }).click();

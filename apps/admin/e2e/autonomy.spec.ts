@@ -20,7 +20,9 @@ const fail = (page: Page, route: string, status: number, code: string, traceId: 
     }),
   );
 
-test('an Owner reads the level and the flags; at L0 nothing is lower to choose', async ({ page }) => {
+test('an Owner reads the level and the flags; at L0 nothing is lower to choose', async ({
+  page,
+}) => {
   await signIn(page, accountOf('owner'));
   await page.goto('/settings/autonomy');
   await expect(
