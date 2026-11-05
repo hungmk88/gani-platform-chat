@@ -40,6 +40,7 @@ export default defineConfig({
         'src/outbox-store.ts',
         'src/password-reset-store.ts',
         'src/pipeline-read.ts',
+        'src/lead-store.ts',
         'src/quick-reply-store.ts',
         'src/bot-flow-store.ts',
         'src/bot-session-store.ts',
