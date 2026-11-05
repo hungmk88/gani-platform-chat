@@ -1642,7 +1642,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description ai_production_locked: `production` while Q1 (legal) is not settled. */
+                /** @description ai_production_locked: `production` while Q1 (legal) is not settled; or E1/L1 turned on while the environment is `production` (or moves to it in the same body) without the tier 3 approval of Q1 and the CEO (U75): the API refuses it, not only the UI. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1746,7 +1746,72 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * The access sessions of the operator who calls, newest first (only their own).
+         * @description A session is applied with the header `X-Access-Session-Id: <id>` on each request into the organisation’s data. The header carries only the id of the session: the organisation is read from the stored session, never from the header (rule 1). The tenant middleware checks it on every request, whatever the controller: the session must be the caller’s (`operatorUserId` = the user of the session) and neither expired nor ended, else 403 `access_session_expired`. A session opens reading only: it gives no role in the organisation, and the second factor and every per-resource check still apply.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    /** @description UUIDv7. */
+                    orgId?: components["schemas"]["Uuid"];
+                    active?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessSessionPage"];
+                    };
+                };
+                /** @description validation_failed: a parameter or the cursor. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
         put?: never;
         /** Open a 60 minute access to one organisation, with a reason: one row of platform_access_logs (reason, expires_at) and an audit row, so the access is seen once. */
         post: {
@@ -1821,6 +1886,84 @@ export interface paths {
                 };
                 /** @description idempotency_key_reused */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/access-sessions/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a session early (audited: `platform.access_session_ended`). Only the operator who opened it; ending an ended session gives it back as it is.
+         * @description A session is applied with the header `X-Access-Session-Id: <id>` on each request into the organisation’s data. The header carries only the id of the session: the organisation is read from the stored session, never from the header (rule 1). The tenant middleware checks it on every request, whatever the controller: the session must be the caller’s (`operatorUserId` = the user of the session) and neither expired nor ended, else 403 `access_session_expired`. A session opens reading only: it gives no role in the organisation, and the second factor and every per-resource check still apply.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The session, ended (`endReason: manual`, or `expired` if it ran out first). */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessSessionRecord"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no such session of the operator who calls. */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1989,6 +2132,81 @@ export interface paths {
                 };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/channel-policies/{channelType}/{messageClass}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every version of the policy of one channel and class, the latest effectiveFrom first: the scheduled ones (a PUT with a later effectiveFrom), the one in force, and the history (C1). */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelType: "zalo_oa" | "facebook" | "webchat";
+                    messageClass: "advisory" | "transaction" | "broadcast";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChannelPolicyVersionList"];
+                    };
+                };
+                /** @description validation_failed: an unknown channel type or message class. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2264,15 +2482,22 @@ export interface components {
             /** @enum {string} */
             environment: "staging" | "production";
             features: components["schemas"]["AiFeatures"];
-            /** @description The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow). */
+            /** @description The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow); 0 means the internal AI is stopped at once (used ≥ budget, U74). */
             monthlyBudgetUsd: number;
             /** @description Spent since the month began in `workspace.timezone` (ai_usage_logs). */
             usedThisMonthUsd: number;
             /**
              * Format: date-time
-             * @description When the next month begins in `workspace.timezone`, and the spending starts again at 0.
+             * @description When the next month begins in `workspace.timezone`, and the spending starts again at 0. The budget itself never resets: it stays what was set (U74).
              */
             resetsAt: string;
+            /** @description true while `production` is refused (409 `ai_production_locked`), for every role, the Owner included: the UI warns before any PATCH. Always sent by the API once built. */
+            productionLocked?: boolean;
+            /**
+             * @description Why `production` is locked: `legal_q1` while Q1 (legal) is not settled; null when not locked.
+             * @enum {string|null}
+             */
+            productionLockReason?: "legal_q1" | null;
         };
         AiFeatures: {
             e1: boolean;
@@ -2316,6 +2541,31 @@ export interface components {
             orgId: components["schemas"]["Uuid"];
             reason: string;
         };
+        AccessSessionPage: {
+            data: components["schemas"]["AccessSessionRecord"][];
+            nextCursor: string | null;
+        };
+        AccessSessionRecord: {
+            id: components["schemas"]["Uuid"];
+            orgId: components["schemas"]["Uuid"];
+            orgName: string;
+            operatorUserId: components["schemas"]["Uuid"];
+            reason: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /**
+             * Format: date-time
+             * @description When it ended: `expiresAt` once it ran out, or when the operator ended it.
+             */
+            endedAt: string | null;
+            /**
+             * @description `manual`: the operator ended it early (`POST …/end`); `expired`: it ran its 60 minutes; null while it runs.
+             * @enum {string|null}
+             */
+            endReason: "manual" | "expired" | null;
+        };
         ChannelPolicyList: {
             data: components["schemas"]["ChannelPolicy"][];
         };
@@ -2347,6 +2597,37 @@ export interface components {
             /** Format: date */
             sourceDate: string | null;
             note: string;
+        };
+        ChannelPolicyVersionList: {
+            data: components["schemas"]["ChannelPolicyVersion"][];
+        };
+        ChannelPolicyVersion: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            channelType: "zalo_oa" | "facebook" | "webchat";
+            /** @enum {string} */
+            messageClass: "advisory" | "transaction" | "broadcast";
+            /** Format: date-time */
+            effectiveFrom: string;
+            freeWindowSeconds: number | null;
+            freeMessageQuota: number | null;
+            unitPriceVnd: number | null;
+            outsideWindowAllowed: boolean;
+            sourceUrl: string | null;
+            /** Format: date */
+            sourceDate: string | null;
+            note: string;
+            /** Format: date-time */
+            effectiveTo: string | null;
+            /** @enum {string} */
+            state: "scheduled" | "in_force" | "past";
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;

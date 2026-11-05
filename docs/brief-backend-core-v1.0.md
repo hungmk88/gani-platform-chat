@@ -419,6 +419,7 @@ Ký hiệu RLS: **O** = theo `org_id` · **O+W** = theo `org_id` + `workspace_id
 | `unauthorized` | 401 | Chưa đăng nhập, phiên hết hạn, API key sai | Chuyển về đăng nhập, giữ lại bản nháp tin nhắn |
 | `forbidden` | 403 | Sai quyền trong cùng tenant | Ẩn nút, báo "Không có quyền" |
 | `not_found` | 404 | Không có hoặc khác tenant | Báo không tìm thấy, quay lại danh sách |
+| `access_session_expired` | 403 | Phiên truy cập của platform operator (`X-Access-Session-Id`) đã hết 60 phút, đã kết thúc hoặc không phải của người gọi (U79, CEO 05/11/2026) | Báo phiên đã hết, đưa về `/platform`; muốn tiếp thì mở phiên mới với lý do mới |
 | `version_conflict` | 409 | Optimistic lock | Tải lại dữ liệu, cho người dùng xem thay đổi rồi thử lại |
 | `conversation_already_claimed` | 409 | Người khác đã nhận | Báo tên người đã nhận, bỏ khỏi danh sách chờ |
 | `duplicate_resource` | 409 | Trùng dữ liệu (vd. gộp khách trùng SĐT) | Hiện bản ghi trùng, đề nghị gộp |

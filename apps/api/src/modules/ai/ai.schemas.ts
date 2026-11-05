@@ -43,14 +43,23 @@ export const AiSettingsSchema = z
     features: AiFeaturesSchema,
     monthlyBudgetUsd: z.number().min(0).meta({
       description:
-        'The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow).',
+        'The budget of one calendar month in the time zone of the workspace (`workspace.timezone`), in USD. BudgetGuard warns at 80% and stops at 100% (`ai_budget_exceeded`, back to the scripted flow); 0 means the internal AI is stopped at once (used ≥ budget, U74).',
     }),
     usedThisMonthUsd: z.number().min(0).meta({
       description: 'Spent since the month began in `workspace.timezone` (ai_usage_logs).',
     }),
     resetsAt: z.iso.datetime().meta({
       description:
-        'When the next month begins in `workspace.timezone`, and the spending starts again at 0.',
+        'When the next month begins in `workspace.timezone`, and the spending starts again at 0. The budget itself never resets: it stays what was set (U74).',
+    }),
+    // U74 (CEO 05/11/2026): added to the planned shape, optional so that nothing already reading AiSettings changes.
+    productionLocked: z.boolean().optional().meta({
+      description:
+        'true while `production` is refused (409 `ai_production_locked`), for every role, the Owner included: the UI warns before any PATCH. Always sent by the API once built.',
+    }),
+    productionLockReason: z.enum(['legal_q1']).nullable().optional().meta({
+      description:
+        'Why `production` is locked: `legal_q1` while Q1 (legal) is not settled; null when not locked.',
     }),
   })
   .meta({ id: 'AiSettings' });

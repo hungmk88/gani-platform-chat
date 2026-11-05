@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { CursorQuerySchema, cursorPage, UuidSchema } from '../../openapi/schemas.js';
+import {
+  CursorQuerySchema,
+  cursorPage,
+  NullableUuidSchema,
+  UuidSchema,
+} from '../../openapi/schemas.js';
 
 // The Platform screen #30 (U65, CEO 05/11/2026; Brief P9 lines 447 and 473): the health of each organisation and the access sessions
 // of a platform operator, and the channel policies every role reads. Contract first (N167): planned.ts, built in S5.
@@ -46,6 +51,42 @@ export const AccessSessionCreateSchema = z
 export const AccessSessionSchema = z
   .object({ id: UuidSchema, orgId: UuidSchema, startedAt: at, expiresAt: at })
   .meta({ id: 'AccessSession' });
+
+// U79 (CEO 05/11/2026): the sessions of the operator who calls, and ending one early. An operator sees only their own sessions (a
+// reason may name sensitive work); seeing every operator's waits for an `audit` flag of the operator (QUESTIONS.md U79).
+
+export const ACCESS_SESSION_END_REASONS = ['manual', 'expired'] as const;
+
+/** One access session as the list and `…/end` give it. `endedAt`/`endReason` null while it runs. */
+export const AccessSessionRecordSchema = z
+  .object({
+    id: UuidSchema,
+    orgId: UuidSchema,
+    orgName: z.string(),
+    operatorUserId: UuidSchema,
+    reason: z.string(),
+    startedAt: at,
+    expiresAt: at,
+    endedAt: at.nullable().meta({
+      description: 'When it ended: `expiresAt` once it ran out, or when the operator ended it.',
+    }),
+    endReason: z.enum(ACCESS_SESSION_END_REASONS).nullable().meta({
+      description:
+        '`manual`: the operator ended it early (`POST …/end`); `expired`: it ran its 60 minutes; null while it runs.',
+    }),
+  })
+  .meta({ id: 'AccessSessionRecord' });
+
+export const AccessSessionPageSchema = cursorPage(AccessSessionRecordSchema, 'AccessSessionPage');
+
+export const AccessSessionListQuerySchema = CursorQuerySchema.extend({
+  /** The sessions of one organisation. */
+  orgId: UuidSchema.optional(),
+  /** `true` (the default): only the sessions still running; `false`: every session of the operator, newest first. */
+  active: z.enum(['true', 'false']).optional(),
+}).strict();
+
+export const AccessSessionIdSchema = UuidSchema;
 
 export const CHANNEL_TYPES = ['zalo_oa', 'facebook', 'webchat'] as const;
 export const MESSAGE_CLASSES = ['advisory', 'transaction', 'broadcast'] as const;
@@ -93,3 +134,26 @@ export const ChannelPolicyChangeSchema = z
   .meta({ id: 'ChannelPolicyChange' });
 
 export const ChannelPolicyIdSchema = UuidSchema;
+
+/**
+ * One version of the policy of a channel and class (C1; CEO 05/11/2026): every row ever written, never edited. `effectiveTo` is the
+ * `effectiveFrom` of the next version (null for the last one); `state` says where it stands against now.
+ */
+export const ChannelPolicyVersionSchema = ChannelPolicySchema.extend({
+  effectiveTo: at.nullable(),
+  /** `scheduled`: starts later; `in_force`: the one used now; `past`: replaced. */
+  state: z.enum(['scheduled', 'in_force', 'past']),
+  /** The platform operator who added it (PUT); null for the versions written by a migration. */
+  createdBy: NullableUuidSchema,
+  createdAt: at,
+}).meta({ id: 'ChannelPolicyVersion' });
+
+/** Every version of one channel and class, the latest `effectiveFrom` first: the scheduled ones, the one in force, the history. */
+export const ChannelPolicyVersionListSchema = z
+  .object({ data: z.array(ChannelPolicyVersionSchema) })
+  .meta({ id: 'ChannelPolicyVersionList' });
+
+export const ChannelPolicyVersionParamsSchema = z.object({
+  channelType: z.enum(CHANNEL_TYPES),
+  messageClass: z.enum(MESSAGE_CLASSES),
+});

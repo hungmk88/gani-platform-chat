@@ -63,7 +63,9 @@ export function registerAi(registry: OpenAPIRegistry): void {
         'forbidden: an Admin moving to `production`, or another role; or a refusal of the edge.',
       ),
       404: notFound,
-      409: problemResponse('ai_production_locked: `production` while Q1 (legal) is not settled.'),
+      409: problemResponse(
+        'ai_production_locked: `production` while Q1 (legal) is not settled; or E1/L1 turned on while the environment is `production` (or moves to it in the same body) without the tier 3 approval of Q1 and the CEO (U75): the API refuses it, not only the UI.',
+      ),
       ...edge,
     },
   });
