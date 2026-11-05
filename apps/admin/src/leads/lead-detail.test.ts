@@ -12,7 +12,7 @@ const event = (e: Partial<LeadEvent> & Pick<LeadEvent, 'type'>): LeadEvent => ({
   ...e,
 });
 
-describe('#13a Chi tiết lead, on the contract planned for S4 (#544)', () => {
+describe('#13a Chi tiết lead, on the contract of #544 (real API since L4, #616)', () => {
   it('says each kind of event in words, people as Bạn, Người khác or Hệ thống', () => {
     expect(eventText(event({ type: 'created', toStage: step(1) }), 'me')).toBe(
       'Bạn tạo lead ở Bước 1',
