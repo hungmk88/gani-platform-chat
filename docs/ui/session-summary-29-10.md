@@ -265,6 +265,11 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `ConversationNotePage`; không đường hay schema cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform`
       skipped, đúng dòng "Lẫn". Hộp thư FE chưa dùng ghi chú, hành vi không đổi; màn ghi chú (C6 ở #6) chờ brief riêng. FE không
       comment PR BE.
+    - BE sửa file FE sinh `apps/admin/src/api/schema.d.ts` (+7/−2, file FE duy nhất) và N199 trong #598 (C6-4, lý do chuyển hội thoại,
+      tầng 2 theo Mức A, merge 04:34:24 UTC 05/11, squash `4771fe5`; luật #546, review trong 24 giờ, brief 62–64). **Đúng:** body của
+      `POST /v1/conversations/{id}/transfer` đổi từ `AssigneeBody` sang `TransferBody` `{version, toUserId, reason?}`, chỉ thêm `reason`
+      tùy chọn; không đường hay schema cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn".
+      FE vẫn gửi `{version, toUserId}`, hành vi không đổi. Ô lý do khi Chuyển (U54) là việc mới, chờ brief. FE không comment PR BE.
   - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
     2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
