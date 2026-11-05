@@ -1,0 +1,13 @@
+# lint/mutants/leads.sh trên gani_o1, 05/11/2026 (L1b): 10/10 bị bắt (policy và quyền, không DROP), schema giống hệt, exit 0.
+# Dòng: tên | exit vitest (1 = đỏ) | số test | test đỏ (cắt 100 ký tự).
+P-leads-app-no-workspace|exit=1| Tests 2 failed | 253 passed (255)|the tables whose policies test app.current_workspaces() are exactly the O+W tables;lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;
+P-leads-support-no-access-check|exit=1| Tests 1 failed | 254 passed (255)|has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy beh;
+G-leads-app-delete|exit=1| Tests 1 failed | 254 passed (255)|case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all;
+P-lead_events-app-no-workspace|exit=1| Tests 2 failed | 253 passed (255)|the tables whose policies test app.current_workspaces() are exactly the O+W tables;lets app_role add events of the workspaces it holds, and never change one;
+P-lead_events-support-no-access-check|exit=1| Tests 1 failed | 254 passed (255)|has ENABLE + FORCE RLS, an app_role policy on app.current_org() and a support_role SELECT policy beh;
+G-lead_events-app-delete|exit=1| Tests 1 failed | 254 passed (255)|case 11: app_role cannot DELETE or TRUNCATE, and auth_role has no privilege at all;
+G-leads-app-update-title|exit=1| Tests 2 failed | 253 passed (255)|lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;is on exactly the listed columns, and never on a whole table;
+G-leads-app-update-created-by|exit=1| Tests 2 failed | 253 passed (255)|lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;is on exactly the listed columns, and never on a whole table;
+G-leads-support-reads-title|exit=1| Tests 1 failed | 254 passed (255)|lets app_role change only the step, the state, the owner and the closing, and keeps the title from s;
+G-lead_events-app-update-type|exit=1| Tests 2 failed | 253 passed (255)|lets app_role add events of the workspaces it holds, and never change one;is on exactly the listed columns, and never on a whole table;
+schema identical after restore (<out-dir>)
