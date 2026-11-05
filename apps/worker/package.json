@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "tenant:create-org": "node scripts/tenant.mjs create-org",
     "tenant:create-workspace": "node scripts/tenant.mjs create-workspace",
+    "tenant:create-pipeline": "node scripts/tenant.mjs create-pipeline",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts"
