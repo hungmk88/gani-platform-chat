@@ -276,7 +276,7 @@ Trang mặc định sau đăng nhập:
 ## Kênh (#24)
 
 - `/settings/channels`, Owner và Admin như menu và API (Phụ lục B). Kênh của **workspace đang chọn** (`GET /v1/channels?workspaceId=`, N161; theo tên): tên, loại (Zalo OA/Facebook/Webchat), trạng thái kết nối bằng lời thường kèm màu trạng thái (xanh/vàng/đỏ), team trả lời (tên từ `GET /v1/teams`; `null` là "Team mặc định") (`src/channels/channels.ts` + `channel-table.tsx`). Chỉ đọc; giao kênh cho team ở `/settings/teams` (nút "Kênh").
-- Kết nối Zalo OA, làm mới token, ngắt kết nối, lỗi gần nhất và hạn token: chờ U26; `/settings/channels/[id]` (#25) cũng chờ U26. API giả: `e2e/stub-channels.ts` (`CHANNELS`).
+- Kết nối Zalo OA, làm mới token, ngắt kết nối, lỗi gần nhất và hạn token: chờ U26; `/settings/channels/[id]` (#25) cũng chờ U26. API giả: `e2e/stub-channels.ts` (`CHANNELS`); E2E `e2e/channels.spec.ts`: danh sách, Manager 403, đang tải / lỗi (mã + "Thử lại") / trống bằng `page.route` (brief 87).
 
 ## Mẫu trả lời nhanh (#22)
 
