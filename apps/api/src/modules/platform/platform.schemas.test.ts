@@ -5,6 +5,8 @@ import {
   AccessSessionListQuerySchema,
   AccessSessionRecordSchema,
   ChannelPolicyChangeSchema,
+  ChannelPolicyVersionParamsSchema,
+  ChannelPolicyVersionSchema,
   TenantHealthSchema,
 } from './platform.schemas.js';
 
@@ -95,6 +97,40 @@ describe('the platform contract', () => {
         }).success,
       ).toBe(true);
     expect(AccessSessionRecordSchema.safeParse({ ...running, endReason: 'revoked' }).success).toBe(
+      false,
+    );
+  });
+
+  it('lists the versions of one channel and class with their state, end and maker (C1)', () => {
+    expect(
+      ChannelPolicyVersionParamsSchema.safeParse({
+        channelType: 'zalo_oa',
+        messageClass: 'advisory',
+      }).success,
+    ).toBe(true);
+    expect(
+      ChannelPolicyVersionParamsSchema.safeParse({ channelType: 'sms', messageClass: 'advisory' })
+        .success,
+    ).toBe(false);
+    const version = {
+      id: ORG,
+      channelType: 'zalo_oa',
+      messageClass: 'advisory',
+      effectiveFrom: '2026-12-01T00:00:00Z',
+      freeWindowSeconds: 172800,
+      freeMessageQuota: 8,
+      unitPriceVnd: null,
+      outsideWindowAllowed: false,
+      sourceUrl: null,
+      sourceDate: null,
+      note: 'Bảng giá mới',
+      effectiveTo: null,
+      state: 'scheduled',
+      createdBy: null,
+      createdAt: '2026-11-05T08:00:00Z',
+    };
+    expect(ChannelPolicyVersionSchema.safeParse(version).success).toBe(true);
+    expect(ChannelPolicyVersionSchema.safeParse({ ...version, state: 'draft' }).success).toBe(
       false,
     );
   });

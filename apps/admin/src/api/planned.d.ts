@@ -2139,6 +2139,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/channel-policies/{channelType}/{messageClass}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every version of the policy of one channel and class, the latest effectiveFrom first: the scheduled ones (a PUT with a later effectiveFrom), the one in force, and the history (C1). */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelType: "zalo_oa" | "facebook" | "webchat";
+                    messageClass: "advisory" | "transaction" | "broadcast";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The versions. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChannelPolicyVersionList"];
+                    };
+                };
+                /** @description validation_failed: an unknown channel type or message class. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only a platform operator. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2522,6 +2597,37 @@ export interface components {
             /** Format: date */
             sourceDate: string | null;
             note: string;
+        };
+        ChannelPolicyVersionList: {
+            data: components["schemas"]["ChannelPolicyVersion"][];
+        };
+        ChannelPolicyVersion: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            channelType: "zalo_oa" | "facebook" | "webchat";
+            /** @enum {string} */
+            messageClass: "advisory" | "transaction" | "broadcast";
+            /** Format: date-time */
+            effectiveFrom: string;
+            freeWindowSeconds: number | null;
+            freeMessageQuota: number | null;
+            unitPriceVnd: number | null;
+            outsideWindowAllowed: boolean;
+            sourceUrl: string | null;
+            /** Format: date */
+            sourceDate: string | null;
+            note: string;
+            /** Format: date-time */
+            effectiveTo: string | null;
+            /** @enum {string} */
+            state: "scheduled" | "in_force" | "past";
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;

@@ -1504,6 +1504,132 @@
           "note"
         ],
         "additionalProperties": false
+      },
+      "ChannelPolicyVersionList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelPolicyVersion"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "ChannelPolicyVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "channelType": {
+            "type": "string",
+            "enum": [
+              "zalo_oa",
+              "facebook",
+              "webchat"
+            ]
+          },
+          "messageClass": {
+            "type": "string",
+            "enum": [
+              "advisory",
+              "transaction",
+              "broadcast"
+            ]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "freeWindowSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "freeMessageQuota": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "unitPriceVnd": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "outsideWindowAllowed": {
+            "type": "boolean"
+          },
+          "sourceUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          },
+          "effectiveTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "in_force",
+              "past"
+            ]
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "channelType",
+          "messageClass",
+          "effectiveFrom",
+          "freeWindowSeconds",
+          "freeMessageQuota",
+          "unitPriceVnd",
+          "outsideWindowAllowed",
+          "sourceUrl",
+          "sourceDate",
+          "note",
+          "effectiveTo",
+          "state",
+          "createdBy",
+          "createdAt"
+        ]
       }
     },
     "parameters": {}
@@ -3863,6 +3989,96 @@
           },
           "422": {
             "description": "invalid_effective_from: not later than the effectiveFrom of the version in force.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/channel-policies/{channelType}/{messageClass}/versions": {
+      "get": {
+        "x-status": "planned",
+        "x-sprint": "S5",
+        "summary": "Every version of the policy of one channel and class, the latest effectiveFrom first: the scheduled ones (a PUT with a later effectiveFrom), the one in force, and the history (C1).",
+        "tags": [
+          "channel-policies"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "zalo_oa",
+                "facebook",
+                "webchat"
+              ]
+            },
+            "required": true,
+            "name": "channelType",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "advisory",
+                "transaction",
+                "broadcast"
+              ]
+            },
+            "required": true,
+            "name": "messageClass",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelPolicyVersionList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: an unknown channel type or message class.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only a platform operator.",
             "content": {
               "application/problem+json": {
                 "schema": {

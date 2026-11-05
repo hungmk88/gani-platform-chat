@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { CursorQuerySchema, cursorPage, UuidSchema } from '../../openapi/schemas.js';
+import {
+  CursorQuerySchema,
+  cursorPage,
+  NullableUuidSchema,
+  UuidSchema,
+} from '../../openapi/schemas.js';
 
 // The Platform screen #30 (U65, CEO 05/11/2026; Brief P9 lines 447 and 473): the health of each organisation and the access sessions
 // of a platform operator, and the channel policies every role reads. Contract first (N167): planned.ts, built in S5.
@@ -129,3 +134,26 @@ export const ChannelPolicyChangeSchema = z
   .meta({ id: 'ChannelPolicyChange' });
 
 export const ChannelPolicyIdSchema = UuidSchema;
+
+/**
+ * One version of the policy of a channel and class (C1; CEO 05/11/2026): every row ever written, never edited. `effectiveTo` is the
+ * `effectiveFrom` of the next version (null for the last one); `state` says where it stands against now.
+ */
+export const ChannelPolicyVersionSchema = ChannelPolicySchema.extend({
+  effectiveTo: at.nullable(),
+  /** `scheduled`: starts later; `in_force`: the one used now; `past`: replaced. */
+  state: z.enum(['scheduled', 'in_force', 'past']),
+  /** The platform operator who added it (PUT); null for the versions written by a migration. */
+  createdBy: NullableUuidSchema,
+  createdAt: at,
+}).meta({ id: 'ChannelPolicyVersion' });
+
+/** Every version of one channel and class, the latest `effectiveFrom` first: the scheduled ones, the one in force, the history. */
+export const ChannelPolicyVersionListSchema = z
+  .object({ data: z.array(ChannelPolicyVersionSchema) })
+  .meta({ id: 'ChannelPolicyVersionList' });
+
+export const ChannelPolicyVersionParamsSchema = z.object({
+  channelType: z.enum(CHANNEL_TYPES),
+  messageClass: z.enum(MESSAGE_CLASSES),
+});

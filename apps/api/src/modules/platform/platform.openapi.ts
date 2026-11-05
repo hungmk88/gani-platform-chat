@@ -14,6 +14,8 @@ import {
   ChannelPolicyIdSchema,
   ChannelPolicyListSchema,
   ChannelPolicySchema,
+  ChannelPolicyVersionListSchema,
+  ChannelPolicyVersionParamsSchema,
   TenantHealthPageSchema,
   TenantHealthQuerySchema,
 } from './platform.schemas.js';
@@ -138,6 +140,21 @@ export function registerPlatform(registry: OpenAPIRegistry): void {
       422: problemResponse(
         'invalid_effective_from: not later than the effectiveFrom of the version in force.',
       ),
+      ...edge,
+    },
+  });
+  registry.registerPath({
+    ...when,
+    method: 'get',
+    path: '/v1/channel-policies/{channelType}/{messageClass}/versions',
+    summary:
+      'Every version of the policy of one channel and class, the latest effectiveFrom first: the scheduled ones (a PUT with a later effectiveFrom), the one in force, and the history (C1).',
+    tags: ['channel-policies'],
+    request: { params: ChannelPolicyVersionParamsSchema },
+    responses: {
+      200: { description: 'The versions.', ...json(ChannelPolicyVersionListSchema) },
+      400: problemResponse('validation_failed: an unknown channel type or message class.'),
+      403: operatorOnly,
       ...edge,
     },
   });
