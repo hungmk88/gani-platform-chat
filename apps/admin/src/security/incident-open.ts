@@ -36,7 +36,11 @@ export function handlersOf(members: readonly Member[]): { userId: string; label:
 }
 
 /** The body of the POST: the title trimmed, the severity and the handler chosen. */
-export const incidentBodyOf = (title: string, severity: Severity, handlerUserId: string): IncidentCreate => ({
+export const incidentBodyOf = (
+  title: string,
+  severity: Severity,
+  handlerUserId: string,
+): IncidentCreate => ({
   title: title.trim(),
   severity,
   handlerUserId,

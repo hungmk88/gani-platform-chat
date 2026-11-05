@@ -79,7 +79,8 @@ function OpenDialog(props: {
   const [title, setTitle] = useState('');
   const [severity, setSeverity] = useState<Severity | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
-  const handler = chosen ?? handlers.find((h) => h.userId === props.meId)?.userId ?? handlers[0]?.userId;
+  const handler =
+    chosen ?? handlers.find((h) => h.userId === props.meId)?.userId ?? handlers[0]?.userId;
   const [problem, setProblem] = useState<string | null>(null);
   const send = useMutation<unknown, ApiFailure, { body: IncidentCreate; key: string }>({
     mutationFn: ({ body, key }) =>

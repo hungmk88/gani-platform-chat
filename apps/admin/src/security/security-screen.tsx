@@ -141,9 +141,7 @@ export function SecurityScreen({ item, go, meId }: { item: NavItem; go: NavItem;
           )}
         />
       </section>
-      <p className="text-12 text-text-muted">
-        Không áp dụng AI ở màn này.
-      </p>
+      <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
   );
 }
