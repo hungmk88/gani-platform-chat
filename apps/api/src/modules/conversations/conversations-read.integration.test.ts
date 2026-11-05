@@ -220,6 +220,9 @@ describe('GET /v1/conversations', () => {
       { id: channel, type: 'zalo_oa', displayName: 'OA Gani', status: 'disconnected' },
       { id: channel2, type: 'zalo_oa', displayName: 'OA Zeta', status: 'disconnected' },
     ]);
+    // The Inbox never tells who answers a channel nor its token state (U26): those are for Owner and Admin, GET /v1/channels.
+    for (const ch of (await get('sales', '/v1/conversations/channels')).body['data'] as object[])
+      for (const field of ['teamId', 'tokenExpiresAt', 'lastError']) expect(ch).not.toHaveProperty(field);
     for (const key of ['manager', 'sales', 'stranger'])
       for (const id of await offered(key))
         expect(ids((await get(key, `/v1/conversations?channelId=${id}`)).body).length, `${key} ${id}`).toBeGreaterThan(0);

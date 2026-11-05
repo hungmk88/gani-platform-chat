@@ -12,6 +12,10 @@ export const ChannelSchema = z
     teamId: UuidSchema.nullable().meta({
       description: 'The team that answers the channel; null: the default team of the workspace.',
     }),
+    /** When the access token expires; null until the channel is connected (U26). */
+    tokenExpiresAt: z.iso.datetime().nullable(),
+    /** The code of the last failed token refresh (e.g. `zalo_invalid_grant`), null after a good one: a code, never a message (U26). */
+    lastError: z.string().nullable(),
   })
   .meta({ id: 'Channel' });
 export const ChannelListSchema = z
@@ -20,3 +24,5 @@ export const ChannelListSchema = z
 
 /** `GET /v1/channels?workspaceId=`. */
 export const ChannelListQuerySchema = z.object({ workspaceId: UuidSchema }).strict();
+
+export const ChannelIdSchema = UuidSchema;

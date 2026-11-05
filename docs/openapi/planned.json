@@ -264,6 +264,63 @@
         ],
         "additionalProperties": false
       },
+      "Channel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "zalo_oa",
+              "facebook",
+              "webchat"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "token_expiring",
+              "disconnected"
+            ]
+          },
+          "teamId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The team that answers the channel; null: the default team of the workspace."
+          },
+          "tokenExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastError": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "displayName",
+          "status",
+          "teamId",
+          "tokenExpiresAt",
+          "lastError"
+        ]
+      },
       "Overview": {
         "type": "object",
         "properties": {
@@ -1955,6 +2012,155 @@
           },
           "422": {
             "description": "invalid_lost_reason: not one of the workspace’s reasons to lose.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/channels/{id}/refresh-token": {
+      "post": {
+        "x-status": "planned",
+        "x-sprint": "S3",
+        "summary": "Refresh the access token of the channel now, as the refresh job would; the channel answers with its new `tokenExpiresAt`, `status` and `lastError` null.",
+        "tags": [
+          "channels"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The channel after a good refresh.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Channel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin manages the channels (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live channel with this id in the session’s workspaces.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "channel_unavailable: the platform refused or did not answer, or the channel has no refresh token; the code is kept in `lastError` of GET /v1/channels.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/channels/{id}/disconnect": {
+      "post": {
+        "x-status": "planned",
+        "x-sprint": "S3",
+        "summary": "Disconnect the channel: soft delete (it leaves GET /v1/channels, its webhooks are refused), its encrypted tokens set to null in the same transaction, audited `channel.disconnected` (the channel type, never a token).",
+        "tags": [
+          "channels"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disconnected."
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin manages the channels (Phụ lục B); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live channel with this id in the session’s workspaces.",
             "content": {
               "application/problem+json": {
                 "schema": {

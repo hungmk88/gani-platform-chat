@@ -75,8 +75,24 @@ afterAll(async () => {
 describe('channel-store', () => {
   it('lists the live channels of a workspace by name, without a team yet, and nothing of another one', async () => {
     expect(await inA((tx) => listChannels(tx, ws.id))).toEqual([
-      { id: second, type: 'webchat', displayName: 'Bán sỉ', status: 'disconnected', teamId: null },
-      { id: ws.seed, type: 'zalo_oa', displayName: 'OA', status: 'disconnected', teamId: null },
+      {
+        id: second,
+        type: 'webchat',
+        displayName: 'Bán sỉ',
+        status: 'disconnected',
+        teamId: null,
+        tokenExpiresAt: null,
+        lastError: null,
+      },
+      {
+        id: ws.seed,
+        type: 'zalo_oa',
+        displayName: 'OA',
+        status: 'disconnected',
+        teamId: null,
+        tokenExpiresAt: null,
+        lastError: null,
+      },
     ]);
     expect((await inA((tx) => listChannels(tx, other.id))).map((c) => c.id)).toEqual([other.seed]);
     expect(await channelsOf(ws.team)).toEqual([]);
