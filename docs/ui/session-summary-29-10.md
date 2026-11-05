@@ -259,6 +259,12 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       BE.
     - #591 (docs, N194–N198), #592 (C6-1, bảng `conversation_notes`) và #594 (C6-2, kho ghi chú) không chạm file FE, không cần
       review.
+    - BE sửa file FE sinh `apps/admin/src/api/schema.d.ts` (+200/−0, file FE duy nhất) trong #595 (C6-3, N194, ghi chú nội bộ,
+      tầng 2 theo Mức A, merge 18:59:39 UTC 04/11, squash `af873e9`; luật #546, review trong 24 giờ). **Đúng:** `openapi.json`
+      chỉ thêm `GET/POST /v1/conversations/{id}/notes` và 3 schema `ConversationNote`, `ConversationNoteCreate`,
+      `ConversationNotePage`; không đường hay schema cũ nào đổi; không chạm U-series. CI trước merge 8 success + `terraform`
+      skipped, đúng dòng "Lẫn". Hộp thư FE chưa dùng ghi chú, hành vi không đổi; màn ghi chú (C6 ở #6) chờ brief riêng. FE không
+      comment PR BE.
   - **2b ngày nghỉ (brief 52) tách theo luật brief 53 ("Vượt 500 dù lý do gì → tách"):** bản một PR 732 dòng, tách đọc/ghi như 2a:
     2b-i đọc (#587), 2b-ii thêm/sửa/xóa + `holiday_overlap`, `holiday_in_past` (#589).
   - **Sự cố quy trình #575 (CEO 03/11, brief 52):** lệnh scan secret nối chung với `git commit` và `git push` trong một lệnh; mẫu
