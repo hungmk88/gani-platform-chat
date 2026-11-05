@@ -1594,6 +1594,19 @@
             ],
             "format": "uuid",
             "description": "The team that answers the channel; null: the default team of the workspace."
+          },
+          "tokenExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastError": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1601,7 +1614,9 @@
           "type",
           "displayName",
           "status",
-          "teamId"
+          "teamId",
+          "tokenExpiresAt",
+          "lastError"
         ]
       },
       "QuickReplyList": {

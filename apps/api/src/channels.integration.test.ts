@@ -75,6 +75,8 @@ beforeAll(async () => {
   await q(insert, [chat, orgA, W, 'webchat', ext(), 'Chat web', null, null, null]);
   await q(insert, [gone, orgA, W, 'webchat', ext(), 'Đã gỡ', null, null, new Date()]);
   await q(insert, [ofB, orgB, WB, 'webchat', ext(), 'B', null, null, null]);
+  // The OA has a token that expires, and the last refresh failed with a code (U26).
+  await q(`UPDATE channel_accounts SET status = 'token_expiring', access_token_expires_at = '2026-11-06T08:00:00Z', last_error = 'zalo_invalid_grant' WHERE id = $1`, [oa]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const nest = (app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false }));
   setupApp(nest);
@@ -99,20 +101,34 @@ afterAll(async () => {
 });
 
 describe('GET /v1/channels', () => {
-  it('lists the live channels of a workspace by name with their team, and never a secret', async () => {
+  it('lists the live channels of a workspace by name with their team and token state, and never a secret', async () => {
     const answer = await list('admin', `?workspaceId=${W}`);
     expect(answer.status).toBe(200);
     expect(answer.body['data']).toEqual([
-      { id: chat, type: 'webchat', displayName: 'Chat web', status: 'disconnected', teamId: null },
+      {
+        id: chat,
+        type: 'webchat',
+        displayName: 'Chat web',
+        status: 'disconnected',
+        teamId: null,
+        tokenExpiresAt: null,
+        lastError: null,
+      },
       {
         id: oa,
         type: 'zalo_oa',
         displayName: 'Zalo OA Gani',
-        status: 'disconnected',
+        status: 'token_expiring',
         teamId: team,
+        tokenExpiresAt: '2026-11-06T08:00:00.000Z',
+        lastError: 'zalo_invalid_grant',
       },
     ]);
-    expect(JSON.stringify(answer.body)).not.toMatch(/enc|secret|token/i);
+    // Never a secret: the only words with "token" are the field of its expiry and the status `token_expiring` (U26).
+    const text = JSON.stringify(answer.body)
+      .replaceAll('tokenExpiresAt', '')
+      .replaceAll('token_expiring', '');
+    expect(text).not.toMatch(/enc|secret|token/i);
   });
 
   it('refuses other roles, a workspace of another org and bad requests', async () => {

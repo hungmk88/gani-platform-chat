@@ -31,6 +31,8 @@ export class ChannelsController {
         throw new NotFoundException();
       return listChannels(tx, q.workspaceId);
     });
-    return { data };
+    return {
+      data: data.map((c) => ({ ...c, tokenExpiresAt: c.tokenExpiresAt?.toISOString() ?? null })),
+    };
   }
 }

@@ -107,8 +107,12 @@ export type ConversationListQuery = z.output<typeof ConversationListQuerySchema>
 export const InboxChannelsQuerySchema = z.object({ workspaceId: UuidSchema.optional() }).strict();
 export type InboxChannelsQuery = z.output<typeof InboxChannelsQuerySchema>;
 
-/** A channel the person reads at least one conversation of (U56): metadata only, never a secret, no team. */
-export const InboxChannelSchema = ChannelSchema.omit({ teamId: true }).meta({ id: 'InboxChannel' });
+/** A channel the person reads at least one conversation of (U56): metadata only, never a secret, no team, no token state (U26). */
+export const InboxChannelSchema = ChannelSchema.omit({
+  teamId: true,
+  tokenExpiresAt: true,
+  lastError: true,
+}).meta({ id: 'InboxChannel' });
 export const InboxChannelListSchema = z
   .object({ data: z.array(InboxChannelSchema) })
   .meta({ id: 'InboxChannelList' });

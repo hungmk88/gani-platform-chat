@@ -18,6 +18,8 @@ const channel = (id: string, teamId: string | null): Channel => ({
   displayName: `Kênh ${id}`,
   status: 'connected',
   teamId,
+  tokenExpiresAt: null,
+  lastError: null,
 });
 
 const team = (id: string, name: string): Team => ({

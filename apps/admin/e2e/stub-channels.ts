@@ -15,6 +15,8 @@ export const CHANNELS: readonly Channel[] = [
     displayName: 'Gani Fanpage',
     status: 'connected',
     teamId: null,
+    tokenExpiresAt: null,
+    lastError: null,
   },
   {
     id: '0190c000-0000-7000-8000-0000000000c2',
@@ -22,6 +24,8 @@ export const CHANNELS: readonly Channel[] = [
     displayName: 'Website',
     status: 'disconnected',
     teamId: null,
+    tokenExpiresAt: null,
+    lastError: null,
   },
   {
     id: '0190c000-0000-7000-8000-0000000000c3',
@@ -29,6 +33,8 @@ export const CHANNELS: readonly Channel[] = [
     displayName: 'Zalo OA Gani',
     status: 'token_expiring',
     teamId: TEAMS[0]!.id,
+    tokenExpiresAt: null,
+    lastError: null,
   },
 ];
 

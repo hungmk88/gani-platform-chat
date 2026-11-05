@@ -8,6 +8,8 @@ const channel = (teamId: string | null): Channel => ({
   displayName: 'Zalo OA Gani',
   status: 'connected',
   teamId,
+  tokenExpiresAt: null,
+  lastError: null,
 });
 
 describe('channelsPath', () => {

@@ -15,6 +15,10 @@ export interface ChannelRow {
   readonly status: string;
   /** The team that answers the channel; null: the default team of the workspace. */
   readonly teamId: string | null;
+  /** When the access token expires; null until the channel is connected (U26). */
+  readonly tokenExpiresAt: Date | null;
+  /** The code of the last failed token refresh, cleared by a good one: a code, never a message (U26). */
+  readonly lastError: string | null;
 }
 
 const columns = {
@@ -23,6 +27,8 @@ const columns = {
   displayName: channelAccounts.displayName,
   status: channelAccounts.status,
   teamId: channelAccounts.teamId,
+  tokenExpiresAt: channelAccounts.accessTokenExpiresAt,
+  lastError: channelAccounts.lastError,
 };
 
 /** The live channel accounts of a workspace, by name. */

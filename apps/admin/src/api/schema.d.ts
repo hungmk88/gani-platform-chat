@@ -7005,6 +7005,9 @@ export interface components {
              * @description The team that answers the channel; null: the default team of the workspace.
              */
             teamId: string | null;
+            /** Format: date-time */
+            tokenExpiresAt: string | null;
+            lastError: string | null;
         };
         QuickReplyList: {
             data: components["schemas"]["QuickReply"][];
