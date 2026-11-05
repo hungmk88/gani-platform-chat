@@ -4,8 +4,8 @@ import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 
-// #27 Tự chủ & feature flag, Đợt 1 read only (PR A, CEO 30/10): the level of the workspace being worked in and its flags, from
-// two routes planned for S5. No button lowers the level or turns a flag off (PR B), and nothing says "not wired" on the screen.
+// #27 Tự chủ & feature flag (PR A, CEO 30/10): the level of the workspace being worked in and its flags, from two routes planned
+// for S5. At L0 "Hạ mức…" (PR B, e2e/autonomy-lower.spec.ts) is greyed; no flag is turned off; nothing says "not wired".
 const flagRows = (page: Page) =>
   page.getByRole('table', { name: 'Feature flag của workspace' }).getByRole('row');
 const levels = (page: Page) =>
@@ -20,7 +20,9 @@ const fail = (page: Page, route: string, status: number, code: string, traceId: 
     }),
   );
 
-test('an Owner reads the level and the flags, with nothing to change them', async ({ page }) => {
+test('an Owner reads the level and the flags; at L0 nothing is lower to choose', async ({
+  page,
+}) => {
   await signIn(page, accountOf('owner'));
   await page.goto('/settings/autonomy');
   await expect(
@@ -35,8 +37,11 @@ test('an Owner reads the level and the flags, with nothing to change them', asyn
   await expect(flagRows(page).nth(1)).toHaveText(/ai\.internal.*Đang bật$/);
   await expect(flagRows(page).nth(2)).toHaveText(/ai\.customer_reply.*Khóa ở Đợt 1$/);
   await expect(flagRows(page).nth(3)).toHaveText(/channel\.zalo.*Đang tắt$/);
-  // Read only (PR B waits), and no developer banner on the screen.
-  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0);
+  // At L0 the only button is "Hạ mức…", greyed with why (PR B); the flags are read only; no developer banner on the screen.
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(1);
+  const lower = page.getByRole('button', { name: 'Hạ mức…' });
+  await expect(lower).toBeDisabled();
+  await expect(lower).toHaveAccessibleDescription('Đang ở mức thấp nhất chọn được.');
   await expect(page.getByRole('main').getByRole('checkbox')).toHaveCount(0);
   await expect(page.getByText(/nối API/i)).toHaveCount(0);
   await expectAccessible(page);
