@@ -17,5 +17,12 @@ export default async function AutonomyPage() {
   const role = result.kind === 'ok' ? roleOf(result.me) : null;
   const item = role ? menuItemAt(role, '/settings/autonomy') : undefined;
   if (result.kind !== 'ok' || !role || !item) notFound();
-  return <AutonomyScreen item={item} go={builtFor(role)} meId={result.me.id} />;
+  return (
+    <AutonomyScreen
+      item={item}
+      go={builtFor(role)}
+      meId={result.me.id}
+      workspaces={result.me.workspaces.map(({ id, name }) => ({ id, name }))}
+    />
+  );
 }

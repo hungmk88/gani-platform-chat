@@ -8,6 +8,7 @@ import { PendingPage } from '../pending-page';
 import { useApiQuery, useScope } from '../query/provider';
 import type { ApiFailure } from '../query/fetch';
 import { RetryAction } from '../retry-button';
+import { LowerLevel } from './lower-dialog';
 import {
   autonomyPath,
   changeOf,
@@ -53,11 +54,21 @@ function Loaded<T>({
 }
 
 /**
- * #27 Tự chủ & feature flag of the workspace being worked in, read only in Đợt 1 (PR A, CEO 30/10): no button lowers the level
- * or turns a flag off (PR B). A 404 of either route means the API does not serve them yet (planned S5): the screen then says it
+ * #27 Tự chủ & feature flag of the workspace being worked in (PR A read only, CEO 30/10): PR B lowers the level (CEO 05/11, brief
+ * 61); flags stay read only. A 404 of either route means the API does not serve them yet (planned S5): the screen then says it
  * is not there, never figures made up here.
  */
-export function AutonomyScreen({ item, go, meId }: { item: NavItem; go: NavItem; meId: string }) {
+export function AutonomyScreen({
+  item,
+  go,
+  meId,
+  workspaces,
+}: {
+  item: NavItem;
+  go: NavItem;
+  meId: string;
+  workspaces: readonly { readonly id: string; readonly name: string }[];
+}) {
   const { workspaceId } = useScope();
   const ws = workspaceId ?? '';
   const level = useApiQuery<Autonomy>(['autonomy', ws], autonomyPath(ws), Boolean(workspaceId));
@@ -81,16 +92,22 @@ export function AutonomyScreen({ item, go, meId }: { item: NavItem; go: NavItem;
         </h2>
         <Loaded query={level} loading="Đang tải mức tự chủ…">
           {(a) => (
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-              <dt className="text-text-muted">Hiện tại</dt>
-              <dd>
-                <strong>{a.level}</strong> — {meaningOf(a.level)}
-              </dd>
-              <dt className="text-text-muted">Lý do</dt>
-              <dd>{a.reason ?? '—'}</dd>
-              <dt className="text-text-muted">Lần đổi gần nhất</dt>
-              <dd>{changeOf(a, meId)}</dd>
-            </dl>
+            <>
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
+                <dt className="text-text-muted">Hiện tại</dt>
+                <dd>
+                  <strong>{a.level}</strong> — {meaningOf(a.level)}
+                </dd>
+                <dt className="text-text-muted">Lý do</dt>
+                <dd>{a.reason ?? '—'}</dd>
+                <dt className="text-text-muted">Lần đổi gần nhất</dt>
+                <dd>{changeOf(a, meId)}</dd>
+              </dl>
+              <LowerLevel
+                autonomy={a}
+                workspace={workspaces.find((w) => w.id === ws)?.name ?? 'Workspace đang chọn'}
+              />
+            </>
           )}
         </Loaded>
         <table className="w-full text-left">
@@ -168,7 +185,7 @@ export function AutonomyScreen({ item, go, meId }: { item: NavItem; go: NavItem;
           }
         </Loaded>
       </section>
-      <p className="text-12 text-text-muted">Chỉ xem: không đổi mức tự chủ hay cờ ở màn này.</p>
+      <p className="text-12 text-text-muted">Feature flag chỉ xem ở màn này.</p>
     </section>
   );
 }
