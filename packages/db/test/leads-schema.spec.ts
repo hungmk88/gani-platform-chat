@@ -109,7 +109,8 @@ describe('leads', () => {
     expect(await insert('leads', { title: 'x'.repeat(200) })).toBeUndefined();
     for (const title of ['', ' Báo giá', 'x'.repeat(201), 'Báo giá'.normalize('NFD')])
       expect(await insert('leads', { title }), title.slice(0, 20)).toBe('23514');
-    expect(await insert('leads', { status: 'pending' })).toBe('23514');
+    // With a closing time and no reason, only the CHECK of the states refuses it (no other CHECK can catch it in its place).
+    expect(await insert('leads', { status: 'pending', ...closed })).toBe('23514');
   });
 
   it('is open exactly while it has no closing time, and lost exactly when it has a reason', async () => {
@@ -177,7 +178,7 @@ describe('lead_events', () => {
     ])
       expect(await insert('lead_events', over), JSON.stringify(over)).toBeUndefined();
     for (const over of [
-      { type: 'note' },
+      { type: 'note', from_stage_id: null, to_stage_id: null }, // no step nor outcome: only the CHECK of the types refuses it
       { type: 'created' }, // a step it came from
       { to_stage_id: ids.stage }, // a change to the step it is at
       { from_stage_id: null }, // a change without the step before
