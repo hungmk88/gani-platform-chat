@@ -5,6 +5,7 @@ import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
 import { registerFeatureFlags } from '../modules/feature-flags/feature-flags.openapi.js';
 import { registerLeads } from '../modules/leads/leads.openapi.js';
 import { registerOverview } from '../modules/overview/overview.openapi.js';
+import { registerPlatform } from '../modules/platform/platform.openapi.js';
 import { registerPrivacy } from '../modules/privacy/privacy.openapi.js';
 import { registerSecurity } from '../modules/security/security.openapi.js';
 
@@ -20,6 +21,7 @@ const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerPrivacy,
   registerSecurity,
   registerAi,
+  registerPlatform,
 ];
 
 export function buildPlannedDocument() {
