@@ -1,16 +1,14 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../api/client';
 import { ApiFailure, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useScope } from '../query/provider';
-import type { Member } from '../members/list';
-import { readAllMembers } from '../workspaces/workspace-members';
+import { HandlerField, useHandlers } from './handler-field';
 import {
-  handlersOf,
   incidentBodyOf,
   MAX_TITLE,
   SEVERITIES,
@@ -71,11 +69,7 @@ function OpenDialog(props: {
   const dialog = useRef<HTMLDialogElement>(null);
   const opened = useRef(false);
   const last = useRef<{ body: string; key: string } | null>(null);
-  const members = useQuery<Member[], ApiFailure>({
-    queryKey: scopeKey(scope, 'members', 'all'),
-    queryFn: readAllMembers,
-  });
-  const handlers = members.data ? handlersOf(members.data) : [];
+  const { members, handlers } = useHandlers();
   const [title, setTitle] = useState('');
   const [severity, setSeverity] = useState<Severity | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -152,37 +146,7 @@ function OpenDialog(props: {
             </label>
           ))}
         </fieldset>
-        {members.isError ? (
-          <div role="alert" className="flex flex-col items-start gap-1">
-            <p>Không tải được danh sách người xử lý. {members.error.error.message}</p>
-            {members.error.error.traceId ? (
-              <p className="text-12 text-text-muted">Mã: {members.error.error.traceId}</p>
-            ) : null}
-            <button type="button" className={button} onClick={() => void members.refetch()}>
-              Thử lại
-            </button>
-          </div>
-        ) : members.isSuccess && handlers.length === 0 ? (
-          <p role="alert">Chưa có Owner hoặc Admin đang hoạt động để xử lý sự cố.</p>
-        ) : (
-          <label className="flex flex-col gap-1">
-            Người xử lý (Owner hoặc Admin đang hoạt động)
-            <select
-              value={handler ?? ''}
-              disabled={!members.isSuccess}
-              aria-busy={members.isPending}
-              className={field}
-              onChange={(e) => setChosen(e.target.value)}
-            >
-              {members.isPending ? <option value="">Đang tải…</option> : null}
-              {handlers.map((h) => (
-                <option key={h.userId} value={h.userId}>
-                  {h.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <HandlerField members={members} handlers={handlers} value={handler} onChange={setChosen} />
         {problem ? <p role="alert">{problem}</p> : null}
         {send.error ? (
           <div role="alert">
