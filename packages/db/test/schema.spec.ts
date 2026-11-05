@@ -31,6 +31,8 @@ const tables: PgTable[] = [
   db.botSessions,
   db.botSessionSteps,
   db.conversationNotes,
+  db.pipelineStages,
+  db.pipelineLostReasons,
   db.customers,
   db.customerIdentities,
   db.sessions,
