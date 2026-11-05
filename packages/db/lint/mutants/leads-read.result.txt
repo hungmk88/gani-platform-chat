@@ -1,12 +1,14 @@
-# lint/mutants/leads-read.sh trên gani_o1, 05/11/2026 (L3a-1): 6/6 bị bắt.
-# C1, C3, C4, C6 chạy bằng lint/db-mutants.sh (exit 0). C2 (canSeeLead) và C5 (mayWriteLead), chưa dùng trong store, chạy tay bằng
-# cấu hình unit: sed lên src/lead-access.ts → npx vitest run src/lead-access.test.ts → khôi phục, cmp khớp. L3a-2 và L3b thêm test
-# integration thật cho hai mutant này.
+# lint/mutants/leads-read.sh trên gani_o1, 05/11/2026 (L3a-2): 8/8 bị bắt.
+# C1, C2, C3, C4, C6, C7, C10 chạy bằng lint/db-mutants.sh (exit 0); C2 (canSeeLead) giờ bị spec integration bắt (getLead).
+# C5 (mayWriteLead), chưa dùng trong store tới L3b, chạy tay bằng cấu hình unit: sed lên src/lead-access.ts → npx vitest run
+# src/lead-access.test.ts → khôi phục, cmp khớp.
 # Dòng: tên | exit vitest (1 = đỏ) | số test | test đỏ (cắt 100 ký tự).
-C1-list-sales-without-owner|exit=1| Tests 1 failed | 3 passed (4)|narrows a Sales to the leads they made or own, whatever the filters;
-C3-support-not-thrown|exit=1| Tests 1 failed | 3 passed (4)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;
-C4-cursor-without-tie-break|exit=1| Tests 1 failed | 3 passed (4)|gives a Manager every lead of the session’s workspaces, newest first, and a page boundary inside a;
-C6-support-reads-workspace|exit=1| Tests 1 failed | 3 passed (4)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;
+C1-list-sales-without-owner|exit=1| Tests 1 failed | 8 passed (9)|narrows a Sales to the leads they made or own, whatever the filters 12ms;
+C2-canSee-sales-without-owner|exit=1| Tests 1 failed | 8 passed (9)|answers null for a lead the person may not see, outside the session or of another organisation; Supp;
+C3-support-not-thrown|exit=1| Tests 2 failed | 7 passed (9)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;answers null for a lead the person may not see, outside the session or of another organisation; Supp;
+C4-cursor-without-tie-break|exit=1| Tests 1 failed | 8 passed (9)|gives a Manager every lead of the session’s workspaces, newest first, and a page boundary inside a;
+C6-support-reads-workspace|exit=1| Tests 2 failed | 7 passed (9)|refuses Support with LeadAccessDeniedError, never an empty page, and a bad limit or state before any;answers null for a lead the person may not see, outside the session or of another organisation; Supp;
+C7-create-any-role|exit=1| Tests 1 failed | 8 passed (9)|refuses a step, an owner, a customer or a conversation that is not the workspace’s, and a role tha;
+C10-owner-any-role|exit=1| Tests 1 failed | 8 passed (9)|refuses a step, an owner, a customer or a conversation that is not the workspace’s, and a role tha;
 schema identical after restore (<out-dir>)
-C2-canSee-sales-without-owner|exit=1| Tests 1 failed | 1 passed (2)|follows Phụ lục B role by role: [made, owned, someone else’s];
-C5-mayWrite-sales-any|exit=1| Tests 1 failed | 1 passed (2)|follows Phụ lục B role by role: [made, owned, someone else’s];
+C5-mayWrite-sales-any|exit=1| Tests 1 failed | 1 passed (2)|follows Phụ lục B role by role: [made, owned, someone else’s] 10ms;
