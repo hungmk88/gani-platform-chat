@@ -5,10 +5,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { CHANNEL_TYPE } from '../channels/channels';
 import { ReadList } from '../customer-data/catalog-screen';
-import type { NavItem } from '../nav';
 import { Paged } from '../paged-list';
-import { PendingPage } from '../pending-page';
 import { useApiPages } from '../query/provider';
+import { AccessTab } from './access-tab';
 import { PolicyDialog } from './policy-dialog';
 import {
   dayText,
@@ -174,23 +173,17 @@ function PoliciesTab() {
 
 /**
  * #30 Platform (PR 30a, CEO 05/11, brief 79), the platform operator only: the health of the companies and the channel policies,
- * read only; a 404 of a route is one line in its tab, as the tabs of #23. "Phiên truy cập" is the pending screen until a list of
- * sessions exists (U79); the links to the other tabs stay.
+ * read only; a 404 of a route is one line in its tab, as the tabs of #23. "Phiên truy cập" (U79, brief A-U79) lists, opens and
+ * ends the operator's own access sessions (`access-tab.tsx`).
  */
-export function PlatformScreen({ tab, item, go }: { tab: Tab; item: NavItem; go: NavItem }) {
+export function PlatformScreen({ tab }: { tab: Tab }) {
   return (
     <section aria-labelledby="platform-title" className="flex max-w-[1080px] flex-col gap-6">
       <h1 id="platform-title" className="text-20 font-semibold">
         Platform
       </h1>
       <PlatformNav tab={tab} />
-      {tab === 'health' ? (
-        <HealthTab />
-      ) : tab === 'policies' ? (
-        <PoliciesTab />
-      ) : (
-        <PendingPage item={{ ...item, label: 'Phiên truy cập' }} go={go} />
-      )}
+      {tab === 'health' ? <HealthTab /> : tab === 'policies' ? <PoliciesTab /> : <AccessTab />}
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
   );
