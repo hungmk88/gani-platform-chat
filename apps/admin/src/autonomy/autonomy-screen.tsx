@@ -8,6 +8,7 @@ import { PendingPage } from '../pending-page';
 import { useApiQuery, useScope } from '../query/provider';
 import type { ApiFailure } from '../query/fetch';
 import { RetryAction } from '../retry-button';
+import { LowerLevel } from './lower-dialog';
 import {
   autonomyPath,
   changeOf,
@@ -53,11 +54,21 @@ function Loaded<T>({
 }
 
 /**
- * #27 Tự chủ & feature flag of the workspace being worked in, read only in Đợt 1 (PR A, CEO 30/10): no button lowers the level
- * or turns a flag off (PR B). A 404 of either route means the API does not serve them yet (planned S5): the screen then says it
+ * #27 Tự chủ & feature flag of the workspace being worked in (PR A read only, CEO 30/10): PR B lowers the level (CEO 05/11, brief
+ * 61); flags stay read only. A 404 of either route means the API does not serve them yet (planned S5): the screen then says it
  * is not there, never figures made up here.
  */
-export function AutonomyScreen({ item, go, meId }: { item: NavItem; go: NavItem; meId: string }) {
+export function AutonomyScreen({
+  item,
+  go,
+  meId,
+  workspaces,
+}: {
+  item: NavItem;
+  go: NavItem;
+  meId: string;
+  workspaces: readonly { readonly id: string; readonly name: string }[];
+}) {
   const { workspaceId } = useScope();
   const ws = workspaceId ?? '';
   const level = useApiQuery<Autonomy>(['autonomy', ws], autonomyPath(ws), Boolean(workspaceId));
@@ -93,6 +104,12 @@ export function AutonomyScreen({ item, go, meId }: { item: NavItem; go: NavItem;
             </dl>
           )}
         </Loaded>
+        {level.isSuccess ? (
+          <LowerLevel
+            autonomy={level.data}
+            workspace={workspaces.find((w) => w.id === ws)?.name ?? ws}
+          />
+        ) : null}
         <table className="w-full text-left">
           <caption className="sr-only">Ý nghĩa các mức tự chủ</caption>
           <thead className="text-text-muted">
@@ -168,7 +185,7 @@ export function AutonomyScreen({ item, go, meId }: { item: NavItem; go: NavItem;
           }
         </Loaded>
       </section>
-      <p className="text-12 text-text-muted">Chỉ xem: không đổi mức tự chủ hay cờ ở màn này.</p>
+      <p className="text-12 text-text-muted">Feature flag chỉ xem ở màn này.</p>
     </section>
   );
 }

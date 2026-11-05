@@ -56,9 +56,11 @@ describe('errorOf', () => {
     expect(errorOf(400, { code: 'validation_failed' }).message).toBe(
       'Dữ liệu chưa hợp lệ, kiểm tra lại.',
     );
-    const e = errorOf(409, { code: 'not_in_phase' });
-    expect(e).toMatchObject({ code: 'not_in_phase', action: 'show' });
+    const e = errorOf(409, { code: 'some_new_conflict' });
+    expect(e).toMatchObject({ code: 'some_new_conflict', action: 'show' });
     expect(e.message).toBe('Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.');
+    // A known 409 of #27 PR B says its own sentence (U29).
+    expect(errorOf(409, { code: 'not_in_phase' }).message).toBe('Mức này mở ở Đợt 2.');
     expect(errorOf(409, { code: 'version_conflict' }).action).toBe('reload'); // its screens do read again
     // U57: retried a limited number of times, then failed; never "kept to send later".
     expect(errorOf(502, { code: 'channel_unavailable' }).message).toBe(

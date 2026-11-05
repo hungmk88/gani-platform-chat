@@ -86,6 +86,8 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
     'show',
     'Ngày nghỉ đã qua không thêm, sửa hay xóa được. Chọn ngày từ hôm nay trở đi.',
   ],
+  // The autonomy level of a workspace (#27 PR B, planned S5): L2 and above open in Đợt 2 (U29).
+  not_in_phase: ['show', 'Mức này mở ở Đợt 2.'],
   // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
   conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };
