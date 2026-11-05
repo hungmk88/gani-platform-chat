@@ -50,6 +50,11 @@ Chạy một lần trên mỗi môi trường có hội thoại từ trước mi
   ngày 02/11: #556 bắt ở local, #563 đỏ trên CI).
 - Chữ tiếng Việt để tìm kiếm lưu ở **NFC** lúc ghi, không chuẩn hóa từng dòng lúc đọc (`customers.display_name`: `updateCustomer` + `customers_display_name_nfc_check`, 202611010900; tìm kiếm chỉ chuẩn hóa `q`). Thêm cột chữ để tìm thì làm giống vậy.
 - Cột lưu sẵn chứa PII trên bảng có quyền theo cột (`conversations.last_message_preview`, N169): **không** cấp cho `support_role`, cấp UPDATE cho `app_role` trong cùng migration (`grants.spec` liệt kê đúng từng cột). File migration đã áp thì không sửa: runner từ chối, thêm migration mới.
+- **Đột biến DB** (`lint/db-mutants.sh`, CEO 05/11/2026, #592: 9/9 bị bắt): mỗi mutant nới một luật của bảng (policy, CHECK, FK, quyền), spec phải đỏ, rồi khôi phục đúng như cũ.
+  - Chỉ chạy trên **DB nháp** của dev (`gani_*`, `localhost`), **không bao giờ** production hay staging; script tự từ chối khi `APP_ENV` khác `dev`, URL không phải DB nháp local, hoặc thiếu `DB_MUTANTS_CONFIRM=yes`.
+  - Mỗi mutant là DDL (DROP/ALTER) **và** DDL khôi phục; mutant cần DROP phải trình CEO trước. Khôi phục lỗi thì dừng, khôi phục tay.
+  - Script so `pg_dump -s` của bảng trước và sau (bỏ dòng `\restrict` ngẫu nhiên); khác nhau là lỗi, dừng.
+  - Chạy: trong `packages/db`, nạp env của DB nháp, `DB_MUTANTS_CONFIRM=yes bash lint/db-mutants.sh <thư mục log>`. Mutant nào `exit=0` (spec vẫn xanh) là **sống**: dừng, báo, không tự miễn. Bảng mới thêm các dòng `run` của nó.
 
 ## Phân tầng merge của BE (CLAUDE.md gốc, #466; anh chốt 31/10/2026)
 
