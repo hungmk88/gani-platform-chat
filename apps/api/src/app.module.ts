@@ -6,6 +6,7 @@ import { ChannelsModule } from './modules/channels/channels.module.js';
 import { ConversationsModule } from './modules/conversations/conversations.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { HooksModule } from './modules/hooks/hooks.module.js';
+import { LeadsModule } from './modules/leads/leads.module.js';
 import { MembersModule } from './modules/members/members.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
 import { BusinessHoursModule } from './modules/business-hours/business-hours.module.js';
@@ -27,6 +28,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
     ConversationsModule,
     HealthModule,
     HooksModule,
+    LeadsModule,
     MembersModule,
     QuickRepliesModule,
     BotFlowsModule,

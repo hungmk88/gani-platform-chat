@@ -4,90 +4,6 @@
  */
 
 export interface paths {
-    "/v1/workspaces/{id}/pipeline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The steps of the workspace’s pipeline in order, and its reasons to lose a lead (Q9: data of each workspace). Every role that reads leads. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUIDv7. */
-                    id: components["schemas"]["Uuid"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The pipeline. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Pipeline"];
-                    };
-                };
-                /** @description validation_failed: the id. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: support; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: a workspace not among the session’s. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/leads": {
         parameters: {
             query?: never;
@@ -95,84 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Leads of the session’s workspaces, newest first; filter by workspace, step, status, owner, maker and customer. A Sales sees the ones they made or own. */
-        get: {
-            parameters: {
-                query?: {
-                    cursor?: string;
-                    limit?: number;
-                    /** @description UUIDv7. */
-                    workspaceId?: components["schemas"]["Uuid"];
-                    /** @description UUIDv7. */
-                    stageId?: components["schemas"]["Uuid"];
-                    status?: "open" | "won" | "lost";
-                    owner?: ("me" | "none") | components["schemas"]["Uuid"];
-                    createdBy?: "me" | components["schemas"]["Uuid"];
-                    /** @description UUIDv7. */
-                    customerId?: components["schemas"]["Uuid"];
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description A page. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["LeadPage"];
-                    };
-                };
-                /** @description validation_failed: a parameter or the cursor. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: support; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: a workspace not among the session’s. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
+        get?: never;
         put?: never;
         /** Make a lead of a customer (Owner, Admin, Manager, Sales), status `open`, at the given step or the first one; owned by the given person or nobody. */
         post: {
@@ -265,90 +104,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/leads/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** One lead with what happened to it (`events`, oldest first). */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUIDv7. */
-                    id: components["schemas"]["Uuid"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The lead. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["LeadDetail"];
-                    };
-                };
-                /** @description validation_failed: the id. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: support; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: no lead with this id in the session’s workspaces, or one a Sales neither made nor owns (not visible is the same). */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2245,35 +2000,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        Pipeline: {
-            data: components["schemas"]["PipelineStage"][];
-            lostReasons: string[];
-        };
-        PipelineStage: {
-            id: components["schemas"]["Uuid"];
-            name: string;
-            position: number;
-        };
-        /**
-         * Format: uuid
-         * @description UUIDv7.
-         */
-        Uuid: string;
-        /** @description RFC 9457 problem details; `code` is the stable word (Brief P9). */
-        Problem: {
-            /** @enum {string} */
-            type: "about:blank";
-            title: string;
-            status: number;
-            code: string;
-            detail?: string;
-            /** Format: uuid */
-            traceId?: string;
-        };
-        LeadPage: {
-            data: components["schemas"]["Lead"][];
-            nextCursor: string | null;
-        };
         Lead: {
             id: components["schemas"]["Uuid"];
             workspaceId: components["schemas"]["Uuid"];
@@ -2299,6 +2025,11 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        /**
+         * Format: uuid
+         * @description UUIDv7.
+         */
+        Uuid: string;
         LeadCustomer: {
             id: components["schemas"]["Uuid"];
             displayName: string | null;
@@ -2311,6 +2042,17 @@ export interface components {
             id: components["schemas"]["Uuid"];
             name: string | null;
         } | null;
+        /** @description RFC 9457 problem details; `code` is the stable word (Brief P9). */
+        Problem: {
+            /** @enum {string} */
+            type: "about:blank";
+            title: string;
+            status: number;
+            code: string;
+            detail?: string;
+            /** Format: uuid */
+            traceId?: string;
+        };
         LeadCreate: {
             workspaceId: components["schemas"]["Uuid"];
             customerId: components["schemas"]["Uuid"];
@@ -2319,51 +2061,6 @@ export interface components {
             stageId?: components["schemas"]["Uuid"];
             ownerUserId?: components["schemas"]["Uuid"];
         };
-        LeadDetail: {
-            id: components["schemas"]["Uuid"];
-            workspaceId: components["schemas"]["Uuid"];
-            title: string;
-            customer: components["schemas"]["LeadCustomer"];
-            /**
-             * Format: uuid
-             * @description UUIDv7, or null.
-             */
-            conversationId: string | null;
-            stage: components["schemas"]["LeadStage"];
-            /** @enum {string} */
-            status: "open" | "won" | "lost";
-            owner: components["schemas"]["LeadOwner"];
-            createdBy: components["schemas"]["Uuid"];
-            lostReason: string | null;
-            /** Format: date-time */
-            closedAt: string | null;
-            score: null;
-            version: number;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-            events: components["schemas"]["LeadEvent"][];
-        };
-        LeadEvent: {
-            /** @enum {string} */
-            type: "created" | "stage_changed" | "owner_changed" | "closed";
-            fromStage: components["schemas"]["LeadEventStage"];
-            toStage: components["schemas"]["LeadEventStage"];
-            /** @enum {string|null} */
-            outcome: "won" | "lost" | null;
-            /**
-             * Format: uuid
-             * @description UUIDv7, or null.
-             */
-            actorUserId: string | null;
-            /** Format: date-time */
-            occurredAt: string;
-        };
-        LeadEventStage: {
-            id: components["schemas"]["Uuid"];
-            name: string;
-        } | null;
         LeadStageChange: {
             version: number;
             stageId: components["schemas"]["Uuid"];

@@ -19,6 +19,7 @@ import {
 } from '../modules/customer-fields/customer-fields.openapi.js';
 import { registerCustomerTags, registerTags } from '../modules/tags/tags.openapi.js';
 import { registerTeams } from '../modules/teams/teams.openapi.js';
+import { registerLeadReads } from '../modules/leads/leads.openapi.js';
 import { registerTickets } from '../modules/tickets/tickets.openapi.js';
 import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
 import { problemResponse as problem, UuidSchema } from './schemas.js';
@@ -148,6 +149,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerChannels,
   registerQuickReplies,
   registerTickets,
+  registerLeadReads,
   registerTags,
   registerCustomerTags,
   registerCustomerFields,

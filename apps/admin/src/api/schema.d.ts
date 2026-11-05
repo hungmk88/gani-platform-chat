@@ -4463,6 +4463,267 @@ export interface paths {
         };
         trace?: never;
     };
+    "/v1/workspaces/{id}/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The steps of the workspace’s pipeline in order, and its reasons to lose a lead (Q9: data of each workspace). Every role that reads leads. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The pipeline. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Pipeline"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: support; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: a workspace not among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Leads of the session’s workspaces, newest first; filter by workspace, step, status, owner, maker and customer. A Sales sees the ones they made or own. */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    /** @description UUIDv7. */
+                    workspaceId?: components["schemas"]["Uuid"];
+                    /** @description UUIDv7. */
+                    stageId?: components["schemas"]["Uuid"];
+                    status?: "open" | "won" | "lost";
+                    owner?: ("me" | "none") | components["schemas"]["Uuid"];
+                    createdBy?: "me" | components["schemas"]["Uuid"];
+                    /** @description UUIDv7. */
+                    customerId?: components["schemas"]["Uuid"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadPage"];
+                    };
+                };
+                /** @description validation_failed: a parameter or the cursor. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: support; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: a workspace not among the session’s. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/leads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One lead with what happened to it (`events`, oldest first). */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The lead. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadDetail"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: support; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no lead with this id in the session’s workspaces, or one a Sales neither made nor owns (not visible is the same). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tags": {
         parameters: {
             query?: never;
@@ -6893,6 +7154,101 @@ export interface components {
              */
             assigneeUserId?: string | null;
         };
+        Pipeline: {
+            data: components["schemas"]["PipelineStage"][];
+            lostReasons: string[];
+        };
+        PipelineStage: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+            position: number;
+        };
+        LeadPage: {
+            data: components["schemas"]["Lead"][];
+            nextCursor: string | null;
+        };
+        Lead: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            title: string;
+            customer: components["schemas"]["LeadCustomer"];
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            conversationId: string | null;
+            stage: components["schemas"]["LeadStage"];
+            /** @enum {string} */
+            status: "open" | "won" | "lost";
+            owner: components["schemas"]["LeadOwner"];
+            createdBy: components["schemas"]["Uuid"];
+            lostReason: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            score: null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        LeadCustomer: {
+            id: components["schemas"]["Uuid"];
+            displayName: string | null;
+        };
+        LeadStage: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+        };
+        LeadOwner: {
+            id: components["schemas"]["Uuid"];
+            name: string | null;
+        } | null;
+        LeadDetail: {
+            id: components["schemas"]["Uuid"];
+            workspaceId: components["schemas"]["Uuid"];
+            title: string;
+            customer: components["schemas"]["LeadCustomer"];
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            conversationId: string | null;
+            stage: components["schemas"]["LeadStage"];
+            /** @enum {string} */
+            status: "open" | "won" | "lost";
+            owner: components["schemas"]["LeadOwner"];
+            createdBy: components["schemas"]["Uuid"];
+            lostReason: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            score: null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            events: components["schemas"]["LeadEvent"][];
+        };
+        LeadEvent: {
+            /** @enum {string} */
+            type: "created" | "stage_changed" | "owner_changed" | "closed";
+            fromStage: components["schemas"]["LeadEventStage"];
+            toStage: components["schemas"]["LeadEventStage"];
+            /** @enum {string|null} */
+            outcome: "won" | "lost" | null;
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            actorUserId: string | null;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        LeadEventStage: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+        } | null;
         TagList: {
             data: components["schemas"]["Tag"][];
         };
