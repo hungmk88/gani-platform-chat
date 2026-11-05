@@ -5,9 +5,9 @@ import { CursorQuerySchema, cursorPage, UuidSchema } from '../../openapi/schemas
 // The internal notes of a conversation (C6, N194; CEO 04/11/2026): the agents' words, never shown to the customer, never sent to a
 // channel. A note never changes and is never deleted in Đợt 1.
 
-/** POST: 1 to 2000 characters once trimmed (the store writes them in NFC). */
+/** POST: 1 to 2000 characters once trimmed and in NFC, counted as the table counts them. */
 export const ConversationNoteCreateSchema = z
-  .object({ body: z.string().trim().min(1).max(2000) })
+  .object({ body: z.string().trim().normalize('NFC').min(1).max(2000) })
   .strict()
   .meta({ id: 'ConversationNoteCreate' });
 

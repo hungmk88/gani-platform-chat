@@ -23,6 +23,7 @@ import {
   MessagePageSchema,
   MessageSchema,
   SendMessageBodySchema,
+  TransferBodySchema,
   VersionBodySchema,
   WindowClosedSchema,
 } from './conversations.schemas.js';
@@ -192,8 +193,8 @@ export function registerConversations(registry: OpenAPIRegistry): void {
   for (const [path, summary, body, responses] of [
     [
       'transfer',
-      'Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited.',
-      AssigneeBodySchema,
+      'Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited. A `reason` becomes an internal note of kind `transfer_reason` in the same transaction (N135, N194).',
+      TransferBodySchema,
       assignee,
     ],
     [

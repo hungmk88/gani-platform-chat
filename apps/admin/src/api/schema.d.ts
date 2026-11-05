@@ -995,7 +995,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited. */
+        /** Hand the conversation to a colleague (T15). Sales and support: one they hold, to someone of a team they share. Audited. A `reason` becomes an internal note of kind `transfer_reason` in the same transaction (N135, N194). */
         post: {
             parameters: {
                 query?: never;
@@ -1011,7 +1011,7 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["AssigneeBody"];
+                    "application/json": components["schemas"]["TransferBody"];
                 };
             };
             responses: {
@@ -6527,6 +6527,11 @@ export interface components {
         };
         VersionBody: {
             version: number;
+        };
+        TransferBody: {
+            version: number;
+            toUserId: components["schemas"]["Uuid"];
+            reason?: string;
         };
         AssigneeBody: {
             version: number;
