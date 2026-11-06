@@ -55,7 +55,8 @@ const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opaci
 function SlaChip({ c, now }: { c: Conversation; now: number | null }) {
   const chip = slaChipOf(c, now);
   if (!chip) return null;
-  return <span className={`rounded-input px-2 text-12 ${SLA_TONE[chip.tone]}`}>{chip.text}</span>;
+  // <small>, not a span: the holder line of the row is the row's one `span.text-12` (e2e/inbox.spec.ts reads it so).
+  return <small className={`rounded-input px-2 text-12 ${SLA_TONE[chip.tone]}`}>{chip.text}</small>;
 }
 
 /**

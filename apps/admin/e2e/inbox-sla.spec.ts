@@ -74,6 +74,7 @@ test('the SLA filter asks the API (never computed here); none matching says so a
   page,
 }) => {
   const asked = await serve(page);
+  expect(asked[0]).toBeNull(); // no filter: no `sla` sent
   const sla = page.getByRole('combobox', { name: /^SLA/ });
   await expect(sla.getByRole('option')).toHaveText(['Tất cả', 'Sắp quá hạn', 'Quá hạn']);
   await sla.selectOption('due_soon');
@@ -81,7 +82,8 @@ test('the SLA filter asks the API (never computed here); none matching says so a
   await expect.poll(() => asked.at(-1)).toBe('due_soon');
   await expect(page.getByText('Không có hội thoại khớp bộ lọc.')).toBeVisible();
   await page.getByRole('button', { name: 'Xóa bộ lọc' }).click();
-  await expect(items(page)).toHaveCount(6);
-  expect(asked.at(-1)).toBeNull();
+  await expect(items(page)).toHaveCount(6); // the unfiltered list again (from the cache: no new request needed)
+  await expect(page).not.toHaveURL(/sla=/);
+  await expect(sla).toHaveValue('all');
   await expectAccessible(page);
 });
