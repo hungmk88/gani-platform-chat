@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { roleOf } from '../../../src/me';
 import { getMe } from '../../../src/me.server';
-import { builtFor, menuItemAt } from '../../../src/nav';
+import { menuItemAt } from '../../../src/nav';
 import { tabOf } from '../../../src/platform/platform';
 import { PlatformScreen } from '../../../src/platform/platform-screen';
 
@@ -22,5 +22,5 @@ export default async function PlatformPage({
   const role = result.kind === 'ok' ? roleOf(result.me) : null;
   const item = role ? menuItemAt(role, '/platform') : undefined;
   if (!role || !item) notFound();
-  return <PlatformScreen tab={tabOf(tab)} item={item} go={builtFor(role)} />;
+  return <PlatformScreen tab={tabOf(tab)} />;
 }
