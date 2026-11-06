@@ -11,6 +11,7 @@ import {
   budgetOf,
   ENVIRONMENT,
   FEATURES,
+  lockOf,
   PRODUCTION_LOCK,
   resetText,
   settingsPath,
@@ -83,9 +84,17 @@ export function AiSettingsBlocks() {
   const s = settings.data;
   const budget = budgetOf(s);
   const reset = resetText(s.resetsAt, timezone);
+  const lock = lockOf(s);
   return (
     <>
-      <Block title="Môi trường">
+      <Block
+        title="Môi trường"
+        after={
+          lock ? (
+            <p className="rounded-input bg-error-bg px-2 py-1 text-error-text">{lock}</p>
+          ) : null
+        }
+      >
         <dt>Đang chạy ở</dt>
         <dd>{ENVIRONMENT[s.environment]}</dd>
       </Block>
