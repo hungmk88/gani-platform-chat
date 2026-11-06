@@ -197,6 +197,10 @@ Trang mặc định sau đăng nhập:
 - **Không gọi `/api/auth/list-sessions`**: đường này trả token của mọi phiên cho JavaScript (giữ cho `/revoke-session`, SEC-03). Danh sách phiên của prototype #5 chờ một đường không có token.
 - Thông báo: chờ API.
 
+## Trạng thái của tôi (U82)
+
+- Thanh trên, **chỉ vai trò giữ hội thoại** (`readsConversations`; Marketing/Viewer API trả 403, không dựng): ô "Trạng thái của tôi" Online / Bận / Offline (`src/agent-status.ts` + `agent-status-picker.tsx`), `GET/PUT /v1/me/agent-status` (planned S4, #626). **Tầng 2** (ghi, CEO brief 115–117). Đang tải: ô xám; **404 (API chưa phục vụ) → không hiện gì** (một ô trên thanh trên, không phải màn để thay bằng `PendingPage`); đọc lỗi: "Không đọc được trạng thái." + "Thử lại". Đổi = `PUT {status}` chờ máy chủ (PUT đặt giá trị, không `Idempotency-Key`), ô giữ trạng thái cũ tới khi API trả; bị từ chối: câu + mã + "Thử lại" (gửi lại đúng trạng thái đó). API tự chuyển Offline vì mất kết nối (`reason: disconnected`) → dải dưới thanh trên "Đã chuyển Offline do mất kết nối. Bật Online khi sẵn sàng." + nút "Online" (`stripOf`). Một khóa cache cho ô và dải (`['me','agent-status']`). Nhắc "Bận quá 30 phút" của wireframe brief 61: chưa làm (ngưỡng ghi cứng, chờ CEO). Realtime `agent_status.changed`: U86. API giả không phục vụ đường này (404); E2E `e2e/agent-status.spec.ts` trả bằng `page.route`.
+
 ## Workspace (#21)
 
 - `/settings/workspace`, chỉ Owner và Admin như API (N157; Manager không vào, CEO chốt 26/10, U39) → vai trò khác trang 403. `GET /v1/workspaces` (theo tên, không cursor): bảng tên + mã, mẫu (lời thường), múi giờ, giới hạn tải mặc định (`src/workspaces/workspace.ts` + `workspace-table.tsx`).

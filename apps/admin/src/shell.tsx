@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { AgentStatusPicker, AgentStatusStrip } from './agent-status-picker';
+import { readsConversations } from './inbox/actions';
 import type { Me } from './me';
 import { NavLink } from './nav-link';
 import { navFor, type Role } from './nav';
@@ -65,12 +67,14 @@ export function Shell({
             )}
           </span>
           <span className="flex items-center gap-2">
+            {readsConversations(role) ? <AgentStatusPicker /> : null}
             <Link href="/me" className="rounded-input px-2 py-1 hover:bg-bg-subtle">
               {me.name}
             </Link>
             <SignOutButton />
           </span>
         </header>
+        {readsConversations(role) ? <AgentStatusStrip /> : null}
         <main className="flex-1 p-4">{children}</main>
       </div>
     </div>
