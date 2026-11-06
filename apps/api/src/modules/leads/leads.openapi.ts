@@ -7,7 +7,6 @@ import {
   problemResponse,
   UuidSchema,
 } from '../../openapi/schemas.js';
-import { planned } from '../../openapi/planned-status.js';
 import {
   LeadCloseSchema,
   LeadCreateSchema,
@@ -85,11 +84,9 @@ export function registerLeadReads(registry: OpenAPIRegistry): void {
   });
 }
 
-/** Making, moving and closing a lead (L5): planned for S4. */
+/** Making, moving and closing a lead (L5): served. */
 export function registerLeadWrites(registry: OpenAPIRegistry): void {
-  const when = planned('S4');
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/leads',
     summary:
@@ -112,7 +109,6 @@ export function registerLeadWrites(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'patch',
     path: '/v1/leads/{id}/stage',
     summary:
@@ -130,7 +126,6 @@ export function registerLeadWrites(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/leads/{id}/close',
     summary:
