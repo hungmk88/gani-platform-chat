@@ -66,6 +66,8 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/workspaces/{id}/pipeline',
       '/v1/leads',
       '/v1/leads/{id}',
+      '/v1/leads/{id}/stage',
+      '/v1/leads/{id}/close',
       '/v1/tags',
       '/v1/tags/{id}',
       '/v1/tags/{id}/merge',
