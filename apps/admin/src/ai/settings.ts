@@ -33,6 +33,19 @@ export const mayTurn = (environment: AiSettings['environment'], on: boolean): bo
 export const PRODUCTION_LOCK =
   'Bật tính năng AI ở môi trường Chính thức cần phê duyệt riêng (tầng 3).';
 
+/**
+ * Why `production` is refused for every role (U74, #617, CEO 05/11 (a): shown only, no switch here; B2 later), or null: not locked,
+ * or an API without the field yet (as before). `legal_q1`: Q1 (legal) is not settled.
+ */
+export function lockOf(
+  s: Pick<AiSettings, 'productionLocked' | 'productionLockReason'>,
+): string | null {
+  if (!s.productionLocked) return null;
+  return s.productionLockReason === 'legal_q1'
+    ? 'Chính thức (production) đang khóa vì chưa có văn bản pháp lý Q1. Không thể bật AI ở môi trường này.'
+    : 'Chính thức (production) đang khóa. Không thể bật AI ở môi trường này.';
+}
+
 /** The PATCH of one feature: only what changes (contract `AiSettingsChange`). */
 export const featureBody = (key: FeatureKey, on: boolean) => ({ features: { [key]: on } });
 
@@ -71,7 +84,9 @@ export function budgetOf(s: Pick<AiSettings, 'monthlyBudgetUsd' | 'usedThisMonth
   readonly note: string | null;
 } {
   const used = `${usdText(s.usedThisMonthUsd)} / ${usdText(s.monthlyBudgetUsd)}`;
-  if (s.monthlyBudgetUsd <= 0) return { used, tone: 'error', note: BUDGET_ZERO };
+  // The budget never resets with the month (contract, U74): 0 stays 0 until someone changes it.
+  if (s.monthlyBudgetUsd <= 0)
+    return { used, tone: 'error', note: `${BUDGET_ZERO} Sửa ngân sách để bật.` };
   const share = Math.floor((s.usedThisMonthUsd / s.monthlyBudgetUsd) * 100);
   const text = `${used} (${share} %)`;
   if (share >= 100)

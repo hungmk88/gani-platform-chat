@@ -319,6 +319,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       chưa push. Bỏ lỡ 6 check-in 2 giờ (22:06, 00:06, 02:06, 04:06, 06:07, 08:08 UTC); U79a push lúc 09:30 UTC 06/11 (#620),
       trễ khoảng 13 giờ. CEO ghi nhận là lỗi hệ thống phiên, không trừ điểm FE, đưa vào biện pháp tầng hệ thống (brief 105). Luật
       giữ nguyên: sau khởi động lại, làm tiếp việc còn dở trước khi kết luận lượt trước đã xong.
+    - **Mức 2 (brief 107–109):** FE ghi trạng thái phiên ra `.session/session-state.json` (chỉ ở máy FE, loại khỏi git bằng
+      `.git/info/exclude`, không commit) mỗi lần nhận brief, push, merge, check 2 giờ; khởi động lại thì đọc file này trước khi trả
+      lời, không có hoặc cũ hơn 1 giờ thì trả lời "Em cần kiểm lại trạng thái". File mất khi container của phiên bị thu hồi.
+    - BE sửa file FE sinh `apps/admin/src/api/planned.d.ts` (+10/−383) và `schema.d.ts` (+321/−1) trong #624 (L5, merge 10:08:47 UTC
+      06/11, squash `e83a00b`; review trong 24 giờ). **Đúng:** `POST /v1/leads`, `POST /v1/leads/{id}/stage`, `POST /v1/leads/{id}/close`
+      chuyển từ `planned.json` sang `openapi.json` (schema `LeadCreate`, `LeadStageChange`, `LeadClose`); các schema `Lead*` bỏ khỏi
+      `planned`, không file FE nào import chúng từ `planned` (#12/#13a dùng `schema.d.ts` từ #616); sinh lại từ hai file JSON của
+      `e83a00b` khớp từng byte. CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". Đường ghi lead là việc 12b/12c, chờ
+      brief. FE không comment PR BE.
     - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
       05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
       (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng

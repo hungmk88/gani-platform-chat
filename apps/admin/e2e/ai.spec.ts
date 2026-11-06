@@ -21,6 +21,34 @@ const answer = (page: Page, status: number, body: unknown) =>
     }),
   );
 
+test('production locked by Q1 is said in red under Môi trường; a budget of 0 says to change it (U74)', async ({
+  page,
+}) => {
+  await page.route('**/v1/workspaces/ws-e2e/ai-settings', (r) =>
+    r.fulfill({
+      json: {
+        ...AI_SETTINGS,
+        monthlyBudgetUsd: 0,
+        usedThisMonthUsd: 0,
+        productionLocked: true,
+        productionLockReason: 'legal_q1',
+      },
+    }),
+  );
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/ai');
+  await expect(block(page, 'Môi trường')).toContainText(
+    'Chính thức (production) đang khóa vì chưa có văn bản pháp lý Q1. Không thể bật AI ở môi trường này.',
+  );
+  await expect(page.getByText(/đang khóa/)).toHaveCount(1);
+  await expect(block(page, 'Ngân sách tháng')).toContainText(
+    '0 USD = AI nội bộ tắt hoàn toàn. Sửa ngân sách để bật.',
+  );
+  // Shown only (U74 (a), CEO 05/11): still no control of the environment.
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(3);
+  await expectAccessible(page);
+});
+
 test('an Owner reads the prompt versions, with nothing to change them', async ({ page }) => {
   await signIn(page, accountOf('owner'));
   await page.goto('/settings/ai');
@@ -47,6 +75,7 @@ test('an Owner reads the prompt versions, with nothing to change them', async ({
     3,
   );
   await expect(page.getByText(/múi giờ của workspace/)).toBeVisible();
+  await expect(page.getByText(/đang khóa/)).toHaveCount(0); // not locked: as before U74
   // E1/L1 turn on or off (B1a, e2e/ai-features.spec.ts) and the budget changes (B1b, e2e/ai-budget.spec.ts); never the environment.
   await expect(page.getByRole('main').getByRole('button')).toHaveCount(3);
   await expect(page.getByRole('main').getByRole('checkbox')).toHaveCount(0);
