@@ -74,6 +74,7 @@ test('the SLA filter asks the API (never computed here); none matching says so a
   page,
 }) => {
   const asked = await serve(page);
+  await expect(items(page)).toHaveCount(6);
   expect(asked[0]).toBeNull(); // no filter: no `sla` sent
   const sla = page.getByRole('combobox', { name: /^SLA/ });
   await expect(sla.getByRole('option')).toHaveText(['Tất cả', 'Sắp quá hạn', 'Quá hạn']);
