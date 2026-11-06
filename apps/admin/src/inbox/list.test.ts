@@ -19,7 +19,13 @@ import {
 describe('filterOf and paramsOf', () => {
   it('reads a filter from the URL and writes it back', () => {
     const f = filterOf(new URLSearchParams('assignee=me&state=HUMAN_WAITING_Q'));
-    expect(f).toEqual({ assignee: 'me', state: 'HUMAN_WAITING_Q', q: '', channel: '' });
+    expect(f).toEqual({
+      assignee: 'me',
+      state: 'HUMAN_WAITING_Q',
+      q: '',
+      channel: '',
+      sla: 'all',
+    });
     expect(paramsOf(f).toString()).toBe('assignee=me&state=HUMAN_WAITING_Q');
     expect(paramsOf(NO_FILTER).toString()).toBe('');
   });
@@ -90,14 +96,19 @@ describe('the channel filter (#392, U56)', () => {
 describe('listPath', () => {
   it('asks the API with its own words', () => {
     expect(listPath(NO_FILTER, null, null)).toBe('/v1/conversations?assignee=any&limit=50');
-    expect(
-      listPath({ assignee: 'none', state: 'HUMAN_WAITING_Q', q: '', channel: '' }, 'c1', 'w1'),
-    ).toBe(
+    expect(listPath({ ...NO_FILTER, assignee: 'none', state: 'HUMAN_WAITING_Q' }, 'c1', 'w1')).toBe(
       '/v1/conversations?assignee=none&limit=50&workspaceId=w1&state=HUMAN_WAITING_Q&cursor=c1',
     );
-    expect(listPath({ assignee: 'me', state: 'hold', q: '', channel: '' }, null, null)).toBe(
+    expect(listPath({ ...NO_FILTER, assignee: 'me', state: 'hold' }, null, null)).toBe(
       '/v1/conversations?assignee=me&limit=50&hold=true',
     );
+    // U81: the API's own words for the SLA, never computed here; unknown values never reach the API.
+    expect(listPath({ ...NO_FILTER, sla: 'overdue' }, null, null)).toBe(
+      '/v1/conversations?assignee=any&limit=50&sla=overdue',
+    );
+    expect(filterOf(new URLSearchParams('sla=due_soon')).sla).toBe('due_soon');
+    expect(filterOf(new URLSearchParams('sla=soon')).sla).toBe('all');
+    expect(paramsOf({ ...NO_FILTER, sla: 'due_soon' }).toString()).toBe('sla=due_soon');
   });
 });
 
@@ -140,16 +151,17 @@ describe('holderOf and channelOf', () => {
 describe('emptyOf', () => {
   it('has one sentence and one action for each case', () => {
     expect(emptyOf(NO_FILTER, 'owner')).toEqual({ text: 'Chưa có hội thoại.', action: 'channels' });
-    expect(emptyOf({ assignee: 'me', state: 'all', q: '', channel: '' }, 'sales')).toEqual({
+    expect(emptyOf({ ...NO_FILTER, assignee: 'me', state: 'all' }, 'sales')).toEqual({
       text: 'Chưa có hội thoại nào giao cho bạn.',
       action: 'unassigned',
     });
-    expect(emptyOf({ assignee: 'none', state: 'all', q: '', channel: '' }, 'manager').action).toBe(
+    expect(emptyOf({ ...NO_FILTER, assignee: 'none', state: 'all' }, 'manager').action).toBe(
       'clear',
     );
-    expect(emptyOf({ assignee: 'any', state: 'CLOSED', q: '', channel: '' }, 'admin').action).toBe(
+    expect(emptyOf({ ...NO_FILTER, assignee: 'any', state: 'CLOSED' }, 'admin').action).toBe(
       'clear',
     );
+    expect(emptyOf({ ...NO_FILTER, sla: 'overdue' }, 'owner').action).toBe('clear');
   });
 });
 
