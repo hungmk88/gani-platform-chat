@@ -68,6 +68,14 @@ describe('errorOf', () => {
     );
   });
 
+  it('says why production refuses the internal AI, and reads the settings again (U75)', () => {
+    expect(errorOf(409, { code: 'ai_production_locked' })).toMatchObject({
+      action: 'reload',
+      message:
+        'Chính thức (production) đang khóa. Bật AI ở môi trường này cần văn bản pháp lý Q1 và phê duyệt tầng 3.',
+    });
+  });
+
   it('keeps an unknown code as given, with the sentence of its status', () => {
     const e = errorOf(404, { code: 'lead_gone' });
     expect(e.code).toBe('lead_gone');
