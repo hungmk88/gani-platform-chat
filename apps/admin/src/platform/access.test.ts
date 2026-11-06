@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { endText, running, sessionsPath, type AccessSession } from './access';
+import {
+  createBodyOf,
+  endText,
+  reasonProblem,
+  running,
+  sessionsPath,
+  type AccessSession,
+} from './access';
 
 const NOW = Date.parse('2026-11-05T10:30:00Z');
 const S: AccessSession = {
@@ -33,5 +40,18 @@ describe('#30 Phiên truy cập (U79)', () => {
     expect(endText({ ...S, endReason: 'expired', endedAt: S.expiresAt }, NOW)).toBe(
       'Hết hạn lúc 18:00 05/11/2026',
     );
+  });
+
+  it('checks the reason as the API does: trimmed, NFC, 10 to 500 UTF-16 units', () => {
+    expect(reasonProblem('  ngắn quá ')).toMatch(/^Ghi lý do cụ thể \(ít nhất 10 ký tự\)/);
+    expect(reasonProblem('a'.repeat(10))).toBeNull();
+    expect(reasonProblem(`  ${'a'.repeat(500)}  `)).toBeNull();
+    expect(reasonProblem('a'.repeat(501))).toBe('Lý do tối đa 500 ký tự.');
+    expect(reasonProblem('é'.normalize('NFD').repeat(10))).toBeNull(); // 20 units typed, 10 in NFC
+    expect(reasonProblem('😀'.repeat(251))).toBe('Lý do tối đa 500 ký tự.'); // two units each, as zod counts
+    expect(createBodyOf('o1', '  Hỗ trợ yêu cầu #128  ')).toEqual({
+      orgId: 'o1',
+      reason: 'Hỗ trợ yêu cầu #128',
+    });
   });
 });
