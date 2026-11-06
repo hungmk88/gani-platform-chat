@@ -53,6 +53,8 @@ export interface ConversationView {
   readonly assignee: { readonly id: string; readonly name: string | null } | null;
   /** The line of the Inbox (U30, N169): the text of the last message, a label for another kind, null before any. PII: never logged. */
   readonly lastMessagePreview: string | null;
+  /** Its SLA (U81), as a ticket's: always null until U40/U41/Q7 settle how it is kept (waits for the CEO). */
+  readonly sla: null;
 }
 
 /**
@@ -89,6 +91,13 @@ export interface ConversationListQuery extends InboxScope {
   readonly customer?: CustomerSearch;
   /** Its live customer carries this tag (C3, N195), as `GET /v1/customers?tagId=`; a tag of another organisation matches nothing. */
   readonly tagId?: string;
+  /**
+   * Its channel is answered by this team (U83, N161): the channel's team, or the default team of the workspace for a channel of no
+   * team. A filter, not a right: a team of no such conversation, unknown or deleted, simply matches nothing.
+   */
+  readonly teamId?: string;
+  /** Its SLA is due soon or overdue (U81): nothing matches until U40/U41/Q7 settle how SLA is kept (waits for the CEO). */
+  readonly sla?: 'due_soon' | 'overdue';
   readonly cursor?: string;
   /** 1..100 (P9). */
   readonly limit: number;
@@ -131,7 +140,10 @@ const view = {
   previewKind: conversations.lastMessageKind,
   previewText: conversations.lastMessagePreview,
 };
-type Row = Omit<ConversationView, 'customer' | 'channel' | 'assignee' | 'lastMessagePreview'> & {
+type Row = Omit<
+  ConversationView,
+  'customer' | 'channel' | 'assignee' | 'lastMessagePreview' | 'sla'
+> & {
   readonly customerId: string | null;
   readonly customerName: string | null;
   readonly channelType: string | null;
@@ -161,6 +173,7 @@ const shape = (row: Row): ConversationView => {
         : { id: rest.channelAccountId, type: channelType, displayName: channelName },
     assignee: rest.assignedUserId === null ? null : { id: rest.assignedUserId, name: assigneeName },
     lastMessagePreview: previewOf(previewKind, previewText),
+    sla: null,
   };
 };
 const withoutSortKey = ({ sortKey, ...row }: Row & { readonly sortKey: string }) => {
@@ -239,6 +252,14 @@ export async function listConversations(
       sql`EXISTS (SELECT 1 FROM customer_tags ct WHERE ct.org_id = ${c.orgId} AND ct.customer_id = ${c.customerId}
         AND ct.tag_id = ${assertUuid(q.tagId, 'tagId')}::uuid AND ct.deleted_at IS NULL)`,
     );
+  if (q.teamId !== undefined)
+    where.push(
+      sql`EXISTS (SELECT 1 FROM public.channel_accounts ca JOIN public.teams t ON t.org_id = ca.org_id
+        AND t.id = ${assertUuid(q.teamId, 'teamId')}::uuid AND t.deleted_at IS NULL
+        WHERE ca.org_id = ${c.orgId} AND ca.id = ${c.channelAccountId}
+          AND (ca.team_id = t.id OR (ca.team_id IS NULL AND t.is_default AND t.workspace_id = ca.workspace_id)))`,
+    );
+  if (q.sla !== undefined) where.push(sql`false`);
   // Every filter sits in the same WHERE as the keyset below, joined by AND: they narrow before the page is cut, never after it.
   if (q.cursor !== undefined) {
     const fields = decodeCursor(q.cursor);

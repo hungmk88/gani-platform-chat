@@ -150,6 +150,7 @@ function meOf(email: string): Me | null {
             ? [{ id: 'ws-e2e-2', name: 'Workspace hai', contactPhone: null }]
             : []),
         ],
+    teams: [],
   };
 }
 

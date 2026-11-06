@@ -2,7 +2,13 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createDbPool, readMemberContext, readOrgSummary, withTenant } from '../src/index.js';
+import {
+  createDbPool,
+  listOwnTeams,
+  readMemberContext,
+  readOrgSummary,
+  withTenant,
+} from '../src/index.js';
 import { url } from './db.js';
 
 // readMemberContext on app_role with RLS: one person in two organisations with different roles and workspaces, plus the cases
@@ -87,6 +93,8 @@ beforeAll(async () => {
 afterAll(async () => {
   // The order is required by the foreign keys (children first). A failing step is swallowed because the CI database is ephemeral.
   const steps = [
+    'DELETE FROM team_members WHERE org_id = ANY($1::uuid[])',
+    'DELETE FROM teams WHERE org_id = ANY($1::uuid[])',
     'DELETE FROM workspace_members WHERE org_id = ANY($1::uuid[])',
     'DELETE FROM workspaces WHERE org_id = ANY($1::uuid[])',
     'DELETE FROM org_members WHERE org_id = ANY($1::uuid[])',
@@ -158,5 +166,43 @@ describe('readOrgSummary', () => {
       org: { id: A, name: 'T' },
       workspaces: [{ id: A1, name: 'W', contactPhone: '1900 1234' }],
     });
+  });
+});
+
+describe('listOwnTeams', () => {
+  it('gives the live teams the person is in, of the workspaces asked for or of the whole organisation, by name (U84)', async () => {
+    const t = {
+      a1: uuidv7(),
+      org: uuidv7(),
+      a2: uuidv7(),
+      gone: uuidv7(),
+      notMine: uuidv7(),
+      b1: uuidv7(),
+    };
+    // prettier-ignore
+    for (const [id, org, ws, name, gone] of [[t.a1, A, A1, 'Sỉ', false], [t.org, A, null, 'Công ty', false], [t.a2, A, A2, 'Lẻ', false], [t.gone, A, A1, 'Cũ', true], [t.notMine, A, A1, 'Khác', false], [t.b1, B, B1, 'B', false]] as const)
+      await admin.query(
+        `INSERT INTO teams (id, org_id, workspace_id, name, slug, deleted_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [id, org, ws, name, `t-${id}`, gone ? new Date() : null],
+      );
+    for (const [org, id] of [
+      [A, t.a1],
+      [A, t.org],
+      [A, t.a2],
+      [A, t.gone],
+      [B, t.b1],
+    ] as const)
+      await admin.query(
+        `INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ($1, $2, $3, $4)`,
+        [uuidv7(), org, id, ME],
+      );
+    const teams = (org: string, ids: string[]) =>
+      withTenant(pool, { orgId: org, workspaceIds: ids }, (tx) => listOwnTeams(tx, ME, ids));
+    expect(await teams(A, [A1])).toEqual([
+      { id: t.org, name: 'Công ty', workspaceId: null },
+      { id: t.a1, name: 'Sỉ', workspaceId: A1 },
+    ]);
+    expect(await teams(A, [])).toEqual([{ id: t.org, name: 'Công ty', workspaceId: null }]);
+    expect((await teams(B, [B1])).map((x) => x.id)).toEqual([t.b1]);
   });
 });

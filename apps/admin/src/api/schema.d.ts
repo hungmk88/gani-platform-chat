@@ -285,6 +285,9 @@ export interface paths {
                     q?: string;
                     /** @description UUIDv7. */
                     tagId?: components["schemas"]["Uuid"];
+                    /** @description UUIDv7. */
+                    teamId?: components["schemas"]["Uuid"];
+                    sla?: "due_soon" | "overdue";
                 };
                 header?: never;
                 path?: never;
@@ -6930,6 +6933,7 @@ export interface components {
             isPlatformOperator: boolean;
             org: components["schemas"]["MeOrg"];
             workspaces: components["schemas"]["MeWorkspace"][];
+            teams: components["schemas"]["MeTeam"][];
         };
         /**
          * Format: uuid
@@ -6947,6 +6951,15 @@ export interface components {
             name: string;
             /** @description The number customers call ({{company_phone}} of a quick reply, U37); null when not set. */
             contactPhone: string | null;
+        };
+        MeTeam: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            workspaceId: string | null;
         };
         MeChange: {
             name: string;
@@ -6986,6 +6999,7 @@ export interface components {
             channel: components["schemas"]["ConversationChannel"];
             assignee: components["schemas"]["ConversationAssignee"];
             lastMessagePreview: string | null;
+            sla: components["schemas"]["ConversationSla"];
         };
         ConversationCustomer: {
             id: components["schemas"]["Uuid"];
@@ -7000,6 +7014,12 @@ export interface components {
         ConversationAssignee: {
             id: components["schemas"]["Uuid"];
             name: string | null;
+        } | null;
+        ConversationSla: {
+            /** Format: date-time */
+            dueAt: string;
+            /** @enum {string|null} */
+            pausedReason: "waiting_customer" | "outside_hours" | null;
         } | null;
         InboxChannelList: {
             data: components["schemas"]["InboxChannel"][];

@@ -82,6 +82,7 @@ describe('withState', () => {
     channel: null,
     assignee: { id: 'u1', name: 'Hà Linh' },
     lastMessagePreview: null,
+    sla: null,
   };
   it('applies a newer version only', () => {
     const d = {

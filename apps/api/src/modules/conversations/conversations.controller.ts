@@ -54,6 +54,8 @@ export class ConversationsController {
       ...(q.channelId === undefined ? {} : { channelAccountId: q.channelId }),
       ...(q.q === undefined ? {} : { customer: searchOf(q.q, seesCustomersMasked(ctx.role)) }),
       ...(q.tagId === undefined ? {} : { tagId: q.tagId }),
+      ...(q.teamId === undefined ? {} : { teamId: q.teamId }),
+      ...(q.sla === undefined ? {} : { sla: q.sla }),
     };
     return this.read(ctx, (tx) => listConversations(tx, query)).then((page) => ({
       data: page.rows,
