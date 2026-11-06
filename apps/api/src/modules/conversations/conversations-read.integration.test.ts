@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { createDbPool } from '@gani/db';
+import { uuidv7 } from '@gani/domain';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -127,7 +128,7 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customer_tags WHERE org_id', orgs], ['tags WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['channel_accounts WHERE org_id', orgs], ['sessions WHERE user_id', users],
+    ['messages WHERE org_id', orgs], ['conversations WHERE org_id', orgs], ['customer_tags WHERE org_id', orgs], ['tags WHERE org_id', orgs], ['customers WHERE org_id', orgs], ['channel_accounts WHERE org_id', orgs], ['teams WHERE org_id', orgs], ['sessions WHERE user_id', users],
     ['workspace_members WHERE org_id', orgs], ['workspaces WHERE org_id', orgs], ['org_members WHERE org_id', orgs],
     ['organizations WHERE id', orgs], ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
@@ -147,7 +148,7 @@ describe('GET /v1/conversations', () => {
       outcome: null, closedAt: null, lastMessageAt: '2026-10-05T00:00:00.000Z', lastCustomerMessageAt: null, channelAccountId: channel,
       createdAt: expect.any(String) as string, customer: { id: customer, displayName: 'Chị Lan' },
       channel: { id: channel, type: 'zalo_oa', displayName: 'OA Gani' }, assignee: { id: people['sales'], name: 'T' },
-      lastMessagePreview: 'Dạ em cần báo giá',
+      lastMessagePreview: 'Dạ em cần báo giá', sla: null,
     });
     expect((res.body['data'] as Record<string, unknown>[])[1]?.['customer']).toBeNull();
     // U30: the label of a last message that is not text; no channel, no holder and no message are null.
@@ -229,6 +230,30 @@ describe('GET /v1/conversations', () => {
     expect(await offered('manager', `?workspaceId=${W2}`)).toEqual([]);
     expect((await get('marketing', '/v1/conversations/channels')).status).toBe(403);
     expect((await get('manager', '/v1/conversations/channels?workspaceId=x')).body['code']).toBe('validation_failed');
+  });
+
+  it('filters by the team that answers the channel (U83): its own channels, the default team the channels of no team; a filter, not a right', async () => {
+    const [byDefault, zeta] = [uuidv7(), uuidv7()];
+    // prettier-ignore
+    await q(`INSERT INTO teams (id, org_id, workspace_id, name, slug, is_default) VALUES ($1, $3, $4, 'Mặc định', 'md', true), ($2, $3, $4, 'Zeta', 'zeta', false)`, [byDefault, zeta, orgA, W1]);
+    await q('UPDATE channel_accounts SET team_id = $1 WHERE id = $2', [zeta, channel2]);
+    const find = async (key: string, query: string) => ids((await get(key, `/v1/conversations?${query}`)).body);
+    expect(await find('manager', `teamId=${zeta}`)).toEqual([c['theirs']]);
+    expect(await find('manager', `teamId=${byDefault}`)).toEqual([c['mine']]);
+    expect(await find('manager', `teamId=${uuidv7()}`)).toEqual([]);
+    // A Sales: the team's conversation they may not read is not there; no 404 for a team out of reach.
+    expect(await find('sales', `teamId=${zeta}`)).toEqual([]);
+    expect(await find('sales', `teamId=${byDefault}`)).toEqual([c['mine']]);
+    expect((await get('manager', '/v1/conversations?teamId=x')).body['code']).toBe('validation_failed');
+  });
+
+  it('answers sla null and an empty page for ?sla= until U40/U41/Q7 settle SLA (U81)', async () => {
+    const rows = (await get('manager', '/v1/conversations')).body['data'] as Record<string, unknown>[];
+    expect(rows.map((r) => r['sla'])).toEqual(rows.map(() => null));
+    for (const sla of ['due_soon', 'overdue'])
+      expect((await get('manager', `/v1/conversations?sla=${sla}`)).body).toEqual({ data: [], nextCursor: null });
+    expect((await get('manager', '/v1/conversations?sla=late')).body['code']).toBe('validation_failed');
+    expect((await get('manager', `/v1/conversations/${c['mine']}`)).body['sla']).toBeNull();
   });
 
   it('refuses marketing with 403 forbidden, and a bad query or cursor with 400 validation_failed', async () => {

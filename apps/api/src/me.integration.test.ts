@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { createDbPool } from '@gani/db';
+import { uuidv7 } from '@gani/domain';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -38,6 +39,15 @@ let app: NestExpressApplication | undefined;
 let url = '';
 const q = (text: string, params: unknown[]) => admin.query(text, params);
 type Membership = [org: string, role: string, status: string, workspaces: string[]];
+// U84: the manager's teams (of W1, W2, the whole organisation), one of W4 (not in their workspaces), a deleted one, one they are not in.
+const team = {
+  w1: uuidv7(),
+  w2: uuidv7(),
+  org: uuidv7(),
+  w4: uuidv7(),
+  gone: uuidv7(),
+  notMine: uuidv7(),
+};
 
 // prettier-ignore
 async function person(key: string, hash: string, name: string | null, memberships: Membership[], operator = false) {
@@ -90,6 +100,10 @@ beforeAll(async () => {
   await person('owner', hash, 'Chủ', [[orgA, 'owner', 'active', [W1]]]);
   await person('seller', hash, 'Bán', [[orgA, 'sales', 'active', [W1]]]);
   await person('stranger', hash, 'Khác', [[orgB, 'manager', 'active', [WB]]]);
+  for (const [id, ws, name, deleted] of [[team.w1, W1, 'Sỉ miền Bắc', false], [team.w2, W2, 'Lẻ', false], [team.org, null, 'Toàn công ty', false], [team.w4, W4, 'Kho', false], [team.gone, W1, 'Cũ', true], [team.notMine, W1, 'Khác', false]] as const)
+    await q(`INSERT INTO teams (id, org_id, workspace_id, name, slug, deleted_at) VALUES ($1, $2, $3, $4, $5, $6)`, [id, orgA, ws, name, `t-${id}`, deleted ? new Date() : null]);
+  for (const id of [team.w1, team.w2, team.org, team.w4, team.gone])
+    await q(`INSERT INTO team_members (id, org_id, team_id, user_id) VALUES ($1, $2, $3, $4)`, [uuidv7(), orgA, id, people['manager']]);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const nest = (app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false }));
   setupApp(nest);
@@ -105,7 +119,8 @@ afterAll(async () => {
   await app?.close();
   const [users, orgs] = [Object.values(people), [orgA, orgB]];
   for (const [text, ids] of [
-    ['sessions WHERE user_id', users], ['workspace_members WHERE org_id', orgs], ['workspaces WHERE org_id', orgs],
+    ['sessions WHERE user_id', users], ['team_members WHERE org_id', orgs], ['teams WHERE org_id', orgs],
+    ['workspace_members WHERE org_id', orgs], ['workspaces WHERE org_id', orgs],
     ['org_members WHERE org_id', orgs], ['organizations WHERE id', orgs], ['accounts WHERE user_id', users], ['users WHERE id', users],
   ] as const)
     await q(`DELETE FROM ${text} = ANY($1::uuid[])`, [ids]).catch(() => undefined);
@@ -123,11 +138,18 @@ describe('GET /v1/me', () => {
         { id: W2, name: 'Bán lẻ', contactPhone: null },
         { id: W1, name: 'Bán sỉ', contactPhone: '028 3812 3456' },
       ],
+      // U84: their own live teams of their workspaces or of the whole organisation, by name; not W4's, not a deleted one.
+      teams: [
+        { id: team.w2, name: 'Lẻ', workspaceId: W2 },
+        { id: team.w1, name: 'Sỉ miền Bắc', workspaceId: W1 },
+        { id: team.org, name: 'Toàn công ty', workspaceId: null },
+      ],
     });
     // Sales reads the number too (U37): they fill {{company_phone}} of a quick reply with it.
     expect(await me('seller')).toMatchObject({
       org: { id: orgA, role: 'sales' },
       workspaces: [{ id: W1, name: 'Bán sỉ', contactPhone: '028 3812 3456' }],
+      teams: [],
     });
     expect(await me('stranger')).toEqual({
       id: people['stranger'],
@@ -135,6 +157,7 @@ describe('GET /v1/me', () => {
       isPlatformOperator: false,
       org: { id: orgB, name: 'Gani B', role: 'manager' },
       workspaces: [{ id: WB, name: 'B', contactPhone: null }],
+      teams: [],
     });
   });
 
@@ -145,6 +168,7 @@ describe('GET /v1/me', () => {
       isPlatformOperator: true,
       org: null,
       workspaces: [],
+      teams: [],
     });
     const other = await get('operator', '/v1/conversations');
     expect(other.status).toBe(403);

@@ -4,6 +4,213 @@
  */
 
 export interface paths {
+    "/v1/me/agent-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in person’s own status as an agent, since when, and why. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The status. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AgentStatus"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: marketing and viewer hold no conversation and have no status; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        /** Set one’s own status (`reason: manual`); the same status again changes nothing, not even `since`. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AgentStatusChange"];
+                };
+            };
+            responses: {
+                /** @description The status now. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AgentStatus"];
+                    };
+                };
+                /** @description validation_failed: an unknown status or another field. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: marketing and viewer hold no conversation and have no status; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/teams/{id}/agent-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The status of each member of the team who holds conversations, and their minutes busy today (U42). Read only. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUIDv7. */
+                    id: components["schemas"]["Uuid"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The members, by name. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamAgentStatusList"];
+                    };
+                };
+                /** @description validation_failed: the id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin, or a Manager who is a member of the team; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description not_found: no team with this id in the session’s workspaces. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/channels/{id}/refresh-token": {
         parameters: {
             query?: never;
@@ -2057,6 +2264,46 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AgentStatus: {
+            /** @enum {string} */
+            status: "online" | "busy" | "offline";
+            /** Format: date-time */
+            since: string;
+            /** @enum {string|null} */
+            reason: "manual" | "disconnected" | null;
+        };
+        /** @description RFC 9457 problem details; `code` is the stable word (Brief P9). */
+        Problem: {
+            /** @enum {string} */
+            type: "about:blank";
+            title: string;
+            status: number;
+            code: string;
+            detail?: string;
+            /** Format: uuid */
+            traceId?: string;
+        };
+        AgentStatusChange: {
+            /** @enum {string} */
+            status: "online" | "busy" | "offline";
+        };
+        TeamAgentStatusList: {
+            data: components["schemas"]["TeamAgentStatus"][];
+        };
+        TeamAgentStatus: {
+            userId: components["schemas"]["Uuid"];
+            name: string | null;
+            /** @enum {string} */
+            status: "online" | "busy" | "offline";
+            /** Format: date-time */
+            since: string;
+            busyMinutesToday: number;
+        };
+        /**
+         * Format: uuid
+         * @description UUIDv7.
+         */
+        Uuid: string;
         Channel: {
             id: components["schemas"]["Uuid"];
             /** @enum {string} */
@@ -2072,22 +2319,6 @@ export interface components {
             /** Format: date-time */
             tokenExpiresAt: string | null;
             lastError: string | null;
-        };
-        /**
-         * Format: uuid
-         * @description UUIDv7.
-         */
-        Uuid: string;
-        /** @description RFC 9457 problem details; `code` is the stable word (Brief P9). */
-        Problem: {
-            /** @enum {string} */
-            type: "about:blank";
-            title: string;
-            status: number;
-            code: string;
-            detail?: string;
-            /** Format: uuid */
-            traceId?: string;
         };
         Overview: {
             /** @enum {string} */

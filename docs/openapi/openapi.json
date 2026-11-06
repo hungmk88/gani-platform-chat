@@ -83,6 +83,12 @@
             "items": {
               "$ref": "#/components/schemas/MeWorkspace"
             }
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeTeam"
+            }
           }
         },
         "required": [
@@ -90,7 +96,8 @@
           "name",
           "isPlatformOperator",
           "org",
-          "workspaces"
+          "workspaces",
+          "teams"
         ]
       },
       "Uuid": {
@@ -150,6 +157,30 @@
           "id",
           "name",
           "contactPhone"
+        ]
+      },
+      "MeTeam": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "workspaceId"
         ]
       },
       "MeChange": {
@@ -281,6 +312,9 @@
               "string",
               "null"
             ]
+          },
+          "sla": {
+            "$ref": "#/components/schemas/ConversationSla"
           }
         },
         "required": [
@@ -299,7 +333,8 @@
           "channelAccountId",
           "channel",
           "assignee",
-          "lastMessagePreview"
+          "lastMessagePreview",
+          "sla"
         ]
       },
       "ConversationCustomer": {
@@ -369,6 +404,33 @@
         "required": [
           "id",
           "name"
+        ]
+      },
+      "ConversationSla": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pausedReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "waiting_customer",
+              "outside_hours",
+              null
+            ]
+          }
+        },
+        "required": [
+          "dueAt",
+          "pausedReason"
         ]
       },
       "InboxChannelList": {
@@ -4583,6 +4645,27 @@
             "required": false,
             "description": "UUIDv7.",
             "name": "tagId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": false,
+            "description": "UUIDv7.",
+            "name": "teamId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "due_soon",
+                "overdue"
+              ]
+            },
+            "required": false,
+            "name": "sla",
             "in": "query"
           }
         ],
