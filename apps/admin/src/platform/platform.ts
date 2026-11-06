@@ -1,7 +1,7 @@
 // #30 Platform (U28, PR 30a, CEO 05/11, brief 79: (c)), read only, the platform operator only: the health of every company
 // (`GET /v1/platform/tenants/health`, by cursor) and the channel policies in force (`GET /v1/channel-policies`), contracts planned
-// for S5 (#610, U65). Until the API serves them they answer 404 and the tab says it is not there yet. The access sessions tab waits
-// (U79): `POST /v1/platform/access-sessions` alone opens a session that no route reads or lists.
+// for S5 (#610, U65). Until the API serves them they answer 404 and the tab says it is not there yet. The access sessions tab:
+// `access.ts` (U79, #617).
 import type { components } from '../api/planned';
 
 export type TenantHealth = components['schemas']['TenantHealth'];

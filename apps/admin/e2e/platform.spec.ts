@@ -5,7 +5,7 @@ import { signIn } from './sign-in';
 import { accountOf } from './stub-api';
 
 // #30 Platform (PR 30a, CEO 05/11, brief 79): the platform operator reads the health of the companies and the channel policies,
-// two routes planned for S5 (#610) served here by page.route; "Phiên truy cập" is the pending screen (U79). Any other role: 404.
+// two routes planned for S5 (#610) served here by page.route; "Phiên truy cập": e2e/platform-access.spec.ts. Any other role: 404.
 type Answer = { json: unknown } | { status: number; contentType: string; body: string };
 const json = (body: unknown): Answer => ({ json: body });
 const problem = (status: number, code: string, traceId: string): Answer => ({
@@ -95,9 +95,7 @@ test('the operator reads the companies page by page, each once, then the channel
   await expectAccessible(page);
 });
 
-test('"Phiên truy cập" is the pending screen; a 404 is one line in its tab; an error says why, then nothing in force', async ({
-  page,
-}) => {
+test('a 404 is one line in its tab; an error says why, then nothing in force', async ({ page }) => {
   await serve(
     page,
     [problem(404, 'not_found', 'trace-404')],
@@ -106,9 +104,7 @@ test('"Phiên truy cập" is the pending screen; a 404 is one line in its tab; a
   await signIn(page, accountOf('platform_operator'));
   await expect(page.getByText('Sức khỏe công ty: chưa có trong bản hiện tại.')).toBeVisible();
   await page.goto('/platform?tab=access');
-  await expect(
-    page.getByRole('heading', { name: 'Phiên truy cập: màn này chưa có trong bản hiện tại.' }),
-  ).toBeVisible();
+  await expect(page.getByText('Phiên truy cập: chưa có trong bản hiện tại.')).toBeVisible();
   await expectAccessible(page);
   await page.getByRole('link', { name: 'Chính sách kênh' }).click();
   const alert = page.getByRole('region', { name: 'Chính sách kênh' }).getByRole('alert');
