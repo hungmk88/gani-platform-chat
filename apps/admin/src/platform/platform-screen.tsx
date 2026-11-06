@@ -9,6 +9,7 @@ import { Paged } from '../paged-list';
 import { useApiPages } from '../query/provider';
 import { AccessTab } from './access-tab';
 import { PolicyDialog } from './policy-dialog';
+import { VersionsDialog } from './versions-dialog';
 import {
   dayText,
   healthPath,
@@ -25,6 +26,7 @@ import {
 } from './platform';
 
 const TONE = { warn: 'bg-warn-bg text-warn-text', error: 'bg-error-bg text-error-text' };
+const small = 'rounded-input border border-border-strong px-3 py-1';
 
 /** The links between the tabs of /platform (links, not a tablist, as /me). */
 function PlatformNav({ tab }: { tab: Tab }) {
@@ -95,7 +97,10 @@ function HealthTab() {
 }
 
 /** The channel policies in force, one per channel and class, in the API's order (the read list of #23). */
-function PolicyList({ onAdd }: { onAdd: (p: ChannelPolicy) => void }) {
+function PolicyList(props: {
+  onAdd: (p: ChannelPolicy) => void;
+  onVersions: (p: ChannelPolicy) => void;
+}) {
   return (
     <ReadList<ChannelPolicy>
       title="Chính sách kênh"
@@ -114,6 +119,7 @@ function PolicyList({ onAdd }: { onAdd: (p: ChannelPolicy) => void }) {
       ]}
       row={(p) => {
         const link = sourceLink(p.sourceUrl);
+        const name = `${CHANNEL_TYPE[p.channelType]} · ${MESSAGE_CLASS[p.messageClass]}`;
         return (
           <tr key={p.id}>
             <td className="p-2">{CHANNEL_TYPE[p.channelType]}</td>
@@ -134,14 +140,24 @@ function PolicyList({ onAdd }: { onAdd: (p: ChannelPolicy) => void }) {
             </td>
             <td className="whitespace-pre-line p-2">{p.note || '—'}</td>
             <td className="p-2">
-              <button
-                type="button"
-                className="rounded-input border border-border-strong px-3 py-1"
-                aria-label={`Thêm phiên bản cho ${CHANNEL_TYPE[p.channelType]} · ${MESSAGE_CLASS[p.messageClass]}`}
-                onClick={() => onAdd(p)}
-              >
-                Thêm phiên bản…
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={small}
+                  aria-label={`Phiên bản của ${name}`}
+                  onClick={() => props.onVersions(p)}
+                >
+                  Phiên bản
+                </button>
+                <button
+                  type="button"
+                  className={small}
+                  aria-label={`Thêm phiên bản cho ${name}`}
+                  onClick={() => props.onAdd(p)}
+                >
+                  Thêm phiên bản…
+                </button>
+              </div>
             </td>
           </tr>
         );
@@ -150,15 +166,22 @@ function PolicyList({ onAdd }: { onAdd: (p: ChannelPolicy) => void }) {
   );
 }
 
-/** The policies, and "Thêm phiên bản" of one (PR 30b, tầng 2): once saved, a status sentence takes the focus. */
-function PoliciesTab() {
+/**
+ * The policies, "Phiên bản" of one (U80, read only) and "Thêm phiên bản" of one (PR 30b, tầng 2): once saved, a status sentence
+ * takes the focus.
+ */
+function PoliciesTab({ meId }: { meId: string }) {
   const [editing, setEditing] = useState<ChannelPolicy | null>(null);
+  const [viewing, setViewing] = useState<ChannelPolicy | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const said = useRef<HTMLParagraphElement>(null);
   useEffect(() => said.current?.focus(), [notice]);
   return (
     <>
-      <PolicyList onAdd={(p) => (setNotice(null), setEditing(p))} />
+      <PolicyList
+        onAdd={(p) => (setNotice(null), setEditing(p))}
+        onVersions={(p) => (setNotice(null), setViewing(p))}
+      />
       {notice ? (
         <p ref={said} role="status" tabIndex={-1}>
           {notice}
@@ -166,6 +189,9 @@ function PoliciesTab() {
       ) : null}
       {editing ? (
         <PolicyDialog policy={editing} onClose={() => setEditing(null)} onSaved={setNotice} />
+      ) : null}
+      {viewing ? (
+        <VersionsDialog policy={viewing} meId={meId} onClose={() => setViewing(null)} />
       ) : null}
     </>
   );
@@ -176,14 +202,20 @@ function PoliciesTab() {
  * read only; a 404 of a route is one line in its tab, as the tabs of #23. "Phiên truy cập" (U79, brief A-U79) lists, opens and
  * ends the operator's own access sessions (`access-tab.tsx`).
  */
-export function PlatformScreen({ tab }: { tab: Tab }) {
+export function PlatformScreen({ tab, meId }: { tab: Tab; meId: string }) {
   return (
     <section aria-labelledby="platform-title" className="flex max-w-[1080px] flex-col gap-6">
       <h1 id="platform-title" className="text-20 font-semibold">
         Platform
       </h1>
       <PlatformNav tab={tab} />
-      {tab === 'health' ? <HealthTab /> : tab === 'policies' ? <PoliciesTab /> : <AccessTab />}
+      {tab === 'health' ? (
+        <HealthTab />
+      ) : tab === 'policies' ? (
+        <PoliciesTab meId={meId} />
+      ) : (
+        <AccessTab />
+      )}
       <p className="text-12 text-text-muted">Không áp dụng AI ở màn này.</p>
     </section>
   );

@@ -80,7 +80,7 @@ test('the operator reads the companies page by page, each once, then the channel
 
   await page.getByRole('link', { name: 'Chính sách kênh' }).click();
   await expect(rows(page, 'Chính sách kênh').nth(1)).toHaveText(
-    'Zalo OATư vấn48 giờ, 8 tinKhông được gửi—20/06/2023oa.zalo.me (20/06/2023)—Thêm phiên bản…',
+    'Zalo OATư vấn48 giờ, 8 tinKhông được gửi—20/06/2023oa.zalo.me (20/06/2023)—Phiên bảnThêm phiên bản…',
   );
   await expect(page.getByRole('link', { name: 'oa.zalo.me' })).toHaveAttribute(
     'rel',
