@@ -1,5 +1,6 @@
 import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
+import { registerAgentStatus } from '../modules/agent-status/agent-status.openapi.js';
 import { registerAi } from '../modules/ai/ai.openapi.js';
 import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
 import { registerChannelWrites } from '../modules/channels/channels.openapi.js';
@@ -15,6 +16,7 @@ import { registerSecurity } from '../modules/security/security.openapi.js';
 // path) is in both (N202).
 
 const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
+  registerAgentStatus,
   registerChannelWrites,
   registerOverview,
   registerFeatureFlags,

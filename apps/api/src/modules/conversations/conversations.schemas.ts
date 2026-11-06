@@ -59,6 +59,17 @@ export const ConversationSchema = z
      * `[Hình ảnh]`, `[Tệp]`, `[Sticker]`, `[Lựa chọn]` for another kind; null before any message. It is the customer's words: never logged.
      */
     lastMessagePreview: z.string().nullable(),
+    /**
+     * Its SLA (U81), the shape of a ticket's (`TicketSla`): always null until U40/U41/Q7 settle how SLA is kept and its thresholds
+     * (waits for the CEO); the Inbox shows no chip until then. Changes later reach the Inbox by `conversation.sla_changed` (U86).
+     */
+    sla: z
+      .object({
+        dueAt: at,
+        pausedReason: z.enum(['waiting_customer', 'outside_hours']).nullable(),
+      })
+      .nullable()
+      .meta({ id: 'ConversationSla' }),
   })
   .meta({ id: 'Conversation' });
 
@@ -100,6 +111,13 @@ export const ConversationListQuerySchema = CursorQuerySchema.extend({
   q: z.string().trim().min(1).max(100).optional(),
   /** Its customer carries this tag (C3, N195), as `GET /v1/customers?tagId=`; a tag the session cannot see matches nothing, never an error. */
   tagId: UuidSchema.optional(),
+  /**
+   * Its channel is answered by this team (U83, N161): the channel's team, or the default team of the workspace for a channel of no team;
+   * never the team of who holds it. A filter, not a right: a team out of what the role reads, unknown or deleted, gives an empty page.
+   */
+  teamId: UuidSchema.optional(),
+  /** Its SLA is due soon or overdue (U81): an empty page until U40/U41/Q7 settle SLA and its thresholds (waits for the CEO). */
+  sla: z.enum(['due_soon', 'overdue']).optional(),
 });
 export type ConversationListQuery = z.output<typeof ConversationListQuerySchema>;
 

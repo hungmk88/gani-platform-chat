@@ -59,6 +59,10 @@ Mỗi handler sự kiện chạy trong `runWithRequestContext(socket.data.ctx, �
 | | | `ws:{wsId}` | **rút gọn, không nội dung:** `conversationId`, `sequenceNumber`, `senderKind`, `createdAt` *(R3)* |
 | `conversation.state_changed` | `conversation.state_changed` | `ws:{wsId}`, `conv:{id}` | `conversationId`, `from`, `to`, `hold`, `version`, `assignedUserId` |
 | `conversation.assigned`, `agent.transferred`, `agent.reassigned` | `conversation.assigned` | `user:{toUserId}`, `user:{fromUserId}` (nếu có), `ws:{wsId}` | `conversationId`, `assignedUserId`, `previousUserId` *(R4: Brief không liệt kê sự kiện socket cho transfer/reassign)* |
+| `agent_status.changed` *(U86, planned S4)* | `agent_status.changed` | `user:{userId}`, `ws:{wsId}` (mỗi workspace của người đó) | `userId`, `status` (`online`\|`busy`\|`offline`), `since`, `reason` (`manual`\|`disconnected`\|`null`): như `AgentStatus` của `GET /v1/me/agent-status` (U82) |
+| `conversation.sla_changed` *(U86, planned S4)* | `conversation.sla_changed` | `conv:{id}`, `ws:{wsId}` | `conversationId`, `sla` (`{dueAt, pausedReason}` hoặc `null`): như `Conversation.sla` (U81) |
+
+**Hai sự kiện của U86 (CEO 05/11/2026)** là sự kiện riêng, không gộp vào `conversation.state_changed`: trạng thái agent và SLA đổi mà trạng thái hội thoại không đổi (hết giờ làm, khách nhắn lại, socket mất). Chưa phát cho tới khi có code S4: bảng trạng thái agent (U82) và cách lưu SLA (U40/U41, chờ CEO cùng Q7); `Conversation.sla` hiện luôn `null`.
 
 Khung gói chung: `{ eventId, type, version, occurredAt, traceId, aggregateVersion, data }`. Client bỏ gói có `aggregateVersion` nhỏ hơn bản đã có (sự kiện có thể trùng/đảo thứ tự, `outbox-spec.md` §6). Gói ở mức socket là *at-most-once*: độ đúng đến từ `sequence_number` và `resume`, không từ việc không mất gói.
 

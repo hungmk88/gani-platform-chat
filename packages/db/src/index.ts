@@ -34,7 +34,7 @@ export {
   type AuditLogQuery,
   listAuditLogs,
 } from './audit-log-read.js';
-export { readOrgSummary, type OrgSummary } from './org-summary.js';
+export { listOwnTeams, readOrgSummary, type OrgSummary, type OwnTeam } from './org-summary.js';
 export * from './outbox-store.js';
 export * from './partition-store.js';
 export * from './password-reset-store.js';

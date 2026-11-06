@@ -22,7 +22,7 @@ import { registerTeams } from '../modules/teams/teams.openapi.js';
 import { registerLeadReads, registerLeadWrites } from '../modules/leads/leads.openapi.js';
 import { registerTickets } from '../modules/tickets/tickets.openapi.js';
 import { registerWorkspaces } from '../modules/workspaces/workspaces.openapi.js';
-import { problemResponse as problem, UuidSchema } from './schemas.js';
+import { NullableUuidSchema, problemResponse as problem, UuidSchema } from './schemas.js';
 
 // The contract the front end builds on (Brief P18): generated from the Zod schemas the API validates with, so the two cannot drift.
 // docs/openapi/openapi.json is this document as committed; document.test.ts fails when they differ (run `pnpm --filter @gani/api
@@ -98,6 +98,11 @@ function registerPlatform(registry: OpenAPIRegistry): void {
           })
           .meta({ id: 'MeWorkspace' }),
       ),
+      /**
+       * The teams the person belongs to (U84), by name: only their own (GET /v1/teams stays Owner, Admin, Manager). `workspaceId` null for
+       * a team of the whole organisation. What the team filter of the Inbox offers a Sales or a Support (`?teamId=`, U83).
+       */
+      teams: z.array(named.extend({ workspaceId: NullableUuidSchema }).meta({ id: 'MeTeam' })),
     })
     .meta({ id: 'Me' });
   const meAnswer = {

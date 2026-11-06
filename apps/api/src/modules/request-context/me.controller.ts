@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { readOrgSummary, type OrgRole, type OrgSummary } from '@gani/db';
+import {
+  listOwnTeams,
+  readOrgSummary,
+  type OrgRole,
+  type OrgSummary,
+  type OwnTeam,
+} from '@gani/db';
 import { Body, Controller, Get, Inject, Logger, Patch, Req, Res } from '@nestjs/common';
 
 import { AuthService } from '../auth/auth.service.js';
@@ -24,6 +30,8 @@ export interface Me {
   readonly isPlatformOperator: boolean;
   readonly org: { readonly id: string; readonly name: string; readonly role: OrgRole } | null;
   readonly workspaces: OrgSummary['workspaces'];
+  /** The teams the person belongs to (U84), by name: only their own, never the other teams of a workspace. */
+  readonly teams: readonly OwnTeam[];
 }
 
 /**
@@ -62,16 +70,22 @@ export class MeController {
       const profile = session ? await this.auth.profile(session.userId) : null;
       if (!session || !profile) return refuse(401, 'unauthorized', 'Sign in first.');
       const choice = await chooseOrganisation(this.organisations, session);
-      if ('refused' in choice) return { id: session.userId, ...profile, org: null, workspaces: [] };
+      if ('refused' in choice)
+        return { id: session.userId, ...profile, org: null, workspaces: [], teams: [] };
       const { workspaceIds, role } = choice.member;
-      const summary = await this.database.withTenant({ orgId: choice.orgId, workspaceIds }, (tx) =>
-        readOrgSummary(tx, workspaceIds),
+      const { summary, teams } = await this.database.withTenant(
+        { orgId: choice.orgId, workspaceIds },
+        async (tx) => ({
+          summary: await readOrgSummary(tx, workspaceIds),
+          teams: await listOwnTeams(tx, session.userId, workspaceIds),
+        }),
       );
       return {
         id: session.userId,
         ...profile,
         org: summary.org ? { ...summary.org, role } : null,
         workspaces: summary.org ? summary.workspaces : [],
+        teams: summary.org ? teams : [],
       };
     } catch (error) {
       this.logger.warn(

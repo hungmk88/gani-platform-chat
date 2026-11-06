@@ -10,6 +10,7 @@ const me: Me = {
   isPlatformOperator: false,
   org: { id: 'o1', name: 'Gani Foods', role: 'sales' },
   workspaces: [{ id: 'w1', name: 'B2B', contactPhone: null }],
+  teams: [],
 };
 
 describe('readMe', () => {
