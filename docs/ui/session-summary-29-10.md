@@ -307,6 +307,18 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       (`productionLocked`, `productionLockReason`); không đường hay schema cũ nào bị bỏ; `gen:api` trên `43c3e1c` không lệch. U80 trả
       lời bằng `versions` (có `state` scheduled/in_force/past), không có `effective_at` (CEO chốt bỏ, brief B-U80). FE làm U79, U80,
       U74, U75 theo brief A–D. FE không comment PR BE.
+    - BE sửa file FE trong #618 (K2, BE-BRIEF-03, merge 17:39:47 UTC 05/11, squash `50e95f4`; review trong 24 giờ, brief 104–105):
+      `apps/admin/e2e/stub-channels.ts`, `src/channels/channels.test.ts`, `src/teams/team-channels.test.ts` (chỉ thêm
+      `tokenExpiresAt: null`, `lastError: null` cho kênh mẫu), hai file sinh `schema.d.ts` (+3) và `planned.d.ts` (+173), dòng U26,
+      U60 của `QUESTIONS.md`. **Đúng:** `Channel` của `openapi.json` thêm `tokenExpiresAt`, `lastError` (cả hai có thể `null`);
+      `planned.json` thêm `POST /v1/channels/{id}/refresh-token`, `POST /v1/channels/{id}/disconnect`; `gen:api` trên `50e95f4`
+      không lệch. #24 chưa hiện hai trường mới (chờ brief). CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". FE
+      không comment PR BE.
+    - **Sự cố quy trình 05–06/11 (lần 5, brief 105):** worker của phiên FE khởi động lại nhiều lần (khoảng 17:35, 17:52, 18:07,
+      20:07 UTC 05/11, rồi qua đêm); mỗi lần FE trả "No response requested" dù U79a đã xong ở máy (380 dòng, kiểm local xanh) mà
+      chưa push. Bỏ lỡ 6 check-in 2 giờ (22:06, 00:06, 02:06, 04:06, 06:07, 08:08 UTC); U79a push lúc 09:30 UTC 06/11 (#620),
+      trễ khoảng 13 giờ. CEO ghi nhận là lỗi hệ thống phiên, không trừ điểm FE, đưa vào biện pháp tầng hệ thống (brief 105). Luật
+      giữ nguyên: sau khởi động lại, làm tiếp việc còn dở trước khi kết luận lượt trước đã xong.
     - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
       05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
       (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng

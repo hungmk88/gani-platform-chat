@@ -18,6 +18,7 @@ import {
   type AccessSession,
   type AccessSessionPage,
 } from './access';
+import { CreateDialog, primary } from './access-create';
 import type { TenantHealthPage } from './platform';
 
 const field = 'rounded-input border border-border-strong px-3 py-2';
@@ -100,14 +101,15 @@ function EndDialog(props: {
 }
 
 /**
- * #30 "Phiên truy cập" (U79, brief A-U79, tầng 1; PR U79a): the operator's own sessions, newest first, by company and only those
- * still running (by default); "Kết thúc sớm…" ends a running one. "Tạo phiên" comes with PR U79b. A 404 of the list is one line,
- * as the other tabs.
+ * #30 "Phiên truy cập" (U79, brief A-U79, tầng 1): the operator's own sessions, newest first, by company and only those still
+ * running (by default); "Tạo phiên" opens one for 60 minutes with a reason (PR U79b, `access-create.tsx`), "Kết thúc sớm…" ends
+ * a running one. A 404 of the list is one line, as the other tabs.
  */
 export function AccessTab() {
   const [orgId, setOrgId] = useState('');
   const [active, setActive] = useState(true);
   const [ending, setEnding] = useState<AccessSession | null>(null);
+  const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const said = useRef<HTMLParagraphElement>(null);
   useEffect(() => said.current?.focus(), [notice]);
@@ -122,6 +124,15 @@ export function AccessTab() {
       <h2 id="access-title" className="text-16 font-semibold">
         Phiên truy cập
       </h2>
+      <div>
+        <button
+          type="button"
+          className={primary}
+          onClick={() => (setNotice(null), setCreating(true))}
+        >
+          Tạo phiên
+        </button>
+      </div>
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1">
           Công ty
@@ -178,6 +189,13 @@ export function AccessTab() {
       )}
       {ending ? (
         <EndDialog session={ending} onClose={() => setEnding(null)} onDone={setNotice} />
+      ) : null}
+      {creating ? (
+        <CreateDialog
+          companies={companies.data?.data ?? []}
+          onClose={() => setCreating(false)}
+          onDone={setNotice}
+        />
       ) : null}
     </section>
   );
