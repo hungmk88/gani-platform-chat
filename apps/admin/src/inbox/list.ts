@@ -3,6 +3,7 @@ import type { components } from '../api/schema';
 import { CHANNEL_STATUS, CHANNEL_TYPE } from '../channels/channels';
 import { nameOf } from '../customers/customers';
 import type { Role } from '../nav';
+import type { SlaFilter } from './sla';
 
 export type Conversation = components['schemas']['Conversation'];
 export type ConversationState = Conversation['state'];
@@ -32,8 +33,16 @@ export interface ListFilter {
   readonly q: string;
   /** The channel account filtered by (`channelId`, #392), a UUID; '' for none. */
   readonly channel: string;
+  /** The SLA filtered by (`sla`, U81): what the API calls due soon or overdue; the FE never computes it. */
+  readonly sla: SlaFilter;
 }
-export const NO_FILTER: ListFilter = { assignee: 'any', state: 'all', q: '', channel: '' };
+export const NO_FILTER: ListFilter = {
+  assignee: 'any',
+  state: 'all',
+  q: '',
+  channel: '',
+  sla: 'all',
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,12 +65,14 @@ const STATES = Object.keys(STATE_LABEL) as ConversationState[];
 export function filterOf(params: URLSearchParams): ListFilter {
   const a = params.get('assignee');
   const s = params.get('state');
+  const sla = params.get('sla');
   return {
     assignee: a === 'me' || a === 'none' ? a : 'any',
     state:
       s === 'hold' || STATES.includes(s as ConversationState) ? (s as ListFilter['state']) : 'all',
     q: searchOf(params.get('q')),
     channel: UUID.test(params.get('channel') ?? '') ? (params.get('channel') as string) : '',
+    sla: sla === 'due_soon' || sla === 'overdue' ? sla : 'all',
   };
 }
 
@@ -72,6 +83,7 @@ export function paramsOf(f: ListFilter): URLSearchParams {
   if (f.state !== 'all') p.set('state', f.state);
   if (f.q) p.set('q', f.q);
   if (f.channel) p.set('channel', f.channel);
+  if (f.sla !== 'all') p.set('sla', f.sla);
   return p;
 }
 
@@ -83,6 +95,7 @@ export function listPath(f: ListFilter, cursor: string | null, workspaceId: stri
   else if (f.state !== 'all') p.set('state', f.state);
   if (f.q) p.set('q', f.q); // a part of the name, the start of a phone from 3 digits, or a whole email (U48)
   if (f.channel) p.set('channelId', f.channel); // every Inbox reader may send it (#390); it narrows within what they read
+  if (f.sla !== 'all') p.set('sla', f.sla); // U81: empty until Q7, the API decides what is due soon
   if (cursor) p.set('cursor', cursor);
   return `/v1/conversations?${p.toString()}`;
 }
@@ -125,7 +138,12 @@ export function emptyOf(
   role: Role,
 ): { readonly text: string; readonly action: 'search' | 'clear' | 'unassigned' | 'channels' } {
   if (f.q) return { text: `Không có hội thoại khớp "${f.q}".`, action: 'search' };
-  if (f.state !== 'all' || f.channel || (f.assignee !== 'any' && f.assignee !== 'me'))
+  if (
+    f.state !== 'all' ||
+    f.channel ||
+    f.sla !== 'all' ||
+    (f.assignee !== 'any' && f.assignee !== 'me')
+  )
     return { text: 'Không có hội thoại khớp bộ lọc.', action: 'clear' };
   if (role === 'owner' || role === 'admin')
     return { text: 'Chưa có hội thoại.', action: 'channels' };
