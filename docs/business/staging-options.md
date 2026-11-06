@@ -2,6 +2,8 @@
 
 Bản nháp 30/10/2026 · Backend soạn · CEO quyết · Nguồn: Brief Backend & Core v1.0 (P5, P22, lịch S1 dòng 905, rủi ro dòng 1015), `infra/CLAUDE.md`, `QUESTIONS.md` (Q2, Q3, N35, N172)
 
+> **Đóng câu A/B ngày 06/11/2026: dựng staging trên FPT Cloud. Không dựng nơi tạm.** (A (CEO) chốt 06/11/2026; mục 9.)
+
 ## 1. Mục đích
 
 So sánh 2 phương án dựng staging khi Q1 (pháp lý) và Q2 (cloud, vùng) chưa có kết quả, để CEO quyết ở mốc báo động 05/11/2026. Tài liệu chỉ trình bày dữ kiện kỹ thuật; Backend không chọn thay CEO.
@@ -82,3 +84,12 @@ So sánh 2 phương án dựng staging khi Q1 (pháp lý) và Q2 (cloud, vùng) 
 - `infra/CLAUDE.md` và `QUESTIONS.md` Q2 đang ghi "Terraform chỉ chạy đến `validate`/`plan`": sửa cho đúng hiện trạng (chưa có Terraform), cùng PR với quyết định A/B.
 - Quyết định A/B ghi vào `QUESTIONS.md` (Q2, N172).
 - Cập nhật lại bản rà S1 (mục 9 trong danh sách việc trước S1): S1 thiếu Terraform, Dockerfile, staging - không chỉ thiếu staging.
+
+## 9. Quyết định (06/11/2026)
+
+**Đóng câu A/B ngày 06/11/2026: dựng staging trên FPT Cloud. Không dựng nơi tạm.** A (CEO) chốt 06/11/2026.
+
+- Lý do: Q2 đã chốt FPT Cloud (01/11/2026, `QUESTIONS.md` Q2); câu A/B chỉ đặt ra khi chưa có Q2. Dựng tạm rồi chuyển sang FPT là làm hai lần.
+- Cách làm: cài đặt FPT vào `infra/terraform/modules/<tên>/fpt/` theo `infra/CLAUDE.md`, provider ghim version trong `envs/*/versions.tf`, commit `.terraform.lock.hcl`. Bắt đầu bằng `terraform plan` cho `network` và `database` của staging; `apply` đầu tiên chỉ chạy từ CI, sau khi CEO đọc plan. Access Key FPT chỉ nằm trong secret của CI, không vào repo, chat hay AI.
+- Dịch vụ cụ thể (PostgreSQL managed có PITR, Valkey/Redis, object storage, KMS) xác nhận khi viết từng module; FPT Cloud không cho đổi tham số log của PostgreSQL (mục 4, điều kiện 3; N51) thì báo CEO ngay.
+- Phương án B và các điều kiện của nó (mục 4) không còn áp dụng. Q1 (pháp lý AI) vẫn mở, hạn 10/11/2026 (N172); không chặn việc dựng staging vì staging chỉ chứa dữ liệu giả (mục 2).
