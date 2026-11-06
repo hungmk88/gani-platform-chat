@@ -56,7 +56,9 @@ export function FeatureToggle({
     },
     onError: ({ error }) => {
       const unknown = error.code === 'network_error' || error.status >= 500;
-      if (unknown) void queries.invalidateQueries({ queryKey: key, exact: true });
+      // 409 ai_production_locked (U75): said as it is, never sent again; the settings are read again to show the lock.
+      if (unknown || error.code === 'ai_production_locked')
+        void queries.invalidateQueries({ queryKey: key, exact: true });
       setProblem(unknown ? UNKNOWN : error.message);
     },
   });
