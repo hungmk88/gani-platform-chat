@@ -37,9 +37,11 @@ import {
   tooFewDigits,
   whenOf,
   type Assignee,
+  type Conversation,
   type InboxChannelList,
   type ListFilter,
 } from './list';
+import { SLA_FILTER, SLA_TONE, slaChipOf, useClock, type SlaFilter } from './sla';
 
 type Page = components['schemas']['ConversationPage'];
 
@@ -48,6 +50,14 @@ const button = 'rounded-input border border-border-strong px-3 py-1';
 const ROW_ESTIMATE = 64;
 const OVERSCAN = 10;
 const primary = 'rounded-input bg-accent px-4 py-2 text-accent-on disabled:opacity-70';
+
+/** The SLA of a row (U81, brief 116), from the API's `sla` only; nothing while the browser's time is not known. */
+function SlaChip({ c, now }: { c: Conversation; now: number | null }) {
+  const chip = slaChipOf(c, now);
+  if (!chip) return null;
+  // <small>, not a span: the holder line of the row is the row's one `span.text-12` (e2e/inbox.spec.ts reads it so).
+  return <small className={`rounded-input px-2 text-12 ${SLA_TONE[chip.tone]}`}>{chip.text}</small>;
+}
 
 /**
  * The list column of the Inbox (#6): filters in the URL, pages by cursor, the four states of the screen. The rows are virtualised
@@ -59,6 +69,7 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
   const pathname = usePathname();
   const filter = filterOf(useSearchParams());
   const scope = useScope();
+  const now = useClock(); // the SLA chips count from the API's dueAt with the browser's time (U81)
   const list = useApiPages<Page>(['conversations', filter], (cursor) =>
     listPath(filter, cursor, scope.workspaceId),
   );
@@ -143,6 +154,20 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
               </option>
             ))}
             <option value="hold">{HOLD_LABEL}</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          SLA
+          <select
+            value={filter.sla}
+            onChange={(e) => go({ ...filter, sla: e.target.value as SlaFilter })}
+            className="rounded-input border border-border-strong bg-surface px-3 py-1"
+          >
+            {(Object.keys(SLA_FILTER) as SlaFilter[]).map((k) => (
+              <option key={k} value={k}>
+                {SLA_FILTER[k]}
+              </option>
+            ))}
           </select>
         </label>
         {channelFilter === 'select' ? (
@@ -271,7 +296,10 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
                       {c.lastMessagePreview ? (
                         <span className="truncate text-text-muted">{c.lastMessagePreview}</span>
                       ) : null}
-                      <span>{c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}</span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        {c.afterHoursHold ? HOLD_LABEL : STATE_LABEL[c.state]}
+                        <SlaChip c={c} now={now} />
+                      </span>
                       <span className="text-12 text-text-muted">
                         {channelOf(c) ? `${channelOf(c)} · ` : null}
                         <Holder c={c} meId={meId} />

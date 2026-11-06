@@ -328,6 +328,14 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `planned`, không file FE nào import chúng từ `planned` (#12/#13a dùng `schema.d.ts` từ #616); sinh lại từ hai file JSON của
       `e83a00b` khớp từng byte. CI trước merge 8 success + `terraform` skipped, đúng dòng "Lẫn". Đường ghi lead là việc 12b/12c, chờ
       brief. FE không comment PR BE.
+    - BE sửa file FE trong #626 (K3, U81–U86, tầng 3, CEO `APPROVED` 10:30, auto-merge 10:49:15 UTC 06/11, squash `aa73560`; review
+      trong 24 giờ, brief 113–116): `e2e/stub-api.ts`, `src/me.test.ts` (thêm `teams: []`), `src/realtime/events.test.ts` (thêm
+      `sla: null`), hai file sinh `schema.d.ts` (+20) và `planned.d.ts` (+247/−16), dòng U81–U86 của `QUESTIONS.md`. **Đúng:** sinh lại
+      từ hai file JSON của `aa73560` khớp từng byte; `openapi.json` thêm `Conversation.sla` (`ConversationSla`), query `teamId`, `sla`
+      của `GET /v1/conversations` và `Me.teams` (`MeTeam`); `planned.json` chỉ thêm `GET/PUT /v1/me/agent-status`,
+      `GET /v1/teams/{id}/agent-status` và 4 schema; `docs/specs/realtime-spec.md` có `agent_status.changed` và
+      `conversation.sla_changed`; HEAD của PR trùng nội dung với squash. CI trước merge 8 success + `terraform` skipped, đúng dòng
+      "Lẫn". BE-03 đủ 8/8 (U26, U60 ở #618). FE làm U81 (chip, lọc SLA) trong PR này; tới Q7 `sla` luôn `null`. FE không comment PR BE.
     - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
       05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
       (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng

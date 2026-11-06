@@ -22,6 +22,7 @@ const conversation = (
   lastCustomerMessageAt: null,
   createdAt: '2026-10-20T00:00:00Z',
   customer,
+  sla: null, // U81 (#626): null until Q7; e2e/inbox-sla.spec.ts answers its own
 });
 /** A message a customer could send to break a page (T2): it must show as these characters and run nothing. */
 export const HOSTILE =
