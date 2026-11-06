@@ -3,7 +3,7 @@
 # 0 otherwise; outputs.tf merges them with one(...), which gives null when no implementation is selected.
 # dummy_a and dummy_temp create nothing: they prove the switch (tests/platform.tftest.hcl) and are removed when the first real
 # implementation lands. Implementation directories (e.g. one per provider) will be created when Q2 is answered.
-# Do NOT create provider-named directories before Q2.
+# Q2 chose FPT (01/11/2026); fpt/ is a skeleton waiting for the provider to be verified (N203), called from nowhere yet.
 
 module "dummy_a" {
   source           = "./dummy_a"
