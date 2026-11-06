@@ -100,6 +100,12 @@ const CODES: Readonly<Record<string, readonly [ErrorAction, string]>> = {
     'reload',
     'Ngày hiệu lực phải sau ngày của phiên bản đang dùng. Đang tải lại danh sách, chọn ngày muộn hơn.',
   ],
+  // The internal AI is not turned on in production while Q1 (legal) is not settled (#26 U75, #617): never retried, the screen
+  // reads the settings again (`productionLocked`, the line under "Môi trường").
+  ai_production_locked: [
+    'reload',
+    'Chính thức (production) đang khóa. Bật AI ở môi trường này cần văn bản pháp lý Q1 và phê duyệt tầng 3.',
+  ],
   // Not a code of the API: a 409 whose code is not above. Only some screens read again on 'reload', so it neither says nor does it.
   conflict: ['show', 'Dữ liệu vừa thay đổi. Tải lại trang rồi thử lại.'],
 };
