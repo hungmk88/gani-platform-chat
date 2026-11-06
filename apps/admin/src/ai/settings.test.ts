@@ -5,6 +5,7 @@ import {
   budgetStop,
   budgetValue,
   featureBody,
+  lockOf,
   mayTurn,
   resetText,
   settingsPath,
@@ -34,8 +35,19 @@ describe('AI nội bộ: môi trường, tính năng, ngân sách (#26 A)', () =
     expect(budgetOf({ monthlyBudgetUsd: 0, usedThisMonthUsd: 0 })).toEqual({
       used: `${usdText(0)} / ${usdText(0)}`,
       tone: 'error',
-      note: '0 USD = AI nội bộ tắt hoàn toàn.',
+      note: '0 USD = AI nội bộ tắt hoàn toàn. Sửa ngân sách để bật.',
     });
+  });
+
+  it('says production is locked, and why, only when the API says so (U74)', () => {
+    expect(lockOf({})).toBeNull(); // an API without the field yet: as before
+    expect(lockOf({ productionLocked: false, productionLockReason: null })).toBeNull();
+    expect(lockOf({ productionLocked: true, productionLockReason: 'legal_q1' })).toBe(
+      'Chính thức (production) đang khóa vì chưa có văn bản pháp lý Q1. Không thể bật AI ở môi trường này.',
+    );
+    expect(lockOf({ productionLocked: true, productionLockReason: null })).toBe(
+      'Chính thức (production) đang khóa. Không thể bật AI ở môi trường này.',
+    );
   });
 
   it('says when the month starts again in the zone of the workspace, or in Viet Nam time said so', () => {
