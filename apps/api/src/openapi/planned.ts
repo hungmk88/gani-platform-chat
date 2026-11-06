@@ -4,7 +4,6 @@ import { registerAi } from '../modules/ai/ai.openapi.js';
 import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
 import { registerChannelWrites } from '../modules/channels/channels.openapi.js';
 import { registerFeatureFlags } from '../modules/feature-flags/feature-flags.openapi.js';
-import { registerLeadWrites } from '../modules/leads/leads.openapi.js';
 import { registerOverview } from '../modules/overview/overview.openapi.js';
 import { registerPlatform } from '../modules/platform/platform.openapi.js';
 import { registerPrivacy } from '../modules/privacy/privacy.openapi.js';
@@ -16,7 +15,6 @@ import { registerSecurity } from '../modules/security/security.openapi.js';
 // path) is in both (N202).
 
 const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
-  registerLeadWrites,
   registerChannelWrites,
   registerOverview,
   registerFeatureFlags,

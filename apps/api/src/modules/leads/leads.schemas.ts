@@ -136,3 +136,7 @@ export const PipelineSchema = z
   .meta({ id: 'Pipeline' });
 
 export const LeadIdSchema = UuidSchema;
+
+export type LeadCreateBody = z.output<typeof LeadCreateSchema>;
+export type LeadStageChangeBody = z.output<typeof LeadStageChangeSchema>;
+export type LeadCloseBody = z.output<typeof LeadCloseSchema>;
