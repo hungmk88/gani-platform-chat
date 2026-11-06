@@ -136,3 +136,32 @@ test('a save that may not have reached the server says so and reads the settings
   await expect.poll(() => calls.slice(before).at(-1)?.method).toBe('GET');
   await expect(features(page).getByRole('button', { name: `Tắt ${E1}` })).toBeEnabled();
 });
+
+test('a turning on the API refuses as locked (409) is said, never sent again, and the settings are read again (U75)', async ({
+  page,
+}) => {
+  await page.route(SETTINGS, (r) =>
+    r.request().method() === 'PATCH'
+      ? r.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 409, code: 'ai_production_locked', traceId: 'trace-u75' }),
+        })
+      : r.fallback(),
+  );
+  const calls = sent(page);
+  await open(page, 'owner');
+  const before = calls.length;
+  await features(page)
+    .getByRole('button', { name: `Bật ${L1}` })
+    .click();
+  await expect(features(page).getByRole('alert')).toHaveText(
+    'Chính thức (production) đang khóa. Bật AI ở môi trường này cần văn bản pháp lý Q1 và phê duyệt tầng 3.',
+  );
+  await expect.poll(() => calls.slice(before).at(-1)?.method).toBe('GET');
+  expect(calls.slice(before).filter((c) => c.method === 'PATCH')).toEqual([
+    { method: 'PATCH', body: { features: { l1: true } } },
+  ]);
+  await expect(features(page).getByRole('button', { name: `Bật ${L1}` })).toBeEnabled();
+  await expectAccessible(page);
+});
