@@ -21,6 +21,6 @@ export default async function PlatformPage({
   const [result, { tab }] = await Promise.all([getMe(), searchParams]);
   const role = result.kind === 'ok' ? roleOf(result.me) : null;
   const item = role ? menuItemAt(role, '/platform') : undefined;
-  if (!role || !item) notFound();
-  return <PlatformScreen tab={tabOf(tab)} />;
+  if (result.kind !== 'ok' || !role || !item) notFound();
+  return <PlatformScreen tab={tabOf(tab)} meId={result.me.id} />;
 }
