@@ -4,6 +4,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { Customer } from '../src/customers/customers';
+import { TAGS } from './stub-customer-data';
 import type { Edge } from './stub-members';
 
 const zalo = {
@@ -25,7 +26,8 @@ export const CUSTOMERS: Customer[] = [
   email: email as string | null,
   humanOnly: false,
   identities: onZalo ? [zalo] : [],
-  tags: [],
+  // Lê Minh Châu carries "Khách sỉ" (P4: the Tag column and filter of #7); the others none.
+  tags: n === 3 ? [{ id: TAGS[0]!.id, name: TAGS[0]!.name, hidden: false }] : [],
   createdAt: `2026-10-2${4 - n}T03:00:00.000Z`,
   updatedAt: `2026-10-2${4 - n}T03:00:00.000Z`,
 }));
@@ -159,7 +161,10 @@ export async function routeCustomers(
   if (req.method !== 'GET' || path !== '/v1/customers') return false;
   const query = new URL(req.url ?? '/', 'http://stub').searchParams;
   const q = query.get('q')?.trim() ?? '';
-  const found = customers.filter((c) => !q || matchesSearch(c, q, masked));
+  const tagId = query.get('tagId') ?? ''; // N190: the customers carrying it; an unknown tag finds none
+  const found = customers.filter(
+    (c) => (!q || matchesSearch(c, q, masked)) && (!tagId || c.tags.some((t) => t.id === tagId)),
+  );
   const from = Number(query.get('cursor') ?? 0);
   const page = found.slice(from, from + CUSTOMERS_PAGE).map(shown);
   const next = from + CUSTOMERS_PAGE < found.length ? String(from + CUSTOMERS_PAGE) : null;
