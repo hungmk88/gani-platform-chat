@@ -40,11 +40,11 @@ test('the filters ask the API again, and a filter that finds nothing can be clea
   await signIn(page, accountOf('support'));
   await page.goto('/tickets');
   const asked = page.waitForRequest((r) => r.url().includes('status=in_progress'));
-  await page.getByLabel('Trạng thái').selectOption('in_progress');
+  await page.getByRole('main').getByLabel('Trạng thái').selectOption('in_progress');
   await asked;
   await expect(rows(page)).toHaveCount(2);
   await expect(rows(page).nth(1)).toContainText('Bổ sung hóa đơn tháng 9');
-  await page.getByLabel('Trạng thái').selectOption('cancelled');
+  await page.getByRole('main').getByLabel('Trạng thái').selectOption('cancelled');
   await expect(page.getByText('Không có ticket khớp bộ lọc.')).toBeVisible();
   await page.getByRole('button', { name: 'Xóa bộ lọc' }).click();
   await page.getByLabel('Phụ trách').selectOption('me');
