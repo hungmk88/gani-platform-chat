@@ -121,8 +121,12 @@ export function routeLeads(
     );
   const q = new URL(req.url ?? '/', 'http://stub').searchParams;
   const ws = q.get('workspaceId');
-  if (!ws) return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
-  const all = LEADS.filter((l) => l.workspaceId === ws);
+  const customerId = q.get('customerId'); // #8 (P3): the leads of one customer, every workspace of the session
+  if (!ws && !customerId)
+    return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
+  const all = LEADS.filter(
+    (l) => (!ws || l.workspaceId === ws) && (!customerId || l.customer.id === customerId),
+  );
   const from = Number(q.get('cursor') ?? 0);
   const to = from + LEADS_PAGE;
   return (
