@@ -276,7 +276,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     email: session.email,
   };
   if (await routeAssignees(req, res, path ?? '', u31, { send, problem, json })) return; // U31 + transfer, e2e/stub-assignees.ts
-  const one = /^\/v1\/conversations\/([^/]+)(\/messages)?$/.exec(path ?? '');
+  const one = /^\/v1\/conversations\/([^/]+)(\/messages|\/notes)?$/.exec(path ?? '');
   if (req.method === 'GET' && one) {
     if (!session) return problem(res, 401, 'unauthorized', 'trace-e2e-401');
     const me = meOf(session.email);
@@ -286,6 +286,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (!c || !(all || c.assignedUserId === null || c.assignedUserId === me?.id))
       return problem(res, 404, 'not_found', 'trace-e2e-404');
     if (!one[2]) return send(res, 200, c);
+    // No note in the stub: e2e/inbox-notes.spec.ts answers its own (page.route).
+    if (one[2] === '/notes') return send(res, 200, { data: [], nextCursor: null });
     const own = c.id === CONVERSATIONS[1]?.id ? [...session.messages].reverse() : [];
     const from = Number(new URL(req.url ?? '/', 'http://stub').searchParams.get('cursor') ?? 0);
     const next = from + STUB_PAGE < own.length ? String(from + STUB_PAGE) : null;
