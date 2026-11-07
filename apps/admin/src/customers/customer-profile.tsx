@@ -131,7 +131,7 @@ export function CustomerProfile({ id, role }: { id: string; role: Role }) {
         )}
       </section>
       <CustomerTagsSection customer={c} editable={mayEditCustomers(role)} />
-      <CustomerFieldsSection id={c.id} />
+      <CustomerFieldsSection id={c.id} editable={mayEditCustomers(role)} />
       {maySeeSuggestions(role) ? <MergeSuggestions customer={c} role={role} /> : null}
       {maySeeMerges(role) ? <MergeHistory id={c.id} /> : null}
       <p className="text-12 text-text-muted">

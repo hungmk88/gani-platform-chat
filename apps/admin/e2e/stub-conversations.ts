@@ -73,3 +73,8 @@ export function conversationMatches(c: { customer: { id: string } | null }, q: s
   const customer = CUSTOMERS.find((x) => x.id === c.customer?.id);
   return customer !== undefined && matchesSearch(customer, q.trim(), false);
 }
+
+/** `tagId` of the Inbox (N195): the customer of the conversation carries the tag (none of the stub's conversations' customers does). */
+export function conversationTagged(c: { customer: { id: string } | null }, tagId: string): boolean {
+  return !!CUSTOMERS.find((x) => x.id === c.customer?.id)?.tags.some((t) => t.id === tagId);
+}

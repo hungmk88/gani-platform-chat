@@ -17,6 +17,8 @@ import type { Role } from '../nav';
 import { useApiPages, useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { teamsPath, type TeamList } from '../teams/teams';
+import { TAGS_PATH, type Tag } from '../customer-data/catalog';
+import { readListKey } from '../customer-data/catalog-screen';
 import { Holder } from './holder';
 import { setNotice, useNotice } from './notice';
 import {
@@ -91,6 +93,8 @@ export function ConversationList({
     teamsPath(scope.workspaceId ?? ''),
     leads,
   );
+  // "Tag" (N195; CEO brief 169 P4): the company's tags, hidden ones too (a customer may still carry one, T-4); every role reads them.
+  const tags = useApiQuery<{ readonly data: readonly Tag[] }>(readListKey(TAGS_PATH), TAGS_PATH);
   const teams =
     leads && wsTeams.data
       ? wsTeams.data.data.map((t) => ({ id: t.id, name: t.name }))
@@ -210,6 +214,26 @@ export function ConversationList({
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {tags.data?.data.length || filter.tag ? (
+          <label className="flex flex-col gap-1">
+            Tag
+            <select
+              value={filter.tag}
+              onChange={(e) => go({ ...filter, tag: e.target.value })}
+              className="rounded-input border border-border-strong bg-surface px-3 py-1"
+            >
+              <option value="">Mọi tag</option>
+              {filter.tag && !tags.data?.data.some((t) => t.id === filter.tag) ? (
+                <option value={filter.tag}>Tag không còn trong danh sách</option>
+              ) : null}
+              {tags.data?.data.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.hidden ? `${t.name} (đã ẩn)` : t.name}
                 </option>
               ))}
             </select>
