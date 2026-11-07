@@ -101,6 +101,23 @@ export async function loadCustomer(tx: TenantTx, id: string): Promise<CustomerVi
   return row ?? null;
 }
 
+/**
+ * ONLY for the answer of an unmerge (J3c, CEO 07/11/2026): the target may have been soft deleted since the merge (N205), and the
+ * contract answers it whole. The fields are those of every other read; `deleted` is for the caller's audit, never for the answer.
+ */
+export async function loadCustomerForUnmerge(
+  tx: TenantTx,
+  id: string,
+): Promise<{ readonly customer: CustomerView; readonly deleted: boolean } | null> {
+  const [row] = await tx
+    .select({ ...view, deleted: sql<boolean>`${customers.deletedAt} IS NOT NULL` })
+    .from(customers)
+    .where(eq(customers.id, assertUuid(id, 'id')));
+  if (row === undefined) return null;
+  const { deleted, ...customer } = row;
+  return { customer, deleted };
+}
+
 /** The live customers, newest first (UUIDv7 ids, index customers_org_id_idx), by keyset on the id. */
 export async function listCustomers(
   tx: TenantTx,
