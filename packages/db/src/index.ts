@@ -28,7 +28,13 @@ export { createDbPool, type DbPoolOptions } from './pool.js';
 export { readMemberContext, shareTeam, type MemberContext } from './member-context.js';
 export { listAssigneeCandidates, type AssigneeCandidate } from './assignee-read.js';
 export { insertAuditLog } from './audit-log.js';
-export { CustomerMergeNotFoundError, mergeCustomers } from './customer-merge-store.js';
+export {
+  CustomerMergeNotFoundError,
+  CustomerNotMergedError,
+  mergeCustomers,
+  MergeTargetMergedError,
+  unmergeCustomer,
+} from './customer-merge-store.js';
 export {
   AUDIT_LOG_MAX_LIMIT,
   type AuditLogEntry,

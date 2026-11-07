@@ -178,7 +178,9 @@ test('a Manager reads only its own teams, with nothing to change (CEO, 26/10)', 
   const list = page.getByRole('region', { name: 'Team của workspace' });
   await expect(list.getByRole('row')).toHaveCount(2); // the header and CSKH
   await expect(list.getByRole('row', { name: /CSKH/ })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0);
+  const buttons = page.getByRole('main').getByRole('button');
+  await expect(buttons).toHaveCount(1); // U85: the status of its team, nothing to change
+  await expect(buttons).toHaveAccessibleName('Trạng thái của team CSKH');
   await expect(page.getByRole('main').getByRole('textbox')).toHaveCount(0);
   await expect(page.getByText('Bạn xem các team mình thuộc về.')).toBeVisible();
   await expectAccessible(page);
