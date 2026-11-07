@@ -90,7 +90,14 @@ export async function loadCustomer(tx: TenantTx, id: string): Promise<CustomerVi
   const [row] = await tx
     .select(view)
     .from(customers)
-    .where(and(eq(customers.id, assertUuid(id, 'id')), isNull(customers.deletedAt)));
+    .where(
+      and(
+        eq(customers.id, assertUuid(id, 'id')),
+        isNull(customers.deletedAt),
+        // A merged customer is hidden (J3, N204): its profile is the target's now.
+        isNull(customers.mergedInto),
+      ),
+    );
   return row ?? null;
 }
 
@@ -102,7 +109,7 @@ export async function listCustomers(
   if (!Number.isInteger(q.limit) || q.limit < 1 || q.limit > 100)
     throw new RangeError('limit must be 1..100');
   const c = customers;
-  const where: (SQL | undefined)[] = [isNull(c.deletedAt)];
+  const where: (SQL | undefined)[] = [isNull(c.deletedAt), isNull(c.mergedInto)];
   if (q.name !== undefined) where.push(customerSearchWhere({ name: q.name }));
   if (q.phonePrefix !== undefined) where.push(customerSearchWhere({ phonePrefix: q.phonePrefix }));
   if (q.email !== undefined) where.push(customerSearchWhere({ email: q.email }));
