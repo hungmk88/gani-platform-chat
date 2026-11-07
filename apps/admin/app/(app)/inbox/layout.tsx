@@ -23,7 +23,7 @@ export default async function InboxLayout({ children }: { children: ReactNode })
         <InboxKeys />
       </div>
       <div className="grid gap-4 lg:grid-cols-[minmax(280px,2fr)_3fr]">
-        <ConversationList role={role} meId={result.me.id} />
+        <ConversationList role={role} meId={result.me.id} teams={result.me.teams} />
         {children}
       </div>
     </div>
