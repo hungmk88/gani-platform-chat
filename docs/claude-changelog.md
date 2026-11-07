@@ -2,6 +2,12 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 07/11/2026: bảng job thêm `.claude/**` và `.json` trong `docs/ui/` (ký A (CEO), brief 140, 145)
+
+- Bảng "Job chạy theo loại PR": `.claude/**` chạy như code BE (7 + 2, như #636, #639, #643); PR chỉ docs có file không phải
+  `.md` trong `docs/ui/` chạy thêm `admin` (4 + 5, ca đầu #645), theo `ADMIN_NEEDS` của `changes.sh`, không sửa `changes.sh`.
+- "9/9" = 9 required check đạt theo tên, job skip đúng bảng tính là đạt (brief 140 mục 5).
+
 ## 03/11/2026: scan secret chạy riêng, mẫu `sk-` (ký A (CEO), brief 52, 53)
 
 - "Scan trước khi push": mẫu `sk-` đổi thành `sk-[a-zA-Z0-9]{20,}` (`sk-` trần trúng `risk-ownership`); scan chạy riêng, không

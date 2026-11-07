@@ -1,36 +1,52 @@
 {
   "session_id": "session_015SNdqZsqMWFgeQMx5cVLsc",
-  "last_brief_received": 138,
-  "last_checkin_utc": "2026-11-07T13:05:31Z",
-  "current_branch": "feat/teams-u85-agent-status-v2",
+  "last_brief_received": 145,
+  "last_checkin_utc": "2026-11-07T15:06:42Z",
+  "current_branch": "docs/fe-ci-rules",
   "pending_tasks": [
     {
       "id": "U85",
-      "state": "PR #644 draft, Update branch sau #639; kiểm ở máy xanh (unit 375, E2E 299); chờ CI 5 success + 4 skip + clean → tự merge → 5 mục → báo CEO xóa nhánh nháp feat/teams-u85-agent-status"
+      "state": "xong: #644 merge 14:53:29 (13ce9b8), 5 mục đã gửi"
     },
     {
       "id": "U86",
-      "state": "chưa làm; sau U85: realtime agent_status.changed + conversation.sla_changed (realtime-spec §3), bỏ gói cũ theo aggregateVersion"
+      "state": "#646 merge 15:15:53 (cd99ac7), 5 mục đã gửi; xác nhận CI main"
     },
     {
       "id": "4-deny",
-      "state": "PR #643 (tầng 3), 5 deny, draft; chờ CI 7 success + 2 skip + clean → 'Sẵn sàng merge' → CEO APPROVED → CEO merge → 5 mục"
+      "state": "xong: #643 CEO merge 15:08:43 (dd14b1a), 5 mục đã gửi"
     },
     {
       "id": "Q7",
       "deadline": "10/11 12:00 UTC",
-      "state": "CEO-ACTION-01 hằng số 1 file config FE khi BE trả null; chưa có Q7 lúc hạn → báo CEO"
+      "state": "chưa có dữ liệu thật thì dùng CEO-ACTION-01 (brief 134); file apps/admin/src/config/ceo-action-01.ts chỉ tạo khi có màn cần giá trị mặc định (brief 145)"
     },
     {
-      "id": "session-state-docs",
-      "state": "PR docs đưa file này vào main (tầng 1 docs)"
+      "id": "ci-rules-docs",
+      "state": "PR docs quy tắc CI + file này (brief 145), tầng 1 docs 4+5"
     },
     {
       "id": "nhom-B",
-      "state": "sau 12/11 gửi CEO danh sách 6 nhánh nhóm B + feat/teams-u85-agent-status"
+      "state": "sau 12/11 gửi CEO danh sách 6 nhánh nhóm B (brief 87)"
+    },
+    {
+      "id": "nhom-C",
+      "state": "backup/privacy-full, docs/ui-prototype-outline: giữ tới khi CEO quyết"
+    },
+    {
+      "id": "U26",
+      "state": "kênh Zalo OA: chờ CEO Q6"
+    },
+    {
+      "id": "J3",
+      "state": "gộp khách: chờ brief riêng khi BE xong J3c"
+    },
+    {
+      "id": "checkin",
+      "state": "2 giờ một lần (phút 06): 3 dòng + PR mở; kế tiếp 17:06 UTC"
     }
   ],
-  "open_prs": [643, 644],
-  "last_commit_local": "491b40d",
-  "updated_at": "2026-11-07T14:38:38Z"
+  "open_prs": [],
+  "last_commit_local": "cd99ac7",
+  "updated_at": "2026-11-07T15:22:40Z"
 }
