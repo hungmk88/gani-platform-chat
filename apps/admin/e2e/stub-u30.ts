@@ -59,3 +59,13 @@ export const inboxChannels = (seen: readonly unknown[]) =>
 
 /** `channelId` of the list: every conversation of the stub came in by its Zalo OA. */
 export const byChannel = (channelId: string | null) => !channelId || channelId === ZALO.id;
+
+/** `Me.teams` of `+teams@` (U84): one team of the workspace that answers the stub's Zalo OA, one of the company that answers none. */
+export const ME_TEAMS = [
+  { id: '0190e000-0000-7000-8000-0000000000e1', name: 'CSKH', workspaceId: 'ws-e2e' },
+  { id: '0190e000-0000-7000-8000-0000000000e2', name: 'Bán sỉ', workspaceId: null },
+];
+
+/** `teamId` of the list (U83): the conversations of the channels a team answers; CSKH answers the stub's only channel, any other
+ * team (or one out of scope) none, as the API ([] not 404). */
+export const byTeam = (teamId: string | null) => !teamId || teamId === ME_TEAMS[0]!.id;
