@@ -91,7 +91,10 @@ describe('customer_field_values', () => {
       await write('UPDATE customer_field_values SET value = NULL WHERE field_id = $1', [f]),
     ).toBeUndefined();
     expect(await write('UPDATE customer_field_values SET field_id = field_id')).toBe('42501');
-    expect(await write('UPDATE customer_field_values SET customer_id = customer_id')).toBe('42501');
+    // A merge moves a value to the target and an unmerge moves it back (J3, N204).
+    expect(
+      await write('UPDATE customer_field_values SET customer_id = customer_id'),
+    ).toBeUndefined();
     expect(await write('DELETE FROM customer_field_values WHERE field_id = $1', [f])).toBe('42501');
     expect(await write('DELETE FROM customer_field_defs WHERE id = $1', [f])).toBe('42501');
     const { rows } = await admin.query<{ column: string }>(
