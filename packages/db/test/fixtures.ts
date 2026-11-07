@@ -29,6 +29,8 @@ const TENANT_TABLES = [
   'customer_field_defs',
   'customer_tags',
   'tags',
+  'customer_merge_moves',
+  'customer_merges',
   'customer_identities',
   'customers',
   'channel_accounts',
@@ -116,6 +118,9 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO inbound_events (id, org_id, workspace_id, channel_account_id, platform_message_id, event_type, payload) VALUES ('${uuidv7()}', '${org}', '${workspace}', '${channelAccount}', 'm-seed', 'user_send_text', '{"seed": true}');
     INSERT INTO inbound_event_keys (org_id, channel_account_id, platform_message_id) VALUES ('${org}', '${channelAccount}', 'm-seed');
     INSERT INTO customers (id, org_id) VALUES ('${customer}', '${org}');
+    WITH s AS (INSERT INTO customers (id, org_id, merged_into, merged_at) VALUES ('${uuidv7()}', '${org}', '${customer}', now()) RETURNING id, org_id),
+      m AS (INSERT INTO customer_merges (id, org_id, source_id, target_id, merged_by) SELECT '${uuidv7()}', org_id, id, '${customer}', '${user}' FROM s RETURNING id, org_id)
+      INSERT INTO customer_merge_moves (id, org_id, merge_id, table_name, row_id) SELECT '${uuidv7()}', org_id, id, 'conversations', '${conversation}' FROM m;
     INSERT INTO customer_identities (id, org_id, customer_id, identity_type, channel_account_id, external_id) VALUES ('${uuidv7()}', '${org}', '${customer}', 'zalo_uid', '${channelAccount}', 'zu-seed');
     WITH t AS (INSERT INTO tags (id, org_id, name) VALUES ('${uuidv7()}', '${org}', 'Seed') RETURNING id, org_id)
       INSERT INTO customer_tags (id, org_id, customer_id, tag_id) SELECT '${uuidv7()}', org_id, '${customer}', id FROM t;

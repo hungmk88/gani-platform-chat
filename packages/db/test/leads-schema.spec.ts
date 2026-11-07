@@ -155,7 +155,11 @@ describe('leads', () => {
     expect(
       await update('UPDATE leads SET stage_id = stage_id, version = version + 1 WHERE id = $1'),
     ).toBeUndefined();
-    for (const column of ['title', 'customer_id', 'conversation_id', 'created_by', 'workspace_id'])
+    // customer_id moves with a merge of customers and back with an unmerge (J3, N204).
+    expect(
+      await update('UPDATE leads SET customer_id = customer_id WHERE id = $1'),
+    ).toBeUndefined();
+    for (const column of ['title', 'conversation_id', 'created_by', 'workspace_id'])
       expect(await update(`UPDATE leads SET ${column} = ${column} WHERE id = $1`), column).toBe(
         '42501',
       );
