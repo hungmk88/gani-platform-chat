@@ -6,8 +6,12 @@ import {
   createDbPool,
   CustomerMergeNotFoundError,
   CustomerNotMergedError,
+  listCustomerMerges,
   listCustomers,
+  liveWorkspaceIds,
   loadCustomer,
+  loadCustomerForUnmerge,
+  loadCustomerMerge,
   mergeCustomers,
   MergeTargetMergedError,
   unmergeCustomer,
@@ -268,5 +272,55 @@ describe('unmergeCustomer', () => {
     await unmerge(t.id);
     await unmerge(s.id);
     expect(await ownerOf('tickets', s.ticket)).toBe(s.id);
+  });
+});
+
+describe('the reads of the merge API (J3c, N206)', () => {
+  it('names every live workspace, never a soft deleted one', async () => {
+    const gone = uuidv7();
+    await admin.query(
+      `INSERT INTO workspaces (id, org_id, slug, name, template, deleted_at) VALUES ($1, $2, 'gone', 'G', 'service', now())`,
+      [gone, org],
+    );
+    const ids = await withTenant(pool, { orgId: org, workspaceIds: [ws] }, liveWorkspaceIds);
+    expect(ids).toEqual([ws, ws2].sort());
+    await admin.query('DELETE FROM workspaces WHERE id = $1', [gone]);
+  });
+
+  it('reads one merge and the merges into a target, newest first, with who merged and the source name', async () => {
+    const { mergeId: first } = await merge(s.id, t.id);
+    await unmerge(s.id);
+    const { mergeId: second } = await merge(s.id, t.id);
+    const { name } = (
+      await q<{ name: string | null }>(
+        `SELECT nullif(btrim(display_name), '') AS name FROM users WHERE id = $1`,
+        [users[0]],
+      )
+    )[0]!;
+    const by = { id: users[0], name };
+    expect(await all((tx) => loadCustomerMerge(tx, second))).toEqual({
+      id: second,
+      sourceId: s.id,
+      targetId: t.id,
+      mergedBy: by,
+      mergedAt: expect.any(Date) as Date,
+      unmergedAt: null,
+    });
+    expect(await all((tx) => loadCustomerMerge(tx, uuidv7()))).toBeNull();
+    const list = await all((tx) => listCustomerMerges(tx, t.id));
+    expect(list.map((r) => [r.id, r.unmergedAt === null, r.sourceName, r.mergedBy])).toEqual([
+      [second, true, 'An', by],
+      [first, false, 'An', by],
+    ]);
+  });
+
+  it('reads a soft deleted customer for the answer of an unmerge only, and says it is deleted', async () => {
+    await admin.query('UPDATE customers SET deleted_at = now() WHERE id = $1', [t.id]);
+    expect(await all((tx) => loadCustomer(tx, t.id))).toBeNull();
+    const read = await all((tx) => loadCustomerForUnmerge(tx, t.id));
+    expect(read).toMatchObject({ deleted: true, customer: { id: t.id, email: 'an@example.com' } });
+    expect(Object.keys(read!.customer)).not.toContain('deleted');
+    expect(await all((tx) => loadCustomerForUnmerge(tx, s.id))).toMatchObject({ deleted: false });
+    expect(await all((tx) => loadCustomerForUnmerge(tx, uuidv7()))).toBeNull();
   });
 });
