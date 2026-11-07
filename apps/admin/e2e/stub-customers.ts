@@ -123,9 +123,15 @@ export async function routeCustomers(
     email: c.email && masked ? maskEmail(c.email) : c.email,
   });
   // J3 (#649, #650): none suggested, none merged, with the API's roles (N204, N206); e2e/customer-merges.spec.ts answers its own.
-  const merge = /^\/v1\/customers\/([^/]+)\/(merge-suggestions|merges)$/.exec(path);
+  // J1 (N191): no value in any field, every role; e2e/customer-fields.spec.ts answers its own.
+  const merge = /^\/v1\/customers\/([^/]+)\/(merge-suggestions|merges|fields)$/.exec(path);
   if (merge && req.method === 'GET') {
-    const roles = merge[2] === 'merges' ? ['owner', 'admin'] : ['owner', 'admin', 'manager'];
+    const roles =
+      merge[2] === 'merges'
+        ? ['owner', 'admin']
+        : merge[2] === 'fields'
+          ? [session.role ?? '']
+          : ['owner', 'admin', 'manager'];
     if (!roles.includes(session.role ?? ''))
       return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
     if (!customers.some((x) => x.id === decodeURIComponent(merge[1] ?? '')))
