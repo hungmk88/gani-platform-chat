@@ -198,3 +198,26 @@ Planned trả 404 tới khi BE làm thật: `PendingPage` hoặc câu "chưa có
   "last_checkin_utc": "2026-11-07T13:05:31Z"
 }
 ```
+
+## 10. Bổ sung của phiên `session_015SNdqZsqMWFgeQMx5cVLsc` (07/11 14:25–16:45 UTC, brief 137–153)
+
+- **Đã merge, 5 mục đã gửi CEO:**
+  - #639: permission push, CEO merge 14:30:50, `50102b3`.
+  - #643: 5 deny (`*:main*`, `*:refs/heads/main*`, `--delete*`, `-d*`, `:**`), tầng 3, CEO merge 15:08:43, `dd14b1a`.
+  - #644: U85, 14:53:29, `13ce9b8`.
+  - #645: session-state, 4 + 5, 15:03:57, `d9afdb3`.
+  - #646: U86 realtime, 15:15:53, `cd99ac7`.
+  - #647: bảng job thêm `.claude/` 7 + 2 và `.json` trong `docs/ui/` 4 + 5, 15:37:36, `a3b4305`.
+- Số A/B/C/D CEO chốt (brief 145): 28,5/58 · 19,5/29 · 22/30 · 28,5/135.
+- **Review chéo PR BE chạm file FE**, cả hai đều sinh lại `planned.d.ts`/`schema.d.ts` bằng `pnpm --filter @gani/admin gen:api` từ JSON của
+  commit squash, `git diff` rỗng, khớp từng byte; FE chưa dùng kiểu gộp khách, hành vi không đổi; FE không comment PR BE:
+  - **#649** (J3c-2, 15:47:44, `231581d`): `POST /v1/customers/merge`, `GET …/{id}/merges`, `POST …/{id}/unmerge` chuyển planned → served.
+  - **#650** (J3d, 16:02:36, `88d73e8`): `GET …/{id}/merge-suggestions` chuyển planned → served; J3 đủ 4 đường served.
+- #641, #642, #648: chỉ `packages/db` (+ `QUESTIONS.md`), không chạm FE.
+- **Luật mới (brief 140, 148):**
+  - "9/9" = 9 required check đạt theo tên, skip đúng bảng tính là đạt.
+  - Không mở PR riêng chỉ để cập nhật `session-state.json` hay ghi review chéo: gộp vào PR kế tiếp; 2 tuần không có PR mới mở PR riêng.
+- **Màn gộp khách (brief 153):** CEO duyệt wireframe; plan ở PR A (mô tả PR).
+  - PR A (tầng 1, chỉ đọc) là PR này.
+  - PR B (tầng 3, gộp và tách, tách B1/B2 nếu > 500 dòng) làm sau, mặc định: Manager không có nút "Gộp…", gộp gõ `GOP`, tách bằng
+    checkbox, không hiện số đếm vì hợp đồng không có đường xem trước.
