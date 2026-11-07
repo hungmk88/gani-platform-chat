@@ -1,0 +1,36 @@
+# lint/mutants/security.sh trên gani_o1, 07/11/2026 (P11a-1, N207): 32/32 bị bắt. PGF (policy, grant, hàm; không DROP) 16/16;
+# D (16 DROP, CEO duyệt 07/11) 16/16. Lần đầu sống 2 mutant, đã thêm/sửa test rồi chạy lại: G-incidents-support-reads-title (thêm test
+# cột support ở grants.spec), D4-incidents-drop-status-check (ca 'resolved' kèm closed_at bị CHECK cặp chặn trước, nay tách riêng).
+P-security_incidents-app-any-org|exit=1| Tests 3 failed 
+P-security_incidents-support-no-access-check|exit=1| Tests 3 failed 
+G-security_incidents-app-delete|exit=1| Tests 1 failed 
+P-security_alerts-app-any-org|exit=1| Tests 3 failed 
+P-security_alerts-support-no-access-check|exit=1| Tests 3 failed 
+G-security_alerts-app-delete|exit=1| Tests 1 failed 
+G-incidents-app-update-title|exit=1| Tests 1 failed 
+G-incidents-app-update-opener|exit=1| Tests 1 failed 
+G-alerts-app-update-kind|exit=1| Tests 1 failed 
+G-incidents-support-reads-title|exit=1| Tests 1 failed 
+G-function-app-role|exit=1| Tests 1 failed 
+G-function-support-role|exit=1| Tests 1 failed 
+F1-function-any-operator|exit=1| Tests 1 failed 
+F2-function-ignores-expiry|exit=1| Tests 1 failed 
+F3-function-ignores-end|exit=1| Tests 1 failed 
+F4-function-any-person|exit=1| Tests 1 failed 
+D1-incidents-drop-opener-check|exit=1| Tests 1 failed 
+D2-incidents-drop-title-check|exit=1| Tests 1 failed 
+D3-incidents-drop-severity-check|exit=1| Tests 1 failed 
+D4-incidents-drop-status-check|exit=1| Tests 1 failed 
+D5-incidents-drop-closed-check|exit=1| Tests 1 failed 
+D6-incidents-drop-handler-fk|exit=1| Tests 1 failed 
+D7-incidents-drop-opener-member-fk|exit=1| Tests 1 failed 
+D8-incidents-drop-opener-operator-fk|exit=1| Tests 1 failed 
+D9-alerts-drop-channel-fk|exit=1| Tests 1 failed 
+D10-alerts-drop-incident-fk|exit=1| Tests 1 failed 
+D11-alerts-drop-window-key|exit=1| Tests 1 failed 
+D12-alerts-drop-kind-check|exit=1| Tests 1 failed 
+D13-alerts-drop-severity-check|exit=1| Tests 1 failed 
+D14-alerts-drop-count-check|exit=1| Tests 1 failed 
+D15-sessions-drop-end-check|exit=1| Tests 1 failed 
+D16-sessions-drop-end-reason-check|exit=1| Tests 1 failed 
+schema identical after restore (/tmp/claude-0/-home-user-gani-platform-chat/88378966-bcca-58d6-9782-a5bf8dd66413/scratchpad/mut-secD)
