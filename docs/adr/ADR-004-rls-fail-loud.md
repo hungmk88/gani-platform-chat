@@ -67,8 +67,9 @@ Không thêm `SECURITY DEFINER` mới trừ khi bất khả kháng. Mỗi hàm t
 | `app.channel_refresh_due_orgs` | `202611021000` | N173 (công ty có kênh Zalo OA tới hạn làm mới token, B2; chỉ id công ty). `p_before_seconds` do job truyền, cho phép đổi ngưỡng theo cấu hình worker. Hàm thứ 17, anh chấp nhận 31/10 có điều kiện; chờ cố vấn cùng 16 hàm kia (#386) |
 | `app.outbound_pending_orgs` | `202611071000` | N185 (công ty có bản giao `pending` tới hạn hoặc thuê quá hạn, cho worker gửi tin ra kênh O2; chỉ id công ty; cùng khuôn `app.inbound_pending_orgs`). Hàm thứ 18, A duyệt phương án O1 ngày 02/11/2026; chờ cố vấn cùng các hàm trên |
 | `app.after_hours_held_orgs` | `202611091500` | N193 (công ty có hội thoại đang giữ ngoài giờ `after_hours_hold`, cho job thả hội thoại khi workspace mở cửa, T08, C10-4b; chỉ id công ty; cùng khuôn `app.outbound_pending_orgs`). Hàm thứ 19, A duyệt phương án C10-4 ngày 03/11/2026; chờ cố vấn cùng các hàm trên |
+| `app.access_session_org` | `202611092100` | N207 B2 (công ty của phiên truy cập còn chạy của platform operator đang gọi, hoặc NULL: phiên của người gọi, chưa hết hạn, chưa kết thúc, người gọi còn là operator; không trả `reason` hay gì khác). Hàm thứ 20, A duyệt 07/11/2026 (P11). **Chỉ `auth_role`** được gọi (middleware tenant chạy bằng pool `auth_role` trước khi có tenant context): mở rộng bề mặt của `auth_role` thêm đúng một câu hỏi có/không về một phiên; `app_role`, `support_role` không gọi được (spec kiểm 42501). Mỗi điều kiện có một test và một mutant riêng. Chờ cố vấn cùng các hàm trên |
 
-`packages/db/test/security-definer.spec.ts` so tập hàm thật (19 hàm, 03/11/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
+`packages/db/test/security-definer.spec.ts` so tập hàm thật (20 hàm, 07/11/2026) với danh sách này và kiểm mỗi hàm khóa `search_path`: thêm hàm mà không sửa danh sách thì test đỏ (N125).
 
 **Xóa user bỏ dở dùng `migration_role` qua `PendingUserCleanupJob`**, không thêm hàm `SECURITY DEFINER` để xóa (spec §3.7).
 
