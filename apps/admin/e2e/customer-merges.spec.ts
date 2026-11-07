@@ -82,17 +82,17 @@ test('an Owner reads the customers that may be the same one, and the merges into
   const merges = section(page, 'Lịch sử gộp').getByRole('listitem');
   await expect(merges).toHaveCount(2);
   await expect(merges.nth(0)).toHaveText(
-    '“An (Zalo cũ)” gộp vào khách này · 14:05 07/11/2026Người gộp: Lan',
+    '“An (Zalo cũ)” gộp vào khách này · 14:05 07/11/2026Người gộp: LanTách… An (Zalo cũ)',
   );
   await expect(merges.nth(1)).toHaveText(
     '“Khách chưa có tên” gộp vào khách này · 09:12 05/11/2026Người gộp: …a1b2 · Đã tách 10:00 06/11/2026',
   );
   await expect(merges.nth(1).locator('abbr')).toHaveAttribute('title', 'Nhân viên chưa có tên');
-  // An Owner may merge each (PR B1); unmerging comes with PR B2.
+  // An Owner may merge each (PR B1) and unmerge only the merge not undone yet (PR B2).
   await expect(
     section(page, 'Khách có thể trùng').getByRole('button', { name: /^Gộp…/ }),
   ).toHaveCount(2);
-  await expect(page.getByRole('button', { name: /Tách/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Tách…/ })).toHaveCount(1);
   await expect(page.getByText('Không áp dụng AI ở màn này.')).toBeVisible();
   await expectAccessible(page);
 });
