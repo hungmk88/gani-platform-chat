@@ -28,7 +28,9 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
     hoàn tác): DEV tự merge sau khi required check xanh.
   - Tầng 3 — thao tác không hoàn tác được: CEO merge sau khi DEV gửi "Sẵn sàng merge" kèm HEAD + job +
     `mergeable_state = clean`, và CEO comment phê duyệt vào PR trước khi bấm merge.
-    - FE: xóa dữ liệu khách (B2), hạ mức tự chủ (màn 2).
+    - FE (CEO brief 167, 169, 07/11/2026): **chỉ thao tác không hoàn tác được**: xóa dữ liệu khách (#23 B2), đóng sự cố bảo
+      mật (#29 B2), gộp khách (J3 B1), chuyển AI sang môi trường chính thức (production, #26 B2). Tách khách (J3 B2) và hạ mức
+      tự chủ (#27 PR B) là **tầng 2** (hoàn tác được: gộp lại, nâng lại).
     - BE: do BE lead định nghĩa trong tài liệu BE. Tầng 3 của BE (migration xóa dữ liệu, đổi schema phá vỡ, …) do BE lead định
       nghĩa trong tài liệu BE; nguyên tắc áp dụng ngay từ khi luật có hiệu lực.
 - Kèm theo phân tầng (CEO 31/10). 5 dòng dưới đây là chi tiết bắt buộc của tầng 1/2, không phải tùy chọn:

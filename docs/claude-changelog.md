@@ -2,6 +2,15 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 07/11/2026: phân tầng FE chỉ giữ tầng 3 cho thao tác không hoàn tác được (ký A (CEO), brief 167, 169)
+
+- "Phân tầng merge", dòng FE: tầng 3 chỉ còn xóa dữ liệu khách (#23 B2), đóng sự cố bảo mật (#29 B2), gộp khách (J3 B1),
+  chuyển AI sang production (#26 B2). Tách khách (J3 B2) và hạ mức tự chủ (#27 PR B) chuyển sang tầng 2 (hoàn tác được).
+  Trước đó dòng FE ghi "xóa dữ liệu khách (B2), hạ mức tự chủ (màn 2)".
+- Cùng brief 167 (đã áp dụng, không đổi chữ trong `CLAUDE.md` vì luật hiện hành đã có): tầng 1 code bật auto-merge khi còn
+  check chờ; 5 mục sau merge gửi gộp cuối phiên; tối đa 4 nhánh song song; tầng 2 heads-up 30 phút rồi DEV tự merge.
+- `docs/ui/danh-sach-man-M11.md`: #9 "Gộp khách" đã gộp vào #8, không route riêng (brief 169).
+
 ## 07/11/2026: bảng job thêm `.claude/**` và `.json` trong `docs/ui/` (ký A (CEO), brief 140, 145)
 
 - Bảng "Job chạy theo loại PR": `.claude/**` chạy như code BE (7 + 2, như #636, #639, #643); PR chỉ docs có file không phải

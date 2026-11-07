@@ -26,7 +26,7 @@ Cách đếm: **Màn** = một đường dẫn riêng. **Tab** = một phần tr
 | 6 | Hộp thư (3 cột) | `/inbox`, `/inbox/[conversationId]` | C1–C11, C20, B3, E1, L1, P6 | Inbox | Màn lớn | 1 |
 | 7 | Danh sách khách | `/customers` | J1, J2, J4, J5, J6 | Khách hàng | Màn | 1 |
 | 8 | Hồ sơ khách | `/customers/[id]` | J1, J2, J3, J4, J6, I2 | Khách hàng | Màn | 1 |
-| 9 | Gộp khách (so sánh 2 hồ sơ) | `/customers/merge` | J3 | Khách hàng | Màn | 1 |
+| 9 | Gộp khách (so sánh 2 hồ sơ) | Đã gộp vào #8, không route riêng (hộp thoại "Gộp…"/"Tách…" trong Hồ sơ khách, #653, #654, #656; CEO brief 169) | J3 | Khách hàng | Hộp thoại trong #8 | 1 |
 | 10 | Nhập khách từ file | `/customers/import` | J5 | Khách hàng | Màn · 3 bước | 1 |
 | 11 | Yêu cầu dữ liệu cá nhân | `/customers/privacy` | P7, P5 (phần xóa) | Khách hàng | Màn | 1 |
 | 12 | Pipeline lead | `/leads` | G1, G2, G3 | Khách hàng | Màn | 1 |
@@ -109,7 +109,7 @@ Cách đếm: **Màn** = một đường dẫn riêng. **Tab** = một phần tr
 | I1–I3 | #14, #15 | I2 cả #8 |
 | J1 | #7, #8, #23 | |
 | J2 | #8 | |
-| J3 | #8, #9 | |
+| J3 | #8, #9 | #9 đã gộp vào #8 (hộp thoại), không route riêng (CEO brief 169) |
 | J4 | #7, #23 | Phần "lưu phân khúc": chờ Q-M8-2 |
 | J5 | #7, #10 | |
 | J6 | #8 | |
