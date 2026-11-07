@@ -1,0 +1,36 @@
+{
+  "session_id": "session_015SNdqZsqMWFgeQMx5cVLsc",
+  "last_brief_received": 138,
+  "last_checkin_utc": "2026-11-07T13:05:31Z",
+  "current_branch": "feat/teams-u85-agent-status-v2",
+  "pending_tasks": [
+    {
+      "id": "U85",
+      "state": "PR #644 draft, Update branch sau #639; kiểm ở máy xanh (unit 375, E2E 299); chờ CI 5 success + 4 skip + clean → tự merge → 5 mục → báo CEO xóa nhánh nháp feat/teams-u85-agent-status"
+    },
+    {
+      "id": "U86",
+      "state": "chưa làm; sau U85: realtime agent_status.changed + conversation.sla_changed (realtime-spec §3), bỏ gói cũ theo aggregateVersion"
+    },
+    {
+      "id": "4-deny",
+      "state": "PR #643 (tầng 3), 5 deny, draft; chờ CI 7 success + 2 skip + clean → 'Sẵn sàng merge' → CEO APPROVED → CEO merge → 5 mục"
+    },
+    {
+      "id": "Q7",
+      "deadline": "10/11 12:00 UTC",
+      "state": "CEO-ACTION-01 hằng số 1 file config FE khi BE trả null; chưa có Q7 lúc hạn → báo CEO"
+    },
+    {
+      "id": "session-state-docs",
+      "state": "PR docs đưa file này vào main (tầng 1 docs)"
+    },
+    {
+      "id": "nhom-B",
+      "state": "sau 12/11 gửi CEO danh sách 6 nhánh nhóm B + feat/teams-u85-agent-status"
+    }
+  ],
+  "open_prs": [643, 644],
+  "last_commit_local": "491b40d",
+  "updated_at": "2026-11-07T14:38:38Z"
+}
