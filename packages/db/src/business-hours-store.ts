@@ -42,7 +42,7 @@ const dayOffColumns = {
   endsOn: workspaceHolidays.endsOn,
 };
 
-/** The week of the workspace, the default one (Monday to Friday 08:00–18:00) while none is set, and its time zone. */
+/** The week of the workspace, the default one (Monday to Friday 08:00–17:30, break 12:00–13:00) while none is set, and its time zone. */
 export async function readWorkingWeek(
   tx: TenantTx,
   workspaceId: string,

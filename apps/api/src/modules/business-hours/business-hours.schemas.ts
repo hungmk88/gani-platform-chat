@@ -52,7 +52,7 @@ export const BusinessHoursSchema = z
   .object({
     /** IANA time zone of the workspace (PATCH /v1/workspaces/{id}); every hour is in it. */
     timezone: z.string(),
-    /** True while the workspace has set no hours: the default week (Monday to Friday 08:00–18:00) applies. */
+    /** True while the workspace has set no hours: the default week (Monday to Friday 08:00–17:30, break 12:00–13:00) applies. */
     isDefault: z.boolean(),
     week: z.array(BusinessDaySchema),
   })

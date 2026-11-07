@@ -4,10 +4,10 @@ import { addDefaultPipeline } from './default-pipeline.js';
 // `tenant:create-workspace` (A2, spec-M8 §A2, N158): a platform operator makes a workspace of an organisation through the deploy
 // pipeline, as for tenant:create-org (N150); there is no POST /v1/workspaces (N157). In one transaction as migration_role: the
 // workspace, every active Owner and Admin of the organisation as its members (else nobody could see its conversations), the default
-// pipeline (six steps and one reason to lose, every template: N200), an audit row and the operator's access log. Run twice with the
-// same slug, the second run is refused and makes nothing.
-// The rest of a template (default flows, SLA, default team, business hours: WorkspaceTemplateService, Brief P16) comes with the tables
-// that hold it; today the template is only recorded (N158).
+// pipeline (six steps and one reason to lose, every template: N200), the default team "Mặc định" (Q7 provisional, N209), an audit row
+// and the operator's access log. Run twice with the same slug, the second run is refused and makes nothing.
+// The rest of a template (default flows: WorkspaceTemplateService, Brief P16) comes with the tables that hold it; the business hours
+// and the SLA are the code's defaults until set (N208, N209); today the template is only recorded (N158).
 
 const TEMPLATES = { b2b: 'b2b_sales', b2c: 'b2c_order', service: 'service' } as const;
 
@@ -81,6 +81,8 @@ export interface CreatedWorkspace {
   /** The default steps and reasons it got (6 and 1). */
   readonly stages: number;
   readonly reasons: number;
+  /** The default team "Mặc định" it got (Q7, N209). */
+  readonly defaultTeamId: string;
 }
 
 /**
@@ -115,6 +117,13 @@ export async function createWorkspace(
     [workspaceId, orgId, input.slug, input.name, input.template, input.timezone],
   );
   const pipeline = await addDefaultPipeline(client, orgId, workspaceId, newId);
+  // One default team a workspace (Q7 provisional, N209): the team of every channel that names none (N161). No members: who joins it
+  // is the Owner's or Admin's choice (PUT /v1/teams/{id}/members).
+  const defaultTeamId = newId();
+  await client.query(
+    `INSERT INTO public.teams (id, org_id, workspace_id, name, slug, is_default) VALUES ($1, $2, $3, 'Mặc định', 'mac-dinh', true)`,
+    [defaultTeamId, orgId, workspaceId],
+  );
   const leaders = await client.query<{ user_id: string }>(
     `SELECT user_id FROM public.org_members
      WHERE org_id = $1 AND role IN ('owner', 'admin') AND status = 'active' AND deleted_at IS NULL ORDER BY user_id`,
@@ -142,5 +151,5 @@ export async function createWorkspace(
      VALUES ($1, $2, $3, current_user, 'tenant:create-workspace', now() + interval '1 minute')`,
     [newId(), orgId, operatorId],
   );
-  return { orgId, workspaceId, members: leaders.rows.length, ...pipeline };
+  return { orgId, workspaceId, members: leaders.rows.length, ...pipeline, defaultTeamId };
 }

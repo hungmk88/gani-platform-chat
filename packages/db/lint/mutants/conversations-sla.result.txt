@@ -1,0 +1,9 @@
+# lint/mutants/conversations-sla.sh trên gani_o1, 07/11/2026 (E1, N208): 6/6 bị bắt, baseline 9/9 xanh trước khi chạy. G (thêm quyền sai,
+# không DROP) 2/2; D (4 DROP CHECK, CEO duyệt 07/11) 4/4. Lượt đầu bị loại vì DB nháp còn bảng của P11a-1 làm grants.spec đỏ sẵn.
+G-support-updates-sla|exit=1| Tests 1 failed 
+G-app-updates-sla-wrongly|exit=1| Tests 1 failed 
+D1-drop-paused-reason-check|exit=1| Tests 1 failed 
+D2-drop-remaining-check|exit=1| Tests 1 failed 
+D3-drop-pause-check|exit=1| Tests 1 failed 
+D4-drop-due-check|exit=1| Tests 1 failed 
+schema identical after restore (/tmp/claude-0/-home-user-gani-platform-chat/88378966-bcca-58d6-9782-a5bf8dd66413/scratchpad/mut-slaD)
