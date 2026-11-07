@@ -1,6 +1,7 @@
 import {
   insertAuditLog,
   listCustomerMerges,
+  listMergeSuggestions,
   liveWorkspaceIds,
   loadCustomer,
   loadCustomerForUnmerge,
@@ -120,6 +121,24 @@ export class CustomerMergeController {
     );
     if (rows === null) throw new NotFoundException();
     return { data: rows.map((r) => ({ ...recordView(r), sourceName: r.sourceName })) };
+  }
+
+  /**
+   * Owner, Admin, Manager (who may merge, J3d). Live customers with exactly the same phone or email, at most 20, newest first; never a
+   * part of one. The values are compared in the database and never logged.
+   */
+  @Get(':id/merge-suggestions')
+  async suggestions(@Param('id', new ZodPipe(CustomerIdSchema)) id: string) {
+    const ctx = currentRequestContext();
+    if (!mayMergeCustomers(ctx.role)) throw new ForbiddenException();
+    const rows = await this.database.withTenant(ctx, (tx) => listMergeSuggestions(tx, id));
+    if (rows === null) throw new NotFoundException();
+    return {
+      data: rows.map((r) => ({
+        customer: customerView(r.customer, false),
+        reasons: [...r.reasons],
+      })),
+    };
   }
 
   /**

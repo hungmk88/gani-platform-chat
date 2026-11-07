@@ -4406,6 +4406,43 @@
           "sourceName"
         ]
       },
+      "CustomerMergeSuggestionList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerMergeSuggestion"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "CustomerMergeSuggestion": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "customer",
+          "reasons"
+        ]
+      },
       "AuditLogList": {
         "type": "object",
         "properties": {
@@ -12264,6 +12301,87 @@
           },
           "403": {
             "description": "forbidden: only an Owner or an Admin unmerges (Brief P9); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live customer with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/customers/{id}/merge-suggestions": {
+      "get": {
+        "summary": "Live customers of the organisation with exactly the same phone or email as this one, at most 20, newest first; never a part of a number.",
+        "tags": [
+          "customers"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The suggestions, possibly none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMergeSuggestionList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner, an Admin or a Manager merges customers (N204); or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {

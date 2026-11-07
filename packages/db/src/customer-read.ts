@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, isNull, lt, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
 
 import { cursorString, decodeCursor, encodeCursor } from './cursor.js';
 import { customers } from './schema/customers.js';
@@ -99,6 +99,50 @@ export async function loadCustomer(tx: TenantTx, id: string): Promise<CustomerVi
       ),
     );
   return row ?? null;
+}
+
+/** Why a customer is suggested for a merge (J3d): the same phone (E.164) or the same email, exactly. */
+export type MergeSuggestionReason = 'phone' | 'email';
+
+/**
+ * The live, unmerged customers of the organisation with exactly the same phone or email as `id` (J3d, contract J3-0): never a part of
+ * one, never the customer itself; at most 20, newest first. Null when `id` is not a live customer. The values are compared in SQL and
+ * never logged.
+ */
+export async function listMergeSuggestions(
+  tx: TenantTx,
+  id: string,
+): Promise<
+  { readonly customer: CustomerView; readonly reasons: readonly MergeSuggestionReason[] }[] | null
+> {
+  const self = await loadCustomer(tx, id);
+  if (self === null) return null;
+  const same: SQL[] = [];
+  if (self.phoneE164 !== null) same.push(eq(customers.phoneE164, self.phoneE164));
+  if (self.email !== null) same.push(eq(customers.email, self.email));
+  if (same.length === 0) return [];
+  const rows = await tx
+    .select(view)
+    .from(customers)
+    .where(
+      and(
+        ne(customers.id, self.id),
+        isNull(customers.deletedAt),
+        isNull(customers.mergedInto),
+        or(...same),
+      ),
+    )
+    .orderBy(desc(customers.id))
+    .limit(20);
+  return rows.map((customer) => ({
+    customer,
+    reasons: [
+      ...(self.phoneE164 !== null && customer.phoneE164 === self.phoneE164
+        ? ['phone' as const]
+        : []),
+      ...(self.email !== null && customer.email === self.email ? ['email' as const] : []),
+    ],
+  }));
 }
 
 /**

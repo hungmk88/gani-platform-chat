@@ -211,90 +211,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/customers/{id}/merge-suggestions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Live customers of the organisation with exactly the same phone or email as this one, at most 20, newest first; never a part of a number. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUIDv7. */
-                    id: components["schemas"]["Uuid"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The suggestions, possibly none. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CustomerMergeSuggestionList"];
-                    };
-                };
-                /** @description validation_failed: the id. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: only an Owner, an Admin or a Manager merges customers (N204); or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description not_found: no live customer with this id in the organisation. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/channels/{id}/refresh-token": {
         parameters: {
             query?: never;
@@ -2388,42 +2304,6 @@ export interface components {
          * @description UUIDv7.
          */
         Uuid: string;
-        CustomerMergeSuggestionList: {
-            data: components["schemas"]["CustomerMergeSuggestion"][];
-        };
-        CustomerMergeSuggestion: {
-            customer: components["schemas"]["Customer"];
-            reasons: ("phone" | "email")[];
-        };
-        Customer: {
-            id: components["schemas"]["Uuid"];
-            displayName: string | null;
-            phone: string | null;
-            email: string | null;
-            humanOnly: boolean;
-            identities: components["schemas"]["CustomerIdentity"][];
-            tags: components["schemas"]["CustomerTag"][];
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        CustomerIdentity: {
-            /** @enum {string} */
-            type: "zalo_uid";
-            /**
-             * Format: uuid
-             * @description UUIDv7, or null.
-             */
-            channelAccountId: string | null;
-            /** @enum {string} */
-            verification: "verified" | "unverified" | "sales_confirmed";
-        };
-        CustomerTag: {
-            id: components["schemas"]["Uuid"];
-            name: string;
-            hidden: boolean;
-        };
         Channel: {
             id: components["schemas"]["Uuid"];
             /** @enum {string} */

@@ -1,7 +1,6 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-import { planned } from '../../openapi/planned-status.js';
 import { EDGE_ERRORS, IdempotencyHeadersSchema, problemResponse } from '../../openapi/schemas.js';
 import {
   CustomerMergeListSchema,
@@ -17,7 +16,7 @@ import { CustomerIdSchema } from './customers.schemas.js';
  * agent as Brief P9 line 443 says, because a Sales or Support sees only the tickets and leads of their workspaces and would leave a
  * merge half done); the merge reaches every live workspace of the organisation. Unmerging and the list of merges are Owner and Admin
  * (Brief P9 line 464). A merged customer is hidden: GET /v1/customers leaves it out and GET /v1/customers/{id} answers 404.
- * Merge, unmerge and the list are served (J3c); the suggestions stay planned for S4 until J3d.
+ * Merge, unmerge and the list are served from J3c, the suggestions from J3d.
  */
 const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
 const tags = ['customers'];
@@ -30,7 +29,7 @@ const unmergers = problemResponse(
 );
 const byId = { params: z.object({ id: CustomerIdSchema }) };
 
-/** Merge, unmerge and the list of merges (J3c): served. */
+/** Merge, unmerge, the list of merges (J3c) and the suggestions (J3d): served. */
 export function registerCustomerMerges(registry: OpenAPIRegistry): void {
   const unknown = problemResponse('not_found: no such customer in the organisation.');
 
@@ -98,12 +97,7 @@ export function registerCustomerMerges(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
-}
-
-/** The suggestions of merges (J3d): planned for S4. */
-export function registerCustomerMergeSuggestions(registry: OpenAPIRegistry): void {
   registry.registerPath({
-    ...planned('S4'),
     method: 'get',
     path: '/v1/customers/{id}/merge-suggestions',
     summary:
