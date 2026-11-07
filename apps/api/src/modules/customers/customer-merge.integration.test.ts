@@ -288,3 +288,40 @@ describe('GET /v1/customers/{id}/merges', () => {
     expect((await merges('stranger', t.id)).status).toBe(404);
   });
 });
+
+describe('GET /v1/customers/{id}/merge-suggestions (J3d)', () => {
+  const contact = async (phone: string | null, email: string | null) => {
+    const { id } = await customer();
+    await q('UPDATE customers SET phone_e164 = $1, email = $2 WHERE id = $3', [phone, email, id]);
+    return id;
+  };
+  const suggest = (key: string, id: string) =>
+    call(key, 'GET', `/v1/customers/${id}/merge-suggestions`);
+
+  it('suggests the same phone, email or both exactly, newest first, to who may merge only', async () => {
+    const self = await contact('+84933333333', 'goi.y@example.test');
+    const byPhone = await contact('+84933333333', null);
+    const byEmail = await contact(null, 'goi.y@example.test');
+    const byBoth = await contact('+84933333333', 'goi.y@example.test');
+    await contact('+8493333333', 'goi.y@example.tes'); // a part of each: never
+    await q('UPDATE customers SET phone_e164 = $1 WHERE id = $2', ['+84933333333', THEIRS]);
+    for (const role of ROLES) {
+      const res = await suggest(role, self);
+      expect(res.status, role).toBe(['owner', 'admin', 'manager'].includes(role) ? 200 : 403);
+      if (res.status !== 200) continue;
+      const rows = res.body['data'] as {
+        customer: { id: string; phone: string };
+        reasons: string[];
+      }[];
+      expect(rows.map((r) => [r.customer.id, r.reasons])).toEqual([
+        [byBoth, ['phone', 'email']],
+        [byEmail, ['email']],
+        [byPhone, ['phone']],
+      ]);
+      expect(rows[0]?.customer.phone).toBe('+84933333333');
+    }
+    expect((await suggest('owner', uuidv7())).status).toBe(404);
+    expect((await suggest('owner', THEIRS)).status).toBe(404);
+    expect((await suggest('stranger', self)).status).toBe(404);
+  });
+});

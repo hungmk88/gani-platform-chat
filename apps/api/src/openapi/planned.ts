@@ -4,7 +4,6 @@ import { registerAgentStatus } from '../modules/agent-status/agent-status.openap
 import { registerAi } from '../modules/ai/ai.openapi.js';
 import { registerAutonomy } from '../modules/autonomy/autonomy.openapi.js';
 import { registerChannelWrites } from '../modules/channels/channels.openapi.js';
-import { registerCustomerMergeSuggestions } from '../modules/customers/customer-merge.openapi.js';
 import { registerFeatureFlags } from '../modules/feature-flags/feature-flags.openapi.js';
 import { registerOverview } from '../modules/overview/overview.openapi.js';
 import { registerPlatform } from '../modules/platform/platform.openapi.js';
@@ -18,7 +17,6 @@ import { registerSecurity } from '../modules/security/security.openapi.js';
 
 const REGISTER_PLANNED: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerAgentStatus,
-  registerCustomerMergeSuggestions,
   registerChannelWrites,
   registerOverview,
   registerFeatureFlags,
