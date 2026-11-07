@@ -7,6 +7,7 @@ import { RetryAction } from '../retry-button';
 import { TeamChannelsDialog } from './team-channels-dialog';
 import { EndTeamDialog, TeamDialog } from './team-dialogs';
 import { TeamMembersDialog } from './team-members-dialog';
+import { TeamStatusDialog } from './team-status-dialog';
 import { teamsPath, type Team, type TeamList } from './teams';
 
 const badge = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
@@ -15,7 +16,8 @@ const button = 'rounded-input border border-border-strong px-3 py-1';
 /**
  * The teams of the workspace being worked in (#20, `GET /v1/teams?workspaceId=`, N160), by name; each changed (`TeamDialog`),
  * given its people (`TeamMembersDialog`) and its channels (`TeamChannelsDialog`, not the default team: what no team answers is
- * its already), or ended (`EndTeamDialog`) from its row. `readOnly` (a Manager): its own teams, no column of actions.
+ * its already), or ended (`EndTeamDialog`) from its row; each row also opens its people's status (`TeamStatusDialog`, U85).
+ * `readOnly` (a Manager): its own teams, the status only.
  */
 export function TeamTable({ workspaceId, readOnly }: { workspaceId: string; readOnly: boolean }) {
   const list = useApiQuery<TeamList>(['teams', workspaceId], teamsPath(workspaceId));
@@ -23,6 +25,7 @@ export function TeamTable({ workspaceId, readOnly }: { workspaceId: string; read
   const [ending, setEnding] = useState<Team | null>(null);
   const [staffing, setStaffing] = useState<Team | null>(null);
   const [routing, setRouting] = useState<Team | null>(null);
+  const [watching, setWatching] = useState<Team | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   return (
@@ -59,11 +62,9 @@ export function TeamTable({ workspaceId, readOnly }: { workspaceId: string; read
                     {t}
                   </th>
                 ))}
-                {readOnly ? null : (
-                  <th scope="col" className="p-2">
-                    <span className="sr-only">Thao tác</span>
-                  </th>
-                )}
+                <th scope="col" className="p-2">
+                  <span className="sr-only">Thao tác</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -78,60 +79,73 @@ export function TeamTable({ workspaceId, readOnly }: { workspaceId: string; read
                   </td>
                   <td className="p-2">{t.description ?? '—'}</td>
                   <td className="p-2">{t.memberCount}</td>
-                  {readOnly ? null : (
-                    <td className="p-2">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className={button}
-                          aria-label={`Sửa team ${t.name}`}
-                          onClick={() => {
-                            setNotice(null);
-                            setEditing(t);
-                          }}
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          type="button"
-                          className={button}
-                          aria-label={`Người của team ${t.name}`}
-                          onClick={() => {
-                            setNotice(null);
-                            setStaffing(t);
-                          }}
-                        >
-                          Người
-                        </button>
-                        {t.isDefault ? null : (
+                  <td className="p-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={button}
+                        aria-label={`Trạng thái của team ${t.name}`}
+                        onClick={() => {
+                          setNotice(null);
+                          setWatching(t);
+                        }}
+                      >
+                        Trạng thái
+                      </button>
+                      {readOnly ? null : (
+                        <>
                           <button
                             type="button"
                             className={button}
-                            aria-label={`Kênh của team ${t.name}`}
+                            aria-label={`Sửa team ${t.name}`}
                             onClick={() => {
                               setNotice(null);
-                              setRouting(t);
+                              setEditing(t);
                             }}
                           >
-                            Kênh
+                            Sửa
                           </button>
-                        )}
-                        {t.isDefault ? null : (
                           <button
                             type="button"
                             className={button}
-                            aria-label={`Kết thúc team ${t.name}`}
+                            aria-label={`Người của team ${t.name}`}
                             onClick={() => {
                               setNotice(null);
-                              setEnding(t);
+                              setStaffing(t);
                             }}
                           >
-                            Kết thúc…
+                            Người
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+                          {t.isDefault ? null : (
+                            <button
+                              type="button"
+                              className={button}
+                              aria-label={`Kênh của team ${t.name}`}
+                              onClick={() => {
+                                setNotice(null);
+                                setRouting(t);
+                              }}
+                            >
+                              Kênh
+                            </button>
+                          )}
+                          {t.isDefault ? null : (
+                            <button
+                              type="button"
+                              className={button}
+                              aria-label={`Kết thúc team ${t.name}`}
+                              onClick={() => {
+                                setNotice(null);
+                                setEnding(t);
+                              }}
+                            >
+                              Kết thúc…
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -161,6 +175,9 @@ export function TeamTable({ workspaceId, readOnly }: { workspaceId: string; read
           onClose={() => setStaffing(null)}
           onDone={(n) => setNotice(`Đã lưu người của team ${staffing.name} (${n} người).`)}
         />
+      ) : null}
+      {watching ? (
+        <TeamStatusDialog key={watching.id} team={watching} onClose={() => setWatching(null)} />
       ) : null}
       {routing ? (
         <TeamChannelsDialog
