@@ -2,6 +2,7 @@
 // Kept out of React so every rule is tested: a packet may come twice or late, so nothing older replaces something newer.
 import type { InfiniteData } from '@tanstack/react-query';
 
+import type { AgentStatus } from '../agent-status';
 import type { components } from '../api/schema';
 import type { Message } from '../inbox/messages';
 
@@ -36,6 +37,60 @@ export interface MessageCreated {
   readonly body?: string | null;
   readonly platformSentAt?: string | null;
   readonly createdAt: string;
+}
+
+/** An agent's status changed (U86, planned S4): to `user:{userId}` and `ws:{wsId}`; the rest is `AgentStatus` of U82. */
+export interface AgentStatusChanged extends AgentStatus {
+  readonly userId: string;
+}
+/** A conversation's SLA changed (U86, planned S4): to `conv:{id}` and `ws:{wsId}`; `sla` is `Conversation.sla` of U81. */
+export interface SlaChanged {
+  readonly conversationId: string;
+  readonly sla: Conversation['sla'];
+}
+
+/**
+ * Whether a packet is newer than every one seen for its aggregate (`key`), noting it if so (spec §3: a packet may come twice or
+ * out of order; the client drops one whose `aggregateVersion` is not above the one it has). For the packets of U86, whose `data`
+ * carries no version of its own.
+ */
+export function fresh(seen: Map<string, number>, key: string, aggregateVersion: number): boolean {
+  if (aggregateVersion <= (seen.get(key) ?? -Infinity)) return false;
+  seen.set(key, aggregateVersion);
+  return true;
+}
+
+/** The signed-in agent's own status from a packet about them; one about someone else leaves it as it is. */
+export function withAgentStatus(
+  s: AgentStatus | undefined,
+  d: AgentStatusChanged,
+  me: string,
+): AgentStatus | undefined {
+  if (d.userId !== me) return s;
+  return { status: d.status, since: d.since, reason: d.reason };
+}
+
+/** The conversation with the SLA of the packet (only that field: the rest is not in the packet). */
+export function withSla<C extends { readonly id: string; readonly sla?: Conversation['sla'] }>(
+  c: C | undefined,
+  d: SlaChanged,
+): C | undefined {
+  return c && c.id === d.conversationId ? { ...c, sla: d.sla } : c;
+}
+
+/** Pages of a list of conversations with that one's SLA changed; anything else under the key (not pages of rows) is left. */
+export function withSlaInPages(value: unknown, d: SlaChanged): unknown {
+  const pages = (value as { pages?: unknown } | undefined)?.pages;
+  if (!Array.isArray(pages)) return value;
+  let changed = false;
+  const next = (pages as { data?: unknown }[]).map((p) => {
+    const rows = p?.data;
+    if (!Array.isArray(rows) || !rows.some((r: { id?: string }) => r?.id === d.conversationId))
+      return p;
+    changed = true;
+    return { ...p, data: (rows as { id: string }[]).map((r) => withSla(r, d)) };
+  });
+  return changed ? { ...(value as object), pages: next } : value;
 }
 
 /** The message of a full packet, or null for the workspace's summary. */

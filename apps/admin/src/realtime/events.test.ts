@@ -2,7 +2,17 @@ import type { InfiniteData } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 
 import type { components } from '../api/schema';
-import { lastSequence, messageOf, readAgain, withMessage, withState } from './events';
+import {
+  fresh,
+  lastSequence,
+  messageOf,
+  readAgain,
+  withAgentStatus,
+  withMessage,
+  withSla,
+  withSlaInPages,
+  withState,
+} from './events';
 
 type Page = components['schemas']['MessagePage'];
 const msg = (n: number) => ({
@@ -130,5 +140,63 @@ describe('readAgain', () => {
     const read = () => (calls++, Promise.reject(new Error('500')));
     await expect(readAgain(read, noWait)).resolves.toBeUndefined();
     expect(calls).toBe(3);
+  });
+});
+
+describe('fresh (U86: the packets without a version of their own)', () => {
+  it('takes a newer packet per aggregate, drops the same one again and an older one', () => {
+    const seen = new Map<string, number>();
+    expect(fresh(seen, 'agent:u1', 3)).toBe(true);
+    expect(fresh(seen, 'agent:u1', 3)).toBe(false);
+    expect(fresh(seen, 'agent:u1', 2)).toBe(false);
+    expect(fresh(seen, 'agent:u2', 1)).toBe(true);
+    expect(fresh(seen, 'agent:u1', 4)).toBe(true);
+  });
+});
+
+describe('withAgentStatus', () => {
+  const own = { status: 'online' as const, since: 't0', reason: 'manual' as const };
+  const packet = (userId: string) => ({
+    userId,
+    status: 'offline' as const,
+    since: 't1',
+    reason: 'disconnected' as const,
+  });
+  it('is the new status of the signed-in agent, without the userId', () => {
+    expect(withAgentStatus(own, packet('me'), 'me')).toEqual({
+      status: 'offline',
+      since: 't1',
+      reason: 'disconnected',
+    });
+    expect(withAgentStatus(undefined, packet('me'), 'me')).toMatchObject({ status: 'offline' });
+  });
+  it("leaves one's own status for a packet about someone else", () => {
+    expect(withAgentStatus(own, packet('u2'), 'me')).toBe(own);
+  });
+});
+
+describe('withSla, withSlaInPages', () => {
+  const sla = { dueAt: '2026-11-07T03:00:00Z', pausedReason: null };
+  const row = (id: string) => ({ id, state: 'HUMAN_WAITING_Q', sla: null });
+  it('sets the SLA of that conversation only, null included', () => {
+    expect(withSla(row('c1'), { conversationId: 'c1', sla })).toEqual({ ...row('c1'), sla });
+    const other = row('c2');
+    expect(withSla(other, { conversationId: 'c1', sla })).toBe(other);
+    expect(withSla({ ...row('c1'), sla }, { conversationId: 'c1', sla: null })?.sla).toBeNull();
+    expect(withSla(undefined, { conversationId: 'c1', sla })).toBeUndefined();
+  });
+  it('changes the row in the pages of a list and leaves what is not pages of rows', () => {
+    const list = {
+      pages: [{ data: [row('c2')] }, { data: [row('c1'), row('c3')] }],
+      pageParams: [],
+    };
+    const next = withSlaInPages(list, { conversationId: 'c1', sla }) as typeof list;
+    expect(next.pages[1]?.data[0]?.sla).toEqual(sla);
+    expect(next.pages[1]?.data[1]).toBe(list.pages[1]?.data[1]);
+    expect(next.pages[0]).toBe(list.pages[0]);
+    expect(withSlaInPages(list, { conversationId: 'c9', sla })).toBe(list);
+    const channels = { data: ['zalo'] };
+    expect(withSlaInPages(channels, { conversationId: 'c1', sla })).toBe(channels);
+    expect(withSlaInPages(undefined, { conversationId: 'c1', sla })).toBeUndefined();
   });
 });
