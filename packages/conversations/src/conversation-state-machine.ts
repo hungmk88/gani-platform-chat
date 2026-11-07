@@ -36,7 +36,7 @@ import {
   MissingExpectedVersionError,
   VersionConflictError,
 } from './errors.js';
-import { OutboxWriter, conversationOutboxEvent } from './outbox-writer.js';
+import { OutboxWriter, conversationOutboxEvent, slaChangedOutboxEvent } from './outbox-writer.js';
 
 // prettier-ignore
 export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent, readWorkingWeek, listDaysOff, setConversationSla };
@@ -174,8 +174,8 @@ export class ConversationStateMachine {
         next: decision.next,
       });
       if (written) {
-        await this.keepSla(tx, row, written, timeOf(event, this.clock));
-        await this.record(tx, toRecord(written), row, decision, options);
+        const slaMoved = await this.keepSla(tx, row, written, timeOf(event, this.clock));
+        await this.record(tx, toRecord(written), row, decision, options, slaMoved);
         return changed(written, decision);
       }
       if (CLAIMS.has(decision.transition))
@@ -217,10 +217,10 @@ export class ConversationStateMachine {
     before: ConversationRow,
     after: ConversationRow,
     at: Date,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const had = slaOf(before);
     const to = after.state as ConversationState;
-    if (had === null && (to === 'BOT_ACTIVE' || to === 'CLOSED')) return;
+    if (had === null && (to === 'BOT_ACTIVE' || to === 'CLOSED')) return false;
     const hours = await this.store.readWorkingWeek(tx, after.workspaceId);
     if (!hours) throw new ConversationNotFoundError();
     const daysOff = await this.store.listDaysOff(
@@ -230,7 +230,9 @@ export class ConversationStateMachine {
     );
     const schedule = { week: hours.week, daysOff, timeZone: hours.timezone };
     const next = slaAfterTransition(had, before.state as ConversationState, to, at, schedule);
-    if (!sameSla(had, next)) await this.store.setConversationSla(tx, after.id, next);
+    if (sameSla(had, next)) return false;
+    await this.store.setConversationSla(tx, after.id, next);
+    return true;
   }
 
   // prettier-ignore
@@ -240,9 +242,12 @@ export class ConversationStateMachine {
     from: ConversationRow | null,
     d: { transition: TransitionId; history: string; next: ConversationSnapshot; effects: readonly ConversationEffect[] },
     by: { actor: Actor; traceId: string; detail?: Readonly<Record<string, string>> },
+    slaMoved = false,
   ): Promise<void> {
     const fact = { conversationId: row.id, workspaceId: row.workspaceId, version: row.version, transition: d.transition, from, to: d.next, actor: by.actor, traceId: by.traceId };
     for (const effect of d.effects) await this.outbox.add(tx, conversationOutboxEvent(effect, fact));
+    // After the effects of the transition, so a client sees the new state before the new SLA (E4a, U86).
+    if (slaMoved) await this.outbox.add(tx, slaChangedOutboxEvent({ conversationId: row.id, workspaceId: row.workspaceId, version: row.version, actor: by.actor, traceId: by.traceId }));
     await this.store.insertConversationEvent(tx, {
       id: uuidv7(), conversationId: row.id, eventType: d.history, fromState: from?.state ?? null, toState: d.next.state,
       fromHold: from?.afterHoursHold ?? null, toHold: d.next.afterHoursHold, actorKind: by.actor.kind, actorId: by.actor.id ?? null,

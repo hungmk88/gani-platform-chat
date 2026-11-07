@@ -231,7 +231,8 @@ describe('one transaction: the message, its outbox row and its state change stan
       assigned: null,
     });
     expect(done.events).toBe(before.events + 1);
-    expect(done.outbox).toBe(before.outbox + 2);
+    // message.created, state_changed and the SLA started again from 0 (T11, E3-1, E4a).
+    expect(done.outbox).toBe(before.outbox + 3);
     expect(done.lastMessageAt).not.toBeNull();
     expect(done.lastCustomerAt).not.toBeNull();
   });
