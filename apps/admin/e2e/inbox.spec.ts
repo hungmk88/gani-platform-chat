@@ -36,7 +36,10 @@ test('the filters live in the URL and ask the API again', async ({ page }) => {
   await page.getByRole('button', { name: 'Chưa ai nhận' }).click();
   await expect(page).toHaveURL('/inbox?assignee=none');
   await expect(list(page)).toHaveCount(2);
-  await page.getByLabel('Trạng thái').selectOption({ label: 'Ngoài giờ, bot đang giữ' });
+  await page
+    .getByRole('main')
+    .getByLabel('Trạng thái')
+    .selectOption({ label: 'Ngoài giờ, bot đang giữ' });
   await expect(page).toHaveURL('/inbox?assignee=none&state=hold');
   await expect(list(page)).toHaveCount(1);
   await page.reload();
