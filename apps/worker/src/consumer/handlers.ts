@@ -19,6 +19,7 @@ export function loggingHandlers(log: Logger): EventHandlers {
     'message.created': consumed,
     'conversation.created': consumed,
     'conversation.state_changed': consumed,
+    'conversation.sla_changed': consumed,
     'conversation.assigned': consumed,
   };
 }

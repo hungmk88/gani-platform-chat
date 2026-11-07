@@ -423,14 +423,18 @@ describe('the life of a conversation, event by event', () => {
       ['conversation.created', 0],
       ['conversation.state_changed', 1],
       ['conversation.handoff_requested', 1],
+      ['conversation.sla_changed', 1],
       ['conversation.state_changed', 2],
       ['conversation.assigned', 2],
       ['conversation.state_changed', 3],
+      ['conversation.sla_changed', 3],
       ['conversation.state_changed', 4],
+      ['conversation.sla_changed', 4],
       ['conversation.state_changed', 5],
+      ['conversation.sla_changed', 5],
     ]);
     expect(outbox.every((e) => e.workspace_id === WA)).toBe(true);
-    expect(outbox[4]?.payload).toEqual({ conversationId: id, assignedUserId: agent });
+    expect(outbox[5]?.payload).toEqual({ conversationId: id, assignedUserId: agent });
     expect(await stored(id)).toMatchObject({
       state: 'CLOSED',
       version: 5,
@@ -467,7 +471,8 @@ describe('atomicity and isolation', () => {
       insertConversationEvent: () => Promise.reject(new Error('event failed')),
     });
     await expect(needsHuman(failing, id)).rejects.toThrow('event failed');
-    expect(written).toBe(2);
+    // state_changed, handoff_requested and the new SLA (E4a): three rows written, none left.
+    expect(written).toBe(3);
     expect(await stored(id)).toMatchObject({ state: 'BOT_ACTIVE', version: 0 });
     expect(await eventsOf(id)).toHaveLength(1);
     expect((await outboxOf(id)).map((e) => e.event_type)).toEqual(['conversation.created']);

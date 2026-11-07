@@ -103,6 +103,31 @@ export function conversationOutboxEvent(
   };
 }
 
+/**
+ * The outbox row of a change of the SLA of a conversation (E4a, U86, realtime spec §3): ids only, the worker reads the SLA when it
+ * sends `conversation.sla_changed`. Written in the transaction of the transition that changed it, at the version it left.
+ */
+export function slaChangedOutboxEvent(f: {
+  readonly conversationId: string;
+  readonly workspaceId: string;
+  readonly version: number;
+  readonly actor: { readonly kind: string; readonly id?: string };
+  readonly traceId: string;
+}): NewOutboxEvent {
+  return {
+    id: uuidv7(),
+    workspaceId: f.workspaceId,
+    eventType: 'conversation.sla_changed',
+    aggregateType: 'conversation',
+    aggregateId: f.conversationId,
+    aggregateVersion: f.version,
+    payload: { conversationId: f.conversationId },
+    actorKind: f.actor.kind,
+    actorId: f.actor.id ?? null,
+    traceId: f.traceId,
+  };
+}
+
 /** What a stored message is, once stored: enough to build its outbox row. It names the message, it does not hold it. */
 export interface MessageFact {
   readonly conversationId: string;

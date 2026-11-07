@@ -118,6 +118,24 @@ export function realtimeHandlers(deps: RealtimeDeps): EventHandlers {
     done(event);
   };
 
+  // The SLA of a conversation changed (E4a, U86): read as `Conversation.sla` gives it, for the conversation and its workspace.
+  const slaChanged: EventHandler = async (event, tenant) => {
+    const conversationId = id(fields(event)['conversationId']);
+    const view = await read(tenant, (tx) => loadConversationView(tx, conversationId));
+    if (!view) return log.warn('event_conversation_missing', { eventId: event.id, conversationId });
+    const sla = view.sla && {
+      dueAt: view.sla.dueAt.toISOString(),
+      pausedReason: view.sla.pausedReason,
+    };
+    const rooms = [conv(conversationId), ...(event.workspaceId ? [ws(event.workspaceId)] : [])];
+    await emitter.emit(
+      rooms,
+      'conversation.sla_changed',
+      envelope(event, 'conversation.sla_changed', { conversationId, sla }),
+    );
+    done(event);
+  };
+
   // conversation.assigned, agent.transferred and agent.reassigned are one packet for the client (R4): who holds it, who held it.
   const assigned: EventHandler = async (event) => {
     const p = fields(event);
@@ -143,6 +161,7 @@ export function realtimeHandlers(deps: RealtimeDeps): EventHandlers {
     ...loggingHandlers(log),
     'message.created': messageCreated,
     'conversation.state_changed': stateChanged,
+    'conversation.sla_changed': slaChanged,
     'conversation.assigned': assigned,
     'agent.transferred': assigned,
     'agent.reassigned': assigned,
