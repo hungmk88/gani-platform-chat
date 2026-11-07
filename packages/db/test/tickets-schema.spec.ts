@@ -110,10 +110,12 @@ describe('tickets', () => {
     for (const sql of [
       "UPDATE tickets SET type = 'x'",
       'UPDATE tickets SET sla_due_at = now()',
-      'UPDATE tickets SET customer_id = NULL',
       'UPDATE tickets SET created_by = created_by',
     ])
       expect(await asApp(app, org, [ids.ws], () => sqlState(app.query(sql))), sql).toBe('42501');
+    // customer_id moves with a merge of customers and back with an unmerge (J3, N204).
+    const move = 'UPDATE tickets SET customer_id = customer_id';
+    expect(await asApp(app, org, [ids.ws], () => sqlState(app.query(move)))).toBeUndefined();
   });
 });
 
