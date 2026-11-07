@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { ROLES } from '../nav';
 import {
+  confirmsMerge,
+  mayMerge,
   maySeeMerges,
   maySeeSuggestions,
   mergeLineOf,
+  mergeFailureOf,
+  mergePreview,
   mergesPath,
   REASON,
+  sameCustomer,
   suggestionsPath,
   type MergeEntry,
 } from './merges';
@@ -59,5 +64,47 @@ describe('mergeLineOf', () => {
     expect(line.source).toBe('Khách chưa có tên');
     expect(line.by).toEqual({ text: '…a1b2', title: 'Nhân viên chưa có tên' });
     expect(line.undone).toBe('10:00 08/11/2026');
+  });
+});
+
+describe('merging (PR B1)', () => {
+  const kept = { id: 'k', displayName: 'Nguyễn Văn An', phone: null, email: 'an@example.test' };
+  const merged = {
+    id: 'm',
+    displayName: 'An Nguyễn',
+    phone: '+84900000001',
+    email: 'an2@example.test',
+  };
+
+  it('only an Owner or an Admin gets the button, stricter than the API (CEO brief 153, 155)', () => {
+    expect(ROLES.filter(mayMerge)).toEqual(['owner', 'admin']);
+  });
+
+  it('the merged one fills only what the kept one lacks', () => {
+    expect(mergePreview(kept, merged)).toEqual({
+      displayName: 'Nguyễn Văn An',
+      phone: '+84900000001',
+      email: 'an@example.test',
+    });
+    expect(mergePreview({ ...kept, displayName: null }, merged).displayName).toBe('An Nguyễn');
+  });
+
+  it('GOP, ends trimmed and any case; and never the same customer twice', () => {
+    expect([' gop ', 'GOP', 'Gop'].every(confirmsMerge)).toBe(true);
+    expect(['GO', 'GOPP', 'G O P', ''].some(confirmsMerge)).toBe(false);
+    expect(sameCustomer('k', 'k')).toBe('Phải chọn hai khách khác nhau.');
+    expect(sameCustomer('k', 'm')).toBeNull();
+  });
+
+  it('says why it failed, and which failures leave nothing to try', () => {
+    const f = (code: string, status: number) => mergeFailureOf({ code, status, message: 'API' });
+    expect(f('not_found', 404)).toEqual({
+      text: 'Một trong hai khách không còn (đã gộp hoặc đã xóa). Danh sách gợi ý đã tải lại.',
+      final: true,
+    });
+    expect(f('forbidden', 403)).toEqual({ text: 'API', final: true });
+    expect(f('internal_error', 500).final).toBe(false);
+    expect(f('network_error', 0).text).toContain('không gộp hai lần');
+    expect(f('idempotency_in_progress', 409)).toEqual({ text: 'API', final: false });
   });
 });

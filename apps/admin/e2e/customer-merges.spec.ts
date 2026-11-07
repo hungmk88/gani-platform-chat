@@ -88,8 +88,11 @@ test('an Owner reads the customers that may be the same one, and the merges into
     '“Khách chưa có tên” gộp vào khách này · 09:12 05/11/2026Người gộp: …a1b2 · Đã tách 10:00 06/11/2026',
   );
   await expect(merges.nth(1).locator('abbr')).toHaveAttribute('title', 'Nhân viên chưa có tên');
-  // Read only (PR A): no way to merge or unmerge here yet.
-  await expect(page.getByRole('button', { name: /Gộp|Tách/ })).toHaveCount(0);
+  // An Owner may merge each (PR B1); unmerging comes with PR B2.
+  await expect(
+    section(page, 'Khách có thể trùng').getByRole('button', { name: /^Gộp…/ }),
+  ).toHaveCount(2);
+  await expect(page.getByRole('button', { name: /Tách/ })).toHaveCount(0);
   await expect(page.getByText('Không áp dụng AI ở màn này.')).toBeVisible();
   await expectAccessible(page);
 });
@@ -103,6 +106,8 @@ test('a Manager sees the suggestions but not the history, and never asks for it'
   await page.goto(`/customers/${AN.id}`);
   await expect(section(page, 'Khách có thể trùng').getByRole('listitem')).toHaveCount(2);
   await expect(section(page, 'Lịch sử gộp')).toHaveCount(0);
+  // Stricter than the API (N204 lets a Manager merge): no "Gộp…" (CEO brief 153 item 13, 155 item 3).
+  await expect(page.getByRole('button', { name: /^Gộp…/ })).toHaveCount(0);
   expect(paths).toEqual([`/v1/customers/${AN.id}/merge-suggestions`]);
 });
 

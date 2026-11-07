@@ -128,7 +128,7 @@ export function CustomerProfile({ id, role }: { id: string; role: Role }) {
           <p>Chưa kênh nào biết khách này.</p>
         )}
       </section>
-      {maySeeSuggestions(role) ? <MergeSuggestions id={c.id} /> : null}
+      {maySeeSuggestions(role) ? <MergeSuggestions customer={c} role={role} /> : null}
       {maySeeMerges(role) ? <MergeHistory id={c.id} /> : null}
       <p className="text-12 text-text-muted">
         Hội thoại, lead, ticket, tag và ghi chú của khách: chờ API.
