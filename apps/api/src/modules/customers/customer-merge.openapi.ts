@@ -12,28 +12,29 @@ import {
 } from './customer-merge.schemas.js';
 import { CustomerIdSchema } from './customers.schemas.js';
 
-/**
- * The merge of duplicate customers (J3), planned for S4. Merging and its suggestions are Owner, Admin and Manager (N204: not every
+/*
+ * The merge of duplicate customers (J3, contract J3-0). Merging and its suggestions are Owner, Admin and Manager (N204: not every
  * agent as Brief P9 line 443 says, because a Sales or Support sees only the tickets and leads of their workspaces and would leave a
  * merge half done); the merge reaches every live workspace of the organisation. Unmerging and the list of merges are Owner and Admin
  * (Brief P9 line 464). A merged customer is hidden: GET /v1/customers leaves it out and GET /v1/customers/{id} answers 404.
+ * Merge, unmerge and the list are served (J3c); the suggestions stay planned for S4 until J3d.
  */
-export function registerCustomerMerge(registry: OpenAPIRegistry): void {
-  const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
-  const tags = ['customers'];
-  const when = planned('S4');
-  const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
-  const mergers = problemResponse(
-    'forbidden: only an Owner, an Admin or a Manager merges customers (N204); or a refusal of the edge.',
-  );
-  const unmergers = problemResponse(
-    'forbidden: only an Owner or an Admin unmerges (Brief P9); or a refusal of the edge.',
-  );
-  const byId = { params: z.object({ id: CustomerIdSchema }) };
+const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
+const tags = ['customers'];
+const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
+const mergers = problemResponse(
+  'forbidden: only an Owner, an Admin or a Manager merges customers (N204); or a refusal of the edge.',
+);
+const unmergers = problemResponse(
+  'forbidden: only an Owner or an Admin unmerges (Brief P9); or a refusal of the edge.',
+);
+const byId = { params: z.object({ id: CustomerIdSchema }) };
+
+/** Merge, unmerge and the list of merges (J3c): served. */
+export function registerCustomerMerges(registry: OpenAPIRegistry): void {
   const unknown = problemResponse('not_found: no such customer in the organisation.');
 
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/customers/merge',
     summary:
@@ -61,7 +62,6 @@ export function registerCustomerMerge(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'post',
     path: '/v1/customers/{id}/unmerge',
     summary:
@@ -84,7 +84,6 @@ export function registerCustomerMerge(registry: OpenAPIRegistry): void {
     },
   });
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/customers/{id}/merges',
     summary:
@@ -99,8 +98,12 @@ export function registerCustomerMerge(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+}
+
+/** The suggestions of merges (J3d): planned for S4. */
+export function registerCustomerMergeSuggestions(registry: OpenAPIRegistry): void {
   registry.registerPath({
-    ...when,
+    ...planned('S4'),
     method: 'get',
     path: '/v1/customers/{id}/merge-suggestions',
     summary:

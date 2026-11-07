@@ -28,6 +28,7 @@ export default defineConfig({
         'src/modules/channels/channels.controller.ts',
         'src/modules/quick-replies/quick-replies.controller.ts',
         'src/modules/customers/customers.controller.ts',
+        'src/modules/customers/customer-merge.controller.ts',
         'src/modules/audit/audit.controller.ts',
         'src/modules/bot-flows/bot-flows.controller.ts',
         'src/modules/tickets/tickets.controller.ts',
