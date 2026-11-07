@@ -35,6 +35,7 @@ export {
   MergeTargetMergedError,
   unmergeCustomer,
 } from './customer-merge-store.js';
+export * from './customer-merge-read.js';
 export {
   AUDIT_LOG_MAX_LIMIT,
   type AuditLogEntry,
