@@ -204,6 +204,12 @@ export function channelFilterOf(
 
 export type MeTeam = components['schemas']['MeTeam'];
 
+/**
+ * Who reads the teams of the workspace for the filter (brief 120: Manager and above every team): `GET /v1/teams` (Owner/Admin
+ * every team, a Manager theirs, N160). Sales/Support never call it (brief 84): their own teams from `Me.teams` (U84).
+ */
+export const readsWorkspaceTeams = (role: Role) => ['owner', 'admin', 'manager'].includes(role);
+
 /** The teams the filter offers (U83, U84): the person's own, of the workspace being worked in or of the whole company. */
 export const teamsOf = (teams: readonly MeTeam[], workspaceId: string | null): readonly MeTeam[] =>
   teams.filter((t) => t.workspaceId === null || t.workspaceId === workspaceId);

@@ -16,6 +16,7 @@ import type { components } from '../api/schema';
 import type { Role } from '../nav';
 import { useApiPages, useApiQuery, useScope } from '../query/provider';
 import { RetryAction } from '../retry-button';
+import { teamsPath, type TeamList } from '../teams/teams';
 import { Holder } from './holder';
 import { setNotice, useNotice } from './notice';
 import {
@@ -34,6 +35,7 @@ import {
   paramsOf,
   searchOf,
   STATE_LABEL,
+  readsWorkspaceTeams,
   teamsOf,
   tooFewDigits,
   whenOf,
@@ -81,7 +83,18 @@ export function ConversationList({
   const filter = filterOf(useSearchParams());
   const scope = useScope();
   const now = useClock(); // the SLA chips count from the API's dueAt with the browser's time (U81)
-  const teams = teamsOf(myTeams, scope.workspaceId);
+  // "Team" (U83): Owner/Admin/Manager the workspace's teams (brief 120); Sales/Support their own (`Me.teams`, U84), also while
+  // the workspace's list loads or fails.
+  const leads = readsWorkspaceTeams(role) && !!scope.workspaceId;
+  const wsTeams = useApiQuery<TeamList>(
+    ['teams', scope.workspaceId ?? ''],
+    teamsPath(scope.workspaceId ?? ''),
+    leads,
+  );
+  const teams =
+    leads && wsTeams.data
+      ? wsTeams.data.data.map((t) => ({ id: t.id, name: t.name }))
+      : teamsOf(myTeams, scope.workspaceId);
   const list = useApiPages<Page>(['conversations', filter], (cursor) =>
     listPath(filter, cursor, scope.workspaceId),
   );

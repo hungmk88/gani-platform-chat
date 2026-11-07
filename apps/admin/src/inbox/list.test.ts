@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Role } from '../nav';
+
 import {
   channelChoice,
   channelFilterOf,
@@ -12,6 +14,7 @@ import {
   listPath,
   NO_FILTER,
   paramsOf,
+  readsWorkspaceTeams,
   teamsOf,
   tooFewDigits,
   whenOf,
@@ -195,6 +198,13 @@ describe('customerNameOf', () => {
     expect(customerNameOf({ customer: { id: 'c1', displayName: null } })).toBe('Khách chưa có tên');
     expect(customerNameOf({ customer: { id: 'c1', displayName: ' ' } })).toBe('Khách chưa có tên');
     expect(customerNameOf({ customer: null })).toBe('Khách chưa có tên');
+  });
+});
+
+describe('readsWorkspaceTeams (brief 120)', () => {
+  it('lets Owner, Admin and Manager read the teams of the workspace, never Sales or Support', () => {
+    const roles: Role[] = ['owner', 'admin', 'manager', 'sales', 'support'];
+    expect(roles.map(readsWorkspaceTeams)).toEqual([true, true, true, false, false]);
   });
 });
 
