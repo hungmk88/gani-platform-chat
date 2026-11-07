@@ -60,8 +60,9 @@ export const ConversationSchema = z
      */
     lastMessagePreview: z.string().nullable(),
     /**
-     * Its SLA (U81), the shape of a ticket's (`TicketSla`): always null until U40/U41/Q7 settle how SLA is kept and its thresholds
-     * (waits for the CEO); the Inbox shows no chip until then. Changes later reach the Inbox by `conversation.sla_changed` (U86).
+     * Its SLA (U81; E3, N208, N210), the shape of a ticket's (`TicketSla`): due in working time from the moment a person is needed,
+     * paused while waiting for the customer or outside the hours; null while the bot has it and once closed (Q7 provisional values).
+     * Changes reach the Inbox by `conversation.sla_changed` (U86, E4).
      */
     sla: z
       .object({

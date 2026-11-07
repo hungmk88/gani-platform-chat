@@ -1,4 +1,4 @@
-import { previewOf } from '@gani/domain';
+import { previewOf, SLA_WARNING_SECONDS } from '@gani/domain';
 import {
   and,
   asc,
@@ -7,6 +7,7 @@ import {
   exists,
   gt,
   inArray,
+  isNotNull,
   isNull,
   lt,
   or,
@@ -53,8 +54,14 @@ export interface ConversationView {
   readonly assignee: { readonly id: string; readonly name: string | null } | null;
   /** The line of the Inbox (U30, N169): the text of the last message, a label for another kind, null before any. PII: never logged. */
   readonly lastMessagePreview: string | null;
-  /** Its SLA (U81), as a ticket's: always null until U40/U41/Q7 settle how it is kept (waits for the CEO). */
-  readonly sla: null;
+  /**
+   * Its SLA (U81; E3, N208, N210): when it is due, in working time, and why it is paused; null while the bot has it and once closed.
+   * Q7 provisional values (N208).
+   */
+  readonly sla: {
+    readonly dueAt: Date;
+    readonly pausedReason: 'waiting_customer' | 'outside_hours' | null;
+  } | null;
 }
 
 /**
@@ -96,7 +103,10 @@ export interface ConversationListQuery extends InboxScope {
    * team. A filter, not a right: a team of no such conversation, unknown or deleted, simply matches nothing.
    */
   readonly teamId?: string;
-  /** Its SLA is due soon or overdue (U81): nothing matches until U40/U41/Q7 settle how SLA is kept (waits for the CEO). */
+  /**
+   * Its running SLA is due within the warning (15 minutes, N208) or overdue (E3). A paused one is never in either (E3-2): its clock
+   * stands still, even when nothing was left as it paused.
+   */
   readonly sla?: 'due_soon' | 'overdue';
   readonly cursor?: string;
   /** 1..100 (P9). */
@@ -139,6 +149,8 @@ const view = {
   >`(SELECT nullif(btrim(u.display_name), '') FROM app.org_users u WHERE u.user_id = ${conversations.assignedUserId})`,
   previewKind: conversations.lastMessageKind,
   previewText: conversations.lastMessagePreview,
+  slaDueAt: conversations.slaDueAt,
+  slaPausedReason: conversations.slaPausedReason,
 };
 type Row = Omit<
   ConversationView,
@@ -151,6 +163,8 @@ type Row = Omit<
   readonly assigneeName: string | null;
   readonly previewKind: string | null;
   readonly previewText: string | null;
+  readonly slaDueAt: Date | null;
+  readonly slaPausedReason: string | null;
 };
 
 const shape = (row: Row): ConversationView => {
@@ -162,6 +176,8 @@ const shape = (row: Row): ConversationView => {
     assigneeName,
     previewKind,
     previewText,
+    slaDueAt,
+    slaPausedReason,
     ...rest
   } = row;
   return {
@@ -173,7 +189,16 @@ const shape = (row: Row): ConversationView => {
         : { id: rest.channelAccountId, type: channelType, displayName: channelName },
     assignee: rest.assignedUserId === null ? null : { id: rest.assignedUserId, name: assigneeName },
     lastMessagePreview: previewOf(previewKind, previewText),
-    sla: null,
+    sla:
+      slaDueAt === null
+        ? null
+        : {
+            dueAt: slaDueAt,
+            pausedReason:
+              slaPausedReason === 'waiting_customer' || slaPausedReason === 'outside_hours'
+                ? slaPausedReason
+                : null,
+          },
   };
 };
 const withoutSortKey = ({ sortKey, ...row }: Row & { readonly sortKey: string }) => {
@@ -259,7 +284,15 @@ export async function listConversations(
         WHERE ca.org_id = ${c.orgId} AND ca.id = ${c.channelAccountId}
           AND (ca.team_id = t.id OR (ca.team_id IS NULL AND t.is_default AND t.workspace_id = ca.workspace_id)))`,
     );
-  if (q.sla !== undefined) where.push(sql`false`);
+  // Running SLAs only (E3-2), by the partial index conversations_sla_due_idx; the warning is SLA_WARNING_SECONDS (N208).
+  if (q.sla !== undefined)
+    where.push(
+      isNotNull(c.slaDueAt),
+      isNull(c.slaPausedReason),
+      q.sla === 'overdue'
+        ? sql`${c.slaDueAt} < now()`
+        : sql`${c.slaDueAt} >= now() AND ${c.slaDueAt} <= now() + make_interval(secs => ${SLA_WARNING_SECONDS})`,
+    );
   // Every filter sits in the same WHERE as the keyset below, joined by AND: they narrow before the page is cut, never after it.
   if (q.cursor !== undefined) {
     const fields = decodeCursor(q.cursor);

@@ -21,6 +21,10 @@ export interface ConversationRow {
   readonly afterHoursHold: boolean;
   readonly closedAt: Date | null;
   readonly outcome: string | null;
+  /** The SLA (202611092200, N208): due time, the reason of a pause, what was left of it; all null while it has none. */
+  readonly slaDueAt: Date | null;
+  readonly slaPausedReason: string | null;
+  readonly slaRemainingSeconds: number | null;
 }
 
 /** The columns the state machine owns, as a transition leaves them. */
@@ -76,6 +80,9 @@ const columns = {
   afterHoursHold: conversations.afterHoursHold,
   closedAt: conversations.closedAt,
   outcome: conversations.outcome,
+  slaDueAt: conversations.slaDueAt,
+  slaPausedReason: conversations.slaPausedReason,
+  slaRemainingSeconds: conversations.slaRemainingSeconds,
 };
 
 /** The conversation, or `null` when it does not exist or the tenant context cannot see it (RLS: another org or workspace). */
@@ -164,4 +171,30 @@ export async function setConversationPriority(
     .where(eq(conversations.id, assertUuid(id, 'id')))
     .returning({ id: conversations.id });
   return rows.length === 1;
+}
+
+/** The SLA of a conversation as the state machine keeps it (E3, N208); null: none. */
+export interface ConversationSlaWrite {
+  readonly dueAt: Date;
+  readonly pausedReason: 'waiting_customer' | 'outside_hours' | null;
+  readonly remainingSeconds: number | null;
+}
+
+/**
+ * Sets the SLA of the conversation `id` the tenant sees, in the transaction of the transition that decided it (E3). Not a state, so
+ * outside the guard of the state columns; the CHECKs of 202611092200 keep the three columns together.
+ */
+export async function setConversationSla(
+  tx: TenantTx,
+  id: string,
+  sla: ConversationSlaWrite | null,
+): Promise<void> {
+  await tx
+    .update(conversations)
+    .set({
+      slaDueAt: sla?.dueAt ?? null,
+      slaPausedReason: sla?.pausedReason ?? null,
+      slaRemainingSeconds: sla?.remainingSeconds ?? null,
+    })
+    .where(eq(conversations.id, assertUuid(id, 'id')));
 }
