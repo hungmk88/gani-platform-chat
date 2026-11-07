@@ -19,6 +19,22 @@ test('the name in the header opens the profile with what /v1/me says', async ({ 
   await expect(profile.getByText('Công ty thử', { exact: true })).toBeVisible();
   await expect(profile.getByText('Workspace thử', { exact: true })).toBeVisible();
   await expect(profile.getByText('Sales', { exact: true })).toBeVisible();
+  await expect(profile.getByText('Chưa thuộc team nào', { exact: true })).toBeVisible();
+  await expectAccessible(page);
+});
+
+// U84 (brief 120, tầng 1): the person's own teams from `Me.teams`, with the workspace each belongs to, or the whole company.
+test('the profile lists my teams, each with its workspace or the whole company', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('sales+teams'));
+  await page.goto('/me');
+  const profile = page.getByRole('region', { name: 'Hồ sơ cá nhân' });
+  await expect(profile.getByRole('listitem')).toHaveText([
+    'CSKH · Workspace thử',
+    'Bán sỉ · cả công ty',
+  ]);
+  await expect(profile.getByText('Chưa thuộc team nào')).toHaveCount(0);
   await expectAccessible(page);
 });
 
