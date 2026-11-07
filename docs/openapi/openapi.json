@@ -4233,6 +4233,179 @@
         },
         "additionalProperties": false
       },
+      "CustomerMergeResult": {
+        "type": "object",
+        "properties": {
+          "merge": {
+            "$ref": "#/components/schemas/CustomerMergeRecord"
+          },
+          "target": {
+            "$ref": "#/components/schemas/Customer"
+          }
+        },
+        "required": [
+          "merge",
+          "target"
+        ]
+      },
+      "CustomerMergeRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "sourceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "targetId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "mergedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "mergedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unmergedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "sourceId",
+          "targetId",
+          "mergedBy",
+          "mergedAt",
+          "unmergedAt"
+        ]
+      },
+      "CustomerMerge": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "targetId": {
+            "$ref": "#/components/schemas/Uuid"
+          }
+        },
+        "required": [
+          "sourceId",
+          "targetId"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerUnmergeResult": {
+        "type": "object",
+        "properties": {
+          "merge": {
+            "$ref": "#/components/schemas/CustomerMergeRecord"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "target": {
+            "$ref": "#/components/schemas/Customer"
+          }
+        },
+        "required": [
+          "merge",
+          "source",
+          "target"
+        ]
+      },
+      "CustomerMergeList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerMergeEntry"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "CustomerMergeEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "sourceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "targetId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "mergedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "mergedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unmergedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sourceName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "sourceId",
+          "targetId",
+          "mergedBy",
+          "mergedAt",
+          "unmergedAt",
+          "sourceName"
+        ]
+      },
       "AuditLogList": {
         "type": "object",
         "properties": {
@@ -11785,6 +11958,312 @@
           },
           "403": {
             "description": "forbidden: Marketing and Viewer do not change profiles; or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live customer with this id in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/customers/merge": {
+      "post": {
+        "summary": "Merge the source into the target in one transaction: conversations, identities, tickets, leads and tags move; a custom field or a name, phone or email moves only when the target has none (audited: `customer.merged`, ids only).",
+        "tags": [
+          "customers"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerMerge"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The merge and the target after it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMergeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a field, the same customer twice, or the Idempotency-Key is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner, an Admin or a Manager merges customers (N204); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: the source or the target is not a live, unmerged customer of the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_in_progress",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/customers/{id}/unmerge": {
+      "post": {
+        "summary": "Undo the merge of this customer (the source): exactly the rows the merge moved go back, what was made after it stays with the target (audited: `customer.unmerged`, ids only).",
+        "tags": [
+          "customers"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[!-~]{1,255}$",
+              "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back."
+            },
+            "required": true,
+            "description": "A key the client makes per action (a UUID); sent again with the same request, it gets the first answer back.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The merge, now undone, and both customers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerUnmergeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id, or the Idempotency-Key is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin unmerges (Brief P9); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such customer in the organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_merged: the customer is not merged into another; target_merged: its target was merged in turn, unmerge that first; or idempotency_in_progress.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/customers/{id}/merges": {
+      "get": {
+        "summary": "The merges into this customer, newest first, undone ones too: what the profile offers to unmerge.",
+        "tags": [
+          "customers"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            },
+            "required": true,
+            "description": "UUIDv7.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The merges.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMergeList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner or an Admin unmerges (Brief P9); or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {
