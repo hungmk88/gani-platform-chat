@@ -1,29 +1,13 @@
 {
   "session_id": "session_015SNdqZsqMWFgeQMx5cVLsc",
-  "last_brief_received": 145,
+  "last_brief_received": 153,
   "last_checkin_utc": "2026-11-07T15:06:42Z",
-  "current_branch": "docs/fe-ci-rules",
+  "current_branch": "feat/customer-merge-read",
   "pending_tasks": [
-    {
-      "id": "U85",
-      "state": "xong: #644 merge 14:53:29 (13ce9b8), 5 mục đã gửi"
-    },
-    {
-      "id": "U86",
-      "state": "#646 merge 15:15:53 (cd99ac7), 5 mục đã gửi; xác nhận CI main"
-    },
-    {
-      "id": "4-deny",
-      "state": "xong: #643 CEO merge 15:08:43 (dd14b1a), 5 mục đã gửi"
-    },
     {
       "id": "Q7",
       "deadline": "10/11 12:00 UTC",
       "state": "chưa có dữ liệu thật thì dùng CEO-ACTION-01 (brief 134); file apps/admin/src/config/ceo-action-01.ts chỉ tạo khi có màn cần giá trị mặc định (brief 145)"
-    },
-    {
-      "id": "ci-rules-docs",
-      "state": "PR docs quy tắc CI + file này (brief 145), tầng 1 docs 4+5"
     },
     {
       "id": "nhom-B",
@@ -39,7 +23,7 @@
     },
     {
       "id": "J3",
-      "state": "gộp khách: chờ brief riêng khi BE xong J3c"
+      "state": "Màn gộp khách (brief 153): PR A feat/customer-merge-read (tầng 1, chỉ đọc) → PR B (tầng 3, gộp/tách, B1/B2 nếu > 500 dòng)"
     },
     {
       "id": "checkin",
@@ -47,6 +31,6 @@
     }
   ],
   "open_prs": [],
-  "last_commit_local": "cd99ac7",
-  "updated_at": "2026-11-07T15:22:40Z"
+  "last_commit_local": "a3b4305",
+  "updated_at": "2026-11-07T16:40:24Z"
 }

@@ -122,6 +122,16 @@ export async function routeCustomers(
     phone: c.phone && masked ? maskPhone(c.phone) : c.phone,
     email: c.email && masked ? maskEmail(c.email) : c.email,
   });
+  // J3 (#649, #650): none suggested, none merged, with the API's roles (N204, N206); e2e/customer-merges.spec.ts answers its own.
+  const merge = /^\/v1\/customers\/([^/]+)\/(merge-suggestions|merges)$/.exec(path);
+  if (merge && req.method === 'GET') {
+    const roles = merge[2] === 'merges' ? ['owner', 'admin'] : ['owner', 'admin', 'manager'];
+    if (!roles.includes(session.role ?? ''))
+      return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
+    if (!customers.some((x) => x.id === decodeURIComponent(merge[1] ?? '')))
+      return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
+    return (edge.send(res, 200, { data: [] }), true);
+  }
   // #8 Hồ sơ khách: one customer; another company's or none is a 404 (P9).
   const one = /^\/v1\/customers\/([^/]+)$/.exec(path);
   if (one) {
