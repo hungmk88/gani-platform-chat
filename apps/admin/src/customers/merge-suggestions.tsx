@@ -1,26 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 
+import type { Role } from '../nav';
 import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
-import { nameOf, phoneText } from './customers';
-import { REASON, suggestionsPath, type MergeSuggestionList } from './merges';
+import { nameOf, phoneText, type Customer } from './customers';
+import { MergeDialog } from './merge-dialog';
+import { mayMerge, REASON, suggestionsPath, type MergeSuggestionList } from './merges';
 
 const chip = 'rounded-input bg-bg-subtle px-2 py-1 text-12';
+const button = 'rounded-input border border-border-strong px-3 py-1';
 
 /**
  * "Khách có thể trùng" of #8 (J3d, `GET /v1/customers/{id}/merge-suggestions`, CEO brief 153 PR A): live customers of the company
- * with exactly the same phone or email, at most 20, newest first, as the API answers; read only. Owner, Admin, Manager (N204).
+ * with exactly the same phone or email, at most 20, newest first, as the API answers. Owner, Admin, Manager (N204); "Gộp…" opens
+ * `MergeDialog` (PR B1, tầng 3) for an Owner or an Admin only (`mayMerge`).
  */
-export function MergeSuggestions({ id }: { id: string }) {
+export function MergeSuggestions({ customer, role }: { customer: Customer; role: Role }) {
+  const id = customer.id;
+  const [merging, setMerging] = useState<Customer | null>(null);
   const list = useApiQuery<MergeSuggestionList>(
     ['customer', id, 'merge-suggestions'],
     suggestionsPath(id),
   );
   return (
     <section aria-labelledby="customer-duplicates" className="flex flex-col gap-2">
-      <h2 id="customer-duplicates" className="text-16 font-semibold">
+      <h2 id="customer-duplicates" tabIndex={-1} className="text-16 font-semibold">
         Khách có thể trùng
       </h2>
       {list.isPending ? (
@@ -54,12 +61,20 @@ export function MergeSuggestions({ id }: { id: string }) {
                 Xem hồ sơ
                 <span className="sr-only"> {nameOf(c)}</span>
               </Link>
+              {mayMerge(role) ? (
+                <button type="button" className={button} onClick={() => setMerging(c)}>
+                  Gộp…<span className="sr-only"> {nameOf(c)}</span>
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
       ) : (
         <p>Không thấy khách nào trùng SĐT hoặc email.</p>
       )}
+      {merging ? (
+        <MergeDialog viewed={customer} other={merging} onClose={() => setMerging(null)} />
+      ) : null}
     </section>
   );
 }
