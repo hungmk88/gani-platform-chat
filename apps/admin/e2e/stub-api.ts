@@ -16,7 +16,7 @@ import { attachAgent, type Agent } from './stub-agent';
 import { routeLinks } from './stub-links';
 import { MEMBERS } from './stub-members';
 import { routeAssignees } from './stub-assignees';
-import { byChannel, inboxChannels, u30Body } from './stub-u30';
+import { byChannel, byTeam, inboxChannels, ME_TEAMS, u30Body } from './stub-u30';
 import { routeScreens } from './stub-routes';
 
 export const STUB_PORT = 3000; // API_ORIGIN of the admin when it is not set (next.config.ts, src/me.server.ts)
@@ -150,7 +150,7 @@ function meOf(email: string): Me | null {
             ? [{ id: 'ws-e2e-2', name: 'Workspace hai', contactPhone: null }]
             : []),
         ],
-    teams: [],
+    teams: email.includes('+teams@') ? ME_TEAMS : [],
   };
 }
 
@@ -260,7 +260,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
             (q.get('hold') !== 'true' || c.afterHoursHold) &&
             (!q.get('workspaceId') || c.workspaceId === q.get('workspaceId')) &&
             (!q.has('q') || conversationMatches(c, q.get('q') ?? '')) &&
-            byChannel(q.get('channelId')),
+            byChannel(q.get('channelId')) &&
+            byTeam(q.get('teamId')),
         );
     if (path.endsWith('/channels')) return send(res, 200, { data: inboxChannels(seen) }); // U56, stub-u30.ts
     const from = Number(q.get('cursor') ?? 0);

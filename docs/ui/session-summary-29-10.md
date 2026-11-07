@@ -336,6 +336,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       `GET /v1/teams/{id}/agent-status` và 4 schema; `docs/specs/realtime-spec.md` có `agent_status.changed` và
       `conversation.sla_changed`; HEAD của PR trùng nội dung với squash. CI trước merge 8 success + `terraform` skipped, đúng dòng
       "Lẫn". BE-03 đủ 8/8 (U26, U60 ở #618). FE làm U81 (chip, lọc SLA) trong PR này; tới Q7 `sla` luôn `null`. FE không comment PR BE.
+    - **Sự cố quy trình 06/11 (lần 6) và 06–07/11 (lần 7, nghiêm trọng; brief 119):** sau khi checkpoint `session-state.json` đã có
+      (brief 107), worker vẫn khởi động lại nhiều lần và FE trả "No response requested" **mà không đọc checkpoint**, dù file ghi đúng
+      việc dở. Lần 6: U81 xanh ở máy lúc ~11:08 UTC 06/11, push 16:12 (#630), trễ ~5 giờ, lỡ check-in 12:06 (đọc nhưng không báo),
+      14:06, 16:06. Lần 7: U82 xanh ở máy lúc ~16:56 UTC 06/11 (E2E 292/292), ~8 lần trả lời như vậy, push 07:37 UTC 07/11 (#632),
+      trễ ~14,5 giờ; lỡ 7 check-in (18:06 → 06:06) và lịch nhắc BE-03 18:00; 5 mục #630 gửi trễ. Lũy kế 05–07/11 ~32 giờ (brief
+      119). CEO: không trừ điểm FE, đây là lỗ hổng thiết kế Mức 2 (khởi động lại xóa bộ nhớ nên phiên không biết phải đọc file);
+      escalate vận hành AI (Mức 2.5, Mức 3). FE làm Mức 2.5 phần tự làm được: `.session/CHECKPOINT_README.md` (local); hook
+      `.claude/settings.local.json` in checkpoint vào ngữ cảnh mỗi khi phiên mở lại bị bộ phân loại quyền chặn (tự sửa cấu hình),
+      chờ người cấp quyền. Câu an toàn khi khởi động lại: "Em cần kiểm lại trạng thái".
     - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
       05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
       (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng
