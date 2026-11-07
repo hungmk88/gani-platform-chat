@@ -3,7 +3,10 @@ import {
   insertConversation,
   insertConversationEvent,
   insertOutboxEvent,
+  listDaysOff,
   loadConversation,
+  readWorkingWeek,
+  setConversationSla,
   type ConversationRow,
   type TenantTx,
 } from '@gani/db';
@@ -12,7 +15,12 @@ import {
   CONVERSATION_STATES,
   InvalidTransitionError,
   decide,
+  localTime,
+  sameSla,
+  slaAfterTransition,
   uuidv7,
+  type ConversationSla,
+  type ConversationState,
   type ConversationEffect,
   type ConversationEvent,
   type ConversationSnapshot,
@@ -28,10 +36,10 @@ import {
   MissingExpectedVersionError,
   VersionConflictError,
 } from './errors.js';
-import { OutboxWriter, conversationOutboxEvent } from './outbox-writer.js';
+import { OutboxWriter, conversationOutboxEvent, slaChangedOutboxEvent } from './outbox-writer.js';
 
 // prettier-ignore
-export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent };
+export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent, readWorkingWeek, listDaysOff, setConversationSla };
 /** The functions of the conversation store and of the outbox the state machine writes through; a test passes a fake. */
 export type ConversationStore = typeof conversationStore;
 
@@ -72,6 +80,21 @@ function toRecord(row: ConversationRow): ConversationRecord {
   const { id, workspaceId, version, assignedUserId, afterHoursHold, closedAt } = row;
   return { id, workspaceId, version, snapshot: { state, afterHoursHold, assignedUserId, closedAt, outcome } };
 }
+const slaOf = (row: ConversationRow): ConversationSla | null =>
+  row.slaDueAt === null
+    ? null
+    : {
+        dueAt: row.slaDueAt,
+        pausedReason:
+          row.slaPausedReason === 'waiting_customer' || row.slaPausedReason === 'outside_hours'
+            ? row.slaPausedReason
+            : null,
+        remainingSeconds: row.slaRemainingSeconds,
+      };
+/** When the transition happened (E3-3): the time of the event when it carries one (a customer's message, a close), else the clock. */
+const timeOf = (event: ConversationEvent, clock: () => Date): Date =>
+  'now' in event ? event.now : clock();
+
 // prettier-ignore
 const changed = (row: ConversationRow, d: { transition: TransitionId; effects: readonly ConversationEffect[] }): TransitionOutcome => ({
   kind: 'changed', conversation: toRecord(row), transition: d.transition, effects: d.effects,
@@ -87,6 +110,8 @@ export class ConversationStateMachine {
   constructor(
     private readonly store: ConversationStore = conversationStore,
     private readonly outbox: OutboxWriter = new OutboxWriter(store),
+    /** The clock of a transition whose event carries no time (E3-3): the server's; a test gives a fixed one. */
+    private readonly clock: () => Date = () => new Date(),
   ) {}
 
   /** T01: a new conversation in `workspaceId`, `BOT_ACTIVE`, version 0; of a person of a channel account when `channel` is given. */
@@ -149,7 +174,8 @@ export class ConversationStateMachine {
         next: decision.next,
       });
       if (written) {
-        await this.record(tx, toRecord(written), row, decision, options);
+        const slaMoved = await this.keepSla(tx, row, written, timeOf(event, this.clock));
+        await this.record(tx, toRecord(written), row, decision, options, slaMoved);
         return changed(written, decision);
       }
       if (CLAIMS.has(decision.transition))
@@ -182,6 +208,33 @@ export class ConversationStateMachine {
     });
   }
 
+  /**
+   * The SLA after the transition (E3, N208, N210), written in its transaction: decided by `slaAfterTransition` in the working time of the
+   * workspace, and written only when it changed.
+   */
+  private async keepSla(
+    tx: TenantTx,
+    before: ConversationRow,
+    after: ConversationRow,
+    at: Date,
+  ): Promise<boolean> {
+    const had = slaOf(before);
+    const to = after.state as ConversationState;
+    if (had === null && (to === 'BOT_ACTIVE' || to === 'CLOSED')) return false;
+    const hours = await this.store.readWorkingWeek(tx, after.workspaceId);
+    if (!hours) throw new ConversationNotFoundError();
+    const daysOff = await this.store.listDaysOff(
+      tx,
+      after.workspaceId,
+      localTime(at, hours.timezone).date,
+    );
+    const schedule = { week: hours.week, daysOff, timeZone: hours.timezone };
+    const next = slaAfterTransition(had, before.state as ConversationState, to, at, schedule);
+    if (sameSla(had, next)) return false;
+    await this.store.setConversationSla(tx, after.id, next);
+    return true;
+  }
+
   // prettier-ignore
   private async record(
     tx: TenantTx,
@@ -189,9 +242,12 @@ export class ConversationStateMachine {
     from: ConversationRow | null,
     d: { transition: TransitionId; history: string; next: ConversationSnapshot; effects: readonly ConversationEffect[] },
     by: { actor: Actor; traceId: string; detail?: Readonly<Record<string, string>> },
+    slaMoved = false,
   ): Promise<void> {
     const fact = { conversationId: row.id, workspaceId: row.workspaceId, version: row.version, transition: d.transition, from, to: d.next, actor: by.actor, traceId: by.traceId };
     for (const effect of d.effects) await this.outbox.add(tx, conversationOutboxEvent(effect, fact));
+    // After the effects of the transition, so a client sees the new state before the new SLA (E4a, U86).
+    if (slaMoved) await this.outbox.add(tx, slaChangedOutboxEvent({ conversationId: row.id, workspaceId: row.workspaceId, version: row.version, actor: by.actor, traceId: by.traceId }));
     await this.store.insertConversationEvent(tx, {
       id: uuidv7(), conversationId: row.id, eventType: d.history, fromState: from?.state ?? null, toState: d.next.state,
       fromHold: from?.afterHoursHold ?? null, toHold: d.next.afterHoursHold, actorKind: by.actor.kind, actorId: by.actor.id ?? null,

@@ -32,6 +32,9 @@ export async function findConversationForContact(
       afterHoursHold: c.afterHoursHold,
       closedAt: c.closedAt,
       outcome: c.outcome,
+      slaDueAt: c.slaDueAt,
+      slaPausedReason: c.slaPausedReason,
+      slaRemainingSeconds: c.slaRemainingSeconds,
     })
     .from(c)
     .where(

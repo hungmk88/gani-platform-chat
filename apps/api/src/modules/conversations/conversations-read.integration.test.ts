@@ -247,12 +247,25 @@ describe('GET /v1/conversations', () => {
     expect((await get('manager', '/v1/conversations?teamId=x')).body['code']).toBe('validation_failed');
   });
 
-  it('answers sla null and an empty page for ?sla= until U40/U41/Q7 settle SLA (U81)', async () => {
-    const rows = (await get('manager', '/v1/conversations')).body['data'] as Record<string, unknown>[];
-    expect(rows.map((r) => r['sla'])).toEqual(rows.map(() => null));
-    for (const sla of ['due_soon', 'overdue'])
-      expect((await get('manager', `/v1/conversations?sla=${sla}`)).body).toEqual({ data: [], nextCursor: null });
-    expect((await get('manager', '/v1/conversations?sla=late')).body['code']).toBe('validation_failed');
+  it('answers the SLA as kept and filters running ones due soon or overdue, never a paused one (U81; E3, E3-2)', async () => {
+    const set = (key: string, due: string, reason: string | null, left: number | null) =>
+      q(`UPDATE conversations SET sla_due_at = now() + $2::interval, sla_paused_reason = $3, sla_remaining_seconds = $4 WHERE id = $1`, [c[key], due, reason, left]);
+    try {
+      await set('mine', '10 minutes', null, null); // running, due within the 15 minutes of the warning
+      await set('theirs', '-5 minutes', null, null); // running, overdue
+      await set('queue', '-30 minutes', 'waiting_customer', 0); // paused with nothing left: in neither list
+      await set('held', '5 minutes', 'outside_hours', 600); // paused outside the hours: in neither list
+      const rows = (await get('manager', '/v1/conversations')).body['data'] as { id: string; sla: { dueAt: string; pausedReason: string | null } }[];
+      const byId = new Map(rows.map((r) => [r.id, r.sla]));
+      expect([c['mine'], c['theirs'], c['queue'], c['held']].map((id) => byId.get(id ?? '')?.pausedReason)).toEqual([null, null, 'waiting_customer', 'outside_hours']);
+      expect(Number.isNaN(Date.parse(byId.get(c['mine'] ?? '')?.dueAt ?? ''))).toBe(false);
+      expect(ids((await get('manager', '/v1/conversations?sla=due_soon')).body)).toEqual([c['mine']]);
+      expect(ids((await get('manager', '/v1/conversations?sla=overdue')).body)).toEqual([c['theirs']]);
+      expect((await get('manager', '/v1/conversations?sla=late')).body['code']).toBe('validation_failed');
+      expect((await get('manager', `/v1/conversations/${c['queue']}`)).body['sla']).toMatchObject({ pausedReason: 'waiting_customer' });
+    } finally {
+      await q('UPDATE conversations SET sla_due_at = NULL, sla_paused_reason = NULL, sla_remaining_seconds = NULL WHERE org_id = $1', [orgA]);
+    }
     expect((await get('manager', `/v1/conversations/${c['mine']}`)).body['sla']).toBeNull();
   });
 

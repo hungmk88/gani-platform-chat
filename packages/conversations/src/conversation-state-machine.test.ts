@@ -1,5 +1,5 @@
 import type { ConversationRow, NewConversationEvent, NewOutboxEvent, TenantTx } from '@gani/db';
-import { InvalidTransitionError, type ConversationEvent } from '@gani/domain';
+import { DEFAULT_WORKING_WEEK, InvalidTransitionError, type ConversationEvent } from '@gani/domain';
 import { describe, expect, it } from 'vitest';
 
 import { ConversationStateMachine, type ConversationStore } from './conversation-state-machine.js';
@@ -20,13 +20,13 @@ const say = (event: ConversationEvent) => event;
 
 // prettier-ignore
 const row = (over: Partial<ConversationRow> = {}): ConversationRow => ({
-  id: ID, orgId: 'org', workspaceId: 'w-1', state: 'BOT_ACTIVE', version: 0, assignedUserId: null, afterHoursHold: false, closedAt: null, outcome: null, ...over,
+  id: ID, orgId: 'org', workspaceId: 'w-1', state: 'BOT_ACTIVE', version: 0, assignedUserId: null, afterHoursHold: false, closedAt: null, outcome: null, slaDueAt: null, slaPausedReason: null, slaRemainingSeconds: null, ...over,
 });
 const held = (state: 'HUMAN_ACTIVE' | 'PENDING_CUSTOMER') =>
   row({ state, assignedUserId: U1, version: 3 });
 
 // prettier-ignore
-function fake(initial: ConversationRow | null) {
+function fake(initial: ConversationRow | null, clock: () => Date = () => NOW) {
   const rows = new Map(initial ? [[ID, initial]] : []);
   const events: NewConversationEvent[] = [];
   const outbox: NewOutboxEvent[] = [];
@@ -37,6 +37,14 @@ function fake(initial: ConversationRow | null) {
     insertConversation: (_tx, c) => (rows.set(c.id, row({ ...c })), Promise.resolve(row({ ...c }))),
     insertConversationEvent: (_tx, e) => (events.push(e), Promise.resolve()),
     insertOutboxEvent: (_tx, e) => (outbox.push(e), Promise.resolve()),
+    // The working week of Q7 (N209) in Hồ Chí Minh City, no day off: what the SLA is reckoned in (E3).
+    readWorkingWeek: () => Promise.resolve({ timezone: 'Asia/Ho_Chi_Minh', week: DEFAULT_WORKING_WEEK, isDefault: true }),
+    listDaysOff: () => Promise.resolve([]),
+    setConversationSla: (_tx, id, sla) => {
+      const r = rows.get(id);
+      if (r) rows.set(id, { ...r, slaDueAt: sla?.dueAt ?? null, slaPausedReason: sla?.pausedReason ?? null, slaRemainingSeconds: sla?.remainingSeconds ?? null });
+      return Promise.resolve();
+    },
     applyTransition: (_tx, w) => {
       calls.apply++;
       hooks.beforeApply();
@@ -47,7 +55,7 @@ function fake(initial: ConversationRow | null) {
       return (rows.set(w.id, next), Promise.resolve(next));
     },
   };
-  return { machine: new ConversationStateMachine(store), rows, events, outbox, calls, hooks };
+  return { machine: new ConversationStateMachine(store, undefined, clock), rows, events, outbox, calls, hooks };
 }
 const err = (p: Promise<unknown>) => p.catch((e: unknown) => e);
 
@@ -189,12 +197,15 @@ describe('a system event that loses the race', () => {
 
 // prettier-ignore
 describe('the outbox rows of a transition (outbox spec §3)', () => {
-  const kinds = (outbox: NewOutboxEvent[]) => outbox.map((e) => e.eventType);
+  // The rows of the effects; the row of a new SLA (E4a) comes after them and has its own cases below.
+  const effects = (outbox: NewOutboxEvent[]) => outbox.filter((e) => e.eventType !== 'conversation.sla_changed');
+  const kinds = (outbox: NewOutboxEvent[]) => effects(outbox).map((e) => e.eventType);
 
   it('writes one row per effect, in order, with references only, the workspace and the version after the change', async () => {
     const { machine, outbox } = fake(row());
     await machine.transition(TX, ID, say({ type: 'needs_human', inHours: true }), { actor: { kind: 'bot' }, traceId: 't' });
     expect(kinds(outbox)).toEqual(['conversation.state_changed', 'conversation.handoff_requested']);
+    expect(outbox.at(-1)?.eventType).toBe('conversation.sla_changed');
     expect(outbox[0]).toMatchObject({ workspaceId: 'w-1', aggregateType: 'conversation', aggregateId: ID, aggregateVersion: 1, actorKind: 'bot', actorId: null, traceId: 't', payload: { conversationId: ID, from: 'BOT_ACTIVE', to: 'HUMAN_WAITING_Q', hold: false } });
     expect(outbox[1]).toMatchObject({ aggregateVersion: 1, payload: { conversationId: ID } });
   });
@@ -206,24 +217,24 @@ describe('the outbox rows of a transition (outbox spec §3)', () => {
     const claimed = fake(row({ state: 'HUMAN_WAITING_Q' }));
     await claimed.machine.transition(TX, ID, say({ type: 'claim', userId: U2 }), OPTS);
     expect(kinds(claimed.outbox)).toEqual(['conversation.state_changed', 'conversation.assigned']);
-    expect(claimed.outbox[1]?.payload).toEqual({ conversationId: ID, assignedUserId: U2 });
+    expect(effects(claimed.outbox)[1]?.payload).toEqual({ conversationId: ID, assignedUserId: U2 });
   });
 
   it('names who held the conversation before a transfer or a reassignment, and nobody for one taken from the queue', async () => {
     const transfer = fake(held('HUMAN_ACTIVE'));
     await transfer.machine.transition(TX, ID, say({ type: 'transfer', toUserId: U2 }), { ...OPTS, expectedVersion: 3 });
-    expect(transfer.outbox).toMatchObject([{ eventType: 'agent.transferred', payload: { fromUserId: U1, toUserId: U2 } }]);
+    expect(effects(transfer.outbox)).toMatchObject([{ eventType: 'agent.transferred', payload: { fromUserId: U1, toUserId: U2 } }]);
     const queued = fake(row({ state: 'HUMAN_WAITING_Q', version: 3 }));
     await queued.machine.transition(TX, ID, say({ type: 'reassign', toUserId: U2 }), { ...OPTS, expectedVersion: 3 });
     expect(kinds(queued.outbox)).toEqual(['conversation.state_changed', 'agent.reassigned']);
-    expect(queued.outbox[1]?.payload).toEqual({ conversationId: ID, fromUserId: null, toUserId: U2 });
+    expect(effects(queued.outbox)[1]?.payload).toEqual({ conversationId: ID, fromUserId: null, toUserId: U2 });
   });
 
   it('asks for a manager alert, with its reason, when an agent who left lets a customer wait (T17)', async () => {
     const { machine, outbox } = fake(held('HUMAN_ACTIVE'));
     await machine.transition(TX, ID, say({ type: 'agent_offline_timeout', inHours: true, offlineLongEnough: true, customerUnanswered: true }), OPTS);
     expect(kinds(outbox)).toEqual(['conversation.state_changed', 'conversation.manager_alert']);
-    expect(outbox[1]?.payload).toEqual({ conversationId: ID, reason: 'agent_offline' });
+    expect(effects(outbox)[1]?.payload).toEqual({ conversationId: ID, reason: 'agent_offline' });
   });
 
   it('writes nothing for an event that is not a transition, and for one that is refused', async () => {
@@ -231,5 +242,129 @@ describe('the outbox rows of a transition (outbox spec §3)', () => {
     await machine.transition(TX, ID, say({ type: 'customer_message', now: NOW, agentOnline: true }), OPTS);
     await expect(machine.transition(TX, ID, say({ type: 'hand_back_to_bot' }), OPTS)).rejects.toThrow(InvalidTransitionError);
     expect(outbox).toEqual([]);
+  });
+});
+
+// The SLA kept by each transition (E3, N208, N210), in the working time of Q7. 2026-11-03 is a Tuesday in Hồ Chí Minh City (UTC+7).
+const hcm = (local: string) => new Date(`${local}+07:00`);
+const sla = (r: ConversationRow | undefined) => [
+  r?.slaDueAt ?? null,
+  r?.slaPausedReason ?? null,
+  r?.slaRemainingSeconds ?? null,
+];
+describe('the SLA of a transition', () => {
+  it('starts 60 working minutes when the bot hands over (T02), from the clock when the event has no time', async () => {
+    const { machine, rows } = fake(row(), () => hcm('2026-11-03T11:30:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'needs_human', inHours: true },
+      { actor: { kind: 'bot' }, traceId: 't' },
+    );
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-03T13:30:00'), null, null]);
+  });
+
+  it('pauses when the agent waits for the customer (T09) and has none once closed (T13)', async () => {
+    const start = row({
+      state: 'HUMAN_ACTIVE',
+      assignedUserId: U1,
+      version: 3,
+      slaDueAt: hcm('2026-11-03T10:00:00'),
+    });
+    const { machine, rows } = fake(start, () => hcm('2026-11-03T09:40:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'agent_waits_customer' },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-03T10:00:00'), 'waiting_customer', 1200]);
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'close', now: hcm('2026-11-03T09:45:00'), outcome: 'resolved' },
+      { ...OPTS, expectedVersion: 4 },
+    );
+    expect(sla(rows.get(ID))).toEqual([null, null, null]);
+  });
+
+  it('resumes from the time of the customer’s message, not the clock (T10, E3-3)', async () => {
+    const start = row({
+      ...held('PENDING_CUSTOMER'),
+      slaDueAt: hcm('2026-11-03T10:00:00'),
+      slaPausedReason: 'waiting_customer',
+      slaRemainingSeconds: 1200,
+    });
+    const { machine, rows } = fake(start, () => hcm('2026-11-04T15:05:00'));
+    await machine.onCustomerMessage(TX, ID, {
+      now: hcm('2026-11-04T15:00:00'),
+      agentOnline: true,
+      traceId: 't',
+    });
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-04T15:20:00'), null, null]);
+  });
+
+  it('tells the Inbox of a new SLA by one row after the effects, with the version after the change (E4a)', async () => {
+    const { machine, outbox } = fake(row(), () => hcm('2026-11-03T11:30:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'needs_human', inHours: true },
+      { actor: { kind: 'bot' }, traceId: 't' },
+    );
+    expect(outbox.map((e) => e.eventType)).toEqual([
+      'conversation.state_changed',
+      'conversation.handoff_requested',
+      'conversation.sla_changed',
+    ]);
+    expect(outbox[2]).toMatchObject({
+      workspaceId: 'w-1',
+      aggregateType: 'conversation',
+      aggregateId: ID,
+      aggregateVersion: 1,
+      actorKind: 'bot',
+      traceId: 't',
+    });
+    expect(outbox[2]?.payload).toEqual({ conversationId: ID });
+  });
+
+  it('writes no SLA row when the SLA stays as it was: a claim from the queue, a transfer (E4a)', async () => {
+    const queued = fake(
+      row({ state: 'HUMAN_WAITING_Q', version: 3, slaDueAt: hcm('2026-11-03T10:00:00') }),
+    );
+    await queued.machine.transition(
+      TX,
+      ID,
+      { type: 'claim', userId: U2 },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(queued.outbox.map((e) => e.eventType)).toEqual([
+      'conversation.state_changed',
+      'conversation.assigned',
+    ]);
+    const moved = fake({ ...held('HUMAN_ACTIVE'), slaDueAt: hcm('2026-11-03T10:00:00') });
+    await moved.machine.transition(
+      TX,
+      ID,
+      { type: 'transfer', toUserId: U2 },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(moved.outbox.map((e) => e.eventType)).toEqual(['agent.transferred']);
+  });
+
+  it('starts again from 0 when the customer answers while the agent is offline (T11, E3-1)', async () => {
+    const start = row({
+      ...held('PENDING_CUSTOMER'),
+      slaDueAt: hcm('2026-11-03T10:00:00'),
+      slaPausedReason: 'waiting_customer',
+      slaRemainingSeconds: 1200,
+    });
+    const { machine, rows } = fake(start);
+    await machine.onCustomerMessage(TX, ID, {
+      now: hcm('2026-11-04T15:00:00'),
+      agentOnline: false,
+      traceId: 't',
+    });
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-04T16:00:00'), null, null]);
   });
 });
