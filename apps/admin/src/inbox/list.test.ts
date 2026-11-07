@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Role } from '../nav';
+
 import {
+  channelChoice,
+  channelFilterOf,
+  channelOf,
   customerNameOf,
   emptyOf,
   filterOf,
-  channelOf,
   holderOf,
+  inboxChannelsPath,
   listPath,
   NO_FILTER,
-  channelChoice,
-  channelFilterOf,
-  inboxChannelsPath,
   paramsOf,
+  readsWorkspaceTeams,
+  teamsOf,
   tooFewDigits,
   whenOf,
 } from './list';
@@ -25,6 +29,7 @@ describe('filterOf and paramsOf', () => {
       q: '',
       channel: '',
       sla: 'all',
+      team: '',
     });
     expect(paramsOf(f).toString()).toBe('assignee=me&state=HUMAN_WAITING_Q');
     expect(paramsOf(NO_FILTER).toString()).toBe('');
@@ -109,6 +114,13 @@ describe('listPath', () => {
     expect(filterOf(new URLSearchParams('sla=due_soon')).sla).toBe('due_soon');
     expect(filterOf(new URLSearchParams('sla=soon')).sla).toBe('all');
     expect(paramsOf({ ...NO_FILTER, sla: 'due_soon' }).toString()).toBe('sla=due_soon');
+    // U83: the team as a UUID on the URL, `teamId` to the API; anything else is dropped.
+    const team = '0190e000-0000-7000-8000-0000000000e1';
+    expect(filterOf(new URLSearchParams(`team=${team}`)).team).toBe(team);
+    expect(filterOf(new URLSearchParams('team=cskh')).team).toBe('');
+    expect(listPath({ ...NO_FILTER, team }, null, 'w1')).toBe(
+      `/v1/conversations?assignee=any&limit=50&workspaceId=w1&teamId=${team}`,
+    );
   });
 });
 
@@ -162,6 +174,12 @@ describe('emptyOf', () => {
       'clear',
     );
     expect(emptyOf({ ...NO_FILTER, sla: 'overdue' }, 'owner').action).toBe('clear');
+    // Only the team filtered (wireframe brief 84): its own sentence and "Bỏ lọc team"; with another filter, the usual clear.
+    expect(emptyOf({ ...NO_FILTER, team: 't1' }, 'sales')).toEqual({
+      text: 'Không có hội thoại ở team này.',
+      action: 'team',
+    });
+    expect(emptyOf({ ...NO_FILTER, team: 't1', sla: 'overdue' }, 'sales').action).toBe('clear');
   });
 });
 
@@ -180,5 +198,22 @@ describe('customerNameOf', () => {
     expect(customerNameOf({ customer: { id: 'c1', displayName: null } })).toBe('Khách chưa có tên');
     expect(customerNameOf({ customer: { id: 'c1', displayName: ' ' } })).toBe('Khách chưa có tên');
     expect(customerNameOf({ customer: null })).toBe('Khách chưa có tên');
+  });
+});
+
+describe('readsWorkspaceTeams (brief 120)', () => {
+  it('lets Owner, Admin and Manager read the teams of the workspace, never Sales or Support', () => {
+    const roles: Role[] = ['owner', 'admin', 'manager', 'sales', 'support'];
+    expect(roles.map(readsWorkspaceTeams)).toEqual([true, true, true, false, false]);
+  });
+});
+
+describe('teamsOf (U83, U84)', () => {
+  it('offers the own teams of the workspace being worked in and those of the whole company', () => {
+    const t = (id: string, workspaceId: string | null) => ({ id, name: id, workspaceId });
+    expect(teamsOf([t('a', 'w1'), t('b', 'w2'), t('c', null)], 'w1').map((x) => x.id)).toEqual([
+      'a',
+      'c',
+    ]);
   });
 });
