@@ -204,7 +204,7 @@ export function ConversationView({
           known={{ ...known, ...phoneOf(phones, c.workspaceId), ...customerOf(c.customer) }}
         />
       ) : null}
-      <ConversationNotes key={`notes-${c.id}`} id={c.id} meId={meId} />
+      <ConversationNotes key={`notes-${c.id}`} c={c} role={role} meId={meId} />
       <p className="text-12 text-text-muted">Không áp dụng AI ở khung này.</p>
     </section>
   );
