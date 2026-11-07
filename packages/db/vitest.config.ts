@@ -50,6 +50,7 @@ export default defineConfig({
         'src/ticket-store.ts',
         'src/ticket-read.ts',
         'src/customer-store.ts',
+        'src/customer-merge-store.ts',
         'src/customer-read.ts',
         'src/tenant-tx.ts',
         'src/member-context.ts',
