@@ -8,6 +8,7 @@ import { useApiQuery } from '../query/provider';
 import { RetryAction } from '../retry-button';
 import { mayEditCustomers } from './customer-edit';
 import { CustomerEditDialog } from './customer-edit-dialog';
+import { CustomerTagsSection } from './customer-tags-section';
 import { MergeHistory } from './merge-history';
 import { MergeSuggestions } from './merge-suggestions';
 import { maySeeMerges, maySeeSuggestions } from './merges';
@@ -34,7 +35,7 @@ const back = (
 /**
  * #8 Hồ sơ khách (`GET /v1/customers/{id}`, N165): the profile of one customer of the company and how the channels know them.
  * Marketing and Viewer get the phone and the email masked from the API. The roles that hold conversations change it
- * (`CustomerEditDialog`). Conversations, leads, tickets, tags and notes wait for their API.
+ * (`CustomerEditDialog`) and its tags (`CustomerTagsSection`). Conversations, leads, tickets and notes wait for their API.
  */
 export function CustomerProfile({ id, role }: { id: string; role: Role }) {
   const customer = useApiQuery<Customer>(['customer', id], customerPath(id));
@@ -128,10 +129,11 @@ export function CustomerProfile({ id, role }: { id: string; role: Role }) {
           <p>Chưa kênh nào biết khách này.</p>
         )}
       </section>
+      <CustomerTagsSection customer={c} editable={mayEditCustomers(role)} />
       {maySeeSuggestions(role) ? <MergeSuggestions customer={c} role={role} /> : null}
       {maySeeMerges(role) ? <MergeHistory id={c.id} /> : null}
       <p className="text-12 text-text-muted">
-        Hội thoại, lead, ticket, tag và ghi chú của khách: chờ API.
+        Hội thoại, lead, ticket và ghi chú của khách: chờ API.
       </p>
       {editing ? (
         <CustomerEditDialog
