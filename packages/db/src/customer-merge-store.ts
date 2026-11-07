@@ -1,4 +1,4 @@
-import { and, eq, inArray, notExists, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, notExists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 import { insertAuditLog } from './audit-log.js';
@@ -18,7 +18,7 @@ import { currentTenantContext } from './tenant-context.js';
 import type { TenantTx } from './tenant-tx.js';
 import { assertUuid } from './validate.js';
 
-// The merge of duplicate customers (J3b-1, N204, N205; CEO 06/11 and 07/11/2026); its undoing is J3b-2. The caller's transaction must name every
+// The merge of duplicate customers (J3b-1) and its undoing (J3b-2) (N204, N205; CEO 06/11 and 07/11/2026). The caller's transaction must name every
 // live workspace of the organisation (N204): tickets, leads and conversations have RLS by workspace, and a merge that cannot see one
 // of them would leave it behind. Both customers are locked in the order of their ids, whoever calls, so a merge and an unmerge of the
 // same pair, or two merges crossing each other, wait instead of deadlocking. The log (customer_merge_moves) names every row moved, so
@@ -30,6 +30,22 @@ export class CustomerMergeNotFoundError extends Error {
   readonly code = 'not_found';
   constructor() {
     super('customer not found');
+  }
+}
+
+/** The customer is not merged into another (409 not_merged). */
+export class CustomerNotMergedError extends Error {
+  readonly code = 'not_merged';
+  constructor() {
+    super('customer is not merged');
+  }
+}
+
+/** The target of the merge was merged in turn: unmerge that first (409 target_merged). */
+export class MergeTargetMergedError extends Error {
+  readonly code = 'target_merged';
+  constructor() {
+    super('the target was merged in turn');
   }
 }
 
@@ -75,15 +91,17 @@ async function lockCustomers(tx: TenantTx, ids: readonly string[]): Promise<Map<
   return new Map(rows.map((r) => [r.id, r]));
 }
 
-/** Moves the rows of `table` from `from` to `to` and returns their ids. */
+/** Moves the rows of `table` from `from` to `to`, all of them or `only` those, and returns their ids. */
 async function move(
   tx: TenantTx,
   table: MergeMoveTable,
   from: string,
   to: string,
+  only?: readonly string[],
 ): Promise<string[]> {
   const t = MOVED[table];
   const where = [eq(t.customerId, from)];
+  if (only !== undefined) where.push(inArray(t.id, [...only]));
   // A tag or a field value the target already has stays with the source (the target keeps its own), and comes back with an unmerge.
   if (table === 'customer_tags') {
     const own = alias(customerTags, 'own');
@@ -177,4 +195,71 @@ export async function mergeCustomers(
     detail: { mergeId, sourceId, targetId },
   });
   return { mergeId };
+}
+
+/**
+ * Undoes the merge of `sourceId`: exactly the rows its log names, still on the target, go back; the fields it filled are cleared where
+ * the target still holds the source's value. Works when the target was soft deleted since (CEO 07/11/2026). Throws
+ * CustomerMergeNotFoundError (no such customer), CustomerNotMergedError, or MergeTargetMergedError (unmerge the target first).
+ */
+export async function unmergeCustomer(
+  tx: TenantTx,
+  u: { readonly sourceId: string; readonly actorUserId: string; readonly newId: () => string },
+): Promise<{ readonly mergeId: string; readonly targetId: string }> {
+  const sourceId = assertUuid(u.sourceId, 'sourceId');
+  const cm = customerMerges;
+  const [merge] = await tx
+    .select({ id: cm.id, targetId: cm.targetId, filledFields: cm.filledFields })
+    .from(cm)
+    .where(and(eq(cm.sourceId, sourceId), isNull(cm.unmergedAt)));
+  if (merge === undefined) {
+    const [exists] = await tx
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.id, sourceId));
+    throw exists === undefined ? new CustomerMergeNotFoundError() : new CustomerNotMergedError();
+  }
+  const locked = await lockCustomers(tx, [sourceId, merge.targetId]);
+  const source = locked.get(sourceId);
+  const target = locked.get(merge.targetId);
+  // Read again under the lock: an unmerge running beside this one may have finished first.
+  if (source === undefined || target === undefined) throw new CustomerMergeNotFoundError();
+  if (source.mergedInto !== merge.targetId) throw new CustomerNotMergedError();
+  if (target.mergedInto !== null) throw new MergeTargetMergedError();
+
+  const moves = await tx
+    .select({ tableName: customerMergeMoves.tableName, rowId: customerMergeMoves.rowId })
+    .from(customerMergeMoves)
+    .where(eq(customerMergeMoves.mergeId, merge.id));
+  for (const table of Object.keys(MOVED) as MergeMoveTable[]) {
+    const only = moves.filter((x) => x.tableName === table).map((x) => x.rowId);
+    if (only.length > 0) await move(tx, table, merge.targetId, sourceId, only);
+  }
+  const clear = Object.fromEntries(
+    merge.filledFields
+      .filter((f) => target[COLUMN[f]] === source[COLUMN[f]])
+      .map((f) => [COLUMN[f], null]),
+  );
+  const now = new Date();
+  await tx
+    .update(customers)
+    .set({ ...clear, updatedAt: now })
+    .where(eq(customers.id, merge.targetId));
+  await tx
+    .update(customers)
+    .set({ mergedInto: null, mergedAt: null, updatedAt: now })
+    .where(eq(customers.id, sourceId));
+  await tx
+    .update(cm)
+    .set({ unmergedBy: assertUuid(u.actorUserId, 'actorUserId'), unmergedAt: now })
+    .where(eq(cm.id, merge.id));
+  await insertAuditLog(tx, {
+    id: u.newId(),
+    actorUserId: u.actorUserId,
+    action: 'customer.unmerged',
+    targetType: 'customer',
+    targetId: merge.targetId,
+    detail: { mergeId: merge.id, sourceId, targetId: merge.targetId },
+  });
+  return { mergeId: merge.id, targetId: merge.targetId };
 }

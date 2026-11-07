@@ -5,9 +5,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createDbPool,
   CustomerMergeNotFoundError,
+  CustomerNotMergedError,
   listCustomers,
   loadCustomer,
   mergeCustomers,
+  MergeTargetMergedError,
+  unmergeCustomer,
   withTenant,
   type TenantTx,
 } from '../src/index.js';
@@ -26,6 +29,8 @@ const all = <T>(fn: (tx: TenantTx) => Promise<T>) =>
   withTenant(pool, { orgId: org, workspaceIds: [ws, ws2] }, fn);
 const merge = (sourceId: string, targetId: string) =>
   all((tx) => mergeCustomers(tx, { sourceId, targetId, actorUserId: users[0]!, newId: uuidv7 }));
+const unmerge = (sourceId: string) =>
+  all((tx) => unmergeCustomer(tx, { sourceId, actorUserId: users[0]!, newId: uuidv7 }));
 const q = async <T extends pg.QueryResultRow>(sql: string, params: unknown[] = []) =>
   (await admin.query<T>(sql, params)).rows;
 const ownerOf = async (table: string, id: string) =>
@@ -192,5 +197,76 @@ describe('mergeCustomers', () => {
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     const failed = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
     expect(failed.reason).toBeInstanceOf(CustomerMergeNotFoundError);
+  });
+});
+
+describe('unmergeCustomer', () => {
+  it('gives back exactly the moved rows and the filled fields; what came after the merge stays with the target', async () => {
+    await merge(s.id, t.id);
+    // A phone changed on the target after the merge is the target's own now: the unmerge leaves it.
+    await admin.query(`UPDATE customers SET phone_e164 = '+84900000000' WHERE id = $1`, [t.id]);
+    const later = uuidv7();
+    await admin.query(
+      `INSERT INTO tickets (id, org_id, workspace_id, title, customer_id, created_by) VALUES ($1, $2, $3, 'Sau', $4, $5)`,
+      [later, org, ws, t.id, users[0]],
+    );
+    await unmerge(s.id);
+    for (const [table, id] of [
+      ['conversations', s.conversation],
+      ['customer_identities', s.identity],
+      ['tickets', s.ticket],
+      ['leads', s.lead],
+    ] as const)
+      expect(await ownerOf(table, id), table).toBe(s.id);
+    expect(await ownerOf('tickets', later)).toBe(t.id);
+    expect(await ownerOf('tickets', t.ticket)).toBe(t.id);
+    const [target] = await q(
+      'SELECT display_name, phone_e164, email FROM customers WHERE id = $1',
+      [t.id],
+    );
+    expect(target).toEqual({
+      display_name: null,
+      phone_e164: '+84900000000',
+      email: 'an@example.com',
+    });
+    const [source] = await q('SELECT merged_into, merged_at FROM customers WHERE id = $1', [s.id]);
+    expect(source).toEqual({ merged_into: null, merged_at: null });
+    const audit = await q(
+      `SELECT 1 FROM audit_logs WHERE org_id = $1 AND action = 'customer.unmerged' AND target_id = $2`,
+      [org, t.id],
+    );
+    expect(audit).toHaveLength(1);
+  });
+
+  it('works when the target was soft deleted since (CEO 07/11): the rows go back to the source', async () => {
+    await merge(s.id, t.id);
+    await admin.query('UPDATE customers SET deleted_at = now() WHERE id = $1', [t.id]);
+    await unmerge(s.id);
+    expect(await ownerOf('tickets', s.ticket)).toBe(s.id);
+    const [source] = await q('SELECT merged_into FROM customers WHERE id = $1', [s.id]);
+    expect(source).toEqual({ merged_into: null });
+  });
+
+  it('allows the same pair to merge again after an unmerge: two merges in the log, one live', async () => {
+    await merge(s.id, t.id);
+    await unmerge(s.id);
+    await merge(s.id, t.id);
+    const rows = await q<{ live: boolean }>(
+      'SELECT unmerged_at IS NULL AS live FROM customer_merges WHERE source_id = $1 ORDER BY merged_at',
+      [s.id],
+    );
+    expect(rows).toEqual([{ live: false }, { live: true }]);
+  });
+
+  it('refuses a customer not merged, one unknown, and one whose target was merged in turn', async () => {
+    await expect(unmerge(s.id)).rejects.toBeInstanceOf(CustomerNotMergedError);
+    await expect(unmerge(uuidv7())).rejects.toBeInstanceOf(CustomerMergeNotFoundError);
+    const third = await customer();
+    await merge(s.id, t.id);
+    await merge(t.id, third.id);
+    await expect(unmerge(s.id)).rejects.toBeInstanceOf(MergeTargetMergedError);
+    await unmerge(t.id);
+    await unmerge(s.id);
+    expect(await ownerOf('tickets', s.ticket)).toBe(s.id);
   });
 });
