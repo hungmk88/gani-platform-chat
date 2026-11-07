@@ -197,12 +197,15 @@ describe('a system event that loses the race', () => {
 
 // prettier-ignore
 describe('the outbox rows of a transition (outbox spec §3)', () => {
-  const kinds = (outbox: NewOutboxEvent[]) => outbox.map((e) => e.eventType);
+  // The rows of the effects; the row of a new SLA (E4a) comes after them and has its own cases below.
+  const effects = (outbox: NewOutboxEvent[]) => outbox.filter((e) => e.eventType !== 'conversation.sla_changed');
+  const kinds = (outbox: NewOutboxEvent[]) => effects(outbox).map((e) => e.eventType);
 
   it('writes one row per effect, in order, with references only, the workspace and the version after the change', async () => {
     const { machine, outbox } = fake(row());
     await machine.transition(TX, ID, say({ type: 'needs_human', inHours: true }), { actor: { kind: 'bot' }, traceId: 't' });
     expect(kinds(outbox)).toEqual(['conversation.state_changed', 'conversation.handoff_requested']);
+    expect(outbox.at(-1)?.eventType).toBe('conversation.sla_changed');
     expect(outbox[0]).toMatchObject({ workspaceId: 'w-1', aggregateType: 'conversation', aggregateId: ID, aggregateVersion: 1, actorKind: 'bot', actorId: null, traceId: 't', payload: { conversationId: ID, from: 'BOT_ACTIVE', to: 'HUMAN_WAITING_Q', hold: false } });
     expect(outbox[1]).toMatchObject({ aggregateVersion: 1, payload: { conversationId: ID } });
   });
@@ -214,24 +217,24 @@ describe('the outbox rows of a transition (outbox spec §3)', () => {
     const claimed = fake(row({ state: 'HUMAN_WAITING_Q' }));
     await claimed.machine.transition(TX, ID, say({ type: 'claim', userId: U2 }), OPTS);
     expect(kinds(claimed.outbox)).toEqual(['conversation.state_changed', 'conversation.assigned']);
-    expect(claimed.outbox[1]?.payload).toEqual({ conversationId: ID, assignedUserId: U2 });
+    expect(effects(claimed.outbox)[1]?.payload).toEqual({ conversationId: ID, assignedUserId: U2 });
   });
 
   it('names who held the conversation before a transfer or a reassignment, and nobody for one taken from the queue', async () => {
     const transfer = fake(held('HUMAN_ACTIVE'));
     await transfer.machine.transition(TX, ID, say({ type: 'transfer', toUserId: U2 }), { ...OPTS, expectedVersion: 3 });
-    expect(transfer.outbox).toMatchObject([{ eventType: 'agent.transferred', payload: { fromUserId: U1, toUserId: U2 } }]);
+    expect(effects(transfer.outbox)).toMatchObject([{ eventType: 'agent.transferred', payload: { fromUserId: U1, toUserId: U2 } }]);
     const queued = fake(row({ state: 'HUMAN_WAITING_Q', version: 3 }));
     await queued.machine.transition(TX, ID, say({ type: 'reassign', toUserId: U2 }), { ...OPTS, expectedVersion: 3 });
     expect(kinds(queued.outbox)).toEqual(['conversation.state_changed', 'agent.reassigned']);
-    expect(queued.outbox[1]?.payload).toEqual({ conversationId: ID, fromUserId: null, toUserId: U2 });
+    expect(effects(queued.outbox)[1]?.payload).toEqual({ conversationId: ID, fromUserId: null, toUserId: U2 });
   });
 
   it('asks for a manager alert, with its reason, when an agent who left lets a customer wait (T17)', async () => {
     const { machine, outbox } = fake(held('HUMAN_ACTIVE'));
     await machine.transition(TX, ID, say({ type: 'agent_offline_timeout', inHours: true, offlineLongEnough: true, customerUnanswered: true }), OPTS);
     expect(kinds(outbox)).toEqual(['conversation.state_changed', 'conversation.manager_alert']);
-    expect(outbox[1]?.payload).toEqual({ conversationId: ID, reason: 'agent_offline' });
+    expect(effects(outbox)[1]?.payload).toEqual({ conversationId: ID, reason: 'agent_offline' });
   });
 
   it('writes nothing for an event that is not a transition, and for one that is refused', async () => {
@@ -299,6 +302,54 @@ describe('the SLA of a transition', () => {
       traceId: 't',
     });
     expect(sla(rows.get(ID))).toEqual([hcm('2026-11-04T15:20:00'), null, null]);
+  });
+
+  it('tells the Inbox of a new SLA by one row after the effects, with the version after the change (E4a)', async () => {
+    const { machine, outbox } = fake(row(), () => hcm('2026-11-03T11:30:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'needs_human', inHours: true },
+      { actor: { kind: 'bot' }, traceId: 't' },
+    );
+    expect(outbox.map((e) => e.eventType)).toEqual([
+      'conversation.state_changed',
+      'conversation.handoff_requested',
+      'conversation.sla_changed',
+    ]);
+    expect(outbox[2]).toMatchObject({
+      workspaceId: 'w-1',
+      aggregateType: 'conversation',
+      aggregateId: ID,
+      aggregateVersion: 1,
+      actorKind: 'bot',
+      traceId: 't',
+    });
+    expect(outbox[2]?.payload).toEqual({ conversationId: ID });
+  });
+
+  it('writes no SLA row when the SLA stays as it was: a claim from the queue, a transfer (E4a)', async () => {
+    const queued = fake(
+      row({ state: 'HUMAN_WAITING_Q', version: 3, slaDueAt: hcm('2026-11-03T10:00:00') }),
+    );
+    await queued.machine.transition(
+      TX,
+      ID,
+      { type: 'claim', userId: U2 },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(queued.outbox.map((e) => e.eventType)).toEqual([
+      'conversation.state_changed',
+      'conversation.assigned',
+    ]);
+    const moved = fake({ ...held('HUMAN_ACTIVE'), slaDueAt: hcm('2026-11-03T10:00:00') });
+    await moved.machine.transition(
+      TX,
+      ID,
+      { type: 'transfer', toUserId: U2 },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(moved.outbox.map((e) => e.eventType)).toEqual(['agent.transferred']);
   });
 
   it('starts again from 0 when the customer answers while the agent is offline (T11, E3-1)', async () => {

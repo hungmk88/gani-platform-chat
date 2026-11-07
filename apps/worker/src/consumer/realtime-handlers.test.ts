@@ -169,6 +169,45 @@ describe('conversation.state_changed', () => {
   });
 });
 
+describe('conversation.sla_changed', () => {
+  it('sends the SLA as it reads now, with its due time and why it paused, to the conversation and the workspace', async () => {
+    db.view = {
+      sla: { dueAt: new Date('2026-11-03T06:30:00.000Z'), pausedReason: 'waiting_customer' },
+    };
+    const t = setup();
+    await t.run(event('conversation.sla_changed', { conversationId: C }));
+    expect(db.reads).toEqual([`conversation ${C}`]);
+    expect(t.sent).toEqual([
+      expect.objectContaining({
+        rooms: [`conv:${C}`, `ws:${WS}`],
+        event: 'conversation.sla_changed',
+        packet: expect.objectContaining({
+          type: 'conversation.sla_changed',
+          aggregateVersion: 4,
+          data: {
+            conversationId: C,
+            sla: { dueAt: '2026-11-03T06:30:00.000Z', pausedReason: 'waiting_customer' },
+          },
+        }) as unknown,
+      }),
+    ]);
+  });
+
+  it('sends a null SLA once there is none, and nothing for a conversation it cannot read', async () => {
+    db.view = { sla: null };
+    const t = setup();
+    await t.run(event('conversation.sla_changed', { conversationId: C }));
+    expect(t.sent[0]?.packet['data']).toEqual({ conversationId: C, sla: null });
+    db.view = null;
+    const gone = setup();
+    await gone.run(event('conversation.sla_changed', { conversationId: C }));
+    expect(gone.sent).toEqual([]);
+    expect(gone.logs).toEqual([
+      `event_conversation_missing {"eventId":"ev-1","conversationId":"${C}"}`,
+    ]);
+  });
+});
+
 describe('conversation.assigned, agent.transferred and agent.reassigned', () => {
   it('tell the new holder, the previous one and the workspace, as one packet', async () => {
     const t = setup();
