@@ -96,7 +96,8 @@ describe('customer_tags', () => {
       undefined,
     );
     expect(await write('UPDATE customer_tags SET tag_id = tag_id')).toBe('42501');
-    expect(await write('UPDATE customer_tags SET customer_id = customer_id')).toBe('42501');
+    // A merge moves a tag to the target and an unmerge moves it back (J3, N204).
+    expect(await write('UPDATE customer_tags SET customer_id = customer_id')).toBeUndefined();
     expect(await write('UPDATE tags SET org_id = org_id')).toBe('42501');
     expect(await write('DELETE FROM customer_tags WHERE tag_id = $1', [t])).toBe('42501');
     expect(await write('DELETE FROM tags WHERE id = $1', [t])).toBe('42501');

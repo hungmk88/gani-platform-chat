@@ -60,9 +60,21 @@ const APP_UPDATE: Record<string, string[]> = {
     'type',
     'updated_at',
   ],
-  customer_field_values: ['key_version', 'updated_at', 'value', 'value_enc'],
-  customer_tags: ['deleted_at', 'updated_at'],
-  customers: ['deleted_at', 'display_name', 'email', 'human_only', 'phone_e164', 'updated_at'],
+  customer_field_values: ['customer_id', 'key_version', 'updated_at', 'value', 'value_enc'],
+  customer_identities: ['customer_id'],
+  // An unmerge only marks the merge undone (J3); the log of moved rows is never changed.
+  customer_merges: ['unmerged_at', 'unmerged_by'],
+  customer_tags: ['customer_id', 'deleted_at', 'updated_at'],
+  customers: [
+    'deleted_at',
+    'display_name',
+    'email',
+    'human_only',
+    'merged_at',
+    'merged_into',
+    'phone_e164',
+    'updated_at',
+  ],
   feature_flags_overrides: ['enabled', 'updated_at'],
   // created_at on purpose: a key used again after 24 hours starts its day anew (N134).
   idempotency_keys: [
@@ -106,6 +118,7 @@ const APP_UPDATE: Record<string, string[]> = {
   outbox_events: ['attempts', 'available_at', 'claimed_at', 'last_error', 'published_at', 'status'],
   leads: [
     'closed_at',
+    'customer_id',
     'lost_reason',
     'owner_user_id',
     'stage_id',
@@ -130,6 +143,7 @@ const APP_UPDATE: Record<string, string[]> = {
   ],
   tickets: [
     'assignee_user_id',
+    'customer_id',
     'description',
     'priority',
     'status',

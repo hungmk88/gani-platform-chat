@@ -82,7 +82,14 @@ export { pipelineLostReasons, pipelineStages } from './schema/pipelines.js';
 export { leadEvents, leads } from './schema/leads.js';
 export { botEdges, botFlowVersions, botFlows, botNodes } from './schema/bot-flows.js';
 export { botSessionSteps, botSessions } from './schema/bot-sessions.js';
-export { customerIdentities, customers } from './schema/customers.js';
+export {
+  customerIdentities,
+  customerMergeMoves,
+  customerMerges,
+  customers,
+  MERGE_MOVE_TABLES,
+  type MergeMoveTable,
+} from './schema/customers.js';
 export { sessions } from './schema/sessions.js';
 export { teamMembers } from './schema/team-members.js';
 export { teams } from './schema/teams.js';
