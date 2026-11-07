@@ -21,6 +21,7 @@ export * from './member-role-store.js';
 export * from './member-two-factor-store.js';
 export * from './message-store.js';
 export * from './channel-store.js';
+export * from './sla-clock-store.js';
 export * from './team-store.js';
 export * from './workspace-member-store.js';
 export * from './workspace-store.js';

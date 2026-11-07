@@ -1,0 +1,8 @@
+# lint/mutants/sla-clock.sh trên gani_o1, 07/11/2026 (E4b-1, N211): 6/6 bị bắt, không DROP. Schema sau khôi phục giống hệt; thân hàm và quyền
+# (chỉ app_role) kiểm lại sau lần chạy.
+F1-any-org-with-a-conversation|exit=1| Tests 2 failed | 7 passed (9)|names an organisation with a running SLA and one with an SLA paused outside the hours 16ms;does not name one whose only pause is the customer’s, one with no SLA, nor a deleted one 3ms;
+F2-customer-pause-counts|exit=1| Tests 2 failed | 7 passed (9)|names an organisation with a running SLA and one with an SLA paused outside the hours 19ms;does not name one whose only pause is the customer’s, one with no SLA, nor a deleted one 5ms;
+F3-deleted-org-counts|exit=1| Tests 2 failed | 7 passed (9)|names an organisation with a running SLA and one with an SLA paused outside the hours 25ms;does not name one whose only pause is the customer’s, one with no SLA, nor a deleted one 4ms;
+G-support-role-runs-it|exit=1| Tests 1 failed | 8 passed (9)|is SECURITY DEFINER and STABLE, pins its search_path, returns ids only; only app_role may run it 26m;
+G-auth-role-runs-it|exit=1| Tests 1 failed | 8 passed (9)|is SECURITY DEFINER and STABLE, pins its search_path, returns ids only; only app_role may run it 17m;
+L-no-limit-check|exit=1| Tests 3 failed | 6 passed (9)|refuses limit 0 (22023) 20ms;refuses limit 1001 (22023) 2ms;refuses limit null (22023) 2ms;

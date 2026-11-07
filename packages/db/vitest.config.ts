@@ -12,6 +12,7 @@ export default defineConfig({
         ...coverage.exclude,
         'src/account-audit-store.ts',
         'src/after-hours-store.ts',
+        'src/sla-clock-store.ts',
         'src/audit-log-read.ts',
         'src/audit-log.ts',
         'src/channel-refresh-store.ts',
