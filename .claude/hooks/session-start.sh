@@ -38,6 +38,14 @@ report() {
       echo
     fi
   done
+  # Cache .session/ mất khi đổi máy; docs/ui/session-state.json nằm trong git nên là nguồn sự thật (CEO, brief 126).
+  g=docs/ui/session-state.json
+  if [ "$have" = 0 ] && [ -f "$g" ] && [ ! -L "$g" ]; then
+    have=1
+    echo "--- $g (nguồn sự thật, trong git; .session/ không còn) ---"
+    head -c 2000 "$g" | head -n 8
+    echo
+  fi
   if [ "$have" = 0 ]; then
     echo ".session/ không còn (đổi máy). Đọc docs/ui/session-summary-29-10.md để biết việc dở. Kiểm git status trước khi trả lời."
   fi
