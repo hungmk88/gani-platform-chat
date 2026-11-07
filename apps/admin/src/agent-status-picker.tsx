@@ -86,6 +86,7 @@ export function AgentStatusPicker() {
 }
 
 /** The line under the top bar when the API set Offline because the connection was lost (`reason: disconnected`), with "Online". */
+// TODO: dải nhắc 'Bận quá X phút' chờ Q7 + trường cấu hình từ API (brief 119).
 export function AgentStatusStrip() {
   const status = useAgentStatus();
   const set = useSetStatus();
