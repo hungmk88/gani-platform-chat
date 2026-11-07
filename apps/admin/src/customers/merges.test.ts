@@ -13,6 +13,8 @@ import {
   REASON,
   sameCustomer,
   suggestionsPath,
+  unmergeFailureOf,
+  unmergePath,
   type MergeEntry,
 } from './merges';
 
@@ -105,6 +107,30 @@ describe('merging (PR B1)', () => {
     expect(f('forbidden', 403)).toEqual({ text: 'API', final: true });
     expect(f('internal_error', 500).final).toBe(false);
     expect(f('network_error', 0).text).toContain('không gộp hai lần');
+    expect(f('idempotency_in_progress', 409)).toEqual({ text: 'API', final: false });
+  });
+});
+
+describe('unmerging (PR B2)', () => {
+  it('posts on the source, the customer merged away', () => {
+    expect(unmergePath('s/1')).toBe('/v1/customers/s%2F1/unmerge');
+  });
+
+  it('says why it was refused; 409 and 404 leave nothing to try, a lost answer may be tried again', () => {
+    const f = (code: string, status: number) => unmergeFailureOf({ code, status, message: 'API' });
+    expect(f('not_merged', 409)).toEqual({
+      text: 'Lần gộp này đã được tách trước đó. Lịch sử gộp đã tải lại.',
+      final: true,
+    });
+    expect(f('target_merged', 409).text).toBe(
+      'Khách này đã được gộp tiếp vào khách khác. Tách lần gộp đó trước.',
+    );
+    expect(f('not_found', 404)).toEqual({ text: 'Không còn khách này.', final: true });
+    expect(f('forbidden', 403)).toEqual({ text: 'API', final: true });
+    expect(f('internal_error', 500)).toEqual({
+      text: 'Chưa rõ đã tách hay chưa. Bấm Thử lại: an toàn, không tách hai lần.',
+      final: false,
+    });
     expect(f('idempotency_in_progress', 409)).toEqual({ text: 'API', final: false });
   });
 });

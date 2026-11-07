@@ -84,3 +84,28 @@ export function mergeFailureOf(e: Pick<ApiError, 'code' | 'status' | 'message'>)
   const unsure = e.code === 'network_error' || e.status >= 500;
   return { text: unsure ? UNSURE : e.message, final: false };
 }
+
+export type UnmergeResult = components['schemas']['CustomerUnmergeResult'];
+
+/** `POST /v1/customers/{sourceId}/unmerge` (PR B2): undone on the source, the customer merged away, not on the one viewed. */
+export const unmergePath = (sourceId: string): string => `${ofCustomer(sourceId)}/unmerge`;
+
+const UNMERGE: Readonly<Record<string, string>> = {
+  not_merged: 'Lần gộp này đã được tách trước đó. Lịch sử gộp đã tải lại.',
+  target_merged: 'Khách này đã được gộp tiếp vào khách khác. Tách lần gộp đó trước.',
+  not_found: 'Không còn khách này.',
+};
+
+/** What a refused or failed unmerge says: 409 and 404 leave nothing to try; a lost answer is safe to try again (same key). */
+export function unmergeFailureOf(e: Pick<ApiError, 'code' | 'status' | 'message'>): Failure {
+  const known = UNMERGE[e.code];
+  if (known) return { text: known, final: true };
+  if (e.status === 403) return { text: e.message, final: true };
+  const unsure = e.code === 'network_error' || e.status >= 500;
+  return {
+    text: unsure
+      ? 'Chưa rõ đã tách hay chưa. Bấm Thử lại: an toàn, không tách hai lần.'
+      : e.message,
+    final: false,
+  };
+}
