@@ -18,11 +18,15 @@ export const mayReadCustomers = (role: Role | null): role is Role =>
 /** True when the API answers this role's phones and emails masked, and searches by name only. */
 export const seesMasked = (role: Role): boolean => role === 'marketing' || role === 'viewer';
 
-/** `GET /v1/customers`: newest first, by cursor; `q` (trimmed, ≤ 100) is a part of the name or the start of a phone number. */
-export function customersPath(q: string, cursor: string | null): string {
+/**
+ * `GET /v1/customers`: newest first, by cursor; `q` (trimmed, ≤ 100) is a part of the name or the start of a phone number; `tagId`
+ * the customers carrying that tag (N190, hidden ones too, T-4; one of another company answers none).
+ */
+export function customersPath(q: string, cursor: string | null, tagId = ''): string {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   const query = q.trim().slice(0, MAX_QUERY);
   if (query) params.set('q', query);
+  if (tagId) params.set('tagId', tagId);
   if (cursor) params.set('cursor', cursor);
   return `/v1/customers?${params.toString()}`;
 }
@@ -74,3 +78,7 @@ export const VERIFICATION: Readonly<
 /** The "chỉ người phục vụ" flag (Brief §28, `human_only`): the bot never answers this customer. */
 export const humanOnlyText = (on: boolean): string =>
   on ? 'Có: bot không trả lời khách này' : 'Không';
+
+/** The tags of a row, by name as the API gives them; a hidden one says so. */
+export const tagsText = (c: Pick<Customer, 'tags'>): string =>
+  c.tags.map((t) => (t.hidden ? `${t.name} (đã ẩn)` : t.name)).join(', ');

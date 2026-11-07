@@ -40,7 +40,12 @@ export const MANY = 600;
 export const MANY_PAGE = 200;
 
 export { CONVERSATIONS, HOSTILE, MESSAGES } from './stub-conversations';
-import { CONVERSATIONS, conversationMatches, MESSAGES } from './stub-conversations';
+import {
+  CONVERSATIONS,
+  conversationMatches,
+  conversationTagged,
+  MESSAGES,
+} from './stub-conversations';
 
 /** The codes of the authenticator app: the right one, a wrong one, and one that locks the account (5 wrong in a row). */
 export const TOTP = { good: '123456', wrong: '000000', locking: '999999' } as const;
@@ -261,7 +266,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
             (!q.get('workspaceId') || c.workspaceId === q.get('workspaceId')) &&
             (!q.has('q') || conversationMatches(c, q.get('q') ?? '')) &&
             byChannel(q.get('channelId')) &&
-            byTeam(q.get('teamId')),
+            byTeam(q.get('teamId')) &&
+            (!q.get('tagId') || conversationTagged(c, q.get('tagId') ?? '')),
         );
     if (path.endsWith('/channels')) return send(res, 200, { data: inboxChannels(seen) }); // U56, stub-u30.ts
     const from = Number(q.get('cursor') ?? 0);

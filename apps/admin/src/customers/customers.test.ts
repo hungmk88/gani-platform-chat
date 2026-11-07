@@ -4,6 +4,7 @@ import {
   channelsOf,
   customerPath,
   customersPath,
+  tagsText,
   humanOnlyText,
   dayOf,
   mayReadCustomers,
@@ -29,6 +30,7 @@ describe('customersPath', () => {
   it('asks a page, with the search trimmed and cut to 100, and the cursor', () => {
     expect(customersPath('  ', null)).toBe('/v1/customers?limit=50');
     expect(customersPath(' 0912 ', 'c2')).toBe('/v1/customers?limit=50&q=0912&cursor=c2');
+    expect(customersPath('', null, 't1')).toBe('/v1/customers?limit=50&tagId=t1');
     expect(customersPath('a'.repeat(120), null)).toBe(
       `/v1/customers?limit=50&q=${'a'.repeat(100)}`,
     );
@@ -67,5 +69,16 @@ describe('customerPath, VERIFICATION and humanOnlyText', () => {
     expect(VERIFICATION.unverified).toEqual(['warn', 'Chưa xác thực']);
     expect(humanOnlyText(true)).toBe('Có: bot không trả lời khách này');
     expect(humanOnlyText(false)).toBe('Không');
+  });
+});
+
+describe('tagsText (P4)', () => {
+  it('the tags by name as given, a hidden one said, none empty', () => {
+    const tags = [
+      { id: 't1', name: 'Khách sỉ', hidden: false },
+      { id: 't2', name: 'Thử nghiệm cũ', hidden: true },
+    ];
+    expect(tagsText({ tags })).toBe('Khách sỉ, Thử nghiệm cũ (đã ẩn)');
+    expect(tagsText({ tags: [] })).toBe('');
   });
 });
