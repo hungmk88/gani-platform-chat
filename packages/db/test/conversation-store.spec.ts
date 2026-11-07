@@ -9,6 +9,7 @@ import {
   insertConversation,
   insertConversationEvent,
   loadConversation,
+  setConversationSla,
   withTenant,
   type NewConversationEvent,
   type TenantContext,
@@ -185,5 +186,48 @@ describe('insertConversationEvent', () => {
       insertConversationEvent(tx, event(id, { eventType: 'deleted' })),
     );
     expect(await sqlState(bad)).toBe('23514');
+  });
+});
+
+describe('setConversationSla', () => {
+  const sla = async (id: string) =>
+    (
+      await admin.query(
+        'SELECT sla_due_at, sla_paused_reason, sla_remaining_seconds, version FROM conversations WHERE id = $1',
+        [id],
+      )
+    ).rows[0] as Record<string, unknown>;
+  const due = new Date('2026-11-03T03:00:00.000Z');
+
+  it('writes a running SLA, a paused one, then none, and leaves the state and the version alone (E3)', async () => {
+    const id = await fresh();
+    const set = (value: Parameters<typeof setConversationSla>[2]) =>
+      withTenant(pool, inA(WA), (tx) => setConversationSla(tx, id, value));
+    await set({ dueAt: due, pausedReason: null, remainingSeconds: null });
+    expect(await sla(id)).toEqual({
+      sla_due_at: due,
+      sla_paused_reason: null,
+      sla_remaining_seconds: null,
+      version: 0,
+    });
+    await set({ dueAt: due, pausedReason: 'waiting_customer', remainingSeconds: 1200 });
+    expect(await sla(id)).toMatchObject({
+      sla_paused_reason: 'waiting_customer',
+      sla_remaining_seconds: 1200,
+    });
+    await set(null);
+    expect(await sla(id)).toEqual({
+      sla_due_at: null,
+      sla_paused_reason: null,
+      sla_remaining_seconds: null,
+      version: 0,
+    });
+  });
+
+  it('touches nothing in a workspace the context does not hold', async () => {
+    await withTenant(pool, inA(WA), (tx) =>
+      setConversationSla(tx, CB, { dueAt: due, pausedReason: null, remainingSeconds: null }),
+    );
+    expect(await sla(CB)).toMatchObject({ sla_due_at: null });
   });
 });
