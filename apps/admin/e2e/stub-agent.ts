@@ -54,7 +54,7 @@ export function attachAgent(
 
   agent.on('connection', (socket) => {
     const { sid } = socket.data as { sid: string };
-    void socket.join(room(sid, 'ws'));
+    void socket.join([room(sid, 'ws'), room(sid, 'user')]);
     const visible = (id: unknown) => sessions.get(sid)?.conversations.find((c) => c.id === id);
     type Ack = (a: object) => void;
     socket.on(
@@ -145,6 +145,23 @@ export function attachAgent(
         .emit(
           'conversation.state_changed',
           envelope('conversation.state_changed', c.version, data),
+        );
+    }
+    // U86: the worker's packets without a version in `data`; `version` is the envelope's aggregateVersion (a stale one is dropped).
+    if (name === 'agent-status') {
+      const { version, ...data } = body as { version: number; [k: string]: unknown };
+      delete data['sid'];
+      agent
+        .to([room(sid, 'user'), room(sid, 'ws')])
+        .emit('agent_status.changed', envelope('agent_status.changed', version, data));
+    }
+    if (name === 'sla' && c) {
+      const data = { conversationId: c.id, sla: body['sla'] ?? null };
+      agent
+        .to([room(sid, `conv:${c.id}`), room(sid, 'ws')])
+        .emit(
+          'conversation.sla_changed',
+          envelope('conversation.sla_changed', Number(body['version']), data),
         );
     }
     // Closes the transport, as a lost network does: the client reconnects by itself (a server disconnect would not).

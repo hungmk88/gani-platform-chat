@@ -39,7 +39,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <QueryProvider key={scopeId(scope)} scope={scope}>
       {readsConversations(role) ? (
         // Read at request time: empty in production (same origin behind the proxy), the API's origin in dev and e2e.
-        <RealtimeProvider origin={process.env['REALTIME_ORIGIN'] ?? ''}>{shell}</RealtimeProvider>
+        <RealtimeProvider origin={process.env['REALTIME_ORIGIN'] ?? ''} me={result.me.id}>
+          {shell}
+        </RealtimeProvider>
       ) : (
         shell
       )}
