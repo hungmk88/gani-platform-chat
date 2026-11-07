@@ -345,6 +345,15 @@ Không còn PR FE mở. Nhánh làm việc trùng `main`.
       escalate vận hành AI (Mức 2.5, Mức 3). FE làm Mức 2.5 phần tự làm được: `.session/CHECKPOINT_README.md` (local); hook
       `.claude/settings.local.json` in checkpoint vào ngữ cảnh mỗi khi phiên mở lại bị bộ phân loại quyền chặn (tự sửa cấu hình),
       chờ người cấp quyền. Câu an toàn khi khởi động lại: "Em cần kiểm lại trạng thái".
+    - BE sửa file FE sinh `apps/admin/src/api/planned.d.ts` (+458) trong #633 (J3-0, N204, merge 13:10:30 UTC 07/11, squash `c623ef8`;
+      review trong 24 giờ, brief 121–122). **Đúng:** `planned.json` chỉ thêm 4 đường gộp/tách khách (`POST /v1/customers/merge`,
+      `GET /v1/customers/{id}/merge-suggestions`, `GET /v1/customers/{id}/merges`, `POST /v1/customers/{id}/unmerge`) và 11 schema
+      (`Customer`, `CustomerIdentity`, `CustomerTag`, `CustomerMerge*`, `CustomerUnmergeResult`), không bỏ đường hay schema nào; sinh
+      lại từ `planned.json` của `c623ef8` khớp từng byte; không file FE nào khác bị sửa. CI trước merge 8 success + `terraform`
+      skipped, đúng dòng "Lẫn". Màn gộp khách (J3) chờ brief riêng. FE không comment PR BE.
+    - **Sự cố quy trình 07/11 (lần 8, brief 121):** worker khởi động lại sau khi U83 xanh ở máy lúc ~08:32 UTC 07/11; push 13:04 (#634),
+      trễ ~4,5 giờ; lỡ check-in 10:06, 12:06 và lịch nhắc BE-03 12:05. Lũy kế 05–07/11 ~36,5 giờ. CEO: lỗi hệ thống, không trừ
+      điểm; hook Mức 2.5 do vận hành cấp quyền (brief 122). Từ đây nhánh có commit ở máy được push ngay, trước phần việc còn lại.
     - **Dọn nhánh FE (brief 87, 90–93):** nhóm A 41 nhánh (đã merge hoặc có bản `-v2`/`-v3` merge thay) CEO xóa trên GitHub UI
       05/11, kiểm `git ls-remote` đủ 41/41; nhóm B 6 nhánh (PR đóng không merge) giữ tới 12/11 rồi xóa; nhóm C giữ
       (`backup/privacy-full`, `docs/ui-prototype-outline`). Bản sao 79 ref fetch trước khi xóa còn ở máy FE; khôi phục bằng

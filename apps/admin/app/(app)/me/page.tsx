@@ -1,5 +1,6 @@
 import { roleOf } from '../../../src/me';
 import { getMe, getSecurityStatus } from '../../../src/me.server';
+import { myTeamsText } from '../../../src/profile/my-teams';
 import { Profile } from '../../../src/profile/profile';
 import { tabOf } from '../../../src/profile/tabs';
 
@@ -20,6 +21,7 @@ export default async function MePage({
       role={role}
       orgName={result.me.org?.name ?? null}
       workspaces={result.me.workspaces.map((w) => w.name)}
+      teams={myTeamsText(result.me)}
       twoFactorEnabled={status.kind === 'signed_in' && status.twoFactorEnabled}
     />
   );

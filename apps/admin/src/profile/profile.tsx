@@ -124,6 +124,7 @@ export function Profile({
   role,
   orgName,
   workspaces,
+  teams,
   twoFactorEnabled,
 }: {
   tab: Tab;
@@ -131,6 +132,8 @@ export function Profile({
   role: Role;
   orgName: string | null;
   workspaces: readonly string[];
+  /** The person's own teams (`Me.teams`, U84), one line each (`myTeamsText`). */
+  teams: readonly string[];
   twoFactorEnabled: boolean;
 }) {
   return (
@@ -161,6 +164,18 @@ export function Profile({
             <dd>{orgName ?? 'Không thuộc công ty nào'}</dd>
             <dt className="text-text-muted">Workspace</dt>
             <dd>{workspaces.length ? workspaces.join(', ') : 'Chưa có'}</dd>
+            <dt className="text-text-muted">Team</dt>
+            <dd>
+              {teams.length ? (
+                <ul>
+                  {teams.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+              ) : (
+                'Chưa thuộc team nào'
+              )}
+            </dd>
           </dl>
           <NameForm name={name} />
           <p className="text-12 text-text-muted">Ảnh đại diện: chưa có trong bản hiện tại.</p>
