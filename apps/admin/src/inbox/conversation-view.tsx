@@ -14,6 +14,7 @@ import { canReply, DELIVERY_LABEL, isLocal } from './composer';
 import { ReplyBox } from './reply-box';
 import { customerOf, phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
+import { ConversationNotes } from './conversation-notes';
 import { Holder } from './holder';
 import { setNotice } from './notice';
 import { TicketAction } from './ticket-action';
@@ -203,6 +204,7 @@ export function ConversationView({
           known={{ ...known, ...phoneOf(phones, c.workspaceId), ...customerOf(c.customer) }}
         />
       ) : null}
+      <ConversationNotes key={`notes-${c.id}`} id={c.id} meId={meId} />
       <p className="text-12 text-text-muted">Không áp dụng AI ở khung này.</p>
     </section>
   );
