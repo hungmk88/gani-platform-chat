@@ -142,6 +142,7 @@ afterAll(async () => {
     ['DELETE FROM outbox_events WHERE org_id = $1', [A]],
     ['DELETE FROM conversation_events WHERE org_id = $1', [A]],
     ['DELETE FROM conversations WHERE org_id = $1', [A]],
+    ['DELETE FROM workspace_holidays WHERE org_id = $1', [A]],
     ['DELETE FROM org_members WHERE org_id = $1', [A]],
     ['DELETE FROM workspaces WHERE org_id = $1', [A]],
     ['DELETE FROM organizations WHERE id = $1', [A]],
@@ -513,5 +514,107 @@ describe('atomicity and isolation', () => {
         ),
       ),
     ).toBe('42501');
+  });
+});
+
+// The SLA written by the state machine on PostgreSQL (E3; N208, N210), in WB's working time: the default week of Q7 (no hours set),
+// Hồ Chí Minh City, Tết 2027 off. The clock of the machine is fixed; an event that carries a time uses that instead (E3-3).
+describe('the SLA of a conversation (E3)', () => {
+  let clock = new Date();
+  const timed = new ConversationStateMachine(undefined, undefined, () => clock);
+  const hcm = (local: string) => new Date(`${local}+07:00`);
+  const run = (
+    id: string,
+    event: Parameters<ConversationStateMachine['transition']>[2],
+    agent?: string,
+    version?: number,
+  ) =>
+    db.withTenant(ctx([WB]), (tx) =>
+      timed.transition(tx, id, event, {
+        actor: agent ? { kind: 'agent', id: agent } : { kind: 'bot' },
+        traceId: 'sla',
+        ...(version === undefined ? {} : { expectedVersion: version }),
+      }),
+    );
+  const slaOf = async (id: string) =>
+    (
+      await admin.query<{ due: Date | null; reason: string | null; left: number | null }>(
+        'SELECT sla_due_at AS due, sla_paused_reason AS reason, sla_remaining_seconds AS left FROM conversations WHERE id = $1',
+        [id],
+      )
+    ).rows[0];
+  /** A conversation of WB handed to the queue at `local`. */
+  async function queued(local: string): Promise<string> {
+    const id = idOf(await create(WB));
+    clock = hcm(local);
+    await run(id, { type: 'needs_human', inHours: true });
+    return id;
+  }
+
+  beforeAll(async () => {
+    await admin.query(
+      `INSERT INTO workspace_holidays (id, org_id, workspace_id, name, starts_on, ends_on) VALUES ($1, $2, $3, 'Tết', '2027-02-04', '2027-02-10')`,
+      [randomUUID(), A, WB],
+    );
+  });
+
+  it('starts 60 working minutes at the handover, as the examples of brief 09 (17:00 Friday → 08:30 Monday, N208)', async () => {
+    const cases = [
+      ['2026-11-03T09:00:00', '2026-11-03T10:00:00'],
+      ['2026-11-03T12:30:00', '2026-11-03T14:00:00'],
+      ['2026-11-06T17:00:00', '2026-11-09T08:30:00'],
+      ['2027-02-05T10:00:00', '2027-02-11T09:00:00'],
+    ] as const;
+    for (const [at, due] of cases)
+      expect(await slaOf(await queued(at)), at).toEqual({
+        due: hcm(due),
+        reason: null,
+        left: null,
+      });
+  });
+
+  it('pauses while waiting for the customer and resumes from the time of the message, not the clock (T09, T10, E3-3)', async () => {
+    const id = await queued('2026-11-03T09:00:00');
+    clock = hcm('2026-11-03T09:10:00');
+    await run(id, { type: 'claim', userId: AGENTS[1] as string }, AGENTS[1]);
+    clock = hcm('2026-11-03T09:40:00');
+    await run(id, { type: 'agent_waits_customer' }, AGENTS[1], 2);
+    expect(await slaOf(id)).toEqual({
+      due: hcm('2026-11-03T10:00:00'),
+      reason: 'waiting_customer',
+      left: 1200,
+    });
+    clock = hcm('2026-11-04T15:05:00');
+    await db.withTenant(ctx([WB]), (tx) =>
+      timed.onCustomerMessage(tx, id, {
+        now: hcm('2026-11-04T15:00:00'),
+        agentOnline: true,
+        traceId: 'sla',
+      }),
+    );
+    expect(await slaOf(id)).toEqual({ due: hcm('2026-11-04T15:20:00'), reason: null, left: null });
+  });
+
+  it('starts again from 0 when the customer answers while the agent is offline, and has none once closed (T11, T13, E3-1)', async () => {
+    const id = await queued('2026-11-03T09:00:00');
+    await run(id, { type: 'claim', userId: AGENTS[1] as string }, AGENTS[1]);
+    clock = hcm('2026-11-03T09:40:00');
+    await run(id, { type: 'agent_waits_customer' }, AGENTS[1], 2);
+    await db.withTenant(ctx([WB]), (tx) =>
+      timed.onCustomerMessage(tx, id, {
+        now: hcm('2026-11-04T15:00:00'),
+        agentOnline: false,
+        traceId: 'sla',
+      }),
+    );
+    expect(await slaOf(id)).toEqual({ due: hcm('2026-11-04T16:00:00'), reason: null, left: null });
+    await run(id, { type: 'claim', userId: AGENTS[2] as string }, AGENTS[2]);
+    await run(
+      id,
+      { type: 'close', now: hcm('2026-11-04T15:30:00'), outcome: 'resolved' },
+      AGENTS[2],
+      5,
+    );
+    expect(await slaOf(id)).toEqual({ due: null, reason: null, left: null });
   });
 });

@@ -5,6 +5,7 @@ import type {
   NewOutboxEvent,
   TenantTx,
 } from '@gani/db';
+import { DEFAULT_WORKING_WEEK } from '@gani/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConversationStateMachine, type ConversationStore } from './conversation-state-machine.js';
@@ -26,7 +27,7 @@ const PII = 'Nguyen Van A 0901234567';
 
 // prettier-ignore
 const row = (over: Partial<ConversationRow> = {}): ConversationRow => ({
-  id: ID, orgId: 'org', workspaceId: 'w-1', state: 'BOT_ACTIVE', version: 3, assignedUserId: null, afterHoursHold: false, closedAt: null, outcome: null, ...over,
+  id: ID, orgId: 'org', workspaceId: 'w-1', state: 'BOT_ACTIVE', version: 3, assignedUserId: null, afterHoursHold: false, closedAt: null, outcome: null, slaDueAt: null, slaPausedReason: null, slaRemainingSeconds: null, ...over,
 });
 const pending = () => row({ state: 'PENDING_CUSTOMER', assignedUserId: U1 });
 const closedAgo = (ms: number) =>
@@ -50,6 +51,25 @@ function fake(initial: ConversationRow | null) {
     insertConversation: () => Promise.reject(new Error('not used')),
     insertConversationEvent: (_tx, e) => (events.push(e), Promise.resolve()),
     insertOutboxEvent: (_tx, e) => (outbox.push(e), Promise.resolve()),
+    // The working week of Q7 (N209) in Hồ Chí Minh City, no day off: what the SLA is reckoned in (E3).
+    readWorkingWeek: () =>
+      Promise.resolve({
+        timezone: 'Asia/Ho_Chi_Minh',
+        week: DEFAULT_WORKING_WEEK,
+        isDefault: true,
+      }),
+    listDaysOff: () => Promise.resolve([]),
+    setConversationSla: (_tx, id, sla) => {
+      const r = rows.get(id);
+      if (r)
+        rows.set(id, {
+          ...r,
+          slaDueAt: sla?.dueAt ?? null,
+          slaPausedReason: sla?.pausedReason ?? null,
+          slaRemainingSeconds: sla?.remainingSeconds ?? null,
+        });
+      return Promise.resolve();
+    },
     applyTransition: (_tx, w) => {
       calls.push('apply');
       const r = rows.get(w.id);

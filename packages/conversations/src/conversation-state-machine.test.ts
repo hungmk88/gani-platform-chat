@@ -1,5 +1,5 @@
 import type { ConversationRow, NewConversationEvent, NewOutboxEvent, TenantTx } from '@gani/db';
-import { InvalidTransitionError, type ConversationEvent } from '@gani/domain';
+import { DEFAULT_WORKING_WEEK, InvalidTransitionError, type ConversationEvent } from '@gani/domain';
 import { describe, expect, it } from 'vitest';
 
 import { ConversationStateMachine, type ConversationStore } from './conversation-state-machine.js';
@@ -20,13 +20,13 @@ const say = (event: ConversationEvent) => event;
 
 // prettier-ignore
 const row = (over: Partial<ConversationRow> = {}): ConversationRow => ({
-  id: ID, orgId: 'org', workspaceId: 'w-1', state: 'BOT_ACTIVE', version: 0, assignedUserId: null, afterHoursHold: false, closedAt: null, outcome: null, ...over,
+  id: ID, orgId: 'org', workspaceId: 'w-1', state: 'BOT_ACTIVE', version: 0, assignedUserId: null, afterHoursHold: false, closedAt: null, outcome: null, slaDueAt: null, slaPausedReason: null, slaRemainingSeconds: null, ...over,
 });
 const held = (state: 'HUMAN_ACTIVE' | 'PENDING_CUSTOMER') =>
   row({ state, assignedUserId: U1, version: 3 });
 
 // prettier-ignore
-function fake(initial: ConversationRow | null) {
+function fake(initial: ConversationRow | null, clock: () => Date = () => NOW) {
   const rows = new Map(initial ? [[ID, initial]] : []);
   const events: NewConversationEvent[] = [];
   const outbox: NewOutboxEvent[] = [];
@@ -37,6 +37,14 @@ function fake(initial: ConversationRow | null) {
     insertConversation: (_tx, c) => (rows.set(c.id, row({ ...c })), Promise.resolve(row({ ...c }))),
     insertConversationEvent: (_tx, e) => (events.push(e), Promise.resolve()),
     insertOutboxEvent: (_tx, e) => (outbox.push(e), Promise.resolve()),
+    // The working week of Q7 (N209) in Hồ Chí Minh City, no day off: what the SLA is reckoned in (E3).
+    readWorkingWeek: () => Promise.resolve({ timezone: 'Asia/Ho_Chi_Minh', week: DEFAULT_WORKING_WEEK, isDefault: true }),
+    listDaysOff: () => Promise.resolve([]),
+    setConversationSla: (_tx, id, sla) => {
+      const r = rows.get(id);
+      if (r) rows.set(id, { ...r, slaDueAt: sla?.dueAt ?? null, slaPausedReason: sla?.pausedReason ?? null, slaRemainingSeconds: sla?.remainingSeconds ?? null });
+      return Promise.resolve();
+    },
     applyTransition: (_tx, w) => {
       calls.apply++;
       hooks.beforeApply();
@@ -47,7 +55,7 @@ function fake(initial: ConversationRow | null) {
       return (rows.set(w.id, next), Promise.resolve(next));
     },
   };
-  return { machine: new ConversationStateMachine(store), rows, events, outbox, calls, hooks };
+  return { machine: new ConversationStateMachine(store, undefined, clock), rows, events, outbox, calls, hooks };
 }
 const err = (p: Promise<unknown>) => p.catch((e: unknown) => e);
 
@@ -231,5 +239,81 @@ describe('the outbox rows of a transition (outbox spec §3)', () => {
     await machine.transition(TX, ID, say({ type: 'customer_message', now: NOW, agentOnline: true }), OPTS);
     await expect(machine.transition(TX, ID, say({ type: 'hand_back_to_bot' }), OPTS)).rejects.toThrow(InvalidTransitionError);
     expect(outbox).toEqual([]);
+  });
+});
+
+// The SLA kept by each transition (E3, N208, N210), in the working time of Q7. 2026-11-03 is a Tuesday in Hồ Chí Minh City (UTC+7).
+const hcm = (local: string) => new Date(`${local}+07:00`);
+const sla = (r: ConversationRow | undefined) => [
+  r?.slaDueAt ?? null,
+  r?.slaPausedReason ?? null,
+  r?.slaRemainingSeconds ?? null,
+];
+describe('the SLA of a transition', () => {
+  it('starts 60 working minutes when the bot hands over (T02), from the clock when the event has no time', async () => {
+    const { machine, rows } = fake(row(), () => hcm('2026-11-03T11:30:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'needs_human', inHours: true },
+      { actor: { kind: 'bot' }, traceId: 't' },
+    );
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-03T13:30:00'), null, null]);
+  });
+
+  it('pauses when the agent waits for the customer (T09) and has none once closed (T13)', async () => {
+    const start = row({
+      state: 'HUMAN_ACTIVE',
+      assignedUserId: U1,
+      version: 3,
+      slaDueAt: hcm('2026-11-03T10:00:00'),
+    });
+    const { machine, rows } = fake(start, () => hcm('2026-11-03T09:40:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'agent_waits_customer' },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-03T10:00:00'), 'waiting_customer', 1200]);
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'close', now: hcm('2026-11-03T09:45:00'), outcome: 'resolved' },
+      { ...OPTS, expectedVersion: 4 },
+    );
+    expect(sla(rows.get(ID))).toEqual([null, null, null]);
+  });
+
+  it('resumes from the time of the customer’s message, not the clock (T10, E3-3)', async () => {
+    const start = row({
+      ...held('PENDING_CUSTOMER'),
+      slaDueAt: hcm('2026-11-03T10:00:00'),
+      slaPausedReason: 'waiting_customer',
+      slaRemainingSeconds: 1200,
+    });
+    const { machine, rows } = fake(start, () => hcm('2026-11-04T15:05:00'));
+    await machine.onCustomerMessage(TX, ID, {
+      now: hcm('2026-11-04T15:00:00'),
+      agentOnline: true,
+      traceId: 't',
+    });
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-04T15:20:00'), null, null]);
+  });
+
+  it('starts again from 0 when the customer answers while the agent is offline (T11, E3-1)', async () => {
+    const start = row({
+      ...held('PENDING_CUSTOMER'),
+      slaDueAt: hcm('2026-11-03T10:00:00'),
+      slaPausedReason: 'waiting_customer',
+      slaRemainingSeconds: 1200,
+    });
+    const { machine, rows } = fake(start);
+    await machine.onCustomerMessage(TX, ID, {
+      now: hcm('2026-11-04T15:00:00'),
+      agentOnline: false,
+      traceId: 't',
+    });
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-04T16:00:00'), null, null]);
   });
 });

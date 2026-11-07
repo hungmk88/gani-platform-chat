@@ -3,7 +3,10 @@ import {
   insertConversation,
   insertConversationEvent,
   insertOutboxEvent,
+  listDaysOff,
   loadConversation,
+  readWorkingWeek,
+  setConversationSla,
   type ConversationRow,
   type TenantTx,
 } from '@gani/db';
@@ -12,7 +15,12 @@ import {
   CONVERSATION_STATES,
   InvalidTransitionError,
   decide,
+  localTime,
+  sameSla,
+  slaAfterTransition,
   uuidv7,
+  type ConversationSla,
+  type ConversationState,
   type ConversationEffect,
   type ConversationEvent,
   type ConversationSnapshot,
@@ -31,7 +39,7 @@ import {
 import { OutboxWriter, conversationOutboxEvent } from './outbox-writer.js';
 
 // prettier-ignore
-export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent };
+export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent, readWorkingWeek, listDaysOff, setConversationSla };
 /** The functions of the conversation store and of the outbox the state machine writes through; a test passes a fake. */
 export type ConversationStore = typeof conversationStore;
 
@@ -72,6 +80,21 @@ function toRecord(row: ConversationRow): ConversationRecord {
   const { id, workspaceId, version, assignedUserId, afterHoursHold, closedAt } = row;
   return { id, workspaceId, version, snapshot: { state, afterHoursHold, assignedUserId, closedAt, outcome } };
 }
+const slaOf = (row: ConversationRow): ConversationSla | null =>
+  row.slaDueAt === null
+    ? null
+    : {
+        dueAt: row.slaDueAt,
+        pausedReason:
+          row.slaPausedReason === 'waiting_customer' || row.slaPausedReason === 'outside_hours'
+            ? row.slaPausedReason
+            : null,
+        remainingSeconds: row.slaRemainingSeconds,
+      };
+/** When the transition happened (E3-3): the time of the event when it carries one (a customer's message, a close), else the clock. */
+const timeOf = (event: ConversationEvent, clock: () => Date): Date =>
+  'now' in event ? event.now : clock();
+
 // prettier-ignore
 const changed = (row: ConversationRow, d: { transition: TransitionId; effects: readonly ConversationEffect[] }): TransitionOutcome => ({
   kind: 'changed', conversation: toRecord(row), transition: d.transition, effects: d.effects,
@@ -87,6 +110,8 @@ export class ConversationStateMachine {
   constructor(
     private readonly store: ConversationStore = conversationStore,
     private readonly outbox: OutboxWriter = new OutboxWriter(store),
+    /** The clock of a transition whose event carries no time (E3-3): the server's; a test gives a fixed one. */
+    private readonly clock: () => Date = () => new Date(),
   ) {}
 
   /** T01: a new conversation in `workspaceId`, `BOT_ACTIVE`, version 0; of a person of a channel account when `channel` is given. */
@@ -149,6 +174,7 @@ export class ConversationStateMachine {
         next: decision.next,
       });
       if (written) {
+        await this.keepSla(tx, row, written, timeOf(event, this.clock));
         await this.record(tx, toRecord(written), row, decision, options);
         return changed(written, decision);
       }
@@ -180,6 +206,31 @@ export class ConversationStateMachine {
       actor: { kind: 'customer' },
       traceId: input.traceId,
     });
+  }
+
+  /**
+   * The SLA after the transition (E3, N208, N210), written in its transaction: decided by `slaAfterTransition` in the working time of the
+   * workspace, and written only when it changed.
+   */
+  private async keepSla(
+    tx: TenantTx,
+    before: ConversationRow,
+    after: ConversationRow,
+    at: Date,
+  ): Promise<void> {
+    const had = slaOf(before);
+    const to = after.state as ConversationState;
+    if (had === null && (to === 'BOT_ACTIVE' || to === 'CLOSED')) return;
+    const hours = await this.store.readWorkingWeek(tx, after.workspaceId);
+    if (!hours) throw new ConversationNotFoundError();
+    const daysOff = await this.store.listDaysOff(
+      tx,
+      after.workspaceId,
+      localTime(at, hours.timezone).date,
+    );
+    const schedule = { week: hours.week, daysOff, timeZone: hours.timezone };
+    const next = slaAfterTransition(had, before.state as ConversationState, to, at, schedule);
+    if (!sameSla(had, next)) await this.store.setConversationSla(tx, after.id, next);
   }
 
   // prettier-ignore
