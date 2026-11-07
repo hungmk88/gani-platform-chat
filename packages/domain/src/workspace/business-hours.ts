@@ -25,13 +25,22 @@ export interface DayOff {
   readonly endsOn: string;
 }
 
-/** A workspace with no hours set (CEO 02/11/2026, C10 answer): Monday to Friday 08:00–18:00, the weekend closed. No seed. */
+/**
+ * A workspace with no hours set: Monday to Friday 08:00–17:30, break 12:00–13:00, the weekend closed (Q7 provisional values, CEO
+ * 07/11/2026, N209; before: 08:00–18:00 with no break, CEO 02/11/2026). No seed: a workspace that set its hours keeps them.
+ */
+const Q7_DAY: OpenDay = {
+  opensAt: '08:00',
+  closesAt: '17:30',
+  breakStartsAt: '12:00',
+  breakEndsAt: '13:00',
+};
 export const DEFAULT_WORKING_WEEK: WorkingWeek = [
-  { opensAt: '08:00', closesAt: '18:00' },
-  { opensAt: '08:00', closesAt: '18:00' },
-  { opensAt: '08:00', closesAt: '18:00' },
-  { opensAt: '08:00', closesAt: '18:00' },
-  { opensAt: '08:00', closesAt: '18:00' },
+  Q7_DAY,
+  Q7_DAY,
+  Q7_DAY,
+  Q7_DAY,
+  Q7_DAY,
   null,
   null,
 ];

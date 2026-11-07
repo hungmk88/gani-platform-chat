@@ -1,7 +1,7 @@
 import { listDaysOff, readWorkingWeek, type TenantTx } from '@gani/db';
 import { isOpen, localTime } from '@gani/domain';
 
-// Whether a workspace is open at a moment (C10-4a, Brief F6/P14, N192): its week (the default one, Monday to Friday 08:00–18:00, while
+// Whether a workspace is open at a moment (C10-4a, Brief F6/P14, N192): its week (the default one, Monday to Friday 08:00–17:30, break 12:00–13:00, while
 // none is set) and its days off, in its time zone. The state machine never reads a clock: the caller gives it `inHours`, so a customer
 // who needs a person goes to the queue (T02) in hours and is held (T03, after_hours_hold) outside them.
 

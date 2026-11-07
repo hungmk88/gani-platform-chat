@@ -23,7 +23,7 @@ export function registerBusinessHours(registry: OpenAPIRegistry): void {
     method: 'get',
     path: '/v1/workspaces/{id}/business-hours',
     summary:
-      'The working week of a workspace in its time zone; the default week (Monday to Friday 08:00–18:00) while none is set.',
+      'The working week of a workspace in its time zone; the default week (Monday to Friday 08:00–17:30, break 12:00–13:00) while none is set.',
     tags,
     request: { params },
     responses: { 200: { description: 'The week.', ...json(BusinessHoursSchema) }, ...common },
