@@ -12,3 +12,4 @@ export {
 export { INITIAL_SNAPSHOT, REOPEN_WINDOW_MS, snapshotViolations } from './snapshot.js';
 export { TRANSITIONS, type NoChangeRow, type Row, type TransitionRow } from './transitions.js';
 export * from './types.js';
+export { sameSla, slaAfterTransition, type ConversationSla, type SlaPauseReason } from './sla.js';
