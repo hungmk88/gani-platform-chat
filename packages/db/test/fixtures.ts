@@ -20,6 +20,8 @@ const TENANT_TABLES = [
   'feature_flags_overrides',
   'agent_settings',
   'audit_logs',
+  'security_alerts',
+  'security_incidents',
   'platform_access_logs',
   'api_keys',
   'idempotency_keys',
@@ -139,7 +141,9 @@ export async function seedTenant(admin: pg.Client, org: string): Promise<string>
     INSERT INTO bot_sessions (id, org_id, conversation_id, version_id) VALUES ('${botSession}', '${org}', '${conversation}', '${botVersion}');
     INSERT INTO bot_session_steps (id, org_id, session_id, conversation_id, step_index, node_key, node_type) VALUES ('${uuidv7()}', '${org}', '${botSession}', '${conversation}', 0, 'start', 'trigger');
     INSERT INTO outbox_events (id, org_id, event_type, aggregate_type, aggregate_id, actor_kind, trace_id) VALUES ('${uuidv7()}', '${org}', 'conversation.created', 'conversation', '${conversation}', 'system', 'seed');
-    INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes')`);
+    INSERT INTO platform_access_logs (id, org_id, operator_user_id, db_login, reason, expires_at) VALUES ('${uuidv7()}', '${org}', '${user}', 'seed_login', 'seed', now() + interval '30 minutes');
+    WITH i AS (INSERT INTO security_incidents (id, org_id, title, severity, handler_user_id, opened_by_user_id) VALUES ('${uuidv7()}', '${org}', 'Seed', 'low', '${user}', '${user}') RETURNING id, org_id)
+      INSERT INTO security_alerts (id, org_id, kind, severity, subject_user_id, window_start, incident_id) SELECT '${uuidv7()}', org_id, 'two_factor_reset', 'medium', '${user}', now(), id FROM i`);
   return user;
 }
 

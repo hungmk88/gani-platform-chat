@@ -76,6 +76,9 @@ const APP_UPDATE: Record<string, string[]> = {
     'updated_at',
   ],
   feature_flags_overrides: ['enabled', 'updated_at'],
+  // A repeat in its window, and the incident that covers it (P11, N207); an incident is closed once or handed on.
+  security_alerts: ['count', 'incident_id', 'occurred_at', 'severity'],
+  security_incidents: ['closed_at', 'handler_user_id', 'status', 'updated_at'],
   // created_at on purpose: a key used again after 24 hours starts its day anew (N134).
   idempotency_keys: [
     'created_at',
@@ -238,5 +241,16 @@ describe('SELECT of support_role on customers (N165)', () => {
       { name: 'customer_identities', columns: ['external_id'] },
       { name: 'customers', columns: ['display_name', 'email', 'phone_e164'] },
     ]);
+  });
+});
+
+describe('SELECT of support_role on security_incidents (N207)', () => {
+  it('leaves out the title: the opener’s free words', async () => {
+    const { rows } = await admin.query<{ column: string }>(
+      `SELECT a.attname::text AS column FROM pg_attribute a
+       WHERE a.attrelid = 'public.security_incidents'::regclass AND a.attnum > 0 AND NOT a.attisdropped
+         AND NOT has_column_privilege('support_role', a.attrelid, a.attnum, 'SELECT')`,
+    );
+    expect(rows).toEqual([{ column: 'title' }]);
   });
 });
