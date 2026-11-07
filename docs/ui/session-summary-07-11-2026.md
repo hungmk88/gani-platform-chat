@@ -221,3 +221,8 @@ Planned trả 404 tới khi BE làm thật: `PendingPage` hoặc câu "chưa có
   - PR A (tầng 1, chỉ đọc) là PR này.
   - PR B (tầng 3, gộp và tách, tách B1/B2 nếu > 500 dòng) làm sau, mặc định: Manager không có nút "Gộp…", gộp gõ `GOP`, tách bằng
     checkbox, không hiện số đếm vì hợp đồng không có đường xem trước.
+- **Sau PR A (bổ sung 07/11 ~18:05 UTC):** #653 PR A (17:00:41, `2fc182a`) và #654 B1 gộp (CEO merge 17:30:00, `0cd2c80`), 5 mục đã gửi;
+  #656 B2 tách (tầng 3) đang chờ CEO. BE #651 (P11a-1), #652 (E2) không chạm FE.
+- **Review chéo #655** (BE E1 cột SLA, lịch mặc định Q7, team Mặc định; 17:46:49, `2deb767`): sinh lại `gen:api` từ JSON của squash,
+  `git diff` rỗng; chỉ chú thích `GET /v1/workspaces/{id}/business-hours` đổi (mặc định T2–T6 08:00–17:30, nghỉ 12:00–13:00), không
+  schema nào đổi, `Conversation.sla` vẫn như cũ; FE đọc giờ mặc định từ API, không chép cứng. API giả E2E sửa theo ở PR này (brief 164).

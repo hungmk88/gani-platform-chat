@@ -25,7 +25,7 @@ const opening = async (page: Page, role: 'admin' | 'owner') => {
   await expect(page.getByLabel('Thứ 2 làm việc')).toBeFocused();
 };
 
-test('an Admin opens Saturday morning, adds a Monday break, closes Friday and saves the whole week', async ({
+test('an Admin opens Saturday morning, moves the Monday break, closes Friday and saves the whole week', async ({
   page,
 }) => {
   const sent = puts(page);
@@ -39,8 +39,8 @@ test('an Admin opens Saturday morning, adds a Monday break, closes Friday and sa
   await page.getByLabel('Thứ 7 làm việc').check();
   await page.getByLabel('Thứ 7 mở cửa').fill('08:00');
   await page.getByLabel('Thứ 7 đóng cửa').fill('12:00');
-  await page.getByLabel('Thứ 2 nghỉ giữa ca từ').fill('12:00');
-  await page.getByLabel('Thứ 2 nghỉ giữa ca đến').fill('13:00');
+  await page.getByLabel('Thứ 2 nghỉ giữa ca từ').fill('11:30');
+  await page.getByLabel('Thứ 2 nghỉ giữa ca đến').fill('12:30');
   await page.getByLabel('Thứ 6 làm việc').uncheck();
   await expect(page.getByLabel('Thứ 6 mở cửa')).toBeDisabled();
   await save(page).click();
@@ -48,8 +48,8 @@ test('an Admin opens Saturday morning, adds a Monday break, closes Friday and sa
   await expect(edit(page)).toBeFocused();
   await expect(rows(page)).toHaveText([
     'NgàyLàm việcMở cửaĐóng cửaNghỉ giữa ca từNghỉ giữa ca đến',
-    'Thứ 2Có08:0018:0012:0013:00',
-    ...['Thứ 3', 'Thứ 4', 'Thứ 5'].map((d) => `${d}Có08:0018:00——`),
+    'Thứ 2Có08:0017:3011:3012:30',
+    ...['Thứ 3', 'Thứ 4', 'Thứ 5'].map((d) => `${d}Có08:0017:3012:0013:00`),
     'Thứ 6Nghỉ————',
     'Thứ 7Có08:0012:00——',
     'Chủ nhậtNghỉ————',
@@ -58,19 +58,19 @@ test('an Admin opens Saturday morning, adds a Monday break, closes Friday and sa
   const none = { opensAt: null, closesAt: null, breakStartsAt: null, breakEndsAt: null };
   const day = (
     weekday: number,
-    closesAt = '18:00',
-    b: string | null = null,
-    e: string | null = null,
+    closesAt = '17:30',
+    b: string | null = '12:00',
+    e: string | null = '13:00',
   ) => ({ weekday, open: true, opensAt: '08:00', closesAt, breakStartsAt: b, breakEndsAt: e });
   expect(sent).toHaveLength(1);
   expect(sent[0]!.postDataJSON()).toEqual({
     week: [
-      day(1, '18:00', '12:00', '13:00'),
+      day(1, '17:30', '11:30', '12:30'),
       day(2),
       day(3),
       day(4),
       { weekday: 5, open: false, ...none },
-      day(6, '12:00'),
+      day(6, '12:00', null, null),
       { weekday: 7, open: false, ...none },
     ],
   });
@@ -94,7 +94,8 @@ test('the three rules and their edges say what to fix and send nothing; a closed
   await save(page).click();
   await expect(alert(page)).toHaveText('Thứ 3: giờ đóng cửa phải sau giờ mở cửa.');
   await page.getByLabel('Thứ 3 đóng cửa').fill('18:00');
-  // A break of both ends, strictly inside the day (08:00 and 18:00 themselves are outside).
+  // A break of both ends, strictly inside the day (08:00 and 17:30 themselves are outside); the Q7 default has one, so one end goes.
+  await page.getByLabel('Thứ 4 nghỉ giữa ca đến').fill('');
   await page.getByLabel('Thứ 4 nghỉ giữa ca từ').fill('12:00');
   await save(page).click();
   await expect(alert(page)).toHaveText(
@@ -102,7 +103,7 @@ test('the three rules and their edges say what to fix and send nothing; a closed
   );
   for (const [from, to] of [
     ['08:00', '09:00'],
-    ['17:00', '18:00'],
+    ['17:00', '17:30'],
     ['13:00', '12:00'],
   ]) {
     await page.getByLabel('Thứ 4 nghỉ giữa ca từ').fill(from!);
@@ -151,7 +152,7 @@ test('Hủy leaves the week as it was; a refused save keeps the edits and says w
   await page.getByLabel('Thứ 2 đóng cửa').fill('17:00');
   await page.getByRole('button', { name: 'Hủy' }).click();
   await expect(edit(page)).toBeFocused();
-  await expect(rows(page).nth(1)).toHaveText('Thứ 2Có08:0018:00——');
+  await expect(rows(page).nth(1)).toHaveText('Thứ 2Có08:0017:3012:0013:00');
   expect(sent).toHaveLength(0);
 
   await edit(page).click();
@@ -162,5 +163,5 @@ test('Hủy leaves the week as it was; a refused save keeps the edits and says w
   refuse = false;
   await save(page).click();
   await expect(page.getByRole('main').getByRole('status')).toHaveText('Đã lưu giờ làm việc.');
-  await expect(rows(page).nth(1)).toHaveText('Thứ 2Có08:0017:00——');
+  await expect(rows(page).nth(1)).toHaveText('Thứ 2Có08:0017:0012:0013:00');
 });

@@ -1,5 +1,6 @@
 // #21 Workspace, tab "Giờ làm việc" for the e2e stub API only: `GET/PUT /v1/workspaces/{id}/business-hours` as the real API (#566,
-// N192), Owner and Admin, each session on its own copy. Until a PUT, the default week (Mon–Fri 08:00–18:00) with `isDefault`. The
+// N192), Owner and Admin, each session on its own copy. Until a PUT, the default week (Mon–Fri 08:00–17:30, break 12:00–13:00: Q7 provisional,
+// #655, N209) with `isDefault`. The
 // PUT checks as `business-hours.schemas.ts` (400 `validation_failed` otherwise). The other states are given by the tests with
 // page.route. Never deployed.
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -10,7 +11,14 @@ import { WORKSPACES } from './stub-workspaces';
 
 const day = (weekday: number): BusinessDay =>
   weekday <= 5
-    ? { weekday, open: true, ...NO_HOURS, opensAt: '08:00', closesAt: '18:00' }
+    ? {
+        weekday,
+        open: true,
+        opensAt: '08:00',
+        closesAt: '17:30',
+        breakStartsAt: '12:00',
+        breakEndsAt: '13:00',
+      }
     : { weekday, open: false, ...NO_HOURS };
 
 const WEEK: readonly BusinessDay[] = [1, 2, 3, 4, 5, 6, 7].map(day);
