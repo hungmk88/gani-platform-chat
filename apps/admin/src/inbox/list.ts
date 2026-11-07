@@ -35,6 +35,8 @@ export interface ListFilter {
   readonly channel: string;
   /** The SLA filtered by (`sla`, U81): what the API calls due soon or overdue; the FE never computes it. */
   readonly sla: SlaFilter;
+  /** The team filtered by (`teamId`, U83): conversations of the channels the team answers (N161), a UUID; '' for none. */
+  readonly team: string;
 }
 export const NO_FILTER: ListFilter = {
   assignee: 'any',
@@ -42,6 +44,7 @@ export const NO_FILTER: ListFilter = {
   q: '',
   channel: '',
   sla: 'all',
+  team: '',
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -73,6 +76,7 @@ export function filterOf(params: URLSearchParams): ListFilter {
     q: searchOf(params.get('q')),
     channel: UUID.test(params.get('channel') ?? '') ? (params.get('channel') as string) : '',
     sla: sla === 'due_soon' || sla === 'overdue' ? sla : 'all',
+    team: UUID.test(params.get('team') ?? '') ? (params.get('team') as string) : '',
   };
 }
 
@@ -84,6 +88,7 @@ export function paramsOf(f: ListFilter): URLSearchParams {
   if (f.q) p.set('q', f.q);
   if (f.channel) p.set('channel', f.channel);
   if (f.sla !== 'all') p.set('sla', f.sla);
+  if (f.team) p.set('team', f.team);
   return p;
 }
 
@@ -96,6 +101,7 @@ export function listPath(f: ListFilter, cursor: string | null, workspaceId: stri
   if (f.q) p.set('q', f.q); // a part of the name, the start of a phone from 3 digits, or a whole email (U48)
   if (f.channel) p.set('channelId', f.channel); // every Inbox reader may send it (#390); it narrows within what they read
   if (f.sla !== 'all') p.set('sla', f.sla); // U81: empty until Q7, the API decides what is due soon
+  if (f.team) p.set('teamId', f.team); // U83: a team or out of scope answers [] (never 404)
   if (cursor) p.set('cursor', cursor);
   return `/v1/conversations?${p.toString()}`;
 }
@@ -136,12 +142,18 @@ export const customerNameOf = (c: Pick<Conversation, 'customer'>): string =>
 export function emptyOf(
   f: ListFilter,
   role: Role,
-): { readonly text: string; readonly action: 'search' | 'clear' | 'unassigned' | 'channels' } {
+): {
+  readonly text: string;
+  readonly action: 'search' | 'clear' | 'team' | 'unassigned' | 'channels';
+} {
   if (f.q) return { text: `Không có hội thoại khớp "${f.q}".`, action: 'search' };
+  if (f.team && paramsOf({ ...f, team: '' }).toString() === '')
+    return { text: 'Không có hội thoại ở team này.', action: 'team' }; // wireframe brief 84
   if (
     f.state !== 'all' ||
     f.channel ||
     f.sla !== 'all' ||
+    f.team ||
     (f.assignee !== 'any' && f.assignee !== 'me')
   )
     return { text: 'Không có hội thoại khớp bộ lọc.', action: 'clear' };
@@ -189,3 +201,9 @@ export function channelFilterOf(
   if (channels === 'error') return selected ? 'line' : 'none';
   return channels.length >= 2 || selected ? 'select' : 'none';
 }
+
+export type MeTeam = components['schemas']['MeTeam'];
+
+/** The teams the filter offers (U83, U84): the person's own, of the workspace being worked in or of the whole company. */
+export const teamsOf = (teams: readonly MeTeam[], workspaceId: string | null): readonly MeTeam[] =>
+  teams.filter((t) => t.workspaceId === null || t.workspaceId === workspaceId);

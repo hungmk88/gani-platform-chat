@@ -34,11 +34,13 @@ import {
   paramsOf,
   searchOf,
   STATE_LABEL,
+  teamsOf,
   tooFewDigits,
   whenOf,
   type Assignee,
   type Conversation,
   type InboxChannelList,
+  type MeTeam,
   type ListFilter,
 } from './list';
 import { SLA_FILTER, SLA_TONE, slaChipOf, useClock, type SlaFilter } from './sla';
@@ -63,13 +65,23 @@ function SlaChip({ c, now }: { c: Conversation; now: number | null }) {
  * The list column of the Inbox (#6): filters in the URL, pages by cursor, the four states of the screen. The rows are virtualised
  * against the page's scroll (CLAUDE.md "500+ hội thoại ảo hóa"): only those near the screen are in the DOM, each measured once drawn.
  */
-export function ConversationList({ role, meId }: { role: Role; meId: string }) {
+export function ConversationList({
+  role,
+  meId,
+  teams: myTeams,
+}: {
+  role: Role;
+  meId: string;
+  /** The person's own teams (`Me.teams`, U84): the "Team" filter of the queue (U83). */
+  teams: readonly MeTeam[];
+}) {
   const router = useRouter();
   const notice = useNotice();
   const pathname = usePathname();
   const filter = filterOf(useSearchParams());
   const scope = useScope();
   const now = useClock(); // the SLA chips count from the API's dueAt with the browser's time (U81)
+  const teams = teamsOf(myTeams, scope.workspaceId);
   const list = useApiPages<Page>(['conversations', filter], (cursor) =>
     listPath(filter, cursor, scope.workspaceId),
   );
@@ -170,6 +182,26 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
             ))}
           </select>
         </label>
+        {teams.length || filter.team ? (
+          <label className="flex flex-col gap-1">
+            Team
+            <select
+              value={filter.team}
+              onChange={(e) => go({ ...filter, team: e.target.value })}
+              className="rounded-input border border-border-strong bg-surface px-3 py-1"
+            >
+              <option value="">Tất cả team</option>
+              {filter.team && !teams.some((t) => t.id === filter.team) ? (
+                <option value={filter.team}>Team không còn trong danh sách</option>
+              ) : null}
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {channelFilter === 'select' ? (
           <label className="flex flex-col gap-1">
             Kênh
@@ -251,17 +283,21 @@ export function ConversationList({ role, meId }: { role: Role; meId: string }) {
                 go(
                   empty.action === 'search'
                     ? { ...filter, q: '' }
-                    : empty.action === 'clear'
-                      ? NO_FILTER
-                      : { ...NO_FILTER, assignee: 'none' },
+                    : empty.action === 'team'
+                      ? { ...filter, team: '' }
+                      : empty.action === 'clear'
+                        ? NO_FILTER
+                        : { ...NO_FILTER, assignee: 'none' },
                 );
               }}
             >
               {empty.action === 'search'
                 ? 'Bỏ tìm'
-                : empty.action === 'clear'
-                  ? 'Xóa bộ lọc'
-                  : 'Xem hội thoại chưa ai nhận'}
+                : empty.action === 'team'
+                  ? 'Bỏ lọc team'
+                  : empty.action === 'clear'
+                    ? 'Xóa bộ lọc'
+                    : 'Xem hội thoại chưa ai nhận'}
             </button>
           )}
         </div>
