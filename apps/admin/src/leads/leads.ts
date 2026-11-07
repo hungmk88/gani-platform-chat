@@ -24,6 +24,12 @@ export function leadsPath(workspaceId: string, cursor: string | null): string {
   if (cursor) p.set('cursor', cursor);
   return `/v1/leads?${p.toString()}`;
 }
+/** `GET /v1/leads` of one customer, every workspace of the session, by cursor (#8, CEO brief 169 P3). */
+export function customerLeadsPath(customerId: string, cursor: string | null): string {
+  const p = new URLSearchParams({ customerId, limit: '50' });
+  if (cursor) p.set('cursor', cursor);
+  return `/v1/leads?${p.toString()}`;
+}
 export const pipelinePath = (workspaceId: string) =>
   `/v1/workspaces/${encodeURIComponent(workspaceId)}/pipeline`;
 
