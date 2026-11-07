@@ -82,6 +82,9 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/bot-flows/{id}/dry-run',
       '/v1/customers',
       '/v1/customers/{id}',
+      '/v1/customers/merge',
+      '/v1/customers/{id}/unmerge',
+      '/v1/customers/{id}/merges',
       '/v1/audit-logs',
     ]);
   });
