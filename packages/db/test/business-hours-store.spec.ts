@@ -104,6 +104,24 @@ describe('business-hours-store', () => {
     ).toBeNull();
   });
 
+  it('keeps the hours a workspace set before the default changed (N209: 08:00–18:00 rows stay, never overwritten)', async () => {
+    const before = {
+      opensAt: '08:00:00',
+      closesAt: '18:00:00',
+      breakStartsAt: null,
+      breakEndsAt: null,
+    };
+    const old: WorkingWeek = [before, before, before, before, before, null, null];
+    await inA(async (tx) => {
+      await lockWorkspace(tx, ws);
+      await setWorkingWeek(tx, ws, old);
+    });
+    const read = await inA((tx) => readWorkingWeek(tx, ws));
+    expect(read).toEqual({ timezone: 'Asia/Ho_Chi_Minh', week: old, isDefault: false });
+    expect(read?.week).not.toEqual(DEFAULT_WORKING_WEEK);
+    await admin.query('DELETE FROM workspace_hours WHERE org_id = $1', [A]);
+  });
+
   it('adds days off that neither overlap a live one nor end in the past, and lists them by start', async () => {
     const tet = await addDayOff('Tết', day(30), day(36));
     await addDayOff('Một ngày', day(10), day(10));

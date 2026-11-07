@@ -2381,7 +2381,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The working week of a workspace in its time zone; the default week (Monday to Friday 08:00–18:00) while none is set. */
+        /** The working week of a workspace in its time zone; the default week (Monday to Friday 08:00–17:30, break 12:00–13:00) while none is set. */
         get: {
             parameters: {
                 query?: never;

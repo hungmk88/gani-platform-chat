@@ -53,7 +53,13 @@ describe('BusinessDaySchema', () => {
 describe('the week of the API and of the store', () => {
   it('turns one into the other, and names the weekdays that changed', () => {
     const days = daysOf(DEFAULT_WORKING_WEEK);
-    expect(days[0]).toEqual({ weekday: 1, ...open, closesAt: '18:00' });
+    expect(days[0]).toEqual({
+      weekday: 1,
+      ...open,
+      closesAt: '17:30',
+      breakStartsAt: '12:00',
+      breakEndsAt: '13:00',
+    });
     expect(days[6]).toEqual({ weekday: 7, ...closed });
     expect(daysOf(weekOf([...days].reverse()))).toEqual(days);
     const changed = weekOf(days.map((d) => (d.weekday === 3 ? { ...d, ...closed } : d)));

@@ -70,6 +70,7 @@ afterAll(async () => {
     'audit_logs',
     'pipeline_lost_reasons',
     'pipeline_stages',
+    'teams',
     'workspace_members',
     'workspaces',
     'org_members',
@@ -127,6 +128,14 @@ describe('tenant:create-workspace', () => {
       [id],
     );
     expect(reasons.rows).toEqual([{ name: 'Khác (chờ Q9)', position: 0 }]);
+    // The default team of Q7 (N209): one, named "Mặc định", the default of the workspace.
+    const teams = await admin.query(
+      'SELECT id, name, slug, is_default FROM teams WHERE workspace_id = $1',
+      [id],
+    );
+    expect(teams.rows).toEqual([
+      { id: first.line['defaultTeamId'], name: 'Mặc định', slug: 'mac-dinh', is_default: true },
+    ]);
     const audit = await admin.query(
       'SELECT action, actor_user_id, target_id, detail FROM audit_logs WHERE org_id = $1',
       [ORG],

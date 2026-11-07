@@ -47,7 +47,14 @@ async function person(role: string, hash: string) {
   cookies[role] = res.headers.getSetCookie().map((x) => x.split(';')[0]).join('; ');
   if (role === 'owner' || role === 'admin') await q('UPDATE users SET two_factor_enabled = true WHERE id = $1', [id]);
 }
-type Day = { weekday: number; open: boolean; opensAt: string | null; closesAt: string | null };
+type Day = {
+  weekday: number;
+  open: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+  breakStartsAt: string | null;
+  breakEndsAt: string | null;
+};
 async function call(who: string, method: 'GET' | 'PUT', ws: string, body?: unknown) {
   const res = await fetch(`${url}/v1/workspaces/${ws}/business-hours`, {
     method,
@@ -121,10 +128,13 @@ describe('/v1/workspaces/{id}/business-hours', () => {
     const res = await call('admin', 'GET', W);
     expect(res.body).toMatchObject({ timezone: 'Asia/Ho_Chi_Minh', isDefault: true });
     const days = res.body['week'] as Day[];
-    expect(days.map((d) => [d.weekday, d.open, d.opensAt, d.closesAt])).toEqual([
-      ...[1, 2, 3, 4, 5].map((n) => [n, true, '08:00', '18:00']),
-      [6, false, null, null],
-      [7, false, null, null],
+    // Q7 provisional default (N209): 08:00–17:30 with a break 12:00–13:00.
+    expect(
+      days.map((d) => [d.weekday, d.open, d.opensAt, d.closesAt, d.breakStartsAt, d.breakEndsAt]),
+    ).toEqual([
+      ...[1, 2, 3, 4, 5].map((n) => [n, true, '08:00', '17:30', '12:00', '13:00']),
+      [6, false, null, null, null, null],
+      [7, false, null, null, null, null],
     ]);
     expect((await call('owner', 'GET', WB)).status).toBe(404);
   });

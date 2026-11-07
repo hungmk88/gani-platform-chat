@@ -30,11 +30,15 @@ describe('localTime', () => {
 });
 
 describe('isOpen', () => {
-  it('is open Monday to Friday from 08:00 to 18:00 by default, closed at the weekend', () => {
+  it('is open Monday to Friday from 08:00 to 17:30 by default, closed 12:00–13:00 and at the weekend (Q7, N209)', () => {
     expect(open('2026-11-02T08:00:00')).toBe(true);
     expect(open('2026-11-02T07:59:00')).toBe(false);
-    expect(open('2026-11-06T17:59:00')).toBe(true);
-    expect(open('2026-11-06T18:00:00')).toBe(false);
+    expect(open('2026-11-02T11:59:00')).toBe(true);
+    expect(open('2026-11-02T12:00:00')).toBe(false);
+    expect(open('2026-11-02T12:59:00')).toBe(false);
+    expect(open('2026-11-02T13:00:00')).toBe(true);
+    expect(open('2026-11-06T17:29:00')).toBe(true);
+    expect(open('2026-11-06T17:30:00')).toBe(false);
     expect(open('2026-11-07T10:00:00')).toBe(false);
     expect(open('2026-11-08T10:00:00')).toBe(false);
   });

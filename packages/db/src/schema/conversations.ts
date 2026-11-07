@@ -26,6 +26,11 @@ export const conversations = pgTable('conversations', {
   lastMessageKind: text('last_message_kind'),
   // The priority while it waits for a person (202611061000, U78): set when the bot hands over; normal, high or urgent.
   priority: text('priority').notNull().default('normal'),
+  // The SLA (202611092200, N208): due time in working time, the reason of a pause and what was left of it; null while the bot
+  // handles it and once closed. Written by the state machine (E3).
+  slaDueAt: timestamp('sla_due_at', { withTimezone: true }),
+  slaPausedReason: text('sla_paused_reason', { enum: ['waiting_customer', 'outside_hours'] }),
+  slaRemainingSeconds: integer('sla_remaining_seconds'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
