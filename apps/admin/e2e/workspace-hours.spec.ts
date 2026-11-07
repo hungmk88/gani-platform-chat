@@ -35,7 +35,7 @@ test('an Admin opens the tab and reads the default week of the system, asking no
   );
   await expect(page.getByText(/đang dùng tuần mặc định của hệ thống/)).toBeVisible();
   await expect(page.getByText('Múi giờ: Asia/Ho_Chi_Minh')).toBeVisible();
-  const day = (d: string) => `${d}Có08:0018:00——`;
+  const day = (d: string) => `${d}Có08:0017:3012:0013:00`; // Q7 default (#655, N209)
   await expect(rows(page)).toHaveText([
     HEAD,
     ...['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6'].map(day),

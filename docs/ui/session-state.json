@@ -1,13 +1,13 @@
 {
   "session_id": "session_015SNdqZsqMWFgeQMx5cVLsc",
-  "last_brief_received": 153,
-  "last_checkin_utc": "2026-11-07T15:06:42Z",
-  "current_branch": "feat/customer-merge-read",
+  "last_brief_received": 164,
+  "last_checkin_utc": "2026-11-07T17:06:47Z",
+  "current_branch": "test/e2e-q7-default-hours",
   "pending_tasks": [
     {
       "id": "Q7",
       "deadline": "10/11 12:00 UTC",
-      "state": "chưa có dữ liệu thật thì dùng CEO-ACTION-01 (brief 134); file apps/admin/src/config/ceo-action-01.ts chỉ tạo khi có màn cần giá trị mặc định (brief 145)"
+      "state": "CEO chốt 07/11 (brief 154): giữ CEO-ACTION-01. BE làm Conversation.sla thật; khi BE báo có dữ liệu thật → FE test chip/lọc/realtime (A1–A3), sai thì báo CEO kèm log; không tạo config FE khi chưa cần (C2); 14/11 chưa có dữ liệu thật → báo CEO (S4 16/11 có nguy cơ trượt, brief 157)"
     },
     {
       "id": "nhom-B",
@@ -23,14 +23,18 @@
     },
     {
       "id": "J3",
-      "state": "Màn gộp khách (brief 153): PR A feat/customer-merge-read (tầng 1, chỉ đọc) → PR B (tầng 3, gộp/tách, B1/B2 nếu > 500 dòng)"
+      "state": "B2 #656 Update branch sau #655 (18:01) → CI → 'Sẵn sàng merge' → CEO merge → 5 mục"
     },
     {
       "id": "checkin",
       "state": "2 giờ một lần (phút 06): 3 dòng + PR mở; kế tiếp 17:06 UTC"
+    },
+    {
+      "id": "stub-q7-hours",
+      "state": "PR tầng 1 test/e2e-q7-default-hours: API giả + 2 spec giờ làm việc theo mặc định Q7 (#655), kèm handoff review #655 (brief 164)"
     }
   ],
-  "open_prs": [],
+  "open_prs": [656],
   "last_commit_local": "a3b4305",
-  "updated_at": "2026-11-07T16:40:24Z"
+  "updated_at": "2026-11-07T18:03:18Z"
 }
