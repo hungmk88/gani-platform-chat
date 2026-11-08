@@ -22,6 +22,7 @@ button:focus-visible { outline: 2px solid #111827; outline-offset: 2px; }
 .body { display: flex; flex-direction: column; gap: 12px; }
 .greeting { margin: 0; padding: 12px; border-radius: 8px; background: #f3f4f6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+.ask { display: contents; }
 .small { font-size: 14px; color: #4b5563; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .link { padding: 0 4px; border: 0; background: transparent; color: #1d4ed8; text-decoration: underline; font-size: 14px; }
