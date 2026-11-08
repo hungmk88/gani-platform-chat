@@ -13,6 +13,7 @@ export default defineConfig({
         'src/account-audit-store.ts',
         'src/after-hours-store.ts',
         'src/sla-clock-store.ts',
+        'src/security-store.ts',
         'src/audit-log-read.ts',
         'src/audit-log.ts',
         'src/channel-refresh-store.ts',
