@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "smoke": "node scripts/smoke-start.mjs",
     "bootstrap:operator": "node scripts/bootstrap-platform-operator.mjs",
+    "seed:sla-demo": "node scripts/seed-sla-demo.mjs",
     "openapi": "node scripts/openapi.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
