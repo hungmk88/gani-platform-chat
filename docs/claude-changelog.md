@@ -2,6 +2,10 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 08/11/2026 tối: luôn `git push -u origin <branch>` (ký A (CEO), brief 193, 194)
+
+- "Quy trình mỗi PR" bước 5: không dùng `git push` trần; quét secret chạy riêng trước (sự cố: lệnh nối quét + push và `git push` trần bị chặn khi làm #690).
+
 ## 08/11/2026 tối: merge trực tiếp, mục tiêu Lighthouse, kiểm cây accessibility của widget (ký A (CEO), brief 191, 192)
 
 - "Tầng 1 code": merge bằng `merge_pull_request` + `expectedHeadSha` đủ 40 ký tự khi 9/9 + `clean`; bỏ `enable_pr_auto_merge`

@@ -135,7 +135,8 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
 2. `git checkout -b feat/pr3-tenancy-tables`
 3. [viết code, chạy lint/typecheck/test]
 4. `git add . && git commit -m "feat(db): ..." -m "Co-Authored-By: Claude <noreply@anthropic.com>"`
-5. `git push -u origin feat/pr3-tenancy-tables`
+5. `git push -u origin feat/pr3-tenancy-tables`. Luôn dùng `git push -u origin <branch>`, không dùng `git push` trần (08/11/2026,
+   ký A (CEO), brief 193, 194); quét secret chạy riêng trước đó (mục "Scan trước khi push").
 6. Mở PR ở draft, báo anh URL PR + tóm tắt thay đổi
 7. CI chạy → merge theo phân tầng ở trên
 8. `git checkout main && git pull`
