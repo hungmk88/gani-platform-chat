@@ -2,12 +2,13 @@
 // `GET /v1/security-incidents` and `GET /v1/security-alerts`, contracts planned for S5 (N167). Until the API serves them, the routes
 // answer 404 and the screen says it is not there yet. Opening, closing and handing over an incident wait for PR B (S5 final, U35 no
 // longer temporary, the CEO's design of the dialogs).
-import type { components } from '../api/planned';
+import type { components as planned } from '../api/planned';
+import type { components } from '../api/schema';
 
 export type SecurityAlert = components['schemas']['SecurityAlert'];
 export type SecurityAlertPage = components['schemas']['SecurityAlertPage'];
-export type SecurityIncident = components['schemas']['SecurityIncident'];
-export type SecurityIncidentPage = components['schemas']['SecurityIncidentPage'];
+export type SecurityIncident = planned['schemas']['SecurityIncident'];
+export type SecurityIncidentPage = planned['schemas']['SecurityIncidentPage'];
 export type IncidentStatus = SecurityIncident['status'];
 
 // 50 = mặc định của hợp đồng (trần 100, cả hai đường).

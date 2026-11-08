@@ -4516,6 +4516,97 @@
           "detail",
           "createdAt"
         ]
+      },
+      "SecurityAlertPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecurityAlert"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "SecurityAlert": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "login_failures",
+              "two_factor_locked",
+              "two_factor_reset",
+              "platform_access",
+              "webhook_signature_invalid",
+              "bulk_export"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subjectUserId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          },
+          "channelAccountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "incidentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "UUIDv7, or null."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "occurredAt",
+          "subjectUserId",
+          "channelAccountId",
+          "count",
+          "incidentId"
+        ]
       }
     },
     "parameters": {}
@@ -12527,6 +12618,115 @@
           },
           "403": {
             "description": "forbidden: only an Owner or an Admin reads the audit log (Brief P9); or a refusal of the edge.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "service_unavailable: the session or the membership could not be read.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/security-alerts": {
+      "get": {
+        "summary": "The security alerts of the organisation, newest first.",
+        "tags": [
+          "security"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            },
+            "required": false,
+            "name": "severity",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "open",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityAlertPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed: a parameter or the cursor.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized: no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden: only an Owner, an Admin or a platform operator in an access session; or a refusal of the edge.",
             "content": {
               "application/problem+json": {
                 "schema": {
