@@ -8,6 +8,7 @@ import { registerConversationNotes } from '../modules/conversations/conversation
 import { registerConversations } from '../modules/conversations/conversations.openapi.js';
 import { registerMembers } from '../modules/members/members.openapi.js';
 import { registerCustomerMerges } from '../modules/customers/customer-merge.openapi.js';
+import { registerSecurityReads } from '../modules/security/security.openapi.js';
 import { registerCustomers } from '../modules/customers/customers.openapi.js';
 import { registerBotFlows } from '../modules/bot-flows/bot-flows.openapi.js';
 import { registerBusinessHours } from '../modules/business-hours/business-hours.openapi.js';
@@ -165,6 +166,7 @@ const REGISTER: readonly ((registry: OpenAPIRegistry) => void)[] = [
   registerCustomers,
   registerCustomerMerges,
   registerAuditLogs,
+  registerSecurityReads,
 ];
 
 export function buildOpenApiDocument() {

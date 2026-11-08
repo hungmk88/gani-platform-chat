@@ -7286,6 +7286,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/security-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The security alerts of the organisation, newest first. */
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    severity?: "low" | "medium" | "high" | "critical";
+                    open?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SecurityAlertPage"];
+                    };
+                };
+                /** @description validation_failed: a parameter or the cursor. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description unauthorized: no valid session. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description forbidden: only an Owner, an Admin or a platform operator in an access session; or a refusal of the edge. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description service_unavailable: the session or the membership could not be read. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8376,6 +8453,35 @@ export interface components {
             };
             /** Format: date-time */
             createdAt: string;
+        };
+        SecurityAlertPage: {
+            data: components["schemas"]["SecurityAlert"][];
+            nextCursor: string | null;
+        };
+        SecurityAlert: {
+            id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            kind: "login_failures" | "two_factor_locked" | "two_factor_reset" | "platform_access" | "webhook_signature_invalid" | "bulk_export";
+            /** @enum {string} */
+            severity: "low" | "medium" | "high" | "critical";
+            /** Format: date-time */
+            occurredAt: string;
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            subjectUserId: string | null;
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            channelAccountId: string | null;
+            count: number;
+            /**
+             * Format: uuid
+             * @description UUIDv7, or null.
+             */
+            incidentId: string | null;
         };
     };
     responses: never;
