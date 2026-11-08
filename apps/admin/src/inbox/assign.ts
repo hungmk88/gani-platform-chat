@@ -81,3 +81,24 @@ export function matching<T extends { readonly label: string }>(
   const words = fold(query).split(/\s+/).filter(Boolean);
   return lines.filter((l) => words.every((w) => fold(l.label).includes(w)));
 }
+
+/** The longest reason a transfer takes (N199): counted on the NFC form, as the API counts it. */
+export const MAX_REASON = 500;
+
+/**
+ * The body of `POST …/assign` or `…/transfer` (N199): `{version, toUserId}`, and for a transfer only the reason when one was typed
+ * (trimmed; blank sends no `reason` at all, `assign` never takes one: a 400). A reason too long is said, never sent.
+ */
+export function handOverBody(
+  purpose: 'assign' | 'transfer',
+  version: number,
+  toUserId: string,
+  rawReason: string,
+):
+  | { ok: true; body: { version: number; toUserId: string; reason?: string } }
+  | { ok: false; problem: string } {
+  const reason = purpose === 'transfer' ? rawReason.trim() : '';
+  if (reason.normalize('NFC').length > MAX_REASON)
+    return { ok: false, problem: `Lý do dài quá ${MAX_REASON} ký tự.` };
+  return { ok: true, body: reason ? { version, toUserId, reason } : { version, toUserId } };
+}
