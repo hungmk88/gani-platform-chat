@@ -85,6 +85,18 @@ export class AuthService implements OnApplicationShutdown {
   }
 
   /**
+   * The organisation of `operatorId`'s access session `sessionId` while it runs, else null (U79, N207 B2): `app.access_session_org`,
+   * the 20th SECURITY DEFINER function, which only auth_role may call and which never says why it answers null.
+   */
+  async accessSessionOrg(sessionId: string, operatorId: string): Promise<string | null> {
+    const { rows } = await this.pool.query<{ org: string | null }>(
+      'SELECT app.access_session_org($1, $2) AS org',
+      [sessionId, operatorId],
+    );
+    return rows[0]?.org ?? null;
+  }
+
+  /**
    * Sets the name `userId` goes by (`PATCH /v1/me`, N162); false for a person who was deleted. Only the person of an authenticated
    * session renames themselves: `userId` is never a request value. `auth_role` may change display_name and nothing else of a person.
    */
