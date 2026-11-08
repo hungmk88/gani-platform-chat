@@ -2,6 +2,14 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 08/11/2026: `expectedHeadSha` / `expectedHeadOid` đủ 40 ký tự (ký A (CEO), brief 180, 188)
+
+- "Tầng 1 code": thêm dòng SHA đủ 40 ký tự lấy từ `git ls-remote`; SHA không khớp thì không bật auto-merge, báo CEO; sau
+  merge kiểm `git diff <HEAD PR> <squash>` = 0.
+- Sự cố gốc: #678, auto-merge bật với `expectedHeadOid` là SHA rút gọn đệm `0` (`26c9afd000…`), GitHub vẫn nhận. FE tắt rồi
+  bật lại bằng SHA thật; trước đó #674 dùng SHA rút gọn, diff HEAD ↔ squash đã kiểm = 0. Chi tiết:
+  `docs/ui/session-summary-08-11-2026.md` mục 4.
+
 ## 07/11/2026: phân tầng FE chỉ giữ tầng 3 cho thao tác không hoàn tác được (ký A (CEO), brief 167, 169)
 
 - "Phân tầng merge", dòng FE: tầng 3 chỉ còn xóa dữ liệu khách (#23 B2), đóng sự cố bảo mật (#29 B2), gộp khách (J3 B1),
