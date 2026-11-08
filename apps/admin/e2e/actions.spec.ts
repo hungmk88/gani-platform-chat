@@ -184,3 +184,21 @@ test('a long list of recipients can be searched by name, role or team, without a
   await expect(dialog).toContainText('Không ai khớp "không ai".');
   await expectAccessible(page);
 });
+
+// "Gán lại" is Owner, Admin and Manager only (`mayAssign`; E2E brief 178 T2): a Sales holding the conversation has "Chuyển", a Support
+// at the queue has "Nhận", neither "Gán lại". The same selector finds it for a Manager (#401).
+const assignButton = (page: Page) => view(page).getByRole('button', { name: 'Gán lại' });
+for (const [role, c, own] of [
+  ['sales', held, 'Chuyển'],
+  ['support', waiting, 'Nhận'],
+] as const) {
+  test(`a ${role} has "${own}" but no "Gán lại"; a Manager has it there`, async ({ page }) => {
+    await signIn(page, accountOf(role));
+    await page.goto(`/inbox/${c.id}`);
+    await expect(view(page).getByRole('button', { name: own })).toBeVisible();
+    await expect(assignButton(page)).toHaveCount(0);
+    await signIn(page, accountOf('manager'));
+    await page.goto(`/inbox/${c.id}`);
+    await expect(assignButton(page)).toBeVisible();
+  });
+}
