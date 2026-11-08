@@ -115,8 +115,12 @@ export async function routeAssignees(
     const c = session.held.find((x) => x.id === moving);
     if (!c || !(LEADS.includes(me.role) || c.assignedUserId === null || c.assignedUserId === me.id))
       return (edge.problem(res, 404, 'not_found', 'trace-e2e-404'), true);
-    const { version, toUserId } = await edge.json(req);
-    if (!req.headers['idempotency-key'] || typeof toUserId !== 'string')
+    const { version, toUserId, reason } = await edge.json(req);
+    // N199: `reason` optional, 1–500 after trimming; a blank one is not sent at all, so it is a 400 here.
+    const badReason =
+      reason !== undefined &&
+      (typeof reason !== 'string' || !reason.trim() || reason.normalize('NFC').length > 500);
+    if (!req.headers['idempotency-key'] || typeof toUserId !== 'string' || badReason)
       return (edge.problem(res, 400, 'validation_failed', 'trace-e2e-400'), true);
     const listed = assigneesAnswer(c, me, 'transfer', session.sid, session.held);
     if (listed.status !== 200) return (edge.problem(res, 403, 'forbidden', 'trace-e2e-403'), true);
