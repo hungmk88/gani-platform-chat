@@ -120,3 +120,32 @@ test('a recording still being carried out says so, and sending again keeps its k
   expect(key).toMatch(/^[0-9a-f-]{36}$/);
   expect((await second).headers()['idempotency-key']).toBe(key);
 });
+
+test('a customer no longer visible (404) is dropped with its sentence; sending again asks for one (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  await page.route('**/v1/privacy-requests', (r) =>
+    r.request().method() === 'POST'
+      ? r.fulfill({
+          status: 404,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 404, code: 'not_found', traceId: 'trace-gone' }),
+        })
+      : r.fallback(),
+  );
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/customer-data');
+  await page.getByRole('button', { name: 'Ghi nhận yêu cầu' }).click();
+  const form = page.getByRole('dialog', { name: 'Ghi nhận yêu cầu' });
+  await form.getByRole('searchbox', { name: 'Khách hàng' }).fill('Lê');
+  await form.getByRole('button', { name: /^Lê Minh Châu/ }).click();
+  await form.getByRole('combobox', { name: /^Khách yêu cầu/ }).selectOption('erase');
+  await form.getByRole('textbox', { name: 'Lý do' }).fill('Xin xóa.');
+  await form.getByRole('button', { name: 'Ghi nhận', exact: true }).click();
+  await expect(form.getByRole('alert')).toContainText(
+    'Khách này không còn thấy được. Đã bỏ chọn, chọn khách khác.',
+  );
+  await expect(form.getByRole('textbox', { name: 'Lý do' })).toHaveValue('Xin xóa.');
+  await form.getByRole('button', { name: 'Ghi nhận', exact: true }).click();
+  await expect(form.getByRole('alert')).toHaveText('Chọn khách đã gửi yêu cầu.');
+});

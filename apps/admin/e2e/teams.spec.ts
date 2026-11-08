@@ -193,3 +193,45 @@ test('a Sales gets the forbidden page, as the menu', async ({ page }) => {
     page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),
   ).toBeVisible();
 });
+
+// A PUT refused with 400 (a person or a channel moved out of the workspace meanwhile): the dialog stays and says to reload and
+// pick again (E2E brief 184 T3).
+for (const [what, open, save, said] of [
+  [
+    'people',
+    'Người của team CSKH',
+    'Lưu người của team',
+    'Có người không còn thuộc workspace của team.',
+  ],
+  [
+    'channels',
+    'Kênh của team CSKH',
+    'Lưu kênh của team',
+    'Có kênh không còn thuộc workspace của team.',
+  ],
+] as const) {
+  test(`saving the ${what} of a team refused with 400 says to reload and pick again`, async ({
+    page,
+  }) => {
+    await page.route('**/v1/teams/*/*', (r) =>
+      r.request().method() === 'PUT'
+        ? r.fulfill({
+            status: 400,
+            contentType: 'application/problem+json',
+            body: JSON.stringify({ status: 400, code: 'validation_failed', traceId: 'trace-400' }),
+          })
+        : r.fallback(),
+    );
+    await signIn(page, accountOf('admin'));
+    await page.goto('/settings/teams');
+    await page
+      .getByRole('region', { name: 'Team của workspace' })
+      .getByRole('button', { name: open })
+      .click();
+    const dialog = page.getByRole('dialog', { name: new RegExp(open.split(' của')[0]!) });
+    await dialog.getByRole('checkbox').first().click();
+    await dialog.getByRole('button', { name: save }).click();
+    await expect(dialog.getByRole('alert')).toContainText(said);
+    await expect(dialog).toBeVisible();
+  });
+}

@@ -106,3 +106,19 @@ test('a 422 invalid_effective_from says why with its trace, keeps the dialog and
   await expect.poll(reads).toBeGreaterThan(before);
   await expectAccessible(page);
 });
+
+test('a lost answer (503) says it is not known whether it saved, keeps the dialog and reads the list again (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  const { dialog, reads } = await serve(page, {
+    status: 503,
+    code: 'service_unavailable',
+    traceId: 'trace-503',
+  });
+  await dialog.getByLabel('Hiệu lực từ (bắt buộc)').fill('2030-01-01');
+  const before = reads();
+  await dialog.getByRole('button', { name: 'Lưu phiên bản' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Chưa rõ đã lưu hay chưa.');
+  await expect(dialog).toBeVisible();
+  await expect.poll(reads).toBeGreaterThan(before);
+});
