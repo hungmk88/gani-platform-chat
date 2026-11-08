@@ -4,6 +4,8 @@ Bản nháp 30/10/2026 · Backend soạn · CEO quyết · Nguồn: Brief Backen
 
 > **Đóng câu A/B ngày 06/11/2026: dựng staging trên FPT Cloud. Không dựng nơi tạm.** (A (CEO) chốt 06/11/2026; mục 9.)
 
+> **Lịch (A chốt 08/11/2026, N212): S1 dời 23/11/2026 (+1 tuần), S2–S6 dời theo, go-live Đợt 1 = 15/02/2027.** Chưa module FPT nào `plan` được, chưa Access Key, mạng tới registry còn chặn. CEO mở network access và cấp key; 15/11 chưa xong thì dời S1 sang 30/11. Không go-live khi chưa có staging.
+
 ## 1. Mục đích
 
 So sánh 2 phương án dựng staging khi Q1 (pháp lý) và Q2 (cloud, vùng) chưa có kết quả, để CEO quyết ở mốc báo động 05/11/2026. Tài liệu chỉ trình bày dữ kiện kỹ thuật; Backend không chọn thay CEO.
