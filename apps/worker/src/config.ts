@@ -1,4 +1,5 @@
 import type { ReleaseSettings } from './after-hours/release-job.js';
+import type { SlaHoursSettings } from './sla-hours/sla-hours-job.js';
 import type { ChannelRefreshSettings } from './channels/token-refresh.js';
 import type { OutboundSettings } from './outbound/outbound-sender.js';
 
@@ -45,6 +46,8 @@ export interface WorkerConfig {
   readonly outbound: OutboundSettings & { readonly enabled: boolean };
   /** The release of the conversations held outside business hours when their workspace opens (T08, C10-4b, N193): on by default. */
   readonly afterHours: ReleaseSettings & { readonly enabled: boolean };
+  /** The SLA clock moved by the opening hours, `outside_hours` (E4b, N211): on by default. */
+  readonly slaHours: SlaHoursSettings & { readonly enabled: boolean };
   /** The worker's own HTTP endpoints (`/healthz`, `/metrics`), for the probes and the monitoring (review OPS-02). */
   readonly http: {
     /** 0: a free port the system picks (the tests); the port is logged in `worker_http_listening`. */
@@ -141,6 +144,15 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): W
       orgsPerTick: whole('AFTER_HOURS_ORGS_PER_TICK', 50, 1, 1_000),
       orgParallel: whole('AFTER_HOURS_ORG_PARALLEL', 1, 1, 32),
       batch: whole('AFTER_HOURS_BATCH', 100, 1, 1_000),
+    },
+    slaHours: {
+      enabled: whole('SLA_HOURS_ENABLED', 1, 0, 1) === 1,
+      // CEO 07/11/2026 (N211): each minute; a late pass is logged (sla_job_lag_high), never made up for.
+      pollMs: whole('SLA_HOURS_POLL_MS', 60_000, 1_000, 600_000),
+      // 1..1000 is what app.sla_running_orgs accepts (22023 otherwise).
+      orgsPerTick: whole('SLA_HOURS_ORGS_PER_TICK', 50, 1, 1_000),
+      orgParallel: whole('SLA_HOURS_ORG_PARALLEL', 1, 1, 32),
+      batch: whole('SLA_HOURS_BATCH', 100, 1, 1_000),
     },
     http: {
       port: whole('WORKER_HTTP_PORT', 9464, 0, 65_535),

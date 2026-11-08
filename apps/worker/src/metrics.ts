@@ -1,5 +1,6 @@
 import type { RefreshMetrics } from './channels/token-refresh.js';
 import type { OutboundMetrics } from './outbound/outbound-sender.js';
+import type { SlaHoursMetrics } from './sla-hours/sla-hours-job.js';
 
 /** What the relay reports as it goes (review OPS-02). Every method is cheap and never throws. */
 export interface RelayMetrics {
@@ -34,7 +35,7 @@ export interface OutboxTotals {
  * (pending, oldest age, dead letters) is not counted here: `scrape()` reads it from the database at each scrape (outbox spec §7).
  */
 export class WorkerMetrics
-  implements RelayMetrics, ConsumerMetrics, RefreshMetrics, OutboundMetrics
+  implements RelayMetrics, ConsumerMetrics, RefreshMetrics, OutboundMetrics, SlaHoursMetrics
 {
   private passes = 0;
   private failedPasses = 0;
@@ -50,6 +51,7 @@ export class WorkerMetrics
   private queues = 0;
   private readonly refreshes = { ok: 0, failed: 0, refused: 0, lease_lost: 0 };
   private readonly deliveries = { sent: 0, retried: 0, failed: 0, lease_lost: 0 };
+  private readonly slaHours = { passes: 0, moved: 0, lagHigh: 0, lastPassAt: 0 };
 
   constructor(
     private readonly now: () => number = Date.now,
@@ -103,6 +105,16 @@ export class WorkerMetrics
     this.deliveries[result]++;
   }
 
+  slaHoursPass(moved: number): void {
+    this.slaHours.passes++;
+    this.slaHours.moved += moved;
+    this.slaHours.lastPassAt = this.now();
+  }
+
+  slaHoursLagHigh(): void {
+    this.slaHours.lagHigh++;
+  }
+
   /** Alive while the relay ended a pass (even a failed one) within `maxAgeMs`: a loop that hangs stops the passes. */
   healthy(maxAgeMs: number): boolean {
     return this.now() - this.lastPassAt <= maxAgeMs;
@@ -131,6 +143,10 @@ export class WorkerMetrics
       ['outbound_retried_total', 'counter', 'Attempts that failed and wait for the next one.', this.deliveries.retried],
       ['outbound_failed_total', 'counter', 'Deliveries failed for good (last attempt, refusal, closed window).', this.deliveries.failed],
       ['outbound_lease_lost_total', 'counter', 'Results not written because their claim was taken back.', this.deliveries.lease_lost],
+      ['sla_hours_passes_total', 'counter', 'Passes of the SLA job of the opening hours that ended.', this.slaHours.passes],
+      ['sla_hours_moved_total', 'counter', 'SLAs the opening hours paused or ran again.', this.slaHours.moved],
+      ['sla_hours_lag_high_total', 'counter', 'Passes of the SLA job late by more than 2 minutes, 3 times in a row or more.', this.slaHours.lagHigh],
+      ['sla_hours_last_pass_timestamp_seconds', 'gauge', 'When the SLA job of the opening hours last ended a pass (0: never).', this.slaHours.lastPassAt / 1000],
     ];
     return format(series);
   }
