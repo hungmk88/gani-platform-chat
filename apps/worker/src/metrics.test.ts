@@ -40,6 +40,10 @@ describe('WorkerMetrics', () => {
       outbound_retried_total: '0',
       outbound_failed_total: '0',
       outbound_lease_lost_total: '0',
+      sla_hours_passes_total: '0',
+      sla_hours_moved_total: '0',
+      sla_hours_lag_high_total: '0',
+      sla_hours_last_pass_timestamp_seconds: '0',
     });
     expect(text).not.toMatch(/[{}]/);
   });
@@ -130,5 +134,23 @@ describe('WorkerMetrics', () => {
     // One instance: two would each read the clock when built, and differ when built a millisecond apart.
     const idle = new WorkerMetrics();
     expect(await idle.scrape()).toBe(idle.render());
+  });
+
+  it('counts the passes of the SLA job of the opening hours, the SLAs it moved and its lags, with no organisation (E4b)', () => {
+    let now = 1_000_000;
+    const m = new WorkerMetrics(() => now);
+    m.slaHoursPass(2);
+    now = 1_060_000;
+    m.slaHoursPass(3);
+    m.slaHoursLagHigh();
+    const text = m.render();
+    // prettier-ignore
+    const values = Object.fromEntries(text.split('\n').filter((l) => l.startsWith('sla_hours_')).map((l) => l.split(' ') as [string, string]));
+    expect(values).toEqual({
+      sla_hours_passes_total: '2',
+      sla_hours_moved_total: '5',
+      sla_hours_lag_high_total: '1',
+      sla_hours_last_pass_timestamp_seconds: '1060',
+    });
   });
 });
