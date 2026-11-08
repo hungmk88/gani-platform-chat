@@ -89,3 +89,58 @@ test('who handles it is said as in the list: nobody "Chưa giao", a person witho
   await expect(holder(page)).not.toHaveText('Chưa giao');
   await expectAccessible(page);
 });
+
+test('"Không hủy" sends nothing; waiting, going on and done each move it (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  const patches: unknown[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'PATCH') patches.push(r.postDataJSON());
+  });
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/tickets/${TICKETS[1]!.id}`);
+  await screen(page).getByRole('button', { name: 'Hủy ticket' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Hủy ticket này?' });
+  await dialog.getByRole('button', { name: 'Không hủy' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches).toHaveLength(0);
+  await screen(page).getByRole('button', { name: 'Chờ khách' }).click();
+  await screen(page).getByRole('button', { name: 'Tiếp tục xử lý' }).click();
+  await expect(screen(page).getByRole('status')).toHaveText('Đã chuyển sang Đang xử lý.');
+  await screen(page).getByRole('button', { name: 'Đã xong' }).click();
+  await expect(screen(page).getByRole('status')).toHaveText('Đã chuyển sang Đã xong.');
+  await expect(history(page)).toContainText('Bạn chuyển từ Đang xử lý sang Đã xong');
+  expect(patches.map((p) => (p as { status: string }).status)).toEqual([
+    'waiting_customer',
+    'in_progress',
+    'done',
+  ]);
+});
+
+test('a move refused with 409 invalid_transition says the state moved and reads the ticket again (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/tickets/${TICKETS[1]!.id}`);
+  await expect(screen(page).getByRole('button', { name: 'Chờ khách' })).toBeVisible();
+  await page.route(
+    (u) => u.pathname === `/v1/tickets/${TICKETS[1]!.id}`,
+    (r) =>
+      r.request().method() === 'PATCH'
+        ? r.fulfill({
+            status: 409,
+            contentType: 'application/problem+json',
+            body: JSON.stringify({ status: 409, code: 'invalid_transition', traceId: 'trace-it' }),
+          })
+        : r.fallback(),
+  );
+  let reads = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && new URL(r.url()).pathname === `/v1/tickets/${TICKETS[1]!.id}`)
+      reads++;
+  });
+  await screen(page).getByRole('button', { name: 'Chờ khách' }).click();
+  await expect(screen(page).getByRole('alert')).toContainText('Trạng thái vừa đổi');
+  await expect(screen(page).getByRole('alert')).toContainText('trace-it');
+  await expect.poll(() => reads).toBeGreaterThan(0);
+});

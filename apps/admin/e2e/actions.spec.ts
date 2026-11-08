@@ -202,3 +202,47 @@ for (const [role, c, own] of [
     await expect(assignButton(page)).toBeVisible();
   });
 }
+
+// The two other outcomes of closing go as such in the body (E2E brief 184 T3).
+for (const [outcome, label] of [
+  ['no_response', 'Khách không phản hồi'],
+  ['spam', 'Spam'],
+] as const) {
+  test(`closing as "${label}" sends outcome ${outcome}`, async ({ page }) => {
+    await signIn(page, accountOf('sales'));
+    await page.goto(`/inbox/${held.id}`);
+    await actions(page).filter({ hasText: 'Đóng' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Đóng hội thoại — chọn kết quả' });
+    const posted = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/close'));
+    await dialog.getByRole('button', { name: label }).click();
+    expect((await posted).postDataJSON()).toMatchObject({ outcome });
+    await expect(view(page).getByRole('heading', { name: 'Đã đóng' })).toBeVisible();
+  });
+}
+
+test('"Chuyển" refused with 409 invalid_transition says the state moved and reads the conversation again (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  await page.route('**/transfer', (r) =>
+    r.request().method() === 'POST'
+      ? r.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 409, code: 'invalid_transition', traceId: 'trace-it' }),
+        })
+      : r.fallback(),
+  );
+  await signIn(page, accountOf('sales'));
+  await page.goto(`/inbox/${held.id}`);
+  await view(page).getByRole('button', { name: 'Chuyển' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Chuyển hội thoại' });
+  let reads = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && new URL(r.url()).pathname === `/v1/conversations/${held.id}`)
+      reads++;
+  });
+  await dialog.getByRole('button', { name: 'Chuyển', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Trạng thái vừa đổi');
+  await expect(dialog.getByRole('alert')).toContainText('trace-it');
+  await expect.poll(() => reads).toBeGreaterThan(0);
+});
