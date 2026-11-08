@@ -1,3 +1,4 @@
+import { isOpen } from '../workspace/business-hours.js';
 import {
   addWorkingSeconds,
   SLA_SECONDS,
@@ -15,7 +16,7 @@ import type { ConversationState } from './types.js';
 //   rest of the paused one, its old due time kept when nothing was left (Q-c); otherwise as it was (a claim from the queue, a transfer);
 // - into PENDING_CUSTOMER: paused, waiting for the customer, with what was left (0 when already overdue);
 // - into BOT_ACTIVE or CLOSED: none.
-// The pause outside the hours (`outside_hours`) and its end are the job of E4, not of a transition.
+// The pause outside the hours (`outside_hours`) and its end are the job of E4b (`slaAtHours`), not of a transition.
 
 export type SlaPauseReason = 'waiting_customer' | 'outside_hours';
 
@@ -43,7 +44,9 @@ export function slaAfterTransition(
   if (to === 'BOT_ACTIVE' || to === 'CLOSED') return null;
   if (to === 'HUMAN_WAITING_Q') return from === 'HUMAN_WAITING_Q' && had ? had : fresh(s, at);
   if (to === 'PENDING_CUSTOMER') {
-    if (had?.pausedReason) return had;
+    if (had?.pausedReason === 'waiting_customer') return had;
+    // Paused outside the hours, it becomes the customer's pause with the same rest: the opening hours must not run it again (E4b).
+    if (had?.pausedReason === 'outside_hours') return { ...had, pausedReason: 'waiting_customer' };
     const running = had ?? fresh(s, at);
     const left = Math.max(0, workingSecondsBetween(s, at, running.dueAt));
     return { dueAt: running.dueAt, pausedReason: 'waiting_customer', remainingSeconds: left };
@@ -66,3 +69,27 @@ export const sameSla = (a: ConversationSla | null, b: ConversationSla | null): b
     a.dueAt.getTime() === b.dueAt.getTime() &&
     a.pausedReason === b.pausedReason &&
     a.remainingSeconds === b.remainingSeconds);
+
+/**
+ * The SLA of a conversation when the opening hours of its workspace move its clock (E4b, N211), at `now` when the job looks: a
+ * running SLA pauses `outside_hours` while the workspace is closed (17:30, the break, a day off), keeping its due time and what was
+ * left; one paused `outside_hours` runs again once it opens, from `now` (a late job gives the agent the minutes it was late, never
+ * takes them; CEO 07/11/2026), its old due time kept when nothing was left (Q-c). A pause of the customer, or no SLA: as it was.
+ */
+export function slaAtHours(
+  had: ConversationSla | null,
+  now: Date,
+  s: WorkSchedule,
+): ConversationSla | null {
+  if (!had || had.pausedReason === 'waiting_customer') return had;
+  const open = isOpen(s, now);
+  if (had.pausedReason === null) {
+    if (open) return had;
+    const left = Math.max(0, workingSecondsBetween(s, now, had.dueAt));
+    return { dueAt: had.dueAt, pausedReason: 'outside_hours', remainingSeconds: left };
+  }
+  if (!open) return had;
+  const left = had.remainingSeconds ?? 0;
+  const dueAt = left > 0 ? addWorkingSeconds(s, now, left) : had.dueAt;
+  return { dueAt, pausedReason: null, remainingSeconds: null };
+}

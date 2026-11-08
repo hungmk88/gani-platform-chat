@@ -2,7 +2,7 @@ import { uuidv7 } from '@gani/domain';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createDbPool, slaRunningOrgs } from '../src/index.js';
+import { createDbPool, slaClockConversations, slaRunningOrgs, withTenant } from '../src/index.js';
 import { sqlState, url } from './db.js';
 import { cleanupTenant, seedTenant } from './fixtures.js';
 
@@ -86,5 +86,34 @@ describe('app.sla_running_orgs', () => {
   it('stops at the limit, by id', async () => {
     const all = await slaRunningOrgs(pool, 1000);
     expect(await slaRunningOrgs(pool, 1)).toEqual(all.slice(0, 1));
+  });
+});
+
+describe('the conversations whose SLA the hours move, through RLS', () => {
+  const ws = async (org: string) =>
+    (await admin.query<{ id: string }>('SELECT id FROM workspaces WHERE org_id = $1', [org]))
+      .rows[0]!.id;
+  const conv = async (org: string) =>
+    (
+      await admin.query<{ id: string }>('SELECT id FROM conversations WHERE org_id = $1', [org])
+    ).rows.map((r) => r.id);
+  const listed = (org: string, workspace: string, paused: boolean, workspaceIds = [workspace]) =>
+    withTenant(pool, { orgId: org, workspaceIds }, (tx) =>
+      slaClockConversations(tx, workspace, paused, 10),
+    );
+
+  it('lists the running ones when it closes and those paused outside the hours when it opens; never the customer’s pause', async () => {
+    const [wr, wo, ww] = [await ws(R), await ws(O), await ws(W)];
+    expect(await listed(R, wr, false)).toEqual(await conv(R));
+    expect(await listed(R, wr, true)).toEqual([]);
+    expect(await listed(O, wo, true)).toEqual(await conv(O));
+    expect(await listed(O, wo, false)).toEqual([]);
+    expect([...(await listed(W, ww, false)), ...(await listed(W, ww, true))]).toEqual([]);
+  });
+
+  it('lists nothing outside the tenant’s workspaces, nor of another organisation', async () => {
+    const wr = await ws(R);
+    expect(await listed(R, wr, false, [])).toEqual([]);
+    expect(await listed(O, wr, false, [wr])).toEqual([]);
   });
 });
