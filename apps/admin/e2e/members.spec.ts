@@ -235,3 +235,33 @@ test('an Admin sets the load limit of a member and of themselves; an invitation 
   await list.getByRole('button', { name: 'Tải thêm' }).click();
   await expect(list.getByRole('button', { name: /^Đổi giới hạn tải của/ })).toHaveCount(4);
 });
+
+test('a lost answer to an invitation is sent again with the same key; another email gets a new one (E2E brief 178 T2)', async ({
+  page,
+}) => {
+  const keys: (string | undefined)[] = [];
+  await page.route('**/v1/members/invite', (r) => {
+    keys.push(r.request().headers()['idempotency-key']);
+    return keys.length === 1
+      ? r.fulfill({
+          status: 500,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 500, code: 'internal_error', traceId: 'trace-invite' }),
+        })
+      : r.fallback();
+  });
+  await signIn(page, accountOf('owner'));
+  await page.goto('/settings/members');
+  const form = await invite(page, 'nguoi.moi@example.test');
+  await expect(form.getByRole('alert')).toContainText('Mã: trace-invite');
+  await form.getByRole('button', { name: 'Gửi lời mời' }).click();
+  await expect(form.getByRole('status')).toContainText('Đã gửi lời mời tới nguoi.moi@example.test');
+  await invite(page, 'nguoi.khac@example.test');
+  await expect(form.getByRole('status')).toContainText(
+    'Đã gửi lời mời tới nguoi.khac@example.test',
+  );
+  expect(keys).toHaveLength(3);
+  expect(keys[0]).toBeTruthy();
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[0]);
+});

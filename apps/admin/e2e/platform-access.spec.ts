@@ -123,3 +123,70 @@ test('"Tạo phiên" asks a company and a reason of 10 characters or more, then 
   await expect(page.getByRole('status')).toBeFocused();
   await expect.poll(() => asked.length).toBeGreaterThan(reads);
 });
+
+// E2E brief 178 T2: the failures of opening and ending, answered once here, then the stub above.
+const problem = (status: number, code: string) => ({
+  status,
+  contentType: 'application/problem+json',
+  body: JSON.stringify({ status, code, traceId: `trace-${code}` }),
+});
+const isCreate = (u: URL) => u.pathname === '/v1/platform/access-sessions';
+
+test('a lost answer to "Tạo phiên" is sent again with the same key, once opened', async ({
+  page,
+}) => {
+  const { posts } = await serve(page);
+  const keys: (string | undefined)[] = [];
+  await page.route(isCreate, (r) => {
+    if (r.request().method() !== 'POST') return r.fallback();
+    keys.push(r.request().headers()['idempotency-key']);
+    return keys.length === 1 ? r.fulfill(problem(500, 'internal_error')) : r.fallback();
+  });
+  await page.getByRole('button', { name: 'Tạo phiên' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Tạo phiên truy cập' });
+  await dialog.getByRole('textbox', { name: /^Lý do/ }).fill('Hỗ trợ yêu cầu #131');
+  await dialog.getByRole('button', { name: 'Mở phiên 60 phút' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Mã: trace-internal_error');
+  await dialog.getByRole('button', { name: 'Mở phiên 60 phút' }).click();
+  await expect(dialog).toBeHidden();
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/);
+  expect(keys[1]).toBe(keys[0]);
+  expect(posts).toHaveLength(1);
+});
+
+test('a company gone (404) when opening says so and reads the companies again', async ({
+  page,
+}) => {
+  await serve(page);
+  await page.route(isCreate, (r) =>
+    r.request().method() === 'POST' ? r.fulfill(problem(404, 'not_found')) : r.fallback(),
+  );
+  let companies = 0;
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname === '/v1/platform/tenants/health') companies++;
+  });
+  await page.getByRole('button', { name: 'Tạo phiên' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Tạo phiên truy cập' });
+  await dialog.getByRole('textbox', { name: /^Lý do/ }).fill('Hỗ trợ yêu cầu #131');
+  await dialog.getByRole('button', { name: 'Mở phiên 60 phút' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Mã: trace-not_found');
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => companies).toBeGreaterThan(0);
+});
+
+test('a session already over (404) when ending early says so and reads the sessions again', async ({
+  page,
+}) => {
+  const { asked } = await serve(page);
+  await page.route(
+    (u) => u.pathname.endsWith('/end'),
+    (r) => r.fulfill(problem(404, 'not_found')),
+  );
+  await page.getByRole('button', { name: 'Kết thúc sớm phiên ở Gani Foods' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Kết thúc sớm phiên truy cập' });
+  const reads = asked.length;
+  await dialog.getByRole('button', { name: 'Kết thúc phiên' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Mã: trace-not_found');
+  await expect.poll(() => asked.length).toBeGreaterThan(reads);
+});
