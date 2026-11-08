@@ -12,6 +12,7 @@ import { RatingForm } from './rating';
 import { demoTransport, type Transport } from './transport';
 
 const WINDOW_ID = 'gani-chat';
+const END_ASK_ID = 'gani-end-ask';
 
 interface Chat {
   /** The form before the chat, the conversation, or the rating once the customer ended it. */
@@ -85,7 +86,16 @@ function useChat(transport: Transport): Chat {
 }
 
 function ChatWindow({ brand, chat, onClose }: { brand: Brand; chat: Chat; onClose: () => void }) {
-  const [ending, setEnding] = useState(false);
+  // null: not asking; 'ask': asking again; 'kept': "Không" was pressed, the focus goes back to the button that asked.
+  const [ending, setEnding] = useState<'ask' | 'kept' | null>(null);
+  // Asking again moves the focus to the safe "Không" (the group's question is read with it); "Không" gives it back to the button that
+  // asked (WCAG 2.4.3, 4.1.3: docs/ui/widget-a11y-08-11-2026.md V1, V2). Never left on the page behind the widget.
+  const endButton = useRef<HTMLButtonElement>(null);
+  const keep = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (ending === 'ask') keep.current?.focus();
+    else if (ending === 'kept') endButton.current?.focus();
+  }, [ending]);
   return (
     <section
       id={WINDOW_ID}
@@ -107,25 +117,25 @@ function ChatWindow({ brand, chat, onClose }: { brand: Brand; chat: Chat; onClos
       </header>
       {chat.stage === 'chat' ? (
         <div class="bar">
-          {ending ? (
-            <>
-              <span>Kết thúc và xóa tin nhắn trên máy này?</span>
+          {ending === 'ask' ? (
+            <div role="group" aria-labelledby={END_ASK_ID} class="ask">
+              <span id={END_ASK_ID}>Kết thúc và xóa tin nhắn trên máy này?</span>
               <button
                 type="button"
                 class="link"
                 onClick={() => {
-                  setEnding(false);
+                  setEnding(null);
                   chat.end();
                 }}
               >
                 Kết thúc
               </button>
-              <button type="button" class="link" onClick={() => setEnding(false)}>
+              <button ref={keep} type="button" class="link" onClick={() => setEnding('kept')}>
                 Không
               </button>
-            </>
+            </div>
           ) : (
-            <button type="button" class="link" onClick={() => setEnding(true)}>
+            <button ref={endButton} type="button" class="link" onClick={() => setEnding('ask')}>
               Kết thúc & xóa trên máy này
             </button>
           )}
