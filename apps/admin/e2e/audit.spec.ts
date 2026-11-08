@@ -76,6 +76,8 @@ test('a person is filtered by a click on them or by "Tôi"; "Bỏ lọc" shows e
   await expect(page).toHaveURL(`/settings/audit?actor=${OTHER}`);
   await expect(rows(page)).toHaveCount(3);
   await expect(page.getByText('Đang xem việc của Người dùng …9abcdef0')).toBeVisible();
+  // Axe in this state too (CEO brief 171 C).
+  await expectAccessible(page);
   expect(seen.at(-1)?.get('actorUserId')).toBe(OTHER);
   await page.getByRole('button', { name: 'Tôi' }).click();
   await expect(page).toHaveURL('/settings/audit?actor=user-owner');
@@ -106,6 +108,8 @@ test('what the API would refuse is said before asking; good filters go to the UR
   await page.getByRole('button', { name: 'Lọc', exact: true }).click();
   await expect(alert).toHaveText('Ngày bắt đầu phải trước hoặc trùng ngày kết thúc.');
   expect(seen.length).toBe(before);
+  // Axe in this state too (CEO brief 171 C).
+  await expectAccessible(page);
   const from = addDays(vnDay(NOW), -10);
   await field('Từ ngày').fill(from);
   await page.getByRole('button', { name: 'Lọc', exact: true }).click();

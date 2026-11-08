@@ -107,5 +107,7 @@ test('while the API has no versions route, the dialog says it is not there yet',
 }) => {
   const { dialog } = await open(page, () => problem(404, 'not_found'));
   await expect(dialog.getByText('Phiên bản: chưa có trong bản hiện tại.')).toBeVisible();
+  // Axe in this state too (CEO brief 171 C).
+  await expectAccessible(page);
   await expect(dialog.getByRole('table')).toHaveCount(0);
 });
