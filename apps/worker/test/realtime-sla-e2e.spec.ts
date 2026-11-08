@@ -59,7 +59,7 @@ async function stack() {
       EVENTS_CONSUMER_ENABLED: '1',
       EVENTS_DISCOVERY_MS: '200',
       EVENTS_MAX_QUEUES: '10000',
-      SLA_HOURS_POLL_MS: '500',
+      SLA_HOURS_POLL_MS: '1000',
     }),
   );
   const res = await fetch(`${api.url}/api/auth/sign-in/email`, {
