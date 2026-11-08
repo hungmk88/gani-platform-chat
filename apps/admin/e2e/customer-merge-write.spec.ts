@@ -146,3 +146,34 @@ test('a customer gone meanwhile (404) leaves only "Đóng" and reads the suggest
   await expect.poll(() => again).toBeGreaterThan(0);
   await expectAccessible(page);
 });
+
+test('merging holds while the server works: a double click sends once, Esc and Hủy wait (E2E brief 178 T1)', async ({
+  page,
+}) => {
+  const posts = await serve(page, () => merged(AN));
+  let release = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(isMerge, async (r) => (await held, r.fallback()));
+  await open(page);
+  await dialog(page).getByRole('textbox').fill('GOP');
+  await mergeButton(page).dblclick();
+  await expect(dialog(page).getByRole('button', { name: 'Đang gộp…' })).toBeDisabled();
+  await expect(dialog(page).getByRole('button', { name: 'Hủy' })).toBeDisabled();
+  await expect(dialog(page).getByText('Đang gộp, không đóng trang.')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toBeVisible();
+  release();
+  await expect(dialog(page).getByRole('status')).toContainText('Đã gộp');
+  expect(posts).toHaveLength(1);
+});
+
+test('a merge refused (403) says so and leaves only "Đóng"', async ({ page }) => {
+  await serve(page, () => problem(403, 'forbidden'));
+  await open(page);
+  await dialog(page).getByRole('textbox').fill('GOP');
+  await mergeButton(page).click();
+  await expect(dialog(page).getByRole('alert')).toContainText('Bạn không có quyền làm việc này.');
+  await expect(dialog(page).getByRole('alert')).toContainText('Mã: trace-forbidden');
+  await expect(mergeButton(page)).toHaveCount(0);
+  await expect(dialog(page).getByRole('button', { name: 'Đóng' })).toBeVisible();
+});
