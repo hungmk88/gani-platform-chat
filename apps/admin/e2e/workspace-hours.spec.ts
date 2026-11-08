@@ -81,6 +81,8 @@ test('a week of its own reads by weekday, with its break, and without the defaul
     'Chủ nhậtNghỉ————',
   ]);
   await expect(page.getByText('Múi giờ: Asia/Bangkok')).toBeVisible();
+  // Axe in this state too (CEO brief 171 C).
+  await expectAccessible(page);
   await expect(page.getByText(/đang dùng tuần mặc định của hệ thống/)).toHaveCount(0);
 });
 

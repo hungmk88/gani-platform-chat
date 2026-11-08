@@ -160,6 +160,8 @@ test('Hủy leaves the week as it was; a refused save keeps the edits and says w
   await save(page).click();
   await expect(alert(page)).toContainText('Mã: trace-put');
   await expect(page.getByLabel('Thứ 2 đóng cửa')).toHaveValue('17:00');
+  // Axe in this state too (CEO brief 171 C).
+  await expectAccessible(page);
   refuse = false;
   await save(page).click();
   await expect(page.getByRole('main').getByRole('status')).toHaveText('Đã lưu giờ làm việc.');
