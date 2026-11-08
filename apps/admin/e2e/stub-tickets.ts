@@ -177,9 +177,11 @@ export async function routeTickets(
   const q = new URL(req.url ?? '/', 'http://stub').searchParams;
   const status = q.get('status');
   const assignee = q.get('assignee');
+  const conversationId = q.get('conversationId'); // U53, N170: the tickets made from one conversation
   const found = seen.filter(
     (t) =>
       (!status || t.status === status) &&
+      (!conversationId || t.conversationId === conversationId) &&
       (assignee === 'me' ? t.assignee?.id === me : assignee === 'none' ? !t.assignee : true),
   );
   const from = Number(q.get('cursor') ?? 0);
