@@ -76,3 +76,20 @@ test('too many tries asks to wait', async ({ page }) => {
   await expect(page.getByRole('alert').filter({ hasText: TOO_MANY })).toBeVisible();
   await expectAccessible(page);
 });
+
+// The link looked fine when the page opened but is refused when joining (404: used or withdrawn meanwhile; E2E brief 194 C):
+// the one sentence of every refused link, with the way to sign in.
+test('a link refused when joining says it is not valid, with the link to sign in', async ({
+  page,
+}) => {
+  await page.route('**/api/auth/invite/accept', (r) =>
+    r.fulfill({ status: 404, json: { code: 'INVITE_INVALID' } }),
+  );
+  await page.goto(open(INVITES.sales.token));
+  await page.getByLabel('Mật khẩu mới', { exact: false }).fill(PASSWORD);
+  await page.getByLabel('Nhập lại mật khẩu').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Đặt mật khẩu và tham gia' }).click();
+  await expect(page.getByText('Link không hợp lệ hoặc đã hết hạn.')).toBeVisible();
+  await expect(page.getByRole('link', { name: /đăng nhập/i })).toHaveAttribute('href', '/login');
+  await expect(page.getByRole('button', { name: 'Đặt mật khẩu và tham gia' })).toHaveCount(0);
+});

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { EXPIRED, LOCKED, WRONG_BACKUP_CODE, WRONG_CODE } from '../src/two-factor';
+import { EXPIRED, LOCKED, TOO_MANY, WRONG_BACKUP_CODE, WRONG_CODE } from '../src/two-factor';
 import { expectAccessible } from './axe';
 import { signIn } from './sign-in';
 import { accountOf, BACKUP_CODES, TOTP } from './stub-api';
@@ -51,4 +51,16 @@ test('without a pending sign-in the code asks to sign in again', async ({ page }
   await expectAccessible(page);
   await form(page).getByRole('link', { name: 'Về trang đăng nhập' }).click();
   await expect(page).toHaveURL('/login');
+});
+
+// Too many codes in a short time (429, E2E brief 194 C): says to wait, the form stays; the code is not cleared from the server's view.
+test('too many codes says to wait and keeps the form', async ({ page }) => {
+  await page.route('**/api/auth/two-factor/verify-totp', (r) =>
+    r.fulfill({ status: 429, json: { code: 'TOO_MANY_REQUESTS' } }),
+  );
+  await signIn(page, accountOf('admin+2fa'));
+  await expect(page).toHaveURL('/login/two-factor');
+  await enter(page, TOTP.good);
+  await expect(form(page).getByRole('alert')).toHaveText(TOO_MANY);
+  await expect(page).toHaveURL('/login/two-factor');
 });

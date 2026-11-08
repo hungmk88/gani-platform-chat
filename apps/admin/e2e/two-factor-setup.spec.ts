@@ -49,3 +49,31 @@ test('GET /v1/me refusing with two_factor_setup_required sends to the set-up (N9
   await expect(page).toHaveURL('/two-factor/setup');
   await expect(page.getByLabel('Mật khẩu')).toBeVisible();
 });
+
+// The 10 backup codes leave the page two ways (E2E brief 194 C): "Chép" puts them on the clipboard, one per line; "Tải tệp .txt"
+// saves a file with each of them.
+test('the backup codes are copied one per line, and downloaded as a .txt with each of them', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await signIn(page, accountOf('owner+setup'));
+  await page.getByLabel('Mật khẩu').fill(GOOD);
+  await page.getByRole('button', { name: 'Tiếp tục' }).click();
+  await page.getByLabel('Mã 6 số trong ứng dụng').fill(TOTP.good);
+  await page.getByRole('button', { name: 'Xác nhận' }).click();
+  await expect(page.getByRole('listitem')).toHaveText(BACKUP_CODES);
+
+  await page.getByRole('button', { name: 'Chép' }).click();
+  await expect(page.getByRole('button', { name: 'Đã chép' })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(BACKUP_CODES.join('\n'));
+
+  const saving = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Tải tệp .txt' }).click();
+  const file = await saving;
+  expect(file.suggestedFilename()).toBe('gani-ma-du-phong-2fa.txt');
+  const chunks: Buffer[] = [];
+  for await (const chunk of await file.createReadStream()) chunks.push(chunk as Buffer);
+  const text = Buffer.concat(chunks).toString('utf8');
+  for (const code of BACKUP_CODES) expect(text).toContain(code);
+});
