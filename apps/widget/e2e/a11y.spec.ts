@@ -42,15 +42,25 @@ test('W1–W2: the closed button, the form and its two refusals are read with th
     - button "Đóng khung chat" [expanded]
   `);
 
+  // V3 (WCAG 3.3.1): the wrong field is marked, described by the sentence, and has the focus; editing it clears the mark.
+  const name = chat(page).getByLabel('Tên của bạn');
+  const phone = chat(page).getByLabel(/Số điện thoại/);
   await chat(page).getByRole('button', { name: 'Bắt đầu chat' }).click();
   await expect(chat(page).getByRole('alert')).toHaveText('Nhập tên của bạn.');
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  await expect(name).toHaveAccessibleDescription('Nhập tên của bạn.');
+  await expect(name).toBeFocused();
+  await expect(phone).not.toHaveAttribute('aria-invalid');
   await expectAccessible(page);
-  await chat(page).getByLabel('Tên của bạn').fill('Lan');
-  await chat(page)
-    .getByLabel(/Số điện thoại/)
-    .fill('123');
+  await name.fill('Lan');
+  await expect(name).not.toHaveAttribute('aria-invalid');
+  await phone.fill('123');
   await chat(page).getByRole('button', { name: 'Bắt đầu chat' }).click();
   await expect(chat(page).getByRole('alert')).toContainText('Số điện thoại chưa đúng');
+  await expect(phone).toHaveAttribute('aria-invalid', 'true');
+  await expect(phone).toHaveAccessibleDescription(/Số điện thoại chưa đúng/);
+  await expect(phone).toBeFocused();
+  await expect(name).not.toHaveAttribute('aria-invalid');
   await expectAccessible(page);
 });
 
@@ -84,9 +94,18 @@ test('W2: the chat names who wrote each line, in a polite live list; asking to e
   await expect(box).toBeFocused();
   await expectAccessible(page);
 
-  await chat(page).getByRole('button', { name: 'Kết thúc & xóa trên máy này' }).click();
-  await expect(chat(page).getByRole('button', { name: 'Kết thúc', exact: true })).toBeVisible();
+  // V1, V2 (WCAG 2.4.3, 4.1.3): asking again is a group named by its question, the focus on the safe "Không"; "Không" gives the
+  // focus back to the button that asked, never to the page behind the widget.
+  const end = chat(page).getByRole('button', { name: 'Kết thúc & xóa trên máy này' });
+  await end.click();
+  const ask = chat(page).getByRole('group', { name: 'Kết thúc và xóa tin nhắn trên máy này?' });
+  await expect(ask.getByRole('button', { name: 'Không' })).toBeFocused();
+  await expect(ask.getByRole('button', { name: 'Kết thúc', exact: true })).toBeVisible();
   await expectAccessible(page);
+  await ask.getByRole('button', { name: 'Không' }).click();
+  await expect(ask).toHaveCount(0);
+  await expect(end).toBeFocused();
+  await expect(list.getByRole('listitem')).toHaveCount(2);
 });
 
 test('W3: the rating is one named group of five stars; folding and Esc give the focus back to the button', async ({

@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Brand } from './brand';
 import { MAX_NAME, preChatProblem, type PreChat } from './chat';
 
+const ERROR_ID = 'gani-prechat-error';
+
 export function PreChatForm({
   brand,
   busy,
@@ -17,11 +19,17 @@ export function PreChatForm({
 }) {
   const [form, setForm] = useState<PreChat>({ name: '', phone: '', marketing: false });
   const [problem, setProblem] = useState<string | null>(null);
+  // Which field the problem is about: marked aria-invalid, described by the sentence, and given the focus (WCAG 3.3.1; V3).
+  const [wrong, setWrong] = useState<'name' | 'phone' | null>(null);
   const first = useRef<HTMLInputElement>(null);
+  const phone = useRef<HTMLInputElement>(null);
   useEffect(() => first.current?.focus(), []);
+  const invalid = (field: 'name' | 'phone') =>
+    wrong === field ? { 'aria-invalid': true, 'aria-describedby': ERROR_ID } : {};
   const edit = (next: Partial<PreChat>) => {
     setForm((f) => ({ ...f, ...next }));
     setProblem(null);
+    setWrong(null);
   };
   return (
     <form
@@ -31,7 +39,13 @@ export function PreChatForm({
         e.preventDefault();
         if (busy) return;
         const why = preChatProblem(form);
-        if (why) return setProblem(why);
+        if (why) {
+          const name = form.name.trim();
+          const field = !name || name.length > MAX_NAME ? 'name' : 'phone';
+          setWrong(field);
+          (field === 'name' ? first : phone).current?.focus();
+          return setProblem(why);
+        }
         onStart({ ...form, name: form.name.trim(), phone: form.phone.trim() });
       }}
     >
@@ -39,6 +53,7 @@ export function PreChatForm({
         Tên của bạn
         <input
           ref={first}
+          {...invalid('name')}
           value={form.name}
           maxLength={MAX_NAME}
           autoComplete="name"
@@ -48,6 +63,8 @@ export function PreChatForm({
       <label>
         Số điện thoại (không bắt buộc)
         <input
+          ref={phone}
+          {...invalid('phone')}
           type="tel"
           inputMode="tel"
           value={form.phone}
@@ -72,7 +89,11 @@ export function PreChatForm({
           </a>
         ) : null}
       </p>
-      {problem ? <p role="alert">{problem}</p> : null}
+      {problem ? (
+        <p id={ERROR_ID} role="alert">
+          {problem}
+        </p>
+      ) : null}
       <button type="submit" class="primary" disabled={busy} aria-busy={busy}>
         {busy ? 'Đang mở…' : 'Bắt đầu chat'}
       </button>
