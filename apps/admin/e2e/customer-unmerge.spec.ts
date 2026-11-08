@@ -113,3 +113,36 @@ test('already undone (409 not_merged): says so and reads the history again', asy
   await expect(dialog(page).getByRole('alert')).toContainText('Lần gộp này đã được tách trước đó.');
   await expect.poll(() => again).toBeGreaterThan(0);
 });
+
+test('unmerging holds while the server works: a double click sends once, Esc and Hủy wait (E2E brief 178 T1)', async ({
+  page,
+}) => {
+  let release = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  const posts = await serve(page, () => ({ status: 200 }));
+  await page.route(isUnmerge, async (r) => (await held, r.fallback()));
+  await dialog(page).getByRole('checkbox').check();
+  await unmergeButton(page).dblclick();
+  await expect(dialog(page).getByRole('button', { name: 'Đang tách…' })).toBeDisabled();
+  await expect(dialog(page).getByRole('button', { name: 'Hủy' })).toBeDisabled();
+  await expect(dialog(page).getByText('Đang tách, không đóng trang.')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toBeVisible();
+  release();
+  await expect(dialog(page).getByRole('status')).toContainText('Đã tách');
+  expect(posts).toHaveLength(1);
+});
+
+for (const [status, code, said] of [
+  [403, 'forbidden', 'Bạn không có quyền làm việc này.'],
+  [404, 'not_found', 'Không còn khách này.'],
+] as const) {
+  test(`an unmerge answered ${status} says "${said}" and leaves only "Đóng"`, async ({ page }) => {
+    await serve(page, () => problem(status, code));
+    await dialog(page).getByRole('checkbox').check();
+    await unmergeButton(page).click();
+    await expect(dialog(page).getByRole('alert')).toContainText(said);
+    await expect(unmergeButton(page)).toHaveCount(0);
+    await expect(dialog(page).getByRole('button', { name: 'Đóng' })).toBeVisible();
+  });
+}
