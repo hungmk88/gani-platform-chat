@@ -102,3 +102,23 @@ Phiên FE `session_015SNdqZsqMWFgeQMx5cVLsc`, nối tiếp `docs/ui/session-summ
 - Q-d: CEO lo trước 15/12.
 - Nhóm C (`backup/privacy-full`, `docs/ui-prototype-outline`): giữ tới khi CEO quyết.
 - Worktree ở máy phiên: `/home/user/u85-check`, `/home/user/docs-state`; không còn nhánh FE nào chưa push.
+
+## 8. Bổ sung 08/11 tối (brief 189–192)
+
+| PR | Nội dung | Tầng | Merge | Squash |
+|---|---|---|---|---|
+| #685 | handoff 07–08/11, luật SHA 40 ký tự, Nhóm B | 1 docs | 17:19:31 | `8562913` |
+| #687 | B: axe + cây accessibility W1–W3, báo cáo widget | 1 test | 18:04:16 | `123fd34` |
+| #688 | A: Lighthouse widget + 5 trang admin | 1 docs | 18:07:20 | `efc07f9` |
+| #689 | fix V1, V2, V3 của widget | 1 | 18:17:42 | `3365840` |
+
+- **B (#687):** axe 0 vi phạm ở 12 trạng thái nhưng cây accessibility và focus cho thấy V1 (focus rơi về `<body>` khi hỏi lại
+  "Kết thúc"), V2 (câu hỏi lại không được đọc), V3 (ô sai không đánh dấu). V1–V3 sửa ở #689 (mutant bỏ fix → 2 ca đỏ). V4, V5
+  vào backlog widget S8–S10. NVDA/VoiceOver chưa chạy được ở máy cloud: 12 việc người kiểm trước S5
+  (`docs/ui/widget-a11y-08-11-2026.md` mục 4).
+- **A (#688):** số đo container, tham khảo. Widget mobile 100; admin desktop 100 (LCP 0,6–0,7 s); admin mobile giả lập 89–96
+  (LCP 2,6–3,3 s, render delay của khối chữ chờ JS). CEO chốt (brief 191): admin desktop < 2,5 s, widget mobile ≥ 90 (đều đạt);
+  admin mobile best-effort, render delay vào backlog S5/S6. Chạy lại trên staging ở S1 (23/11).
+- **Cách merge mới:** sau khi kết nối GitHub đổi, `enable_pr_auto_merge` không còn nhận `expectedHeadOid`. Từ #687: 9/9 +
+  `clean` thì `merge_pull_request` với `expectedHeadSha` đủ 40 ký tự, kiểm diff HEAD ↔ squash = 0 (`CLAUDE.md`, brief 191, 192).
+- **FE hết việc** (brief 192): chờ Q6 (U26), Q-d (CEO trước 15/12), Nhóm C (CEO quyết). Không tự mở việc mới.
