@@ -7,7 +7,12 @@ import { currentTenantContext, type MemberContext } from '@gani/db';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PROBLEM_CONTENT_TYPE } from './problem.js';
-import { currentRequestContext, RequestContextMissingError } from './request-context.js';
+import {
+  currentActorContext,
+  currentRequestContext,
+  OperatorAccessDeniedError,
+  RequestContextMissingError,
+} from './request-context.js';
 import type { ResolvedSession } from './session-resolver.js';
 import {
   createTenantContextMiddleware,
@@ -43,6 +48,8 @@ async function start(deps: Partial<TenantMiddlewareDeps>) {
     sessions: { resolve: () => Promise.resolve(session(ORG_A)) },
     organisations: () => Promise.resolve([]),
     member: () => Promise.resolve(sales),
+    isPlatformOperator: () => Promise.resolve(false),
+    accessSessionOrg: () => Promise.resolve(null),
     ...deps,
   };
   const middleware = createTenantContextMiddleware(full);
@@ -52,6 +59,16 @@ async function start(deps: Partial<TenantMiddlewareDeps>) {
         try {
           return { request: currentRequestContext(), tenant: currentTenantContext() };
         } catch (error) {
+          if (error instanceof OperatorAccessDeniedError) {
+            const tenant = (() => {
+              try {
+                return currentTenantContext();
+              } catch {
+                return 'NONE';
+              }
+            })();
+            return { denied: true, actor: currentActorContext(), tenant };
+          }
           return error instanceof RequestContextMissingError ? 'MISSING' : 'OTHER';
         }
       };
@@ -281,5 +298,117 @@ describe('tenant context middleware', () => {
       expect(body.tenant).toEqual({ orgId: p.org, workspaceIds: [p.workspace] });
     }
     expect(() => currentRequestContext()).toThrow(RequestContextMissingError);
+  });
+});
+
+describe('a platform operator in an access session (X-Access-Session-Id, P11b-1)', () => {
+  const ACCESS: string = randomUUID();
+  const operator = (accessSessionOrg = vi.fn(() => Promise.resolve<string | null>(ORG_B))) => ({
+    isPlatformOperator: () => Promise.resolve(true),
+    accessSessionOrg,
+  });
+  const header = (id = ACCESS) => ({ headers: { 'x-access-session-id': id } });
+  const codeOf = async (res: Response) => ((await res.json()) as { code: string }).code;
+
+  it('without the header, every member role runs as before and nothing of operators is asked', async () => {
+    for (const role of [
+      'owner',
+      'admin',
+      'manager',
+      'sales',
+      'marketing',
+      'viewer',
+      'support',
+    ] as const) {
+      const isPlatformOperator = vi.fn(() => Promise.resolve(false));
+      const accessSessionOrg = vi.fn(() => Promise.resolve(null));
+      const member = () => Promise.resolve({ role, workspaceIds: sales.workspaceIds });
+      const get = await start({ member, isPlatformOperator, accessSessionOrg });
+      const body = (await (await get('/v1/x')).json()) as {
+        request: { role: string; orgId: string };
+      };
+      expect(body.request).toMatchObject({ role, orgId: ORG_A });
+      expect(isPlatformOperator).not.toHaveBeenCalled();
+      expect(accessSessionOrg).not.toHaveBeenCalled();
+    }
+  });
+
+  it('refuses a member who sends the header with not_platform_operator, never falling back to the member', async () => {
+    const accessSessionOrg = vi.fn(() => Promise.resolve(ORG_B));
+    const member = vi.fn(() => Promise.resolve(sales));
+    const get = await start({ accessSessionOrg, member });
+    const res = await get('/v1/x', header());
+    expect(res.status).toBe(403);
+    expect(await codeOf(res)).toBe('not_platform_operator');
+    expect(accessSessionOrg).not.toHaveBeenCalled();
+    expect(member).not.toHaveBeenCalled();
+  });
+
+  it('is 403 access_session_expired for no live session of the caller, or a header that is not an id', async () => {
+    const none = vi.fn(() => Promise.resolve(null));
+    const member = vi.fn(() => Promise.resolve(sales));
+    const get = await start({ ...operator(none), member });
+    for (const id of [ACCESS, 'not-an-id', '', `${ACCESS}, ${randomUUID()}`]) {
+      const res = await get('/v1/x', header(id));
+      expect(res.status, id).toBe(403);
+      expect(await codeOf(res), id).toBe('access_session_expired');
+    }
+    expect(none).toHaveBeenCalledTimes(1);
+    expect(none).toHaveBeenCalledWith(ACCESS, ME);
+    expect(member).not.toHaveBeenCalled();
+  });
+
+  it('opens an operator context with the organisation of the session, no tenant context, and no member context', async () => {
+    const accessSessionOrg = vi.fn(() => Promise.resolve<string | null>(ORG_B));
+    const get = await start(operator(accessSessionOrg));
+    const body = (await (await get('/v1/x', header(ACCESS.toUpperCase()))).json()) as object;
+    expect(body).toEqual({
+      denied: true,
+      actor: {
+        role: 'platform_operator',
+        userId: ME,
+        orgId: ORG_B,
+        accessSessionId: ACCESS,
+        workspaceIds: [],
+        resolvedAt: expect.any(String) as string,
+        traceId: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
+      },
+      tenant: 'NONE',
+    });
+    expect(accessSessionOrg).toHaveBeenCalledWith(ACCESS, ME);
+  });
+
+  it('lets through reads and the two writes of N207 B1 only, by exact path', async () => {
+    const get = await start(operator());
+    const incident = `/v1/security-incidents/${randomUUID()}`;
+    const passes: [string, string][] = [
+      ['GET', '/v1/customers'],
+      ['HEAD', '/v1/customers'],
+      ['POST', '/v1/security-incidents'],
+      ['PATCH', incident],
+    ];
+    for (const [method, path] of passes)
+      expect((await get(path, { method, ...header() })).status, `${method} ${path}`).toBe(200);
+    const refused: [string, string][] = [
+      ['POST', '/v1/customers'],
+      ['PATCH', '/v1/security-incidents'],
+      ['POST', incident],
+      ['DELETE', incident],
+      ['PUT', incident],
+      ['PATCH', `${incident}/alerts`],
+      ['POST', '/v1/security-incidents/'],
+    ];
+    for (const [method, path] of refused) {
+      const res = await get(path, { method, ...header() });
+      expect(res.status, `${method} ${path}`).toBe(403);
+      expect(await codeOf(res)).toBe('forbidden');
+    }
+  });
+
+  it('is 503 without the cause when the operator check fails', async () => {
+    const get = await start({ isPlatformOperator: () => Promise.reject(new Error('db-seven')) });
+    const res = await get('/v1/x', header());
+    expect(res.status).toBe(503);
+    expect(await res.text()).not.toMatch(/db-seven/);
   });
 });
