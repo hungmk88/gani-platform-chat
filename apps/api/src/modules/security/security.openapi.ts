@@ -15,8 +15,8 @@ import {
 } from './security.schemas.js';
 
 // The paths of P11 (U35, N167): Owner, Admin, and a platform operator inside an access session of the organisation (Phụ lục B "Mở sự
-// cố bảo mật"). Everything is of the organisation of the session; nothing crosses organisations. The alerts are served (P11b-2a); the
-// incidents stay planned until P11b-2b (GET) and P11b-3 (POST, PATCH).
+// cố bảo mật"). Everything is of the organisation of the session; nothing crosses organisations. The reads are served (P11b-2a, P11b-2b);
+// the writes stay planned until P11b-3.
 const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
 const tags = ['security'];
 const edge = { 401: EDGE_ERRORS[401], 503: EDGE_ERRORS[503] };
@@ -24,7 +24,7 @@ const forbidden = problemResponse(
   'forbidden: only an Owner, an Admin or a platform operator in an access session; or a refusal of the edge.',
 );
 
-/** `GET /v1/security-alerts` (served, P11b-2a). */
+/** `GET /v1/security-alerts` (P11b-2a), `GET /v1/security-incidents` (P11b-2b): served. */
 export function registerSecurityReads(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
@@ -39,14 +39,7 @@ export function registerSecurityReads(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
-}
-
-/** The incidents, planned S5: `GET` (P11b-2b), `POST` and `PATCH` (P11b-3). */
-export function registerSecurityPlanned(registry: OpenAPIRegistry): void {
-  const when = planned('S5');
-  const byId = { params: z.object({ id: SecurityIncidentIdSchema }) };
   registry.registerPath({
-    ...when,
     method: 'get',
     path: '/v1/security-incidents',
     summary: 'The incidents of the organisation, newest first.',
@@ -59,6 +52,12 @@ export function registerSecurityPlanned(registry: OpenAPIRegistry): void {
       ...edge,
     },
   });
+}
+
+/** `POST /v1/security-incidents`, `PATCH /v1/security-incidents/{id}`: planned S5 (P11b-3). */
+export function registerSecurityPlanned(registry: OpenAPIRegistry): void {
+  const when = planned('S5');
+  const byId = { params: z.object({ id: SecurityIncidentIdSchema }) };
   registry.registerPath({
     ...when,
     method: 'post',

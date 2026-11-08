@@ -705,27 +705,6 @@
           "erased"
         ]
       },
-      "SecurityIncidentPage": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SecurityIncident"
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "data",
-          "nextCursor"
-        ]
-      },
       "SecurityIncident": {
         "type": "object",
         "properties": {
@@ -758,7 +737,10 @@
                 "$ref": "#/components/schemas/Uuid"
               },
               "name": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -773,7 +755,10 @@
                 "$ref": "#/components/schemas/Uuid"
               },
               "name": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -2692,101 +2677,6 @@
       }
     },
     "/v1/security-incidents": {
-      "get": {
-        "x-status": "planned",
-        "x-sprint": "S5",
-        "summary": "The incidents of the organisation, newest first.",
-        "tags": [
-          "security"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 512
-            },
-            "required": false,
-            "name": "cursor",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            },
-            "required": false,
-            "name": "limit",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "open",
-                "closed"
-              ]
-            },
-            "required": false,
-            "name": "status",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A page.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SecurityIncidentPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation_failed: a parameter or the cursor.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "unauthorized: no valid session.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "forbidden: only an Owner, an Admin or a platform operator in an access session; or a refusal of the edge.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "service_unavailable: the session or the membership could not be read.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "x-status": "planned",
         "x-sprint": "S5",

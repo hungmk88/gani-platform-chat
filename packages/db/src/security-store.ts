@@ -16,8 +16,15 @@ export type SecuritySeverity = (typeof i.$inferSelect)['severity'];
 
 /** An alert as stored; its kind and subject are codes and ids only. */
 export type SecurityAlertRow = typeof a.$inferSelect;
-/** An incident, with the alerts it covers (oldest first); opened by a member or by a platform operator, exactly one of the two. */
-export type SecurityIncidentRow = typeof i.$inferSelect & { readonly alertIds: readonly string[] };
+/**
+ * An incident, with the alerts it covers (oldest first); opened by a member or by a platform operator, exactly one of the two. Names
+ * only through app.org_users (active members, no email): null for someone with no name or no longer an active member (N215).
+ */
+export type SecurityIncidentRow = typeof i.$inferSelect & {
+  readonly alertIds: readonly string[];
+  readonly handlerName: string | null;
+  readonly openedByName: string | null;
+};
 
 const failure = (name: string, message: string) =>
   class extends Error {
@@ -52,6 +59,12 @@ const incidentColumns = {
   alertIds: sql<
     string[]
   >`coalesce((SELECT array_agg(s.id ORDER BY s.id) FROM public.security_alerts s WHERE s.org_id = public.security_incidents.org_id AND s.incident_id = public.security_incidents.id), '{}')`,
+  handlerName: sql<
+    string | null
+  >`(SELECT nullif(btrim(u.display_name), '') FROM app.org_users u WHERE u.user_id = public.security_incidents.handler_user_id)`,
+  openedByName: sql<
+    string | null
+  >`(SELECT nullif(btrim(u.display_name), '') FROM app.org_users u WHERE u.user_id = public.security_incidents.opened_by_user_id)`,
 };
 
 function paging(

@@ -88,6 +88,7 @@ describe('the OpenAPI document (Brief P18)', () => {
       '/v1/customers/{id}/merge-suggestions',
       '/v1/audit-logs',
       '/v1/security-alerts',
+      '/v1/security-incidents',
     ]);
   });
 });

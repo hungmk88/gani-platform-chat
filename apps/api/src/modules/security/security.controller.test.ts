@@ -1,22 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
-import { InvalidCursorError, listSecurityAlerts } from '@gani/db';
+import { InvalidCursorError, listSecurityAlerts, listSecurityIncidents } from '@gani/db';
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ValidationFailedError } from '../../openapi/zod-pipe.js';
 import type { DatabaseService } from '../database/database.service.js';
 import { runWithRequestContext } from '../request-context/request-context.js';
-import { SecurityController } from './security.controller.js';
+import { OPERATOR_NAME, SecurityController } from './security.controller.js';
 
 vi.mock('@gani/db', async (actual) => ({
   ...(await actual<typeof import('@gani/db')>()),
   listSecurityAlerts: vi.fn(),
+  listSecurityIncidents: vi.fn(),
 }));
 
-// The controller without a database (P11b-2a): who may read, the transaction it opens, and how a row is answered. Over HTTP on
+// The controller without a database (P11b-2a, P11b-2b): who may read, the transaction it opens, and how a row is answered. Over HTTP on
 // PostgreSQL: security.integration.test.ts.
-const [ORG, ME] = [randomUUID(), randomUUID()];
+const [ORG, ME, OP] = [randomUUID(), randomUUID(), randomUUID()];
 const withTenant = vi.fn((_ctx: unknown, fn: (tx: never) => unknown) => fn({} as never));
 const controller = new SecurityController({ withTenant } as unknown as DatabaseService);
 const base = {
@@ -77,5 +78,41 @@ describe('SecurityController', () => {
     );
     vi.mocked(listSecurityAlerts).mockRejectedValueOnce(new Error('down'));
     await expect(as('owner', () => controller.alerts({ limit: 1 }))).rejects.toThrow('down');
+  });
+
+  it('answers an incident with its people: an operator by role, a missing name as null (N215); every filter passed on', async () => {
+    const row = { id: 'i', title: 'T', severity: 'low', handlerUserId: ME, handlerName: null };
+    const people = { openedByName: 'X', alertIds: ['a'], openedAt: at };
+    vi.mocked(listSecurityIncidents).mockResolvedValue({
+      rows: [
+        {
+          ...row,
+          ...people,
+          status: 'open',
+          openedByUserId: ME,
+          openedByOperatorId: null,
+          closedAt: null,
+        },
+        {
+          ...row,
+          ...people,
+          status: 'closed',
+          openedByUserId: null,
+          openedByOperatorId: OP,
+          closedAt: at,
+        },
+      ] as never,
+      nextCursor: null,
+    });
+    const q = { limit: 2, status: 'open', cursor: 'c' } as const;
+    const { data } = await as('platform_operator', () => controller.incidents(q));
+    expect(data.map((d) => [d.handler, d.openedBy, d.alertIds, d.closedAt])).toEqual([
+      [{ id: ME, name: null }, { id: ME, name: 'X' }, ['a'], null],
+      [{ id: ME, name: null }, { id: OP, name: OPERATOR_NAME }, ['a'], at.toISOString()],
+    ]);
+    expect(listSecurityIncidents).toHaveBeenLastCalledWith({}, q);
+    await expect(as('sales', () => controller.incidents({ limit: 1 }))).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 });
