@@ -9,7 +9,15 @@ import { ApiFailure, getter, unwrap } from '../query/fetch';
 import { scopeKey } from '../query/keys';
 import { useApiQuery, useScope } from '../query/provider';
 import { readAgain } from '../realtime/events';
-import { assigneeLines, assigneesPath, matching, SEARCH_FROM, type Assignee } from './assign';
+import {
+  assigneeLines,
+  assigneesPath,
+  handOverBody,
+  matching,
+  MAX_REASON,
+  SEARCH_FROM,
+  type Assignee,
+} from './assign';
 import type { Conversation } from './list';
 
 type AssigneeList = components['schemas']['AssigneeList'];
@@ -28,7 +36,8 @@ const WORDS: Readonly<
 
 /**
  * "Gán lại" (Phụ lục B row 16, #366) or "Chuyển" (T15, #376) and their one dialog: the same list of U31 (`purpose`), body
- * `{version, toUserId}` and Idempotency-Key per person; only the words and the path differ. The dialog asks U31 only once
+ * `{version, toUserId}` and Idempotency-Key per person (and reason); only the words and the path differ, and "Chuyển" takes an optional
+ * reason (≤ 500, N199, CEO brief 170 A), saved by the API as an internal note of the conversation. The dialog asks U31 only once
  * opened. `onLeave`: the person may no longer read the conversation once it is handed on (a Sales/Support transfer, API
  * `canSee`), so the screen leaves it instead of meeting a 404. "Chuyển" also opens with T, as the shortcut table says.
  */
@@ -72,7 +81,7 @@ export function HandOverAction({
 
 /**
  * Pick one of those U31 lists, then `POST …/{purpose}` with the version last read, waiting for the server. One Idempotency-Key
- * per person picked, kept when the same is sent again after a failure. 409 version_conflict or invalid_transition says so in the
+ * per person and reason, kept when the same is sent again after a failure. 409 version_conflict or invalid_transition says so in the
  * dialog ("…Đang tải lại…") and reads the conversation and its list again, tried twice more (`readAgain`); until that read
  * succeeds the button is locked, so a second click never sends the old version. 422 invalid_assignee says its P9 sentence.
  */
@@ -92,8 +101,10 @@ function HandOverDialog({
   const dialog = useRef<HTMLDialogElement>(null);
   const searchBox = useRef<HTMLInputElement>(null);
   const pick = useRef<HTMLSelectElement>(null);
-  const last = useRef<{ to: string; key: string } | null>(null);
+  const last = useRef<{ to: string; reason: string; key: string } | null>(null);
   const [stale, setStale] = useState(false);
+  const [reason, setReason] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
   // Under the conversation's key, so reading the conversation again after a conflict reads the list again too.
   const people = useApiQuery<AssigneeList>(
     ['conversation', c.id, 'assignees', purpose],
@@ -103,18 +114,24 @@ function HandOverDialog({
   const [query, setQuery] = useState('');
   const options = matching(all, query);
   const [to, setTo] = useState('');
-  const assign = useMutation<Conversation, ApiFailure, { to: string; key: string }>({
-    mutationFn: ({ to, key }) =>
+  const assign = useMutation<
+    Conversation,
+    ApiFailure,
+    { to: string; key: string; body: { version: number; toUserId: string; reason?: string } }
+  >({
+    mutationFn: ({ key, body }) =>
       unwrap(
         api<Conversation>(`/v1/conversations/${encodeURIComponent(c.id)}/${purpose}`, {
           method: 'POST',
-          body: { version: c.version, toUserId: to },
+          body,
           idempotencyKey: key,
         }),
       ),
-    onSuccess: (next, { to }) => {
+    onSuccess: (next, { to, body }) => {
       last.current = null;
       void queries.invalidateQueries({ queryKey: scopeKey(scope, 'conversations') });
+      // The reason is now an internal note of the conversation (`transfer_reason`, N199): read the notes again.
+      if (body.reason) void queries.invalidateQueries({ queryKey: scopeKey(scope, 'notes', c.id) });
       dialog.current?.close();
       if (onLeave) return onLeave(nameOf(people.data?.data ?? [], to));
       queries.setQueryData(scopeKey(scope, 'conversation', c.id), next);
@@ -146,9 +163,14 @@ function HandOverDialog({
   const chosen = to || options[0]?.userId || '';
   const submit = () => {
     if (assign.isPending || !chosen) return;
-    const key = last.current?.to === chosen ? last.current.key : crypto.randomUUID();
-    last.current = { to: chosen, key };
-    assign.mutate({ to: chosen, key });
+    const built = handOverBody(purpose, c.version, chosen, reason);
+    if (!built.ok) return setProblem(built.problem);
+    setProblem(null);
+    const said = built.body.reason ?? '';
+    const same = last.current?.to === chosen && last.current.reason === said;
+    const key = same && last.current ? last.current.key : crypto.randomUUID();
+    last.current = { to: chosen, reason: said, key };
+    assign.mutate({ to: chosen, key, body: built.body });
   };
   const error = assign.error?.error ?? people.error?.error ?? null;
   return (
@@ -218,6 +240,26 @@ function HandOverDialog({
             )}
           </>
         )}
+        {purpose === 'transfer' ? (
+          <label className="flex flex-col gap-1">
+            Lý do (không bắt buộc)
+            <textarea
+              rows={2}
+              value={reason}
+              aria-invalid={problem ? true : undefined}
+              aria-describedby="hand-over-reason-hint"
+              className="rounded-input border border-border-strong px-3 py-2"
+              onChange={(e) => {
+                setReason(e.target.value);
+                setProblem(null);
+              }}
+            />
+            <span id="hand-over-reason-hint" className="text-12 text-text-muted">
+              Tối đa {MAX_REASON} ký tự. Lưu thành ghi chú nội bộ của hội thoại, khách không thấy.
+            </span>
+          </label>
+        ) : null}
+        {problem ? <p role="alert">{problem}</p> : null}
         {/* "vẫn … được": the API never caps a manual assign or transfer (U55, letter #387). If it ever does, change this. */}
         {options.some((o) => o.full) ? (
           <p className="text-12 text-text-muted">
