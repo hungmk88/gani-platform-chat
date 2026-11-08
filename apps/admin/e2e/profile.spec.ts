@@ -103,3 +103,26 @@ test('signing out the other devices keeps this one', async ({ page }) => {
   await expect(page.getByText(/Cài đặt thông báo .*chờ API/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hồ sơ cá nhân' })).toBeVisible();
 });
+
+// The refusals of changing the password that have their own path (E2E brief 194 C): too many tries (429) says to wait and keeps
+// the form; a session that ended (401) goes to /login.
+test('changing the password: too many tries says to wait; a session that ended goes to /login', async ({
+  page,
+}) => {
+  let status = 429;
+  await page.route('**/api/auth/change-password', (r) =>
+    r.fulfill({ status, json: { code: status === 429 ? 'TOO_MANY_REQUESTS' : 'UNAUTHORIZED' } }),
+  );
+  await signIn(page, accountOf('admin'));
+  await page.goto('/me?tab=security');
+  const form = page.getByRole('form', { name: 'Đổi mật khẩu' });
+  await form.getByLabel('Mật khẩu hiện tại').fill(GOOD);
+  await form.getByLabel(/^Mật khẩu mới/).fill(NEXT);
+  await form.getByLabel('Nhập lại mật khẩu mới').fill(NEXT);
+  await form.getByRole('button', { name: 'Đổi mật khẩu' }).click();
+  await expect(form.getByRole('alert')).toHaveText('Thử quá nhiều lần. Đợi 1 phút rồi thử lại.');
+  await expect(form.getByLabel('Mật khẩu hiện tại')).toHaveValue(GOOD);
+  status = 401;
+  await form.getByRole('button', { name: 'Đổi mật khẩu' }).click();
+  await expect(page).toHaveURL('/login');
+});

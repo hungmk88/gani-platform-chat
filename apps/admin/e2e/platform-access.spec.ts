@@ -190,3 +190,30 @@ test('a session already over (404) when ending early says so and reads the sessi
   await expect(dialog.getByRole('alert')).toContainText('Mã: trace-not_found');
   await expect.poll(() => asked.length).toBeGreaterThan(reads);
 });
+
+test('"Tải thêm" reads the next page of sessions by its cursor (E2E brief 194 C)', async ({
+  page,
+}) => {
+  const OLDER = { ...ENDED, id: 'older', reason: 'Kiểm tra cấu hình kênh theo yêu cầu #90' };
+  const cursors: (string | null)[] = [];
+  await serve(page);
+  // Registered after the stub of serve(), so it answers first; the page is read again with it.
+  await page.route(
+    (u) => u.pathname === '/v1/platform/access-sessions',
+    (r) => {
+      if (r.request().method() !== 'GET') return r.fallback();
+      const cursor = new URL(r.request().url()).searchParams.get('cursor');
+      cursors.push(cursor);
+      return r.fulfill({
+        json: cursor ? { data: [OLDER], nextCursor: null } : { data: [RUNNING], nextCursor: 'p2' },
+      });
+    },
+  );
+  await page.reload();
+  await expect(rows(page)).toHaveCount(2); // the header and RUNNING
+  await page.getByRole('button', { name: 'Tải thêm' }).click();
+  await expect(rows(page)).toHaveCount(3);
+  await expect(rows(page).nth(2)).toContainText('Kiểm tra cấu hình kênh theo yêu cầu #90');
+  await expect(page.getByRole('button', { name: 'Tải thêm' })).toHaveCount(0);
+  expect(cursors.filter(Boolean)).toEqual(['p2']);
+});
