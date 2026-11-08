@@ -170,3 +170,29 @@ test('sales reads the notes of an unclaimed conversation but writes nothing ther
   await page.keyboard.press('n');
   await expect(page.locator('#note-box')).toHaveCount(0);
 });
+
+// No longer holding it (403) or gone (404): the note is taken back, its text returns, and the conversation is read again (T3).
+for (const [status, code] of [
+  [403, 'forbidden'],
+  [404, 'not_found'],
+] as const) {
+  test(`a note refused with ${status} gives its text back and reads the conversation again (E2E brief 184 T3)`, async ({
+    page,
+  }) => {
+    await serve(page, () => problem(status, code));
+    await signIn(page, accountOf('sales'));
+    await page.goto(`/inbox/${held.id}`);
+    await expect(notes(page).getByRole('listitem')).toHaveCount(2);
+    let reads = 0;
+    page.on('request', (r) => {
+      if (r.method() === 'GET' && new URL(r.url()).pathname === `/v1/conversations/${held.id}`)
+        reads++;
+    });
+    await box(page).fill('Gọi lại lúc 15:00');
+    await add(page).click();
+    await expect(notes(page).getByRole('alert')).toContainText(`Mã: trace-${code}`);
+    await expect(box(page)).toHaveValue('Gọi lại lúc 15:00');
+    await expect(notes(page).getByRole('listitem')).toHaveCount(2);
+    await expect.poll(() => reads).toBeGreaterThan(0);
+  });
+}
