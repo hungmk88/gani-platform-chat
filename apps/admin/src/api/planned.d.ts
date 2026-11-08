@@ -1149,67 +1149,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The incidents of the organisation, newest first. */
-        get: {
-            parameters: {
-                query?: {
-                    cursor?: string;
-                    limit?: number;
-                    status?: "open" | "closed";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description A page. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SecurityIncidentPage"];
-                    };
-                };
-                /** @description validation_failed: a parameter or the cursor. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description unauthorized: no valid session. */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description forbidden: only an Owner, an Admin or a platform operator in an access session; or a refusal of the edge. */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description service_unavailable: the session or the membership could not be read. */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
+        get?: never;
         put?: never;
         /** Open an incident: title, severity, who handles it, and the alerts it covers (audited: `security.incident_opened`). */
         post: {
@@ -2355,10 +2295,6 @@ export interface components {
                 messagesRedacted: number;
             };
         };
-        SecurityIncidentPage: {
-            data: components["schemas"]["SecurityIncident"][];
-            nextCursor: string | null;
-        };
         SecurityIncident: {
             id: components["schemas"]["Uuid"];
             title: string;
@@ -2368,11 +2304,11 @@ export interface components {
             status: "open" | "closed";
             handler: {
                 id: components["schemas"]["Uuid"];
-                name: string;
+                name: string | null;
             };
             openedBy: {
                 id: components["schemas"]["Uuid"];
-                name: string;
+                name: string | null;
             };
             alertIds: components["schemas"]["Uuid"][];
             /** Format: date-time */

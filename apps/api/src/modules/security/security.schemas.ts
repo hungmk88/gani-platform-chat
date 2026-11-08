@@ -51,7 +51,11 @@ export const SecurityAlertListQuerySchema = CursorQuerySchema.extend({
   open: z.enum(['true', 'false']).optional(),
 });
 
-const named = z.object({ id: UuidSchema, name: z.string() });
+/**
+ * A person, as an id and a name (N215, CEO 09/11): `name` is null when they gave none or are no longer an active member; the screen
+ * words that, the server never does. A platform operator is named by role (N207 B4).
+ */
+const named = z.object({ id: UuidSchema, name: z.string().nullable() });
 
 export const SecurityIncidentSchema = z
   .object({
