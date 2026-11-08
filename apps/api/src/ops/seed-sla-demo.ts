@@ -42,6 +42,8 @@ export interface SlaDemo {
   readonly email: string;
   readonly password: string;
   readonly conversations: Readonly<Record<SlaDemoCase, string>>;
+  /** Four more, so the Inbox shows a list of ten (CEO 08/11): two within, one due soon, one overdue, older than the first ones. */
+  readonly more: readonly string[];
 }
 
 /** Writes the demo; `now` is the time the cases are set from. */
@@ -135,5 +137,11 @@ export async function seedSlaDemo(admin: Pool, app: Pool, now = new Date()): Pro
       outsideHours,
       closed: await held({ type: 'close', now, outcome: 'resolved' }),
     },
+    more: [
+      await queued(open, 20),
+      await queued(open, 35),
+      await queued(open, 52),
+      await queued(open, 80),
+    ],
   };
 }

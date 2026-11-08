@@ -19,6 +19,7 @@ async function main() {
         event: 'sla_demo_seeded',
         orgId: demo.orgId,
         conversations: demo.conversations,
+        more: demo.more,
       }),
     );
     console.log(`Sign in (shown once): ${demo.email} / ${demo.password}`);

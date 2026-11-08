@@ -16,7 +16,7 @@ const app = createDbPool(need('DATABASE_URL_APP'), { max: 1 });
 afterAll(() => Promise.all([admin.end(), app.end()]));
 
 describe('seedSlaDemo', () => {
-  it('makes the six cases: within, due soon, overdue, waiting for the customer, outside the hours, closed; and a person who signs in', async () => {
+  it('makes the six cases and four more (ten in all): within, due soon, overdue, waiting for the customer, outside the hours, closed; and a person who signs in', async () => {
     const now = new Date();
     const demo = await seedSlaDemo(admin, app, now);
     const { rows } = await admin.query<{
@@ -49,6 +49,9 @@ describe('seedSlaDemo', () => {
       left: 3600,
     });
     expect(of(c.closed)).toMatchObject({ state: 'CLOSED', due: null, reason: null });
+    expect(rows).toHaveLength(10);
+    expect(demo.more.map(minutesLeft)).toEqual([40, 25, 8, -20]);
+    expect(demo.more.map((id) => of(id)?.reason)).toEqual([null, null, null, null]);
     const hash = await admin.query<{ password: string }>(
       `SELECT a.password FROM accounts a JOIN users u ON u.id = a.user_id WHERE u.email = $1`,
       [demo.email],
