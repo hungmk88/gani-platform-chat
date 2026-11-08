@@ -15,11 +15,9 @@ import {
   CONVERSATION_STATES,
   InvalidTransitionError,
   decide,
-  localTime,
   sameSla,
   slaAfterTransition,
   uuidv7,
-  type ConversationSla,
   type ConversationState,
   type ConversationEffect,
   type ConversationEvent,
@@ -37,6 +35,7 @@ import {
   VersionConflictError,
 } from './errors.js';
 import { OutboxWriter, conversationOutboxEvent, slaChangedOutboxEvent } from './outbox-writer.js';
+import { readSchedule, slaOfRow } from './sla-clock.js';
 
 // prettier-ignore
 export const conversationStore = { loadConversation, insertConversation, applyTransition, insertConversationEvent, insertOutboxEvent, readWorkingWeek, listDaysOff, setConversationSla };
@@ -80,17 +79,6 @@ function toRecord(row: ConversationRow): ConversationRecord {
   const { id, workspaceId, version, assignedUserId, afterHoursHold, closedAt } = row;
   return { id, workspaceId, version, snapshot: { state, afterHoursHold, assignedUserId, closedAt, outcome } };
 }
-const slaOf = (row: ConversationRow): ConversationSla | null =>
-  row.slaDueAt === null
-    ? null
-    : {
-        dueAt: row.slaDueAt,
-        pausedReason:
-          row.slaPausedReason === 'waiting_customer' || row.slaPausedReason === 'outside_hours'
-            ? row.slaPausedReason
-            : null,
-        remainingSeconds: row.slaRemainingSeconds,
-      };
 /** When the transition happened (E3-3): the time of the event when it carries one (a customer's message, a close), else the clock. */
 const timeOf = (event: ConversationEvent, clock: () => Date): Date =>
   'now' in event ? event.now : clock();
@@ -218,17 +206,10 @@ export class ConversationStateMachine {
     after: ConversationRow,
     at: Date,
   ): Promise<boolean> {
-    const had = slaOf(before);
+    const had = slaOfRow(before);
     const to = after.state as ConversationState;
     if (had === null && (to === 'BOT_ACTIVE' || to === 'CLOSED')) return false;
-    const hours = await this.store.readWorkingWeek(tx, after.workspaceId);
-    if (!hours) throw new ConversationNotFoundError();
-    const daysOff = await this.store.listDaysOff(
-      tx,
-      after.workspaceId,
-      localTime(at, hours.timezone).date,
-    );
-    const schedule = { week: hours.week, daysOff, timeZone: hours.timezone };
+    const schedule = await readSchedule(this.store, tx, after.workspaceId, at);
     const next = slaAfterTransition(had, before.state as ConversationState, to, at, schedule);
     if (sameSla(had, next)) return false;
     await this.store.setConversationSla(tx, after.id, next);

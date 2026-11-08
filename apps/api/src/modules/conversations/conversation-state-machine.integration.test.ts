@@ -11,6 +11,7 @@ import {
   ConversationAlreadyClaimedError,
   ConversationNotFoundError,
   ConversationStateMachine,
+  SlaClock,
   conversationStore,
   type ConversationStore,
   type TransitionOutcome,
@@ -102,8 +103,9 @@ const outboxOf = async (id: string) =>
       aggregate_version: number;
       payload: Record<string, unknown>;
       workspace_id: string;
+      actor_kind: string;
     }>(
-      'SELECT event_type, aggregate_version, payload, workspace_id FROM outbox_events WHERE aggregate_id = $1 ORDER BY aggregate_version, id',
+      'SELECT event_type, aggregate_version, payload, workspace_id, actor_kind FROM outbox_events WHERE aggregate_id = $1 ORDER BY aggregate_version, id',
       [id],
     )
   ).rows;
@@ -621,5 +623,28 @@ describe('the SLA of a conversation (E3)', () => {
       5,
     );
     expect(await slaOf(id)).toEqual({ due: null, reason: null, left: null });
+  });
+
+  it('pauses outside the hours at 17:30 and runs again at 08:00, each with one row for the Inbox, under the lock (E4b)', async () => {
+    const id = await queued('2026-11-03T17:00:00');
+    const clockOfHours = new SlaClock();
+    const at = (local: string) =>
+      db.withTenant(ctx([WB]), (tx) => clockOfHours.atHours(tx, id, hcm(local), 'hours'));
+    expect(await at('2026-11-03T17:20:00')).toBe(false);
+    expect(await at('2026-11-03T17:30:00')).toBe(true);
+    expect(await slaOf(id)).toEqual({
+      due: hcm('2026-11-04T08:30:00'),
+      reason: 'outside_hours',
+      left: 1800,
+    });
+    expect(await at('2026-11-03T22:00:00')).toBe(false);
+    expect(await at('2026-11-04T08:00:00')).toBe(true);
+    expect(await slaOf(id)).toEqual({ due: hcm('2026-11-04T08:30:00'), reason: null, left: null });
+    const rows = (await outboxOf(id)).filter((e) => e.event_type === 'conversation.sla_changed');
+    expect(rows.map((e) => [e.aggregate_version, e.actor_kind])).toEqual([
+      [1, 'bot'],
+      [1, 'system'],
+      [1, 'system'],
+    ]);
   });
 });
