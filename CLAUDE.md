@@ -47,6 +47,9 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
     `database`, `queue`, `terraform`, `coverage` ở local (không mirror, không `dockerd`, không chờ Docker Hub): CI kiểm thật.
   - Push, mở PR draft; trên CI tự kiểm đủ 9 job theo tên. Mọi job phải chạy theo bảng success thật và `clean`: chuyển
     ready, merge (auto-merge nếu còn check chờ, merge trực tiếp nếu đã `clean`), truyền `commit_title` và `expectedHeadSha`.
+  - `expectedHeadSha` / `expectedHeadOid` luôn là SHA đủ 40 ký tự, lấy từ `git ls-remote` (08/11/2026, ký A (CEO), brief 180):
+    SHA rút gọn hay đệm `0` vẫn được GitHub nhận, nên không chặn được HEAD sai. SHA không khớp thì không bật auto-merge, báo
+    CEO. Sau merge kiểm `git diff <HEAD PR> <squash>` = 0.
   - `main` đi trước: dùng "Update branch" của GitHub, không merge ở local.
   - Sau merge báo CEO **một lần, gộp cả phiên**, mỗi PR 3 mục: giờ merge từ commit squash, commit squash, 9 job trước và
     sau merge theo tên.
