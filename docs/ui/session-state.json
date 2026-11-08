@@ -1,8 +1,8 @@
 {
   "session_id": "session_015SNdqZsqMWFgeQMx5cVLsc",
-  "last_brief_received": 188,
+  "last_brief_received": 192,
   "last_checkin_utc": "2026-11-08T17:07:00Z",
-  "current_branch": "docs/fe-handoff-08-11 (checkout chính); u85-check, docs-state không còn việc dở",
+  "current_branch": "docs/fe-rules-08-11-evening (checkout chính); u85-check, docs-state không còn việc dở",
   "pending_tasks": [
     {
       "id": "Q7",
@@ -29,11 +29,15 @@
       "state": "2 giờ một lần (phút 06): 3 dòng + PR mở"
     },
     {
+      "id": "backlog",
+      "state": "V4, V5 widget a11y: S8–S10. Admin mobile render delay 2,2–2,8 s: S5/S6. Lighthouse chạy lại trên staging S1 (23/11). NVDA/VoiceOver: người kiểm trước S5."
+    },
+    {
       "id": "after-docs",
-      "state": "Sau PR docs handoff 08/11: FE hết việc đã giao (brief 188), không tự mở việc mới khi chưa có brief"
+      "state": "Sau PR docs brief 192: FE hết việc; chờ Q6, Q-d, Nhóm C; không tự mở việc mới"
     }
   ],
   "open_prs": [],
-  "last_commit_local": "80260cb",
-  "updated_at": "2026-11-08T17:20:00Z"
+  "last_commit_local": "3365840",
+  "updated_at": "2026-11-08T18:20:00Z"
 }
