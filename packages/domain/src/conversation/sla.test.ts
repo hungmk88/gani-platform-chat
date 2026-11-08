@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkingWeek } from '../workspace/business-hours.js';
 import type { WorkSchedule } from '../workspace/working-time.js';
-import { sameSla, slaAfterTransition, type ConversationSla } from './sla.js';
+import { sameSla, slaAfterTransition, slaAtHours, type ConversationSla } from './sla.js';
 
 // The SLA after each kind of transition (E3a; N208), in the working time of Q7 (provisional): Monday to Friday 08:00–17:30, break
 // 12:00–13:00, Hồ Chí Minh City. 2026-11-03 is a Tuesday.
@@ -150,5 +150,103 @@ describe('sameSla', () => {
     expect(sameSla(paused('2026-11-03T10:00:00', 0), paused('2026-11-03T10:00:00', 60))).toBe(
       false,
     );
+  });
+});
+
+// The opening hours move the clock (E4b, N211; CEO 07/11/2026, 2.4). 2026-11-03 is a Tuesday in Hồ Chí Minh City.
+describe('slaAtHours', () => {
+  const outside = (due: string, left: number): ConversationSla => ({
+    dueAt: at(due),
+    pausedReason: 'outside_hours',
+    remainingSeconds: left,
+  });
+
+  it('pauses a running SLA at 17:30, keeping its due time and the working seconds left', () => {
+    expect(slaAtHours(running('2026-11-04T08:20:00'), at('2026-11-03T17:30:00'), s)).toEqual(
+      outside('2026-11-04T08:20:00', 1200),
+    );
+  });
+
+  it('runs it again at 08:00 the next day from now with what was left; nothing left keeps the old due time (Q-c)', () => {
+    expect(slaAtHours(outside('2026-11-04T08:20:00', 1200), at('2026-11-04T08:00:00'), s)).toEqual(
+      running('2026-11-04T08:20:00'),
+    );
+    expect(slaAtHours(outside('2026-11-03T17:00:00', 0), at('2026-11-04T08:00:00'), s)).toEqual(
+      running('2026-11-03T17:00:00'),
+    );
+  });
+
+  it('pauses over the break, 12:00–13:00, and runs again at 13:00', () => {
+    const paused12 = slaAtHours(running('2026-11-03T13:30:00'), at('2026-11-03T12:00:00'), s);
+    expect(paused12).toEqual(outside('2026-11-03T13:30:00', 1800));
+    expect(slaAtHours(paused12, at('2026-11-03T13:00:00'), s)).toEqual(
+      running('2026-11-03T13:30:00'),
+    );
+  });
+
+  it('stays paused the whole of a day off and runs again the next morning', () => {
+    const holiday: typeof s = { ...s, daysOff: [{ startsOn: '2026-11-04', endsOn: '2026-11-04' }] };
+    const p = slaAtHours(running('2026-11-05T08:30:00'), at('2026-11-04T09:00:00'), holiday);
+    expect(p).toEqual(outside('2026-11-05T08:30:00', 1800));
+    expect(slaAtHours(p, at('2026-11-04T15:00:00'), holiday)).toBe(p);
+    expect(slaAtHours(p, at('2026-11-05T08:00:00'), holiday)).toEqual(
+      running('2026-11-05T08:30:00'),
+    );
+  });
+
+  it('counts from now when the job is 5 minutes late: 08:05 + what was left, not 08:00 + it', () => {
+    expect(slaAtHours(outside('2026-11-04T08:20:00', 1200), at('2026-11-04T08:05:00'), s)).toEqual(
+      running('2026-11-04T08:25:00'),
+    );
+  });
+
+  it('uses the schedule it is given when the workspace changed its hours', () => {
+    const early: typeof s = {
+      ...s,
+      week: WEEK.map((d) => d && { ...d, opensAt: '07:00' }) as unknown as WorkingWeek,
+    };
+    expect(
+      slaAtHours(outside('2026-11-04T08:20:00', 1200), at('2026-11-04T07:00:00'), early),
+    ).toEqual(running('2026-11-04T07:20:00'));
+    expect(slaAtHours(outside('2026-11-04T08:20:00', 1200), at('2026-11-04T07:00:00'), s)).toEqual(
+      outside('2026-11-04T08:20:00', 1200),
+    );
+  });
+
+  it('leaves alone a running SLA while open, the customer’s pause, and no SLA', () => {
+    const r = running('2026-11-03T10:00:00');
+    expect(slaAtHours(r, at('2026-11-03T09:00:00'), s)).toBe(r);
+    const p = paused('2026-11-03T10:00:00', 600);
+    expect(slaAtHours(p, at('2026-11-03T20:00:00'), s)).toBe(p);
+    expect(slaAtHours(null, at('2026-11-03T20:00:00'), s)).toBeNull();
+  });
+});
+
+// Fix (E4b-2a): T09 while the SLA was paused outside the hours used to keep the pause `outside_hours`, so the opening hours ran the
+// clock again although the conversation waits for the customer. Now the pause becomes the customer's, with the same rest.
+describe('T09 while the SLA is paused outside the hours (fix)', () => {
+  const outside = (due: string, left: number): ConversationSla => ({
+    dueAt: at(due),
+    pausedReason: 'outside_hours',
+    remainingSeconds: left,
+  });
+  const before = outside('2026-11-04T08:20:00', 1200);
+  const after = slaAfterTransition(
+    before,
+    'HUMAN_ACTIVE',
+    'PENDING_CUSTOMER',
+    at('2026-11-03T18:00:00'),
+    s,
+  );
+
+  it('becomes the customer’s pause with the same rest and due time, not the pause of the hours as before', () => {
+    expect(after).toEqual(paused('2026-11-04T08:20:00', 1200));
+    expect(after).not.toEqual(before);
+  });
+
+  it('so the opening the next morning leaves it paused; the old pause would have run again at 08:00', () => {
+    const opening = at('2026-11-04T08:00:00');
+    expect(slaAtHours(after, opening, s)).toBe(after);
+    expect(slaAtHours(before, opening, s)).toEqual(running('2026-11-04T08:20:00'));
   });
 });

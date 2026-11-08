@@ -5,3 +5,4 @@ export * from './conversation-state-machine.js';
 export * from './errors.js';
 export * from './message-service.js';
 export * from './outbox-writer.js';
+export * from './sla-clock.js';
