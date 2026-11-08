@@ -27,6 +27,7 @@ describe('readConfig', () => {
       refresh: { enabled: false, pollMs: 30_000, beforeSeconds: 600, leaseSeconds: 120, timeoutMs: 15_000, warnSeconds: 86_400, orgsPerTick: 50, orgParallel: 1 },
       outbound: { enabled: false, pollMs: 2000, leaseSeconds: 60, timeoutMs: 10_000, maxAttempts: 5, orgsPerTick: 50, orgParallel: 1 },
       afterHours: { enabled: true, pollMs: 60_000, orgsPerTick: 50, orgParallel: 1, batch: 100 },
+      slaHours: { enabled: true, pollMs: 60_000, orgsPerTick: 50, orgParallel: 1, batch: 100 },
       http: { port: 9464, healthMaxAgeMs: 120_000 },
     });
   });
