@@ -86,8 +86,10 @@ test('an Owner merges the suggested twin into this customer: GOP unlocks, one PO
   const keys = posts.map((p) => p.headers()['idempotency-key']);
   expect(keys[0]).toBeTruthy();
   expect(keys[1]).toBe(keys[0]);
-  // Read again after the merge: the profile, its suggestions (and, for an Owner, its merges).
-  const again = ['', '/merge-suggestions', '/merges'].map((p) => `/v1/customers/${AN.id}${p}`);
+  // Read again after the merge: the profile, its fields, its suggestions (and, for an Owner, its merges).
+  const again = ['', '/fields', '/merge-suggestions', '/merges'].map(
+    (p) => `/v1/customers/${AN.id}${p}`,
+  );
   await expect.poll(() => [...new Set(reads.slice(before))].sort()).toEqual(again);
   await dialog(page).getByRole('button', { name: 'Đóng' }).click();
   await expect(page).toHaveURL(`/customers/${AN.id}`);

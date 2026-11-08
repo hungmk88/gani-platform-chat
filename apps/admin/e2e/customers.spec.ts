@@ -122,7 +122,7 @@ test('a Sales opens a customer from the list and sees the profile and how the ch
   await list(page).getByRole('link', { name: 'Nguyễn Văn An' }).click();
   await expect(page).toHaveURL(`/customers/${CUSTOMERS[0]!.id}`);
   await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();
-  const info = page.getByRole('region', { name: 'Thông tin' });
+  const info = page.getByRole('region', { name: 'Thông tin', exact: true });
   await expect(info).toContainText('0900 000 001');
   await expect(info).toContainText('an@example.test');
   await expect(info).toContainText('Chỉ người phục vụKhông');
@@ -139,7 +139,7 @@ test('a Viewer sees the profile masked; a customer that is not there is "not fou
 }) => {
   await signIn(page, accountOf('viewer'));
   await page.goto(`/customers/${CUSTOMERS[3]!.id}`);
-  const info = page.getByRole('region', { name: 'Thông tin' });
+  const info = page.getByRole('region', { name: 'Thông tin', exact: true });
   await expect(info).toContainText('091*****03');
   await expect(info).toContainText('c***@example.test');
   await expect(info).toContainText('Vai trò của bạn thấy SĐT và email dạng che.');
@@ -175,7 +175,7 @@ test('a Support changes the name, the phone and the flag of a customer, and the 
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('status')).toHaveText('Đã lưu hồ sơ khách.');
   await expect(page.getByRole('heading', { name: 'Anh An', level: 1 })).toBeVisible();
-  const info = page.getByRole('region', { name: 'Thông tin' });
+  const info = page.getByRole('region', { name: 'Thông tin', exact: true });
   await expect(info).toContainText('0912 345 678');
   await expect(info).toContainText('Có: bot không trả lời khách này');
   await page.getByRole('link', { name: 'Về danh sách khách' }).click();
@@ -207,7 +207,9 @@ test('a wrong phone is said before sending, a blank email clears it, nothing cha
   await dialog.getByRole('button', { name: 'Lưu' }).click();
   await expect(dialog).toBeHidden();
   expect(patches.map((p) => JSON.parse(p) as unknown)).toEqual([{ email: null }]);
-  await expect(page.getByRole('region', { name: 'Thông tin' })).toContainText('EmailChưa có');
+  await expect(page.getByRole('region', { name: 'Thông tin', exact: true })).toContainText(
+    'EmailChưa có',
+  );
 });
 
 test('a Marketing reads a profile but has no way to change it', async ({ page }) => {

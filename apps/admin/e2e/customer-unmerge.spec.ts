@@ -77,7 +77,9 @@ test('an Owner unmerges after ticking the box: one key kept by Thử lại, the 
   const keys = posts.map((p) => p.headers()['idempotency-key']);
   expect(keys).toHaveLength(2);
   expect(keys[1]).toBe(keys[0]);
-  const again = ['', '/merge-suggestions', '/merges'].map((p) => `/v1/customers/${AN.id}${p}`);
+  const again = ['', '/fields', '/merge-suggestions', '/merges'].map(
+    (p) => `/v1/customers/${AN.id}${p}`,
+  );
   await expect.poll(() => [...new Set(reads.slice(before))].sort()).toEqual(again);
   await dialog(page).getByRole('button', { name: 'Đóng' }).click();
   // The line is undone now: no "Tách…" left, the history says so, focus on its heading.

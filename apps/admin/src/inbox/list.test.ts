@@ -30,6 +30,7 @@ describe('filterOf and paramsOf', () => {
       channel: '',
       sla: 'all',
       team: '',
+      tag: '',
     });
     expect(paramsOf(f).toString()).toBe('assignee=me&state=HUMAN_WAITING_Q');
     expect(paramsOf(NO_FILTER).toString()).toBe('');
@@ -121,6 +122,18 @@ describe('listPath', () => {
     expect(listPath({ ...NO_FILTER, team }, null, 'w1')).toBe(
       `/v1/conversations?assignee=any&limit=50&workspaceId=w1&teamId=${team}`,
     );
+    // N195 (P4): the tag as a UUID on the URL, `tagId` to the API; anything else is dropped; an empty list is the usual clear.
+    const tag = '0190e500-0000-7000-8000-000000000008';
+    expect(filterOf(new URLSearchParams(`tag=${tag}`)).tag).toBe(tag);
+    expect(filterOf(new URLSearchParams('tag=khach-si')).tag).toBe('');
+    expect(paramsOf({ ...NO_FILTER, tag }).toString()).toBe(`tag=${tag}`);
+    expect(listPath({ ...NO_FILTER, tag }, null, 'w1')).toBe(
+      `/v1/conversations?assignee=any&limit=50&workspaceId=w1&tagId=${tag}`,
+    );
+    expect(emptyOf({ ...NO_FILTER, tag }, 'sales')).toEqual({
+      text: 'Không có hội thoại khớp bộ lọc.',
+      action: 'clear',
+    });
   });
 });
 

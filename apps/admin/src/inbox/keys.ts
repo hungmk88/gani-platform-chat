@@ -1,5 +1,5 @@
 // Keyboard of the Inbox (#6, prototype inbox.js "Bảng phím tắt"): J/K move between the conversations of the list as loaded, in its
-// order; the table says only the keys that work today (A, R, E, T elsewhere; N and / wait for notes and search).
+// order; the table says only the keys that work today (A, R, N, E, T elsewhere; / waits for search).
 
 /** The conversation J (+1) or K (−1) opens from `current`: the first (J) or the last (K) when none is open, none past the ends. */
 export function neighbour(
@@ -22,7 +22,8 @@ export const SHORTCUTS: readonly (readonly [string, string])[] = [
   ['J / K', 'Hội thoại kế tiếp / trước'],
   ['A', 'Nhận hội thoại'],
   ['R', 'Vào ô trả lời'],
-  ['Ctrl/⌘ + Enter', 'Gửi tin trả lời'],
+  ['N', 'Vào ô ghi chú nội bộ'],
+  ['Ctrl/⌘ + Enter', 'Gửi tin trả lời / lưu ghi chú'],
   ['E', 'Đóng hội thoại'],
   ['T', 'Chuyển hội thoại'],
   ['?', 'Bảng phím tắt'],

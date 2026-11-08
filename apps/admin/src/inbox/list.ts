@@ -37,6 +37,8 @@ export interface ListFilter {
   readonly sla: SlaFilter;
   /** The team filtered by (`teamId`, U83): conversations of the channels the team answers (N161), a UUID; '' for none. */
   readonly team: string;
+  /** The tag filtered by (`tagId`, N195; CEO brief 169 P4): conversations whose customer carries it, a UUID; '' for none. */
+  readonly tag: string;
 }
 export const NO_FILTER: ListFilter = {
   assignee: 'any',
@@ -45,6 +47,7 @@ export const NO_FILTER: ListFilter = {
   channel: '',
   sla: 'all',
   team: '',
+  tag: '',
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -77,6 +80,7 @@ export function filterOf(params: URLSearchParams): ListFilter {
     channel: UUID.test(params.get('channel') ?? '') ? (params.get('channel') as string) : '',
     sla: sla === 'due_soon' || sla === 'overdue' ? sla : 'all',
     team: UUID.test(params.get('team') ?? '') ? (params.get('team') as string) : '',
+    tag: UUID.test(params.get('tag') ?? '') ? (params.get('tag') as string) : '',
   };
 }
 
@@ -89,6 +93,7 @@ export function paramsOf(f: ListFilter): URLSearchParams {
   if (f.channel) p.set('channel', f.channel);
   if (f.sla !== 'all') p.set('sla', f.sla);
   if (f.team) p.set('team', f.team);
+  if (f.tag) p.set('tag', f.tag);
   return p;
 }
 
@@ -102,6 +107,7 @@ export function listPath(f: ListFilter, cursor: string | null, workspaceId: stri
   if (f.channel) p.set('channelId', f.channel); // every Inbox reader may send it (#390); it narrows within what they read
   if (f.sla !== 'all') p.set('sla', f.sla); // U81: empty until Q7, the API decides what is due soon
   if (f.team) p.set('teamId', f.team); // U83: a team or out of scope answers [] (never 404)
+  if (f.tag) p.set('tagId', f.tag); // N195: the customer's tags; an unknown tag answers [] (never 404)
   if (cursor) p.set('cursor', cursor);
   return `/v1/conversations?${p.toString()}`;
 }
@@ -154,6 +160,7 @@ export function emptyOf(
     f.channel ||
     f.sla !== 'all' ||
     f.team ||
+    f.tag ||
     (f.assignee !== 'any' && f.assignee !== 'me')
   )
     return { text: 'Không có hội thoại khớp bộ lọc.', action: 'clear' };
