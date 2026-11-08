@@ -69,6 +69,8 @@ function ChangeDialog(props: {
   const scope = useScope();
   const queries = useQueryClient();
   const dialog = useRef<HTMLDialogElement>(null);
+  // isPending is still false for the second click of a double click: a ref holds the one change being sent (as merge-dialog.tsx).
+  const sending = useRef(false);
   const { members, handlers } = useHandlers();
   const [chosen, setChosen] = useState<string | undefined>();
   const handler = chosen ?? handlers.find((h) => h.userId !== incident.handler.id)?.userId;
@@ -119,8 +121,11 @@ function ChangeDialog(props: {
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          if (send.isPending || same) return;
-          send.mutate(close ? { status: 'closed' } : { handlerUserId: handler as string });
+          if (send.isPending || same || sending.current) return;
+          sending.current = true;
+          send.mutate(close ? { status: 'closed' } : { handlerUserId: handler as string }, {
+            onSettled: () => (sending.current = false),
+          });
         }}
       >
         <h3 id="incident-change-title" className="text-16 font-semibold">

@@ -106,7 +106,7 @@ for (const [refusal, button, said, reread] of [
     await expectAccessible(page);
   });
 
-test('closing holds while the server works: Esc and Hủy wait, one PATCH (E2E brief 178 T1)', async ({
+test('closing holds while the server works: a double click sends once, Esc and Hủy wait (E2E brief 178 T1, fix brief 180)', async ({
   page,
 }) => {
   const sent = await serve(page);
@@ -119,8 +119,7 @@ test('closing holds while the server works: Esc and Hủy wait, one PATCH (E2E b
   await page.goto('/settings/security');
   await page.getByRole('button', { name: `Đóng sự cố ${FIRST}` }).click();
   const dialog = page.getByRole('dialog', { name: `Đóng sự cố “${FIRST}”` });
-  // One click: a double click sends two PATCH today (reported to the CEO, brief 178), not asserted here.
-  await dialog.getByRole('button', { name: 'Đóng sự cố' }).click();
+  await dialog.getByRole('button', { name: 'Đóng sự cố' }).dblclick();
   await expect(dialog.getByRole('button', { name: 'Đang lưu…' })).toBeDisabled();
   await expect(dialog.getByRole('button', { name: 'Hủy' })).toBeDisabled();
   await page.keyboard.press('Escape');
