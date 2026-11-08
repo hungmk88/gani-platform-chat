@@ -1,0 +1,5 @@
+# lint/mutants/security-store.sh trên gani_o1, 08/11/2026 (P11a-2, N207): 4/4 bị bắt, chỉ mutant mã (run_code), không DDL.
+S1-handler-any-role|exit=1| Tests 2 failed | 5 passed (7)|takes an active Owner or Admin as handler; not a manager, a suspended admin or someone of another or;hands it to another Owner or Admin, then closes it once; a closed one stays closed 16ms;
+S2-handler-suspended|exit=1| Tests 1 failed | 6 passed (7)|takes an active Owner or Admin as handler; not a manager, a suspended admin or someone of another or;
+S3-alert-covered-twice|exit=1| Tests 1 failed | 6 passed (7)|refuses an alert another incident covers, or of another organisation, and then writes nothing 22ms;
+S4-closed-changes-again|exit=1| Tests 1 failed | 6 passed (7)|hands it to another Owner or Admin, then closes it once; a closed one stays closed 36ms;
