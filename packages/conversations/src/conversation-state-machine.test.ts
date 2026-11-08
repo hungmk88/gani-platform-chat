@@ -264,6 +264,25 @@ describe('the SLA of a transition', () => {
     expect(sla(rows.get(ID))).toEqual([hcm('2026-11-03T13:30:00'), null, null]);
   });
 
+  it('turns a pause outside the hours into the customer’s on T09, keeping the rest (fix, E4b-2a)', async () => {
+    const start = row({
+      state: 'HUMAN_ACTIVE',
+      assignedUserId: U1,
+      version: 3,
+      slaDueAt: hcm('2026-11-04T08:20:00'),
+      slaPausedReason: 'outside_hours',
+      slaRemainingSeconds: 1200,
+    });
+    const { machine, rows } = fake(start, () => hcm('2026-11-03T18:00:00'));
+    await machine.transition(
+      TX,
+      ID,
+      { type: 'agent_waits_customer' },
+      { ...OPTS, expectedVersion: 3 },
+    );
+    expect(sla(rows.get(ID))).toEqual([hcm('2026-11-04T08:20:00'), 'waiting_customer', 1200]);
+  });
+
   it('pauses when the agent waits for the customer (T09) and has none once closed (T13)', async () => {
     const start = row({
       state: 'HUMAN_ACTIVE',
