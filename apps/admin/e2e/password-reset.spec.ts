@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { WEAK } from '../src/invite';
+import { TOO_MANY } from '../src/password-reset';
 import { expectAccessible } from './axe';
 import { NOT_AN_EMAIL, RESETS } from './stub-links';
 
@@ -83,4 +85,25 @@ test('a link without a token is refused at once; too many tries asks to wait', a
   await expect(page.getByRole('main').getByRole('alert')).toHaveText(
     'Thử quá nhiều lần. Đợi 1 phút rồi thử lại.',
   );
+});
+
+// The refusals the page has its own words for (E2E brief 184 T3): too many asks (429), a password the server finds weak (400).
+test('too many asks for a link (429) and a password the server finds weak (400) are each said', async ({
+  page,
+}) => {
+  await page.route('**/api/auth/password/forgot', (r) =>
+    r.fulfill({ status: 429, json: { code: 'TOO_MANY_REQUESTS' } }),
+  );
+  await page.route('**/api/auth/password/reset', (r) =>
+    r.fulfill({ status: 400, json: { code: 'PASSWORD_TOO_WEAK' } }),
+  );
+  await page.goto('/forgot-password');
+  await page.getByLabel('Email đăng nhập').fill('ai-do@example.test');
+  await page.getByRole('button', { name: 'Gửi link đặt lại' }).click();
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(TOO_MANY);
+  await page.goto(open(RESETS.good));
+  await page.getByLabel(/^Mật khẩu mới/).fill(NEXT);
+  await page.getByLabel('Nhập lại mật khẩu').fill(NEXT);
+  await page.getByRole('button', { name: 'Đặt mật khẩu mới' }).click();
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(WEAK);
 });

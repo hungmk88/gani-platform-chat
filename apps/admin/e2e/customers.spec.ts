@@ -218,3 +218,33 @@ test('a Marketing reads a profile but has no way to change it', async ({ page })
   await expect(page.getByRole('heading', { name: 'Nguyễn Văn An', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sửa hồ sơ' })).toHaveCount(0);
 });
+
+// "Sửa hồ sơ" refused by the server keeps the dialog and says why in words of the screen (E2E brief 184 T3).
+for (const [status, code, said] of [
+  [400, 'validation_failed', 'Máy chủ không nhận giá trị này'],
+  [403, 'forbidden', 'Vai trò của bạn không sửa được hồ sơ khách.'],
+  [404, 'not_found', 'Không tìm thấy khách này. Có thể hồ sơ đã bị xóa.'],
+] as const) {
+  test(`an edit refused with ${status} keeps the dialog and says why`, async ({ page }) => {
+    await page.route(
+      (u) => u.pathname === `/v1/customers/${CUSTOMERS[0]!.id}`,
+      (r) =>
+        r.request().method() === 'PATCH'
+          ? r.fulfill({
+              status,
+              contentType: 'application/problem+json',
+              body: JSON.stringify({ status, code, traceId: `trace-${code}` }),
+            })
+          : r.fallback(),
+    );
+    await signIn(page, accountOf('support'));
+    await page.goto(`/customers/${CUSTOMERS[0]!.id}`);
+    await page.getByRole('button', { name: 'Sửa hồ sơ' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Sửa hồ sơ — Nguyễn Văn An' });
+    await dialog.getByLabel(/Tên khách/).fill('Anh An');
+    await dialog.getByRole('button', { name: 'Lưu' }).click();
+    await expect(dialog.getByRole('alert')).toContainText(said);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel(/Tên khách/)).toHaveValue('Anh An');
+  });
+}
