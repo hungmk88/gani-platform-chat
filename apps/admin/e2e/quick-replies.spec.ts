@@ -237,3 +237,25 @@ test('Sales use the templates in the Inbox only: the page is forbidden', async (
     page.getByRole('heading', { name: 'Bạn không có quyền xem trang này.' }),
   ).toBeVisible();
 });
+
+// A delete that fails keeps the template and the dialog, and says why with its trace (E2E brief 194 C).
+test('a delete that fails keeps the template and says why', async ({ page }) => {
+  await page.route(`**/v1/quick-replies/${QUICK_REPLIES[2]!.id}`, (r) =>
+    r.request().method() === 'DELETE'
+      ? r.fulfill({
+          status: 500,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 500, code: 'internal_error', traceId: 'trace-del' }),
+        })
+      : r.fallback(),
+  );
+  await signIn(page, accountOf('manager'));
+  await page.goto('/settings/quick-replies');
+  const list = page.getByRole('region', { name: 'Mẫu của workspace' });
+  await list.getByRole('button', { name: 'Xóa mẫu /giao-hang' }).click();
+  const end = page.getByRole('dialog', { name: 'Xóa mẫu /giao-hang?' });
+  await end.getByRole('button', { name: 'Xóa mẫu' }).click();
+  await expect(end.getByRole('alert')).toContainText('Mã: trace-del');
+  await expect(end).toBeVisible();
+  await expect(list.getByRole('listitem')).toHaveCount(QUICK_REPLIES.length);
+});
