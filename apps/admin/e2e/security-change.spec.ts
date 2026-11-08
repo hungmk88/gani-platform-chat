@@ -105,3 +105,28 @@ for (const [refusal, button, said, reread] of [
     await expect(dialog).toBeVisible();
     await expectAccessible(page);
   });
+
+test('closing holds while the server works: Esc and Hủy wait, one PATCH (E2E brief 178 T1)', async ({
+  page,
+}) => {
+  const sent = await serve(page);
+  let release = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route('**/v1/security-incidents/*', async (r) =>
+    r.request().method() === 'PATCH' ? (await held, r.fallback()) : r.fallback(),
+  );
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/security');
+  await page.getByRole('button', { name: `Đóng sự cố ${FIRST}` }).click();
+  const dialog = page.getByRole('dialog', { name: `Đóng sự cố “${FIRST}”` });
+  // One click: a double click sends two PATCH today (reported to the CEO, brief 178), not asserted here.
+  await dialog.getByRole('button', { name: 'Đóng sự cố' }).click();
+  await expect(dialog.getByRole('button', { name: 'Đang lưu…' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Hủy' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  release();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status')).toHaveText('Đã đóng sự cố. Đã ghi audit.');
+  expect(sent).toHaveLength(1);
+});
