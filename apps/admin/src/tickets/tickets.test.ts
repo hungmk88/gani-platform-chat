@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { assigneeOf, changedAt, mayReadTickets, slaText, STATUS, ticketsPath } from './tickets';
+import {
+  assigneeOf,
+  changedAt,
+  mayReadTickets,
+  slaText,
+  STATUS,
+  ticketsPath,
+  conversationTicketsPath,
+} from './tickets';
 
 describe('ticketsPath', () => {
   it('asks a page of the workspace, with the filters that are set and the cursor', () => {
@@ -63,5 +71,14 @@ describe('assigneeOf (K1c-1: the name of the assignee may be null)', () => {
       title: 'Nhân viên chưa có tên',
     });
     expect(assigneeOf({ assignee: { id, name: '  ' } }).text).toBe('…abcd');
+  });
+});
+
+describe('conversationTicketsPath (U53, CEO brief 171 B8)', () => {
+  it('the tickets of one conversation, by cursor, the id encoded', () => {
+    expect(conversationTicketsPath('c/1', null)).toBe('/v1/tickets?conversationId=c%2F1&limit=50');
+    expect(conversationTicketsPath('c1', 'p2')).toBe(
+      '/v1/tickets?conversationId=c1&limit=50&cursor=p2',
+    );
   });
 });

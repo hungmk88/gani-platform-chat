@@ -8,6 +8,7 @@ import { useApiPages, useApiQuery } from '../query/provider';
 import type { Role } from '../nav';
 import { useConversationRealtime } from '../realtime/use-conversation-realtime';
 import { RetryAction } from '../retry-button';
+import { mayReadTickets } from '../tickets/tickets';
 import { HandOverAction } from './assign-action';
 import { canAssign, canTransfer, mayAssign } from './assign';
 import { canReply, DELIVERY_LABEL, isLocal } from './composer';
@@ -15,6 +16,7 @@ import { ReplyBox } from './reply-box';
 import { customerOf, phoneOf, type Known } from './templates';
 import { ConversationActions } from './conversation-actions';
 import { ConversationNotes } from './conversation-notes';
+import { ConversationTickets } from './conversation-tickets';
 import { Holder } from './holder';
 import { setNotice } from './notice';
 import { TicketAction } from './ticket-action';
@@ -144,6 +146,7 @@ export function ConversationView({
         role={role}
         newestPage={messages.data?.pages[0]?.data ?? []}
       />
+      {mayReadTickets(role) ? <ConversationTickets key={`tickets-${c.id}`} id={c.id} /> : null}
       {messages.isPending ? (
         <p role="status" aria-busy="true" className="text-text-muted">
           Đang tải tin nhắn…
