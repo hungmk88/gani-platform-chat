@@ -41,8 +41,8 @@ async function stack() {
     [user, `${user}@example.test`],
   );
   await admin.query(
-    `INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $2, 'credential', $3)`,
-    [uuidv7(), user, await hash(PW)],
+    `INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES ($1, $2, $3, 'credential', $4)`,
+    [uuidv7(), user, user, await hash(PW)],
   );
   await admin.query(
     `INSERT INTO org_members (id, org_id, user_id, role, status) VALUES ($1, $2, $3, 'manager', 'active')`,
