@@ -6,6 +6,7 @@ import {
   assigneesPath,
   canAssign,
   canTransfer,
+  handOverBody,
   matching,
   mayAssign,
   type Assignee,
@@ -131,5 +132,31 @@ describe('matching', () => {
     ]);
     expect(matching(lines, '   ')).toHaveLength(3);
     expect(matching(lines, 'không ai')).toEqual([]);
+  });
+});
+
+describe('handOverBody (N199, CEO brief 170 A)', () => {
+  it('a transfer sends the reason trimmed, none when blank; an assign never sends one', () => {
+    expect(handOverBody('transfer', 3, 'u1', '  Khách cần người miền Nam.  ')).toEqual({
+      ok: true,
+      body: { version: 3, toUserId: 'u1', reason: 'Khách cần người miền Nam.' },
+    });
+    expect(handOverBody('transfer', 3, 'u1', '   ')).toEqual({
+      ok: true,
+      body: { version: 3, toUserId: 'u1' },
+    });
+    expect(handOverBody('assign', 3, 'u1', 'không gửi')).toEqual({
+      ok: true,
+      body: { version: 3, toUserId: 'u1' },
+    });
+  });
+  it('500 after NFC is the limit', () => {
+    expect(handOverBody('transfer', 1, 'u1', 'a'.repeat(500)).ok).toBe(true);
+    expect(handOverBody('transfer', 1, 'u1', 'a'.repeat(501))).toEqual({
+      ok: false,
+      problem: 'Lý do dài quá 500 ký tự.',
+    });
+    // "ệ" written as e + two marks (NFD) is one character after NFC: 500 of them pass.
+    expect(handOverBody('transfer', 1, 'u1', 'e\u0323\u0302'.repeat(500)).ok).toBe(true);
   });
 });
