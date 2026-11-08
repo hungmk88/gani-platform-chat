@@ -2,6 +2,13 @@
 
 > Nhật ký, không phải quy tắc. Quy tắc nằm ở `CLAUDE.md` ở thư mục gốc.
 
+## 08/11/2026 tối: merge trực tiếp, mục tiêu Lighthouse, kiểm cây accessibility của widget (ký A (CEO), brief 191, 192)
+
+- "Tầng 1 code": merge bằng `merge_pull_request` + `expectedHeadSha` đủ 40 ký tự khi 9/9 + `clean`; bỏ `enable_pr_auto_merge`
+  (sau khi kết nối GitHub đổi, công cụ không còn nhận `expectedHeadOid`). Ca đầu: #687, #688.
+- "KIỂM CHỨNG": admin desktop LCP < 2,5 s, widget mobile Performance ≥ 90, admin mobile best-effort (#688).
+- "KIỂM CHỨNG": widget kiểm thêm cây accessibility và focus, vì axe 0 vi phạm nhưng bỏ sót V1–V3 (#687, sửa ở #689).
+
 ## 08/11/2026: `expectedHeadSha` / `expectedHeadOid` đủ 40 ký tự (ký A (CEO), brief 180, 188)
 
 - "Tầng 1 code": thêm dòng SHA đủ 40 ký tự lấy từ `git ls-remote`; SHA không khớp thì không bật auto-merge, báo CEO; sau

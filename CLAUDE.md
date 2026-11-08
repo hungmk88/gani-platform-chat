@@ -50,6 +50,9 @@ Hồ sơ gốc + Phụ lục v2.1–v2.3 thắng Brief khi mâu thuẫn.
   - `expectedHeadSha` / `expectedHeadOid` luôn là SHA đủ 40 ký tự, lấy từ `git ls-remote` (08/11/2026, ký A (CEO), brief 180):
     SHA rút gọn hay đệm `0` vẫn được GitHub nhận, nên không chặn được HEAD sai. SHA không khớp thì không bật auto-merge, báo
     CEO. Sau merge kiểm `git diff <HEAD PR> <squash>` = 0.
+  - Cách merge từ 08/11/2026 tối (ký A (CEO), brief 191, 192): 9/9 + `clean` thì merge trực tiếp bằng `merge_pull_request`
+    với `expectedHeadSha` đủ 40 ký tự. **Không dùng `enable_pr_auto_merge`**: công cụ không còn nhận `expectedHeadOid`, nên
+    không ghim được HEAD. Áp cho mọi PR tầng 1 (code, test, docs).
   - `main` đi trước: dùng "Update branch" của GitHub, không merge ở local.
   - Sau merge báo CEO **một lần, gộp cả phiên**, mỗi PR 3 mục: giờ merge từ commit squash, commit squash, 9 job trước và
     sau merge theo tên.
@@ -173,6 +176,10 @@ Kết nối GitHub (MCP) gián đoạn hay phiên khởi động lại: đăng k
   (fail-loud), không trả 0 dòng im lặng.
 - Thay đổi FSM → chạy `claim-race.spec`: 50 agent claim cùng lúc → **đúng 1 thắng**.
 - Thay đổi AI/Giá → chạy bộ 30 câu ResponseGuard, phải **0 số sai lọt ra**.
+- Lighthouse (08/11/2026, ký A (CEO), brief 191): admin **desktop** LCP < 2,5 s; widget **mobile** Performance ≥ 90; admin
+  mobile best-effort, không bắt buộc. Cách đo và số gốc: `docs/ui/lighthouse-08-11-2026.md`; chạy lại trên staging ở S1.
+- Widget: axe không đủ. Kiểm thêm cây accessibility (`toMatchAriaSnapshot`) và focus từng bước (brief 192): V1–V3 ở #687 axe
+  không bắt được. NVDA/VoiceOver vẫn do người kiểm trước S5 (`docs/ui/widget-a11y-08-11-2026.md` mục 4).
 - Không chứng minh được → báo chưa xong, không tự suy đoán kết quả.
 
 ## KHÓA PRODUCTION (không được vi phạm)
