@@ -1,17 +1,16 @@
 {
   "session_id": "session_015SNdqZsqMWFgeQMx5cVLsc",
-  "last_brief_received": 169,
-  "last_checkin_utc": "2026-11-07T21:08:00Z",
-  "current_branch": "feat/customer-fields-edit (checkout chính); feat/tag-filters (u85-check); docs/tiering-m11 (docs-state)",
+  "last_brief_received": 188,
+  "last_checkin_utc": "2026-11-08T17:07:00Z",
+  "current_branch": "docs/fe-handoff-08-11 (checkout chính); u85-check, docs-state không còn việc dở",
   "pending_tasks": [
     {
       "id": "Q7",
-      "deadline": "10/11 12:00 UTC",
-      "state": "CEO chốt 07/11 (brief 154): giữ CEO-ACTION-01. BE làm Conversation.sla thật; khi BE báo có dữ liệu thật → FE test chip/lọc/realtime (A1–A3), sai thì báo CEO kèm log; không tạo config FE khi chưa cần (C2); 14/11 chưa có dữ liệu thật → báo CEO (S4 16/11 có nguy cơ trượt, brief 157) | 07/11 19:00: BE merge #659 (E3b, N210: FSM ghi SLA, đọc/lọc SLA thật). Chờ BE báo có dữ liệu thật ở môi trường chạy để test chip/lọc/realtime. | 21:06: #663 (E4b-1, BE tầng 3) đang mở, không chạm file FE."
+      "state": "ĐÓNG 08/11 (brief 181): 6/6 chip + 2/2 lọc + 2/2 realtime trên seed:sla-demo (#675); DB gani_q7 ở máy giữ, không DROP"
     },
     {
       "id": "nhom-B",
-      "state": "sau 12/11 gửi CEO danh sách 6 nhánh nhóm B (brief 87)"
+      "state": "ĐÃ XÓA 08/11 (CEO xóa qua UI; git ls-remote 17:04:31 không còn)"
     },
     {
       "id": "nhom-C",
@@ -22,30 +21,19 @@
       "state": "kênh Zalo OA: chờ CEO Q6"
     },
     {
-      "id": "J3",
-      "state": "Màn gộp khách xong (#653, #654, #656), 5 mục gửi. Chờ brief tiếp."
+      "id": "Q-d",
+      "state": "CEO lo trước 15/12"
     },
     {
       "id": "checkin",
-      "state": "2 giờ một lần (phút 06): 3 dòng + PR mở; kế tiếp 23:06 UTC"
+      "state": "2 giờ một lần (phút 06): 3 dòng + PR mở"
     },
     {
-      "id": "rules-167",
-      "state": "Brief 167/169: đang ghi vào CLAUDE.md ở PR docs/tiering-m11 (tầng 3 FE chỉ còn thao tác không hoàn tác được)."
-    },
-    {
-      "id": "P1-P4",
-      "state": "Brief 169: MERGED #660 P1a, #662 P2a, #664 P1b, #665 P2b-1; #666 P4 (lọc tag) ready + auto-merge; P2b-2 (sửa thông tin thêm, commit 6535390, 499 dòng) chạy E2E rồi push; P3 (lead của khách) soạn sẵn, sau P2b-2. 5 mục gộp cuối phiên. PR docs phân tầng + M11 #9 + session-state: nhánh docs/tiering-m11."
+      "id": "after-docs",
+      "state": "Sau PR docs handoff 08/11: FE hết việc đã giao (brief 188), không tự mở việc mới khi chưa có brief"
     }
   ],
-  "open_prs": [
-    {
-      "number": 666,
-      "branch": "feat/tag-filters",
-      "tier": 1,
-      "state": "ready, auto-merge"
-    }
-  ],
-  "last_commit_local": "6535390",
-  "updated_at": "2026-11-07T21:52:00Z"
+  "open_prs": [],
+  "last_commit_local": "80260cb",
+  "updated_at": "2026-11-08T17:20:00Z"
 }
