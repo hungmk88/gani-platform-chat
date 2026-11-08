@@ -110,3 +110,39 @@ test('a reply still being carried out says so, and sending it again keeps its ke
   expect(key).toMatch(/^[0-9a-f-]{36}$/);
   expect((await second).headers()['idempotency-key']).toBe(key);
 });
+
+test('a reply refused because the conversation is no longer active says so, gives the text back and reads it again (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  await signIn(page, accountOf('sales'));
+  await page.goto(`/inbox/${held.id}`);
+  await expect(box(page)).toBeVisible();
+  await page.route('**/messages', (r) =>
+    r.request().method() === 'POST'
+      ? r.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({
+            status: 409,
+            code: 'conversation_not_active',
+            traceId: 'trace-na',
+          }),
+        })
+      : r.fallback(),
+  );
+  let reads = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && new URL(r.url()).pathname === `/v1/conversations/${held.id}`)
+      reads++;
+  });
+  await box(page).fill('Dạ em gửi báo giá ạ.');
+  await box(page).press('Control+Enter');
+  await expect(view(page).getByRole('alert')).toContainText(
+    'Không trả lời được: hội thoại chưa có người nhận hoặc đã đóng.',
+  );
+  await expect(box(page)).toHaveValue('Dạ em gửi báo giá ạ.');
+  await expect(
+    messages(page).getByRole('listitem').filter({ hasText: 'Dạ em gửi báo giá ạ.' }),
+  ).toHaveCount(0);
+  await expect.poll(() => reads).toBeGreaterThan(0);
+});
