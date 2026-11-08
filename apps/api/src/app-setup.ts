@@ -72,7 +72,13 @@ export function setupApp(app: NestExpressApplication): void {
   const organisations = app.get<OrganisationSources>(ORGANISATION_SOURCES);
   express.use(
     '/v1',
-    createTenantContextMiddleware({ sessions: app.get(SessionResolver), ...organisations }),
+    createTenantContextMiddleware({
+      sessions: app.get(SessionResolver),
+      ...organisations,
+      isPlatformOperator: async (userId) =>
+        !!(await authService.profile(userId))?.isPlatformOperator,
+      accessSessionOrg: (sessionId, userId) => authService.accessSessionOrg(sessionId, userId),
+    }),
   );
   // Socket.IO answers /socket.io/ itself, below Express: none of the layers above run for it, so its handshake does their checks
   // again with the same functions (realtime spec §2, N94).

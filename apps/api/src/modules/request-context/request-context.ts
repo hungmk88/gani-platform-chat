@@ -25,10 +25,38 @@ export class RequestContextMissingError extends Error {
   }
 }
 
-const storage = new AsyncLocalStorage<RequestContext>();
+/**
+ * A platform operator inside an access session (U79, N207, P11b-1): the organisation is the session's (`app.access_session_org`), never
+ * the request's. It is no role in the organisation and opens no tenant context: a module that lets operators in asks for it with
+ * `currentActorContext()` and opens its own transaction; every other one asks `currentRequestContext()` and is refused (fail-closed).
+ */
+export interface OperatorRequestContext {
+  readonly role: 'platform_operator';
+  readonly userId: string;
+  readonly orgId: string;
+  readonly accessSessionId: string;
+  readonly workspaceIds: readonly string[];
+  readonly resolvedAt: Date;
+  readonly traceId: string;
+}
+
+/** A member's context was asked for in a request of a platform operator: 403 `forbidden` (ProblemFilter), never a member's answer. */
+export class OperatorAccessDeniedError extends Error {
+  readonly status = 403;
+  readonly code = 'forbidden';
+  constructor() {
+    super('This is not open to a platform access session.');
+    this.name = 'OperatorAccessDeniedError';
+  }
+}
+
+const storage = new AsyncLocalStorage<RequestContext | OperatorRequestContext>();
 
 /** The context is frozen, so a handler cannot widen its own workspaces. A nested call replaces the outer one for its scope only. */
-export function runWithRequestContext<T>(ctx: RequestContext, fn: () => T): T {
+export function runWithRequestContext<T>(
+  ctx: RequestContext | OperatorRequestContext,
+  fn: () => T,
+): T {
   const frozen = Object.freeze({ ...ctx, workspaceIds: Object.freeze([...ctx.workspaceIds]) });
   return storage.run(frozen, fn);
 }
@@ -38,7 +66,15 @@ export function requestTraceId(): string | undefined {
   return storage.getStore()?.traceId;
 }
 
+/** The member the request acts for. A request of a platform operator is refused here: a module opens to operators only on purpose. */
 export function currentRequestContext(): RequestContext {
+  const ctx = currentActorContext();
+  if (ctx.role === 'platform_operator') throw new OperatorAccessDeniedError();
+  return ctx;
+}
+
+/** A member or a platform operator in an access session: for the modules that let operators in (P11b-2 on), and only those. */
+export function currentActorContext(): RequestContext | OperatorRequestContext {
   const ctx = storage.getStore();
   if (!ctx) throw new RequestContextMissingError();
   return ctx;
