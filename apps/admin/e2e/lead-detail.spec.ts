@@ -73,3 +73,24 @@ test('a failure of the lead says so with its trace, and Thử lại reads it aga
   await alert.getByRole('button', { name: 'Thử lại' }).click();
   await expect(screen(page).getByRole('heading', { level: 1 })).toHaveText(lost.title);
 });
+
+// "Mở hội thoại gốc" only for the roles that read the Inbox (`readsConversations`); a Marketing reads the lead without it
+// (E2E brief 184 T3). The stub's leads come from no conversation: this one is given one here.
+test('the link to the conversation the lead came from is there for a Manager, not for a Marketing', async ({
+  page,
+}) => {
+  const from = '0190c200-0000-7000-8000-000000000002';
+  await page.route(`**/v1/leads/${lost.id}`, async (r) => {
+    const res = await r.fetch();
+    const lead = (await res.json()) as Record<string, unknown>;
+    return r.fulfill({ response: res, json: { ...lead, conversationId: from } });
+  });
+  const link = (p: Page) => screen(p).getByRole('link', { name: 'Mở hội thoại gốc' });
+  await signIn(page, accountOf('manager'));
+  await page.goto(`/leads/${lost.id}`);
+  await expect(link(page)).toHaveAttribute('href', `/inbox/${from}`);
+  await signIn(page, accountOf('marketing'));
+  await page.goto(`/leads/${lost.id}`);
+  await expect(screen(page).getByRole('heading', { level: 1 })).toHaveText(lost.title);
+  await expect(link(page)).toHaveCount(0);
+});

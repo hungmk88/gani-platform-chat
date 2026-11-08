@@ -138,3 +138,27 @@ test('the keyboard starts on the dialog while the people load, never on "Hủy"'
   release();
   await expect(dialog.getByRole('checkbox').first()).toBeFocused();
 });
+
+test('saving the people of a workspace refused with 400 says to reload and pick again (E2E brief 184 T3)', async ({
+  page,
+}) => {
+  await page.route('**/v1/workspaces/*/members', (r) =>
+    r.request().method() === 'PUT'
+      ? r.fulfill({
+          status: 400,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ status: 400, code: 'validation_failed', traceId: 'trace-400' }),
+        })
+      : r.fallback(),
+  );
+  await signIn(page, accountOf('admin'));
+  await page.goto('/settings/workspace');
+  await page.getByRole('button', { name: 'Người trong workspace Workspace thử' }).click();
+  const dialog = page.getByRole('dialog', { name: /Người trong workspace/ });
+  await dialog.getByRole('checkbox', { name: /Người thử admin/ }).check();
+  await dialog.getByRole('button', { name: 'Lưu người trong workspace' }).click();
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Có người không còn là thành viên của công ty. Tải lại trang rồi chọn lại.',
+  );
+  await expect(dialog).toBeVisible();
+});
