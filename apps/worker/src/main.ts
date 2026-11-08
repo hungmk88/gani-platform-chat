@@ -9,6 +9,7 @@ import { installCrashHandlers, redactPii } from '@gani/domain';
 import { createDbRefreshStore } from './channels/db-store.js';
 import { createTokenRefresher } from './channels/refresher.js';
 import { createDbReleaseStore } from './after-hours/db-store.js';
+import { createDbSlaHoursStore } from './sla-hours/db-store.js';
 import { createDbOutboundStore } from './outbound/db-store.js';
 import { createChannelSenders } from './outbound/senders.js';
 import { ConfigError, readConfig } from './config.js';
@@ -52,6 +53,7 @@ const pool = createDbPool(config.databaseUrl, {
     config.refresh.orgParallel +
     config.outbound.orgParallel +
     config.afterHours.orgParallel +
+    config.slaHours.orgParallel +
     config.events.concurrency +
     2,
   onError: (error) => log.error('db_pool_error', { error: error.name }),
@@ -114,6 +116,9 @@ const worker = startWorker({
   }),
   ...(config.afterHours.enabled && {
     afterHours: { store: createDbReleaseStore({ pool, fsm }), settings: config.afterHours },
+  }),
+  ...(config.slaHours.enabled && {
+    slaHours: { store: createDbSlaHoursStore({ pool }), settings: config.slaHours, metrics },
   }),
   ...(emitter && {
     events: {
