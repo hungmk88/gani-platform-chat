@@ -36,6 +36,13 @@ export function ticketsPath(workspaceId: string, f: TicketFilter, cursor: string
   return `/v1/tickets?${p.toString()}`;
 }
 
+/** `GET /v1/tickets?conversationId=`: the tickets made from one conversation, newest first, by cursor (U53, N170; CEO brief 171 B8). */
+export function conversationTicketsPath(conversationId: string, cursor: string | null): string {
+  const p = new URLSearchParams({ conversationId, limit: '50' });
+  if (cursor) p.set('cursor', cursor);
+  return `/v1/tickets?${p.toString()}`;
+}
+
 /** Roles that work with tickets (Phụ lục B, the menu): Owner, Admin, Manager, Sales (makes them), Support. */
 export const mayReadTickets = (role: string | null): boolean =>
   role === 'owner' ||
