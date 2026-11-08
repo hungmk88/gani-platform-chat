@@ -25,6 +25,7 @@ const ADR_004 = [
   'app.purge_idempotency_keys',
   'app.purge_inbound_event_keys',
   'app.reset_member_two_factor',
+  'app.sla_running_orgs',
   'app.support_access_ok',
 ];
 
