@@ -83,6 +83,41 @@ test('an error of the list shows its trace and "Thử lại"', async ({ page }) 
   await asked;
 });
 
+test('a failed "Tải thêm" keeps the rows read, says why under them, and "Thử lại" reads that page', async ({
+  page,
+}) => {
+  // CEO brief 195: the next page failing used to swap the whole column for the error, the rows already read gone.
+  const next: string[] = [];
+  await page.route(
+    (u) => u.pathname === '/v1/conversations' && u.searchParams.has('cursor'),
+    (r) => {
+      next.push(new URL(r.request().url()).searchParams.get('cursor')!);
+      return next.length === 1
+        ? r.fulfill({
+            status: 500,
+            contentType: 'application/problem+json',
+            body: JSON.stringify({ status: 500, code: 'internal_error', traceId: 'trace-next' }),
+          })
+        : r.fallback();
+    },
+  );
+  await signIn(page, accountOf('sales'));
+  await expect(list(page)).toHaveCount(STUB_PAGE);
+  const column = page.getByRole('region', { name: 'Danh sách hội thoại' });
+  await column.getByRole('button', { name: 'Tải thêm' }).click();
+  const alert = column.getByRole('alert');
+  await expect(alert).toContainText('Đã có lỗi, không phải do bạn.');
+  await expect(alert).toContainText('Mã: trace-next');
+  await expect(list(page)).toHaveCount(STUB_PAGE);
+  await expect(column.getByRole('button', { name: 'Tải thêm' })).toHaveCount(0);
+  await expectAccessible(page);
+  await alert.getByRole('button', { name: 'Thử lại' }).click();
+  await expect(list(page)).toHaveCount(5);
+  await expect(alert).toHaveCount(0);
+  expect(next).toHaveLength(2);
+  expect(next[1]).toBe(next[0]);
+});
+
 test('a role that sees no conversation gets the forbidden page', async ({ page }) => {
   await signIn(page, accountOf('marketing'));
   await page.goto('/inbox');
