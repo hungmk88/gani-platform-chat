@@ -141,6 +141,19 @@ export function ConversationList({
   });
   const query = paramsOf(filter).toString();
   const empty = emptyOf(filter, role);
+  // A failed read (the list, or only "Tải thêm") never takes the rows already read away: like `Paged` (#23, #28, #29), the error
+  // goes under them and "Thử lại" reads again the page that failed (CEO brief 195).
+  const failure = list.isError ? list.error.error : null;
+  const failed = failure ? (
+    <div role="alert" className="flex flex-col gap-2">
+      <p>{failure.message}</p>
+      {failure.traceId ? <p className="text-12 text-text-muted">Mã: {failure.traceId}</p> : null}
+      <RetryAction
+        onRetry={() => void (list.isFetchNextPageError ? list.fetchNextPage() : list.refetch())}
+        busy={list.isFetching}
+      />
+    </div>
+  ) : null;
 
   return (
     <section aria-label="Danh sách hội thoại" className="flex flex-col gap-4">
@@ -296,14 +309,8 @@ export function ConversationList({
         <p role="status" aria-busy="true" className="text-text-muted">
           Đang tải hội thoại…
         </p>
-      ) : list.isError ? (
-        <div role="alert" className="flex flex-col gap-2">
-          <p>{list.error.error.message}</p>
-          {list.error.error.traceId ? (
-            <p className="text-12 text-text-muted">Mã: {list.error.error.traceId}</p>
-          ) : null}
-          <RetryAction onRetry={() => void list.refetch()} busy={list.isFetching} />
-        </div>
+      ) : !list.data ? (
+        failed
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-start gap-2">
           <p>{empty.text}</p>
@@ -389,7 +396,7 @@ export function ConversationList({
               );
             })}
           </ul>
-          {list.hasNextPage ? (
+          {list.hasNextPage && !list.isFetchNextPageError ? (
             <button
               type="button"
               className={`${button} self-start`}
@@ -402,6 +409,7 @@ export function ConversationList({
           ) : null}
         </>
       )}
+      {list.data ? failed : null}
       <p className="text-12 text-text-muted">Không áp dụng AI ở danh sách này.</p>
     </section>
   );
